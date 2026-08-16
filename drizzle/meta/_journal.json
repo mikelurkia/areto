@@ -1,0 +1,265 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1784909976272,
+      "tag": "0000_foamy_leopardon",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784916148050,
+      "tag": "0001_curved_screwball",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784917260353,
+      "tag": "0002_cute_longshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784929891397,
+      "tag": "0003_add_seasons",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784929914080,
+      "tag": "0004_backfill_seasons",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784929962767,
+      "tag": "0005_drop_legacy_season_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784931539388,
+      "tag": "0006_single_club_futsal_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784962594007,
+      "tag": "0007_chubby_sumo",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784963205366,
+      "tag": "0008_flawless_turbo",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784964131849,
+      "tag": "0009_amused_doctor_doom",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784965091181,
+      "tag": "0010_chief_wildside",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784967290568,
+      "tag": "0011_cool_colossus",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785178201344,
+      "tag": "0012_lethal_loners",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785184697504,
+      "tag": "0013_high_grandmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1785185459414,
+      "tag": "0014_simple_texas_twister",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1785185996739,
+      "tag": "0015_minor_obadiah_stane",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1785187035960,
+      "tag": "0016_youthful_hannibal_king",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1785188635108,
+      "tag": "0017_panoramic_morph",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1785188662826,
+      "tag": "0018_careful_blink",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1785221077901,
+      "tag": "0019_unique_rachel_grey",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785223597632,
+      "tag": "0020_brave_black_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1785223644200,
+      "tag": "0021_lethal_ultragirl",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1785245823689,
+      "tag": "0022_shocking_valeria_richards",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1785246371597,
+      "tag": "0023_gray_thaddeus_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1785247720919,
+      "tag": "0024_swift_chamber",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1785249924348,
+      "tag": "0025_moaning_tusk",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1785268609556,
+      "tag": "0026_chubby_deadpool",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1785269520542,
+      "tag": "0027_eminent_xavin",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1785270885227,
+      "tag": "0028_cold_callisto",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1785734908907,
+      "tag": "0029_melodic_proudstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1785738588124,
+      "tag": "0030_dark_sasquatch",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1785752131733,
+      "tag": "0031_safe_firebird",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1785776055758,
+      "tag": "0032_last_whirlwind",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1785776068402,
+      "tag": "0033_sleepy_carnage",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1785780949179,
+      "tag": "0034_brainy_vulcan",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1785790705941,
+      "tag": "0035_violet_kate_bishop",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1786914528411,
+      "tag": "0036_little_boomerang",
+      "breakpoints": true
+    }
+  ]
+}

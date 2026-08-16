@@ -1,0 +1,1 @@
+ALTER TABLE "sponsor_payments" ADD COLUMN "year" integer;

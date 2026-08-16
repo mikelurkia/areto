@@ -1,0 +1,1 @@
+ALTER TABLE "sponsors" ADD COLUMN "category" text;
