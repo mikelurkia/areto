@@ -281,6 +281,13 @@
       "when": 1786952740761,
       "tag": "0039_odd_cloak",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1786955406320,
+      "tag": "0040_thick_captain_marvel",
+      "breakpoints": true
     }
   ]
 }

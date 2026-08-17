@@ -2,14 +2,13 @@ import { calculateAge } from "@/lib/age";
 
 /**
  * Cálculo de "salud de plantilla" compartido entre el detalle del equipo y el
- * listado. Solo tiene en cuenta las membership activas. Puro (sin React), para
- * poder usarlo en cualquier componente de servidor.
+ * listado. Puro (sin React), para poder usarlo en cualquier componente de
+ * servidor.
  */
 type HealthMembership = {
   role: string;
   jerseyNumber: number | null;
   positions: string[];
-  active: boolean;
   person: {
     birthDate: string | null;
     medicalCertUntil: string | null;
@@ -48,8 +47,7 @@ export function computeRosterHealth(
   memberships: HealthMembership[],
   team: { minBirthYear: number | null; maxBirthYear: number | null },
 ): RosterHealth {
-  const active = memberships.filter((m) => m.active);
-  const players = active.filter((m) => m.role === "player");
+  const players = memberships.filter((m) => m.role === "player");
 
   const today = new Date().toISOString().slice(0, 10);
   const soon = new Date();
@@ -82,22 +80,22 @@ export function computeRosterHealth(
         }).length
       : 0;
 
-  const medicalExpired = active.filter(
+  const medicalExpired = memberships.filter(
     (m) => m.person.medicalCertUntil !== null && m.person.medicalCertUntil < today,
   ).length;
-  const medicalExpiring = active.filter(
+  const medicalExpiring = memberships.filter(
     (m) =>
       m.person.medicalCertUntil !== null &&
       m.person.medicalCertUntil >= today &&
       m.person.medicalCertUntil <= soonStr,
   ).length;
-  const formMissing = active.filter((m) => !m.person.formSigned).length;
+  const formMissing = memberships.filter((m) => !m.person.formSigned).length;
   const noJersey = players.filter((m) => m.jerseyNumber === null).length;
 
   const stats: RosterHealthStats = {
     players: players.length,
     goalkeepers: players.filter((m) => m.positions.includes("portero")).length,
-    coaches: active.filter((m) => m.role === "coach" || m.role === "staff").length,
+    coaches: memberships.filter((m) => m.role === "coach" || m.role === "staff").length,
     avgAge,
   };
   const alerts: RosterHealthAlerts = {

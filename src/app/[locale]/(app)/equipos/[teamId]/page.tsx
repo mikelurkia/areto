@@ -107,9 +107,9 @@ export default async function TeamDetailPage({
     team,
   );
 
-  // Dorsales ocupados por jugadores activos (para el mapa de dorsales del diálogo).
+  // Dorsales ocupados por jugadores (para el mapa de dorsales del diálogo).
   const takenJerseys = teamMemberships
-    .filter((m) => m.active && m.role === "player" && m.jerseyNumber !== null)
+    .filter((m) => m.role === "player" && m.jerseyNumber !== null)
     .map((m) => m.jerseyNumber as number);
 
   return (

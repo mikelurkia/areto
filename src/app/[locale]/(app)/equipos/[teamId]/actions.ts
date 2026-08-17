@@ -91,10 +91,6 @@ export async function updateMembership(
       positions: readPositions(formData),
       isCaptain: formData.get("isCaptain") === "on",
       position: String(formData.get("position") ?? "").trim() || null,
-      kitShirtIssued: formData.get("kitShirtIssued") === "on",
-      kitPantsIssued: formData.get("kitPantsIssued") === "on",
-      kitBibIssued: formData.get("kitBibIssued") === "on",
-      active: formData.get("active") === "on",
     })
     .where(eq(memberships.id, id));
 

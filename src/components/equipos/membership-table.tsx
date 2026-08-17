@@ -19,10 +19,6 @@ type MembershipRow = {
   jerseyNumber: number | null;
   positions: string[];
   isCaptain: boolean;
-  kitShirtIssued: boolean;
-  kitPantsIssued: boolean;
-  kitBibIssued: boolean;
-  active: boolean;
 };
 
 type Translate = (key: string, values?: Record<string, string | number | Date>) => string;
@@ -30,8 +26,8 @@ type Translate = (key: string, values?: Record<string, string | number | Date>) 
 /**
  * Tabla de membresías (persona ↔ equipo), compartida por la pestaña
  * "Plantilla" del equipo (equipo→personas) y la pestaña "Equipos" de la
- * persona (persona→equipos): mismas columnas de rol/dorsal/puestos/
- * equipación/activo. Solo cambia la columna "sujeto" (persona o equipo,
+ * persona (persona→equipos): mismas columnas de rol/dorsal/puestos.
+ * Solo cambia la columna "sujeto" (persona o equipo,
  * vía `renderSubject`) y si se muestra el mapa de dorsales del diálogo de
  * edición (`takenJerseysFor`, solo en contexto equipo — ver comentario en
  * `MembershipDialog`).
@@ -61,8 +57,6 @@ export function MembershipTable<T extends MembershipRow>({
           <TableHead>{t("roleLabel")}</TableHead>
           <TableHead>{t("colJersey")}</TableHead>
           <TableHead>{t("colPositions")}</TableHead>
-          <TableHead>{t("colKit")}</TableHead>
-          <TableHead>{t("colActive")}</TableHead>
           {canManage ? (
             <TableHead className="text-right print:hidden">{t("colActions")}</TableHead>
           ) : null}
@@ -94,24 +88,6 @@ export function MembershipTable<T extends MembershipRow>({
                   "—"
                 )}
               </TableCell>
-              <TableCell>
-                {m.kitShirtIssued || m.kitPantsIssued || m.kitBibIssued ? (
-                  <div className="flex flex-wrap gap-1">
-                    {m.kitShirtIssued ? (
-                      <Badge variant="secondary">{t("kitShirtLabel")}</Badge>
-                    ) : null}
-                    {m.kitPantsIssued ? (
-                      <Badge variant="secondary">{t("kitPantsLabel")}</Badge>
-                    ) : null}
-                    {m.kitBibIssued ? (
-                      <Badge variant="secondary">{t("kitBibLabel")}</Badge>
-                    ) : null}
-                  </div>
-                ) : (
-                  "—"
-                )}
-              </TableCell>
-              <TableCell>{m.active ? t("activeYes") : t("activeNo")}</TableCell>
               {canManage ? (
                 <TableCell className="flex justify-end gap-1 print:hidden">
                   <MembershipDialog
@@ -125,10 +101,6 @@ export function MembershipTable<T extends MembershipRow>({
                       positions: m.positions,
                       isCaptain: m.isCaptain,
                       position: m.position,
-                      kitShirtIssued: m.kitShirtIssued,
-                      kitPantsIssued: m.kitPantsIssued,
-                      kitBibIssued: m.kitBibIssued,
-                      active: m.active,
                     }}
                   />
                   <DeleteMembershipDialog id={m.id} name={name} />

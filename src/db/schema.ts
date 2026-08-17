@@ -323,10 +323,6 @@ export const memberships = pgTable(
     positions: playerPosition("positions").array().notNull().default([]),
     isCaptain: boolean("is_captain").notNull().default(false), // capitán (brazalete)
     position: text("position"), // cargo libre: delegado, 2º entrenador, fisio, subcapitán...
-    kitShirtIssued: boolean("kit_shirt_issued").notNull().default(false),
-    kitPantsIssued: boolean("kit_pants_issued").notNull().default(false),
-    kitBibIssued: boolean("kit_bib_issued").notNull().default(false),
-    active: boolean("active").notNull().default(true),
     joinedAt: date("joined_at"),
   },
   (t) => [uniqueIndex("memberships_person_team_idx").on(t.personId, t.teamId)],

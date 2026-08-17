@@ -129,10 +129,10 @@ export async function deleteTeam(
 
 /**
  * Renueva un equipo a otra temporada: crea la fila de equipo en la temporada
- * destino (mismos datos de categoría/federación) y copia su plantilla activa
+ * destino (mismos datos de categoría/federación) y copia su plantilla
  * (persona, rol, dorsal, puestos, capitanía). Lo que es propio de la
- * temporada que termina (equipación entregada, alta federativa) se reinicia,
- * igual que si se hubiera dado de alta a mano. No copia inactivos ni bajas.
+ * temporada que termina (alta federativa) se reinicia, igual que si se
+ * hubiera dado de alta a mano.
  */
 export async function renewTeam(
   _prev: TeamState,
@@ -160,7 +160,7 @@ export async function renewTeam(
   if (alreadyRenewed) return { error: t("teamAlreadyRenewed") };
 
   const sourceMemberships = await db.query.memberships.findMany({
-    where: and(eq(memberships.teamId, teamId), eq(memberships.active, true)),
+    where: eq(memberships.teamId, teamId),
   });
 
   await db.transaction(async (tx) => {
@@ -203,10 +203,9 @@ export async function renewTeam(
  * masiva de `renewTeam`, pensada para el arranque de temporada (la mayoría de
  * equipos son los del año anterior). Por cada equipo de origen seleccionado
  * crea su fila en la temporada destino (mismos datos de categoría/federación) y,
- * si se pide, copia la plantilla activa (persona, rol, dorsal, puestos,
- * capitanía). Lo propio de la temporada que termina (equipación entregada) se
- * reinicia. Idempotente: salta los equipos ya traídos a esta temporada
- * (`previousTeamId` apuntando al de origen). No copia inactivos ni bajas.
+ * si se pide, copia la plantilla (persona, rol, dorsal, puestos, capitanía).
+ * Idempotente: salta los equipos ya traídos a esta temporada
+ * (`previousTeamId` apuntando al de origen).
  */
 export async function importTeamsFromSeason(
   _prev: TeamState,
@@ -271,7 +270,7 @@ export async function importTeamsFromSeason(
       if (!copyRoster) continue;
 
       const sourceMemberships = await tx.query.memberships.findMany({
-        where: and(eq(memberships.teamId, source.id), eq(memberships.active, true)),
+        where: eq(memberships.teamId, source.id),
       });
       if (sourceMemberships.length > 0) {
         await tx.insert(memberships).values(

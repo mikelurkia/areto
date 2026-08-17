@@ -48,10 +48,6 @@ type Membership = {
   positions: string[];
   isCaptain: boolean;
   position: string | null;
-  kitShirtIssued: boolean;
-  kitPantsIssued: boolean;
-  kitBibIssued: boolean;
-  active: boolean;
 };
 
 type MembershipDialogProps = (
@@ -282,30 +278,16 @@ export function MembershipDialog(props: MembershipDialogProps) {
                 ))}
               </div>
             </Field>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="membership-captain"
-                  name="isCaptain"
-                  defaultChecked={membership?.isCaptain ?? false}
-                />
-                <Label htmlFor="membership-captain" className="font-normal">
-                  {t("captainLabel")}
-                </Label>
-              </Field>
-              {props.mode === "edit" ? (
-                <Field orientation="horizontal">
-                  <Checkbox
-                    id="membership-active"
-                    name="active"
-                    defaultChecked={membership!.active}
-                  />
-                  <Label htmlFor="membership-active" className="font-normal">
-                    {t("activeLabel")}
-                  </Label>
-                </Field>
-              ) : null}
-            </div>
+            <Field orientation="horizontal">
+              <Checkbox
+                id="membership-captain"
+                name="isCaptain"
+                defaultChecked={membership?.isCaptain ?? false}
+              />
+              <Label htmlFor="membership-captain" className="font-normal">
+                {t("captainLabel")}
+              </Label>
+            </Field>
             <Field>
               <FieldLabel htmlFor="membership-position">
                 {t("positionLabel")}
@@ -317,40 +299,6 @@ export function MembershipDialog(props: MembershipDialogProps) {
                 placeholder={t("positionPlaceholder")}
               />
             </Field>
-            {props.mode === "edit" ? (
-              <div className="grid grid-cols-3 gap-x-3 gap-y-2">
-                <Field orientation="horizontal">
-                  <Checkbox
-                    id="membership-kit-shirt"
-                    name="kitShirtIssued"
-                    defaultChecked={membership!.kitShirtIssued}
-                  />
-                  <Label htmlFor="membership-kit-shirt" className="font-normal">
-                    {t("kitShirtLabel")}
-                  </Label>
-                </Field>
-                <Field orientation="horizontal">
-                  <Checkbox
-                    id="membership-kit-pants"
-                    name="kitPantsIssued"
-                    defaultChecked={membership!.kitPantsIssued}
-                  />
-                  <Label htmlFor="membership-kit-pants" className="font-normal">
-                    {t("kitPantsLabel")}
-                  </Label>
-                </Field>
-                <Field orientation="horizontal">
-                  <Checkbox
-                    id="membership-kit-bib"
-                    name="kitBibIssued"
-                    defaultChecked={membership!.kitBibIssued}
-                  />
-                  <Label htmlFor="membership-kit-bib" className="font-normal">
-                    {t("kitBibLabel")}
-                  </Label>
-                </Field>
-              </div>
-            ) : null}
             {state.error ? (
               <p className="text-sm text-destructive">{state.error}</p>
             ) : null}
