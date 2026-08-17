@@ -1,11 +1,12 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
+import { asc, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { clubSettings } from "@/db/schema";
+import { clubSettings, federationAccounts } from "@/db/schema";
 
 export type ClubSettings = typeof clubSettings.$inferSelect;
+export type FederationAccount = typeof federationAccounts.$inferSelect;
 
 /**
  * Datos del club como emisor de facturas. Tabla singleton: devolvemos la
@@ -14,6 +15,16 @@ export type ClubSettings = typeof clubSettings.$inferSelect;
 export async function getClubSettings(): Promise<ClubSettings | null> {
   const row = await db.query.clubSettings.findFirst();
   return row ?? null;
+}
+
+/**
+ * Credenciales del club en las intranets de las federaciones (gipuzkoana,
+ * vasca...), ordenadas por nombre. Solo lectura por ahora.
+ */
+export async function getFederationAccounts(): Promise<FederationAccount[]> {
+  return db.query.federationAccounts.findMany({
+    orderBy: [asc(federationAccounts.name)],
+  });
 }
 
 /** ¿Hay datos fiscales mínimos para emitir una factura? */

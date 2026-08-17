@@ -6,7 +6,6 @@ import { db } from "@/db";
 import {
   personQualifications,
   persons,
-  seasonTasks,
   seasons,
   sponsorshipTerms,
 } from "@/db/schema";
@@ -30,7 +29,7 @@ type ExpiringItem = {
   key: string;
   href: string;
   label: string;
-  type: "medical" | "qualification" | "sponsorship" | "task";
+  type: "medical" | "qualification" | "sponsorship";
   detail?: string;
   date: string;
   expired: boolean;
@@ -42,12 +41,7 @@ const membershipSeasonInclude = {
 } as const;
 
 async function getExpiringItems(today: string, cutoff: string): Promise<ExpiringItem[]> {
-  const currentSeason = await db.query.seasons.findFirst({
-    where: eq(seasons.isCurrent, true),
-    columns: { id: true },
-  });
-
-  const [medicalCerts, qualifications, expiringSponsorships, dueTasks] = await Promise.all([
+  const [medicalCerts, qualifications, expiringSponsorships] = await Promise.all([
     db.query.persons.findMany({
       where: and(isNotNull(persons.medicalCertUntil), lte(persons.medicalCertUntil, cutoff)),
       columns: { id: true, firstName: true, lastName: true, medicalCertUntil: true },
@@ -71,18 +65,6 @@ async function getExpiringItems(today: string, cutoff: string): Promise<Expiring
       columns: { id: true, endsOn: true },
       with: { sponsor: { columns: { id: true, name: true } } },
     }),
-    currentSeason
-      ? db.query.seasonTasks.findMany({
-          where: and(
-            eq(seasonTasks.seasonId, currentSeason.id),
-            isNotNull(seasonTasks.dueDate),
-            lte(seasonTasks.dueDate, cutoff),
-            ne(seasonTasks.status, "done"),
-          ),
-          columns: { id: true, title: true, dueDate: true },
-          with: { team: { columns: { name: true } } },
-        })
-      : Promise.resolve([]),
   ]);
 
   const items: ExpiringItem[] = [
@@ -114,15 +96,6 @@ async function getExpiringItems(today: string, cutoff: string): Promise<Expiring
       type: "sponsorship" as const,
       date: term.endsOn!,
       expired: term.endsOn! < today,
-    })),
-    ...dueTasks.map((task) => ({
-      key: `task-${task.id}`,
-      href: currentSeason ? `/temporadas/${currentSeason.id}` : "/temporadas",
-      label: task.title,
-      type: "task" as const,
-      detail: task.team?.name ?? undefined,
-      date: task.dueDate!,
-      expired: task.dueDate! < today,
     })),
   ];
 
@@ -277,11 +250,7 @@ export default async function DashboardPage() {
                       ? t("expiringMedicalCertLabel")
                       : item.type === "sponsorship"
                         ? t("expiringSponsorshipLabel")
-                        : item.type === "task"
-                          ? item.detail
-                            ? `${t("expiringTaskLabel")} · ${item.detail}`
-                            : t("expiringTaskLabel")
-                          : item.detail}
+                        : item.detail}
                   </span>
                   <Badge
                     variant={item.expired ? "destructive" : "warning"}

@@ -1,0 +1,1 @@
+ALTER TABLE "club_settings" ADD COLUMN "federation_code" text DEFAULT '2022';

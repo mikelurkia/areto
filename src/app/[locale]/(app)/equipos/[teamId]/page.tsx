@@ -7,7 +7,7 @@ import {
   UserRoundIcon,
 } from "lucide-react";
 import { eq, ne, notInArray } from "drizzle-orm";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { memberships, persons, seasons, teams } from "@/db/schema";
@@ -21,7 +21,6 @@ import {
 import { requireUser } from "@/lib/auth";
 import { fileTypeLabel } from "@/lib/file-type";
 import { computeRosterHealth } from "@/lib/roster-health";
-import { SEASON_TASK_KINDS, type SeasonTaskKind, type SeasonTaskStatus } from "@/lib/season-tasks";
 import { getSignedUrls } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
 import { RosterHealth } from "@/components/equipos/roster-health";
@@ -66,8 +65,6 @@ export default async function TeamDetailPage({
   const { teamId } = await params;
   const user = await requireUser();
   const t = await getTranslations("Equipos");
-  const tTemporada = await getTranslations("Temporadas");
-  const locale = await getLocale();
   const canManage = user.role === "admin" || user.role === "staff";
 
   const team = await db.query.teams.findFirst({
@@ -76,7 +73,6 @@ export default async function TeamDetailPage({
       season: true,
       documents: { orderBy: (d, { desc }) => [desc(d.createdAt)] },
       noteEntries: { orderBy: (n, { desc }) => [desc(n.createdAt)] },
-      tasks: { orderBy: (tk, { asc }) => [asc(tk.sortOrder), asc(tk.createdAt)] },
     },
   });
   if (!team) notFound();
@@ -115,11 +111,6 @@ export default async function TeamDetailPage({
   const takenJerseys = teamMemberships
     .filter((m) => m.active && m.role === "player" && m.jerseyNumber !== null)
     .map((m) => m.jerseyNumber as number);
-
-  const currencyFmt = new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" });
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
-  const today = new Date().toISOString().slice(0, 10);
-  const fmtDate = (d: string) => dateFmt.format(new Date(`${d}T00:00:00`));
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -182,9 +173,6 @@ export default async function TeamDetailPage({
           </TabsTrigger>
           <TabsTrigger value="bitacora">
             {t("tabNotesLog", { count: team.noteEntries.length })}
-          </TabsTrigger>
-          <TabsTrigger value="tramites">
-            {t("tabTasks", { count: team.tasks.length })}
           </TabsTrigger>
         </TabsList>
 
@@ -367,69 +355,6 @@ export default async function TeamDetailPage({
               createdAt: n.createdAt.toISOString().slice(0, 16).replace("T", " "),
             }))}
           />
-        </TabsContent>
-
-        <TabsContent value="tramites" keepMounted className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              {t("tasksSection")}
-            </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              render={<Link href={`/temporadas/${team.seasonId}`} />}
-              nativeButton={false}
-            >
-              {t("manageTasksAction")}
-            </Button>
-          </div>
-          {team.tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("noTasksDescription")}</p>
-          ) : (
-            <div className="flex flex-col">
-              {team.tasks.map((task) => {
-                const meta = SEASON_TASK_KINDS[task.kind as SeasonTaskKind];
-                const status = task.status as SeasonTaskStatus;
-                const overdue =
-                  task.dueDate !== null && task.dueDate < today && status !== "done";
-                return (
-                  <div
-                    key={task.id}
-                    className="flex flex-wrap items-center gap-2 border-b py-3 last:border-b-0"
-                  >
-                    <Badge variant={status === "done" ? "secondary" : "outline"}>
-                      {tTemporada(`status.${status}`)}
-                    </Badge>
-                    <span
-                      className={
-                        status === "done"
-                          ? "font-medium text-muted-foreground line-through"
-                          : "font-medium"
-                      }
-                    >
-                      {task.title}
-                    </span>
-                    {task.dueDate ? (
-                      <Badge variant={overdue ? "destructive" : "secondary"}>
-                        {overdue
-                          ? tTemporada("overdueBadge", { date: fmtDate(task.dueDate) })
-                          : fmtDate(task.dueDate)}
-                      </Badge>
-                    ) : null}
-                    {meta.hasPayment && task.amountCents !== null ? (
-                      <Badge variant={task.paidOn ? "secondary" : "outline"}>
-                        {currencyFmt.format(task.amountCents / 100)}
-                        {" · "}
-                        {task.paidOn
-                          ? tTemporada("paidOn", { date: fmtDate(task.paidOn) })
-                          : tTemporada("unpaid")}
-                      </Badge>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </TabsContent>
       </Tabs>
     </div>

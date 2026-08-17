@@ -102,28 +102,6 @@ export const sponsorshipAgreementStatus = pgEnum("sponsorship_agreement_status",
   "lost", // perdido / no cuaja
 ]);
 
-/**
- * Tipo de trámite de arranque de temporada (gestión federativa). Los primeros
- * cuatro son los pasos estándar que se generan desde plantilla; `otro` permite
- * añadir trámites libres. `inscripcion_liga`/`inscripcion_copa` llevan pago +
- * justificante; `alta_jugadores_plataforma` es un paraguas que agrega el estado
- * de inscripción por jugador (`memberships.federationRegistered`).
- */
-export const seasonTaskKind = pgEnum("season_task_kind", [
-  "inscripcion_liga", // documentación + pago inscripción liga doméstica
-  "inscripcion_copa", // documentación + pago inscripción copa
-  "alta_equipo_plataforma", // dar de alta el equipo en la plataforma federativa
-  "alta_jugadores_plataforma", // inscribir jugadores en la plataforma
-  "otro", // trámite libre
-]);
-
-/** Estado de un trámite de temporada. */
-export const seasonTaskStatus = pgEnum("season_task_status", [
-  "pending", // pendiente
-  "in_progress", // en curso
-  "done", // completado
-]);
-
 // ---------------------------------------------------------------------------
 // Temporadas
 // ---------------------------------------------------------------------------
@@ -214,47 +192,6 @@ export const teamNotes = pgTable("team_notes", {
     .references(() => teams.id, { onDelete: "cascade" }),
   body: text("body").notNull(),
   authorName: text("author_name"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-// ---------------------------------------------------------------------------
-// Trámites de temporada (gestión federativa de arranque)
-// ---------------------------------------------------------------------------
-
-/**
- * Trámite administrativo del arranque de una temporada: inscripción en liga y
- * copa (con su pago y justificante bancario), alta de equipos y jugadores en la
- * plataforma federativa, y trámites libres. Cuelga de una temporada y, si
- * aplica, de un equipo concreto (`teamId` nulo = trámite de club).
- *
- * Los importes se guardan en céntimos. El pago a la federación se modela INLINE
- * aquí (`amountCents`/`paidOn`/`proofPath`), no en el económico de ingresos
- * (cuotas/patrocinios): es un gasto saliente y no hay ledger de gastos todavía.
- * `proofPath`/`docPath` son objetos del bucket `season-task-proofs`.
- *
- * La checklist estándar se instancia con `generateSeasonTasks` desde una
- * plantilla (ver `src/lib/season-tasks.ts`), igual que las anualidades de
- * patrocinio se generan con `generateAnnualities`.
- */
-export const seasonTasks = pgTable("season_tasks", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  seasonId: uuid("season_id")
-    .notNull()
-    .references(() => seasons.id, { onDelete: "cascade" }),
-  /** Equipo al que aplica el trámite; null = trámite de club (no ligado a un equipo). */
-  teamId: uuid("team_id").references(() => teams.id, { onDelete: "cascade" }),
-  kind: seasonTaskKind("kind").notNull().default("otro"),
-  title: text("title").notNull(), // rellenado desde plantilla, editable
-  status: seasonTaskStatus("status").notNull().default("pending"),
-  dueDate: date("due_date"), // fecha límite federativa (asoma en el dashboard)
-  amountCents: integer("amount_cents"), // solo trámites con pago (inscripciones)
-  paidOn: date("paid_on"), // fecha real del pago a la federación
-  proofPath: text("proof_path"), // justificante bancario (bucket season-task-proofs)
-  docPath: text("doc_path"), // documentación enviada (bucket season-task-proofs)
-  assignee: text("assignee"), // quién lo lleva (texto libre)
-  notes: text("notes"),
-  /** Orden de presentación dentro de la temporada (la plantilla lo asigna). */
-  sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -389,8 +326,6 @@ export const memberships = pgTable(
     kitShirtIssued: boolean("kit_shirt_issued").notNull().default(false),
     kitPantsIssued: boolean("kit_pants_issued").notNull().default(false),
     kitBibIssued: boolean("kit_bib_issued").notNull().default(false),
-    /** Jugador dado de alta en la plataforma federativa esta temporada (trámite `alta_jugadores_plataforma`). */
-    federationRegistered: boolean("federation_registered").notNull().default(false),
     active: boolean("active").notNull().default(true),
     joinedAt: date("joined_at"),
   },
@@ -629,8 +564,30 @@ export const clubSettings = pgTable("club_settings", {
   email: text("email"),
   phone: text("phone"),
   iban: text("iban"),
+  federationCode: text("federation_code").default("2022"), // código de club en la federación
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Credenciales del club en las aplicaciones (intranets) de las federaciones.
+ * Hoy existen la federación gipuzkoana y la vasca, pero se modela como tabla
+ * (una fila por federación) para poder añadir más sin tocar el esquema. La
+ * contraseña se guarda en claro a propósito: el club necesita el valor
+ * recuperable para iniciar sesión en los portales externos. Por ahora es de
+ * solo lectura desde la UI.
+ */
+export const federationAccounts = pgTable(
+  "federation_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(), // nombre de la federación (p. ej. "Gipuzkoana")
+    url: text("url").notNull(), // URL de la intranet/aplicación
+    username: text("username"),
+    password: text("password"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("federation_accounts_name_idx").on(table.name)],
+);
 
 /**
  * Contador de facturas por año, para numeración correlativa sin huecos
@@ -663,12 +620,6 @@ export const announcements = pgTable("announcements", {
 export const seasonsRelations = relations(seasons, ({ many }) => ({
   teams: many(teams),
   fees: many(fees),
-  tasks: many(seasonTasks),
-}));
-
-export const seasonTasksRelations = relations(seasonTasks, ({ one }) => ({
-  season: one(seasons, { fields: [seasonTasks.seasonId], references: [seasons.id] }),
-  team: one(teams, { fields: [seasonTasks.teamId], references: [teams.id] }),
 }));
 
 export const sponsorsRelations = relations(sponsors, ({ one, many }) => ({
@@ -728,7 +679,6 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
   renewedAsTeams: many(teams, { relationName: "teamRenewal" }),
   memberships: many(memberships),
   events: many(events),
-  tasks: many(seasonTasks),
   documents: many(teamDocuments),
   noteEntries: many(teamNotes),
 }));

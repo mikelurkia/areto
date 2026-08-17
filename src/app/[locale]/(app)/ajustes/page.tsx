@@ -2,7 +2,6 @@ import { getTranslations } from "next-intl/server";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import {
-  ClubSettingsForm,
   DangerZone,
   EmailForm,
   PasswordForm,
@@ -16,7 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
-import { getClubSettings } from "@/lib/club";
 
 export async function generateMetadata() {
   const t = await getTranslations("Metadata");
@@ -26,9 +24,6 @@ export async function generateMetadata() {
 export default async function AjustesPage() {
   const user = await requireUser();
   const t = await getTranslations("Settings");
-
-  const canManageClub = user.role === "admin" || user.role === "staff";
-  const clubSettings = canManageClub ? await getClubSettings() : null;
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -56,18 +51,6 @@ export default async function AjustesPage() {
             <PasswordForm />
           </CardContent>
         </Card>
-
-        {canManageClub ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("clubSection")}</CardTitle>
-              <CardDescription>{t("clubDescription")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ClubSettingsForm settings={clubSettings} />
-            </CardContent>
-          </Card>
-        ) : null}
 
         <Card>
           <CardHeader>

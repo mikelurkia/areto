@@ -1,0 +1,58 @@
+import { getTranslations } from "next-intl/server";
+
+import { ClubSettingsForm } from "@/components/club/club-settings-form";
+import { FederationAccountsList } from "@/components/club/federation-accounts-list";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { requireRole } from "@/lib/auth";
+import { getClubSettings, getFederationAccounts } from "@/lib/club";
+
+export async function generateMetadata() {
+  const t = await getTranslations("Metadata");
+  return { title: t("club") };
+}
+
+export default async function ClubPage() {
+  await requireRole(["admin", "staff"]);
+  const t = await getTranslations("Club");
+  const [clubSettings, federationAccounts] = await Promise.all([
+    getClubSettings(),
+    getFederationAccounts(),
+  ]);
+
+  return (
+    <div className="flex flex-1 flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
+      </div>
+
+      <div className="grid gap-4 lg:max-w-2xl">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("clubSection")}</CardTitle>
+            <CardDescription>{t("clubDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ClubSettingsForm settings={clubSettings} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("federationsSection")}</CardTitle>
+            <CardDescription>{t("federationsDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FederationAccountsList accounts={federationAccounts} />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

@@ -5,7 +5,6 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { computeSeasonTaskProgress } from "@/lib/season-tasks";
 import { Link } from "@/i18n/navigation";
 import {
   DeleteSeasonDialog,
@@ -37,9 +36,6 @@ export default async function TemporadasPage() {
     orderBy: desc(seasons.name),
     with: {
       teams: { columns: { id: true } },
-      tasks: {
-        columns: { id: true, status: true, kind: true, amountCents: true, paidOn: true },
-      },
     },
   });
 
@@ -71,7 +67,6 @@ export default async function TemporadasPage() {
               <TableHead>{t("colName")}</TableHead>
               <TableHead>{t("colDates")}</TableHead>
               <TableHead>{t("colTeams")}</TableHead>
-              <TableHead>{t("colTasks")}</TableHead>
               {canManage ? (
                 <TableHead className="text-right">{t("colActions")}</TableHead>
               ) : null}
@@ -79,7 +74,6 @@ export default async function TemporadasPage() {
           </TableHeader>
           <TableBody>
             {allSeasons.map((season) => {
-              const progress = computeSeasonTaskProgress(season.tasks);
               const starts = fmtDate(season.startsOn);
               const ends = fmtDate(season.endsOn);
               return (
@@ -98,9 +92,6 @@ export default async function TemporadasPage() {
                     {starts || ends ? `${starts ?? "—"} – ${ends ?? "—"}` : "—"}
                   </TableCell>
                   <TableCell>{season.teams.length}</TableCell>
-                  <TableCell>
-                    {progress.total > 0 ? `${progress.done}/${progress.total}` : "—"}
-                  </TableCell>
                   {canManage ? (
                     <TableCell className="flex justify-end gap-1">
                       <SeasonDialog mode="edit" season={season} />

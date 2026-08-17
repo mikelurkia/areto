@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
@@ -196,4 +196,99 @@ export async function renewTeam(
 
   revalidatePath("/", "layout");
   return { message: t("teamRenewed", { season: targetSeason.name }) };
+}
+
+/**
+ * Trae en lote equipos de otra temporada a la temporada destino: la versión
+ * masiva de `renewTeam`, pensada para el arranque de temporada (la mayoría de
+ * equipos son los del año anterior). Por cada equipo de origen seleccionado
+ * crea su fila en la temporada destino (mismos datos de categoría/federación) y,
+ * si se pide, copia la plantilla activa (persona, rol, dorsal, puestos,
+ * capitanía). Lo propio de la temporada que termina (equipación entregada) se
+ * reinicia. Idempotente: salta los equipos ya traídos a esta temporada
+ * (`previousTeamId` apuntando al de origen). No copia inactivos ni bajas.
+ */
+export async function importTeamsFromSeason(
+  _prev: TeamState,
+  formData: FormData,
+): Promise<TeamState> {
+  const t = await getTranslations("Temporadas");
+  await requireRole([...MANAGE_ROLES]);
+
+  const targetSeasonId = String(formData.get("targetSeasonId") ?? "");
+  const sourceSeasonId = String(formData.get("sourceSeasonId") ?? "");
+  const teamIds = formData.getAll("teamIds").map(String).filter(Boolean);
+  const copyRoster = formData.get("copyRoster") === "on";
+
+  if (!targetSeasonId || !sourceSeasonId) return { error: t("importSourceRequired") };
+  if (sourceSeasonId === targetSeasonId) return { error: t("importSameSeason") };
+  if (teamIds.length === 0) return { error: t("importNoTeamsSelected") };
+
+  const targetSeason = await db.query.seasons.findFirst({
+    where: eq(seasons.id, targetSeasonId),
+  });
+  if (!targetSeason) return { error: t("importSourceRequired") };
+
+  // Equipos de origen realmente seleccionados (y que pertenecen a la temporada de origen).
+  const sourceTeams = await db.query.teams.findMany({
+    where: and(eq(teams.seasonId, sourceSeasonId), inArray(teams.id, teamIds)),
+  });
+  if (sourceTeams.length === 0) return { error: t("importNoTeamsSelected") };
+
+  // Idempotencia: saltar los que ya se trajeron a esta temporada.
+  const alreadyImported = await db.query.teams.findMany({
+    where: and(
+      eq(teams.seasonId, targetSeasonId),
+      inArray(
+        teams.previousTeamId,
+        sourceTeams.map((s) => s.id),
+      ),
+    ),
+    columns: { previousTeamId: true },
+  });
+  const importedFrom = new Set(alreadyImported.map((row) => row.previousTeamId));
+  const toImport = sourceTeams.filter((s) => !importedFrom.has(s.id));
+
+  if (toImport.length === 0) return { error: t("importAllExist") };
+
+  await db.transaction(async (tx) => {
+    for (const source of toImport) {
+      const [newTeam] = await tx
+        .insert(teams)
+        .values({
+          seasonId: targetSeasonId,
+          name: source.name,
+          category: source.category,
+          gender: source.gender,
+          minBirthYear: source.minBirthYear,
+          maxBirthYear: source.maxBirthYear,
+          federationGroup: source.federationGroup,
+          federationCode: source.federationCode,
+          previousTeamId: source.id,
+        })
+        .returning({ id: teams.id });
+
+      if (!copyRoster) continue;
+
+      const sourceMemberships = await tx.query.memberships.findMany({
+        where: and(eq(memberships.teamId, source.id), eq(memberships.active, true)),
+      });
+      if (sourceMemberships.length > 0) {
+        await tx.insert(memberships).values(
+          sourceMemberships.map((m) => ({
+            personId: m.personId,
+            teamId: newTeam.id,
+            role: m.role,
+            jerseyNumber: m.jerseyNumber,
+            positions: m.positions,
+            isCaptain: m.isCaptain,
+            position: m.position,
+          })),
+        );
+      }
+    }
+  });
+
+  revalidatePath("/", "layout");
+  return { message: t("teamsImported", { count: toImport.length }) };
 }

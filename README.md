@@ -113,18 +113,6 @@ equipos, jugadores (vía `memberships` → `teams`) y economía. Una única
 temporada puede tener `isCurrent = true` (índice único parcial); la UI filtra
 por ella por defecto y permite consultar temporadas pasadas.
 
-**Trámites de temporada (`season_tasks`):** checklist de la gestión federativa
-de arranque (inscripción en liga y copa con su pago + justificante, alta de
-equipos y jugadores en la plataforma). Cuelga de una temporada y, si aplica, de
-un equipo (`team_id` nulo = trámite de club). El pago a la federación se modela
-INLINE en el trámite (`amount_cents`/`paid_on`/`proof_path`), no en el económico
-de ingresos. La checklist estándar se instancia desde una plantilla con
-`generateSeasonTasks` (análogo a las anualidades de patrocinio). La inscripción
-de jugadores se lleva por jugador (`memberships.federation_registered`) y el
-trámite paraguas agrega el rollup. Sección **Temporada** en la app; los
-vencimientos próximos asoman en el dashboard. Bucket de Storage:
-`season-task-proofs`.
-
 ## Roadmap
 
 1. ✅ Cimientos: proyecto, UI, esquema de datos.

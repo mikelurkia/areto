@@ -260,6 +260,27 @@
       "when": 1786914528411,
       "tag": "0036_little_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1786950914662,
+      "tag": "0037_chief_living_tribunal",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1786952508830,
+      "tag": "0038_goofy_rictor",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1786952740761,
+      "tag": "0039_odd_cloak",
+      "breakpoints": true
     }
   ]
 }

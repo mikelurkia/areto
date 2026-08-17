@@ -6,8 +6,8 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { redirect } from "@/i18n/navigation";
 import { db } from "@/db";
-import { clubSettings, users } from "@/db/schema";
-import { requireRole, requireUser } from "@/lib/auth";
+import { users } from "@/db/schema";
+import { requireUser } from "@/lib/auth";
 import { getSiteUrl } from "@/lib/site-url";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -33,38 +33,6 @@ export async function updateProfile(
 
   revalidatePath("/", "layout");
   return { message: t("profileUpdated") };
-}
-
-/**
- * Guarda los datos fiscales del club (emisor de facturas). Tabla singleton:
- * si ya existe una fila la actualizamos, si no la creamos. Solo admin/staff.
- */
-export async function updateClubSettings(
-  _prev: SettingsState,
-  formData: FormData,
-): Promise<SettingsState> {
-  const t = await getTranslations("Settings");
-  await requireRole(["admin", "staff"]);
-
-  const values = {
-    legalName: String(formData.get("legalName") ?? "").trim() || null,
-    taxId: String(formData.get("taxId") ?? "").trim() || null,
-    address: String(formData.get("address") ?? "").trim() || null,
-    email: String(formData.get("email") ?? "").trim() || null,
-    phone: String(formData.get("phone") ?? "").trim() || null,
-    iban: String(formData.get("iban") ?? "").trim() || null,
-    updatedAt: new Date(),
-  };
-
-  const existing = await db.query.clubSettings.findFirst({ columns: { id: true } });
-  if (existing) {
-    await db.update(clubSettings).set(values).where(eq(clubSettings.id, existing.id));
-  } else {
-    await db.insert(clubSettings).values(values);
-  }
-
-  revalidatePath("/", "layout");
-  return { message: t("clubDataSaved") };
 }
 
 export async function updateEmail(

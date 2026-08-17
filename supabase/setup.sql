@@ -286,57 +286,7 @@ create policy "sponsorship_contracts_delete_staff"
     )
   );
 
--- 7) Storage: justificantes de trámites de temporada --------------------------
--- Justificantes bancarios y documentación de los trámites federativos. Mismo
--- patrón que sponsorship-contracts: bucket privado, URLs firmadas de corta
--- duración generadas por el servidor.
-insert into storage.buckets (id, name, public)
-values ('season-task-proofs', 'season-task-proofs', false)
-on conflict (id) do nothing;
-
-drop policy if exists "season_task_proofs_select_authenticated" on storage.objects;
-create policy "season_task_proofs_select_authenticated"
-  on storage.objects for select
-  to authenticated
-  using (bucket_id = 'season-task-proofs');
-
-drop policy if exists "season_task_proofs_write_staff" on storage.objects;
-create policy "season_task_proofs_write_staff"
-  on storage.objects for insert
-  to authenticated
-  with check (
-    bucket_id = 'season-task-proofs'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "season_task_proofs_update_staff" on storage.objects;
-create policy "season_task_proofs_update_staff"
-  on storage.objects for update
-  to authenticated
-  using (
-    bucket_id = 'season-task-proofs'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "season_task_proofs_delete_staff" on storage.objects;
-create policy "season_task_proofs_delete_staff"
-  on storage.objects for delete
-  to authenticated
-  using (
-    bucket_id = 'season-task-proofs'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
--- 8) Storage: documentos de equipo ---------------------------------------------
+-- 7) Storage: documentos de equipo ---------------------------------------------
 -- Mismo patrón que person-documents: bucket privado, URLs firmadas de corta
 -- duración generadas por el servidor.
 insert into storage.buckets (id, name, public)
@@ -385,7 +335,7 @@ create policy "team_documents_delete_staff"
     )
   );
 
--- 9) Storage: documentos de patrocinador -----------------------------------
+-- 8) Storage: documentos de patrocinador -----------------------------------
 -- Mismo patrón que team-documents: bucket privado, URLs firmadas de corta
 -- duración generadas por el servidor.
 insert into storage.buckets (id, name, public)
