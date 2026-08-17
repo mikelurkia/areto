@@ -45,10 +45,40 @@ import {
 
 type Federation = { id: string; name: string; url: string };
 
-type AppSidebarProps = {
+type AppSidebarBodyProps = {
   user: { email: string; role: UserRole };
   federations?: Federation[];
 };
+
+/**
+ * Marco del sidebar: se renderiza sin esperar a nada.
+ *
+ * `Sidebar` elige entre dos árboles distintos —un `Sheet` en móvil, un `<div>`
+ * fijo en escritorio— a partir de `useIsMobile`, que solo puede saber el ancho
+ * en cliente. Por eso el marco tiene que hidratar en la misma pasada que
+ * `SidebarProvider`, que es quien publica ese valor: si quedara dentro de un
+ * <Suspense>, hidrataría más tarde, cuando el proveedor ya hubiera cambiado a
+ * móvil, y el árbol elegido no coincidiría con el HTML del servidor.
+ *
+ * Lo que necesita la sesión va en `children`, envuelto en su propio <Suspense>.
+ */
+export function AppSidebar({ children }: { children: React.ReactNode }) {
+  return (
+    <Sidebar>
+      <SidebarHeader>
+        {/* La marca es estática: se pinta ya, sin esperar a nada. */}
+        <div className="flex items-center gap-2 px-2 py-1.5">
+          <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
+            A
+          </div>
+          <span className="font-semibold">Areto</span>
+        </div>
+      </SidebarHeader>
+      {children}
+      <SidebarRail />
+    </Sidebar>
+  );
+}
 
 /**
  * Logos oficiales (versión blanca, para fondo oscuro) descargados a /public.
@@ -83,7 +113,8 @@ function federationInfo(url: string) {
   }
 }
 
-export function AppSidebar({ user, federations = [] }: AppSidebarProps) {
+/** Contenido y pie del sidebar: navegación según el rol, accesos federativos y chip de usuario. */
+export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) {
   const t = useTranslations("Sidebar");
   const tNav = useTranslations("Nav");
   const pathname = usePathname();
@@ -113,15 +144,7 @@ export function AppSidebar({ user, federations = [] }: AppSidebarProps) {
   ];
 
   return (
-    <Sidebar>
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-            A
-          </div>
-          <span className="font-semibold">Areto</span>
-        </div>
-      </SidebarHeader>
+    <>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>{t("groupLabel")}</SidebarGroupLabel>
@@ -254,7 +277,6 @@ export function AppSidebar({ user, federations = [] }: AppSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+    </>
   );
 }

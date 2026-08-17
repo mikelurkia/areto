@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
 import { AppHeader } from "@/components/app-header";
-import { AppSidebar } from "@/components/app-sidebar";
-import { AppSidebarSkeleton } from "@/components/app-sidebar-skeleton";
+import { AppSidebar, AppSidebarBody } from "@/components/app-sidebar";
+import { AppSidebarBodySkeleton } from "@/components/app-sidebar-skeleton";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { requireUser } from "@/lib/auth";
 import { getFederationAccounts } from "@/lib/club";
@@ -21,7 +21,7 @@ import { getFederationAccounts } from "@/lib/club";
  * `requireRole`/`requireUser` por su cuenta antes de consultar datos, y
  * `src/proxy.ts` corta las rutas privadas antes de llegar al layout.
  */
-async function AppSidebarWithSession() {
+async function AppSidebarBodyWithSession() {
   const user = await requireUser();
   const canManageClub = user.role === "admin" || user.role === "staff";
   const federations = canManageClub
@@ -33,7 +33,7 @@ async function AppSidebarWithSession() {
     : [];
 
   return (
-    <AppSidebar
+    <AppSidebarBody
       user={{ email: user.email, role: user.role }}
       federations={federations}
     />
@@ -51,9 +51,17 @@ export default function AppLayout({
 }) {
   return (
     <SidebarProvider>
-      <Suspense fallback={<AppSidebarSkeleton />}>
-        <AppSidebarWithSession />
-      </Suspense>
+      {/*
+        El marco del sidebar queda fuera del <Suspense> a propósito: elige entre
+        móvil y escritorio con un valor que solo existe en cliente, así que tiene
+        que hidratar en la misma pasada que `SidebarProvider`, que es quien lo
+        publica. Dentro del boundary va solo lo que depende de la sesión.
+      */}
+      <AppSidebar>
+        <Suspense fallback={<AppSidebarBodySkeleton />}>
+          <AppSidebarBodyWithSession />
+        </Suspense>
+      </AppSidebar>
       <SidebarInset>
         <AppHeader />
         <main className="flex flex-1 flex-col gap-4 p-4 md:p-6">

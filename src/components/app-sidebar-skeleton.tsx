@@ -1,36 +1,28 @@
 import {
-  Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * Fallback del sidebar mientras se resuelve la sesión. Replica la geometría del
- * `AppSidebar` real (cabecera, 8 entradas de menú, chip de usuario) para que el
- * relevo no mueva nada de sitio.
+ * Fallback del cuerpo del sidebar mientras se resuelve la sesión. Replica la
+ * geometría del `AppSidebarBody` real (8 entradas de menú y chip de usuario)
+ * para que el relevo no mueva nada de sitio.
+ *
+ * No incluye el marco (`Sidebar`, cabecera, rail): ese lo pinta `AppSidebar`
+ * fuera del <Suspense>, porque decide entre móvil y escritorio con un valor que
+ * solo existe en cliente y tiene que hidratar junto al `SidebarProvider`.
  *
  * Los anchos son fijos a propósito: `SidebarMenuSkeleton` de shadcn los sortea
  * con `Math.random()`, lo que provoca desajustes de hidratación al venir de SSR.
  */
-export function AppSidebarSkeleton() {
+export function AppSidebarBodySkeleton() {
   return (
-    <Sidebar>
-      <SidebarHeader>
-        {/* La marca es estática: se pinta ya, sin esperar a nada. */}
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary font-bold text-primary-foreground">
-            A
-          </div>
-          <span className="font-semibold">Areto</span>
-        </div>
-      </SidebarHeader>
+    <>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
@@ -61,8 +53,7 @@ export function AppSidebarSkeleton() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+    </>
   );
 }
 
