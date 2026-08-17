@@ -11,10 +11,8 @@ import {
 } from "@/app/[locale]/(app)/inscripciones/actions";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -40,6 +38,20 @@ type GuardianData = {
   candidates: PersonCandidate[];
 };
 
+/** Muestra un consentimiento tal como se envió, sin permitir editarlo: el
+ * registro debe reflejar siempre fielmente lo que la persona autorizó. */
+function ConsentRow({ label, granted }: { label: string; granted: boolean }) {
+  const t = useTranslations("Inscripciones");
+  return (
+    <div className="flex items-center justify-between gap-2 text-sm">
+      <span>{label}</span>
+      <Badge variant={granted ? "secondary" : "outline"}>
+        {granted ? t("consentYes") : t("consentNo")}
+      </Badge>
+    </div>
+  );
+}
+
 export type RegistrationDetail = {
   id: string;
   kind: "player" | "coach";
@@ -58,6 +70,7 @@ export type RegistrationDetail = {
   shoeSize: string | null;
   installmentsChosen: number | null;
   sepaConsent: boolean;
+  termsConsent: boolean;
   imageConsent: boolean;
   candidates: PersonCandidate[];
   guardians: GuardianData[];
@@ -302,20 +315,15 @@ export function ReviewForm({
               </Field>
             ) : null}
           </div>
-          {registration.kind === "player" ? (
-            <Field orientation="horizontal">
-              <Checkbox id="sepaConsent" name="sepaConsent" defaultChecked={registration.sepaConsent} />
-              <Label htmlFor="sepaConsent" className="font-normal">
-                {t("sepaConsentLabel")}
-              </Label>
-            </Field>
-          ) : null}
-          <Field orientation="horizontal">
-            <Checkbox id="imageConsent" name="imageConsent" defaultChecked={registration.imageConsent} />
-            <Label htmlFor="imageConsent" className="font-normal">
-              {t("imageConsentLabel")}
-            </Label>
-          </Field>
+          <div className="flex flex-col gap-2 rounded-lg border p-3">
+            {registration.kind === "player" ? (
+              <ConsentRow label={t("sepaConsentShortLabel")} granted={registration.sepaConsent} />
+            ) : null}
+            {registration.kind === "player" ? (
+              <ConsentRow label={t("termsConsentShortLabel")} granted={registration.termsConsent} />
+            ) : null}
+            <ConsentRow label={t("imageConsentShortLabel")} granted={registration.imageConsent} />
+          </div>
         </FieldGroup>
 
         {editState.error ? <p className="text-sm text-destructive">{editState.error}</p> : null}

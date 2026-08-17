@@ -1,0 +1,1 @@
+ALTER TABLE "registrations" ADD COLUMN "terms_consent" boolean DEFAULT false NOT NULL;

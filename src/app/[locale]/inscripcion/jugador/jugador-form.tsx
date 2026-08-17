@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { CheckCircle2Icon, PlusIcon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { submitPlayerRegistration } from "@/app/[locale]/inscripcion/actions";
 import { isMinor } from "@/lib/age";
+import { Link } from "@/i18n/navigation";
 import { SubmitButton } from "@/components/submit-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -21,12 +22,34 @@ import {
 
 let nextGuardianKey = 1;
 
+/** Escucha el evento nativo `invalid` de un checkbox `required` para sustituir
+ * el tooltip del navegador por un mensaje de error propio. */
+function useRequiredCheckboxError() {
+  const [error, setError] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    function handleInvalid(event: Event) {
+      event.preventDefault();
+      setError(true);
+    }
+    input.addEventListener("invalid", handleInvalid);
+    return () => input.removeEventListener("invalid", handleInvalid);
+  }, []);
+
+  return { inputRef, error, clear: () => setError(false) };
+}
+
 export function JugadorForm() {
   const t = useTranslations("Inscripciones");
   const [state, formAction] = useActionState(submitPlayerRegistration, {});
   const [birthDate, setBirthDate] = useState("");
   const [guardianKeys, setGuardianKeys] = useState<number[]>([0]);
   const [installments, setInstallments] = useState("1");
+  const sepaConsent = useRequiredCheckboxError();
+  const termsConsent = useRequiredCheckboxError();
 
   const showGuardians = !birthDate || isMinor(birthDate);
 
@@ -251,11 +274,33 @@ export function JugadorForm() {
           </Field>
         </div>
         <Field orientation="horizontal">
-          <Checkbox id="sepaConsent" name="sepaConsent" required />
+          <Checkbox
+            id="sepaConsent"
+            name="sepaConsent"
+            required
+            inputRef={sepaConsent.inputRef}
+            aria-invalid={sepaConsent.error || undefined}
+            aria-describedby={sepaConsent.error ? "sepaConsent-error" : undefined}
+            onCheckedChange={(checked) => {
+              if (checked) sepaConsent.clear();
+            }}
+          />
           <Label htmlFor="sepaConsent" className="font-normal">
             {t("sepaConsentLabel")}
           </Label>
         </Field>
+        <Link
+          href="/inscripcion/jugador/sepa"
+          target="_blank"
+          className="text-xs text-muted-foreground underline hover:text-foreground"
+        >
+          {t("sepaConsentMoreInfo")}
+        </Link>
+        {sepaConsent.error ? (
+          <p id="sepaConsent-error" className="text-sm text-destructive">
+            {t("sepaConsentRequired")}
+          </p>
+        ) : null}
       </FieldGroup>
 
       <FieldGroup>
@@ -300,6 +345,48 @@ export function JugadorForm() {
             {t("imageConsentLabel")}
           </Label>
         </Field>
+        <Link
+          href="/inscripcion/jugador/imagen"
+          target="_blank"
+          className="text-xs text-muted-foreground underline hover:text-foreground"
+        >
+          {t("imageConsentMoreInfo")}
+        </Link>
+      </FieldGroup>
+
+      <FieldGroup>
+        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+          {t("travelSectionTitle")}
+        </h2>
+        <p className="text-sm text-muted-foreground">{t("travelSectionBody")}</p>
+      </FieldGroup>
+
+      <FieldGroup>
+        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+          {t("kitSectionTitle")}
+        </h2>
+        <p className="text-sm text-muted-foreground">{t("kitSectionBody")}</p>
+        <Field orientation="horizontal">
+          <Checkbox
+            id="termsConsent"
+            name="termsConsent"
+            required
+            inputRef={termsConsent.inputRef}
+            aria-invalid={termsConsent.error || undefined}
+            aria-describedby={termsConsent.error ? "termsConsent-error" : undefined}
+            onCheckedChange={(checked) => {
+              if (checked) termsConsent.clear();
+            }}
+          />
+          <Label htmlFor="termsConsent" className="font-normal">
+            {t("termsConsentLabel")}
+          </Label>
+        </Field>
+        {termsConsent.error ? (
+          <p id="termsConsent-error" className="text-sm text-destructive">
+            {t("termsConsentRequired")}
+          </p>
+        ) : null}
       </FieldGroup>
 
       {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}

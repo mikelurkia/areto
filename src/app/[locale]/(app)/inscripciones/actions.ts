@@ -34,6 +34,17 @@ function extFromPath(path: string): string {
   return path.split(".").pop() ?? "jpg";
 }
 
+/** Detecta una violación de restricción única de Postgres (código 23505),
+ * opcionalmente acotada a una restricción concreta. */
+function isUniqueViolation(err: unknown, constraintName?: string): boolean {
+  const cause = err instanceof Error ? err.cause : undefined;
+  if (!cause || typeof cause !== "object" || (cause as { code?: string }).code !== "23505") {
+    return false;
+  }
+  if (!constraintName) return true;
+  return (cause as { constraint_name?: string }).constraint_name === constraintName;
+}
+
 function readEditableFields(formData: FormData) {
   return {
     firstName: String(formData.get("firstName") ?? "").trim(),
@@ -49,8 +60,8 @@ function readEditableFields(formData: FormData) {
     pantsSize: String(formData.get("pantsSize") ?? "").trim(),
     shoeSize: String(formData.get("shoeSize") ?? "").trim(),
     installmentsChosen: Number(formData.get("installmentsChosen") ?? "1") === 2 ? 2 : 1,
-    sepaConsent: formData.get("sepaConsent") === "on",
-    imageConsent: formData.get("imageConsent") === "on",
+    // sepaConsent, termsConsent e imageConsent NO son editables aquí a propósito:
+    // deben reflejar siempre fielmente lo que la persona autorizó al enviar el formulario.
   };
 }
 
@@ -85,8 +96,6 @@ export async function updateRegistration(
       pantsSize: fields.pantsSize || null,
       shoeSize: fields.shoeSize || null,
       installmentsChosen: fields.installmentsChosen,
-      sepaConsent: fields.sepaConsent,
-      imageConsent: fields.imageConsent,
     })
     .where(eq(registrations.id, id));
 
@@ -130,118 +139,129 @@ export async function approveRegistration(
   if (!registration) return { error: t("notFound") };
   if (registration.status !== "pending") return { error: t("alreadyReviewed") };
 
-  const personId = await db.transaction(async (tx) => {
-    let personId: string;
-    if (matchedPersonId !== "new") {
-      personId = matchedPersonId;
-      await tx
-        .update(persons)
-        .set({
-          firstName: registration.firstName,
-          lastName: registration.lastName,
-          birthDate: registration.birthDate,
-          nationalId: registration.nationalId,
-          address: registration.address,
-          city: registration.city,
-          phone: registration.phone,
-          email: registration.email,
-          iban: registration.iban,
-          shirtSize: registration.shirtSize,
-          pantsSize: registration.pantsSize,
-          shoeSize: registration.shoeSize,
-          photoConsent: registration.imageConsent,
-          sepaConsent: registration.sepaConsent,
-        })
-        .where(eq(persons.id, personId));
-    } else {
-      const [inserted] = await tx
-        .insert(persons)
-        .values({
-          firstName: registration.firstName,
-          lastName: registration.lastName,
-          birthDate: registration.birthDate,
-          nationalId: registration.nationalId,
-          address: registration.address,
-          city: registration.city,
-          phone: registration.phone,
-          email: registration.email,
-          iban: registration.iban,
-          shirtSize: registration.shirtSize,
-          pantsSize: registration.pantsSize,
-          shoeSize: registration.shoeSize,
-          photoConsent: registration.imageConsent,
-          sepaConsent: registration.sepaConsent,
-        })
-        .returning({ id: persons.id });
-      personId = inserted.id;
-    }
-
-    const guardianPersonIds: string[] = [];
-    for (const g of registration.guardians) {
-      const matchValue = String(formData.get(`matchedFor_${g.id}`) ?? "new");
-      let guardianPersonId: string;
-      if (matchValue !== "new") {
-        guardianPersonId = matchValue;
+  let personId: string;
+  try {
+    personId = await db.transaction(async (tx) => {
+      let personId: string;
+      if (matchedPersonId !== "new") {
+        personId = matchedPersonId;
         await tx
           .update(persons)
           .set({
-            firstName: g.firstName,
-            lastName: g.lastName,
-            birthDate: g.birthDate,
-            nationalId: g.nationalId,
-            address: g.address,
-            phone: g.phone,
-            email: g.email,
+            firstName: registration.firstName,
+            lastName: registration.lastName,
+            birthDate: registration.birthDate,
+            nationalId: registration.nationalId,
+            address: registration.address,
+            city: registration.city,
+            phone: registration.phone,
+            email: registration.email,
+            iban: registration.iban,
+            shirtSize: registration.shirtSize,
+            pantsSize: registration.pantsSize,
+            shoeSize: registration.shoeSize,
+            photoConsent: registration.imageConsent,
+            sepaConsent: registration.sepaConsent,
           })
-          .where(eq(persons.id, guardianPersonId));
+          .where(eq(persons.id, personId));
       } else {
-        const [insertedGuardian] = await tx
+        const [inserted] = await tx
           .insert(persons)
           .values({
-            firstName: g.firstName,
-            lastName: g.lastName,
-            birthDate: g.birthDate,
-            nationalId: g.nationalId,
-            address: g.address,
-            phone: g.phone,
-            email: g.email,
+            firstName: registration.firstName,
+            lastName: registration.lastName,
+            birthDate: registration.birthDate,
+            nationalId: registration.nationalId,
+            address: registration.address,
+            city: registration.city,
+            phone: registration.phone,
+            email: registration.email,
+            iban: registration.iban,
+            shirtSize: registration.shirtSize,
+            pantsSize: registration.pantsSize,
+            shoeSize: registration.shoeSize,
+            photoConsent: registration.imageConsent,
+            sepaConsent: registration.sepaConsent,
           })
           .returning({ id: persons.id });
-        guardianPersonId = insertedGuardian.id;
+        personId = inserted.id;
       }
-      guardianPersonIds.push(guardianPersonId);
-    }
 
-    if (guardianPersonIds.length > 0) {
-      await tx.delete(personGuardians).where(eq(personGuardians.personId, personId));
-      await tx.insert(personGuardians).values(
-        guardianPersonIds.map((guardianId, i) => ({
-          personId,
-          guardianId,
-          isPrimary: i === 0,
-        })),
-      );
-    }
+      const guardianPersonIds: string[] = [];
+      for (const g of registration.guardians) {
+        const matchValue = String(formData.get(`matchedFor_${g.id}`) ?? "new");
+        let guardianPersonId: string;
+        if (matchValue !== "new") {
+          guardianPersonId = matchValue;
+          await tx
+            .update(persons)
+            .set({
+              firstName: g.firstName,
+              lastName: g.lastName,
+              birthDate: g.birthDate,
+              nationalId: g.nationalId,
+              address: g.address,
+              phone: g.phone,
+              email: g.email,
+            })
+            .where(eq(persons.id, guardianPersonId));
+        } else {
+          const [insertedGuardian] = await tx
+            .insert(persons)
+            .values({
+              firstName: g.firstName,
+              lastName: g.lastName,
+              birthDate: g.birthDate,
+              nationalId: g.nationalId,
+              address: g.address,
+              phone: g.phone,
+              email: g.email,
+            })
+            .returning({ id: persons.id });
+          guardianPersonId = insertedGuardian.id;
+        }
+        guardianPersonIds.push(guardianPersonId);
+      }
 
-    if (teamId) {
+      if (guardianPersonIds.length > 0) {
+        await tx.delete(personGuardians).where(eq(personGuardians.personId, personId));
+        await tx.insert(personGuardians).values(
+          guardianPersonIds.map((guardianId, i) => ({
+            personId,
+            guardianId,
+            isPrimary: i === 0,
+          })),
+        );
+      }
+
+      if (teamId) {
+        await tx
+          .insert(memberships)
+          .values({ personId, teamId, role: registration.kind === "coach" ? "coach" : "player" })
+          .onConflictDoNothing();
+      }
+
       await tx
-        .insert(memberships)
-        .values({ personId, teamId, role: registration.kind === "coach" ? "coach" : "player" })
-        .onConflictDoNothing();
+        .update(registrations)
+        .set({
+          status: "approved",
+          reviewedBy: reviewer.id,
+          reviewedAt: new Date(),
+          matchedPersonId: personId,
+        })
+        .where(eq(registrations.id, id));
+
+      return personId;
+    });
+  } catch (err) {
+    if (
+      isUniqueViolation(err, "persons_email_idx") ||
+      isUniqueViolation(err, "persons_national_id_idx")
+    ) {
+      return { error: t("duplicatePersonFound") };
     }
-
-    await tx
-      .update(registrations)
-      .set({
-        status: "approved",
-        reviewedBy: reviewer.id,
-        reviewedAt: new Date(),
-        matchedPersonId: personId,
-      })
-      .where(eq(registrations.id, id));
-
-    return personId;
-  });
+    throw err;
+  }
 
   if (registration.photoPath) {
     const targetPath = `${personId}/photo.${extFromPath(registration.photoPath)}`;

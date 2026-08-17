@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "persons_national_id_idx" ON "persons" USING btree ("national_id");

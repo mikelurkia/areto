@@ -6,6 +6,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { db } from "@/db";
 import { registrations, teams } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { findCandidates } from "@/lib/person-matching";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { getSignedUrl } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
@@ -14,36 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 const PHOTO_BUCKET = "registration-documents";
-
-function normalizeName(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-type PersonForMatching = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  nationalId: string | null;
-};
-
-function findCandidates(
-  target: { firstName: string; lastName: string; nationalId: string | null },
-  pool: PersonForMatching[],
-) {
-  if (target.nationalId) {
-    const byDni = pool.filter(
-      (p) => p.nationalId && p.nationalId.trim().toUpperCase() === target.nationalId!.trim().toUpperCase(),
-    );
-    if (byDni.length > 0) return byDni;
-  }
-  const nameKey = normalizeName(`${target.firstName} ${target.lastName}`);
-  return pool.filter((p) => normalizeName(`${p.firstName} ${p.lastName}`) === nameKey);
-}
 
 const STATUS_VARIANT = {
   pending: "warning",
@@ -73,7 +44,7 @@ export default async function RegistrationDetailPage({
 
   const [allPersons, seasonTeams, photoUrl, idFrontUrl, idBackUrl] = await Promise.all([
     db.query.persons.findMany({
-      columns: { id: true, firstName: true, lastName: true, nationalId: true },
+      columns: { id: true, firstName: true, lastName: true, nationalId: true, email: true },
     }),
     db.query.teams.findMany({
       where: eq(teams.seasonId, registration.seasonId),
@@ -103,6 +74,7 @@ export default async function RegistrationDetailPage({
     shoeSize: registration.shoeSize,
     installmentsChosen: registration.installmentsChosen,
     sepaConsent: registration.sepaConsent,
+    termsConsent: registration.termsConsent,
     imageConsent: registration.imageConsent,
     candidates: findCandidates(registration, allPersons),
     guardians: registration.guardians.map((g) => ({

@@ -68,6 +68,7 @@ export async function submitPlayerRegistration(
   const shoeSize = String(formData.get("shoeSize") ?? "").trim();
   const installmentsChosen = Number(formData.get("installmentsChosen") ?? "1") === 2 ? 2 : 1;
   const sepaConsent = formData.get("sepaConsent") === "on";
+  const termsConsent = formData.get("termsConsent") === "on";
   const guardians = readGuardians(formData);
 
   const photo = readFile(formData, "photo");
@@ -89,6 +90,7 @@ export async function submitPlayerRegistration(
   if (!shoeSize) return { error: t("shoeSizeRequired") };
   if (!fields.iban) return { error: t("ibanRequired") };
   if (!sepaConsent) return { error: t("sepaConsentRequired") };
+  if (!termsConsent) return { error: t("termsConsentRequired") };
   if (!photo) return { error: t("photoRequired") };
   if (!idFront) return { error: t("idFrontRequired") };
   if (!idBack) return { error: t("idBackRequired") };
@@ -133,6 +135,7 @@ export async function submitPlayerRegistration(
       shoeSize: shoeSize || null,
       installmentsChosen,
       sepaConsent,
+      termsConsent,
       imageConsent: fields.imageConsent,
     })
     .returning({ id: registrations.id });

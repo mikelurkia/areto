@@ -236,7 +236,10 @@ export const persons = pgTable(
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("persons_email_idx").on(t.email)],
+  (t) => [
+    uniqueIndex("persons_email_idx").on(t.email),
+    uniqueIndex("persons_national_id_idx").on(t.nationalId),
+  ],
 );
 
 /**
@@ -701,6 +704,7 @@ export const registrations = pgTable("registrations", {
   shoeSize: text("shoe_size"),
   installmentsChosen: integer("installments_chosen"), // plazos elegidos; informativo, no genera cuotas
   sepaConsent: boolean("sepa_consent").notNull().default(false),
+  termsConsent: boolean("terms_consent").notNull().default(false), // acepta condiciones de traslados y devolución de equipación
 
   imageConsent: boolean("image_consent").notNull().default(false),
 
