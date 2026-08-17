@@ -102,6 +102,19 @@ export const sponsorshipAgreementStatus = pgEnum("sponsorship_agreement_status",
   "lost", // perdido / no cuaja
 ]);
 
+/** Tipo de solicitud de inscripción: jugador o entrenador. */
+export const registrationKind = pgEnum("registration_kind", ["player", "coach"]);
+
+/** Estado de una solicitud de inscripción en el flujo de validación. */
+export const registrationStatus = pgEnum("registration_status", [
+  "pending",
+  "approved",
+  "rejected",
+]);
+
+/** Estado de la condición de socio de una persona. */
+export const clubMemberStatus = pgEnum("club_member_status", ["active", "cancelled"]);
+
 // ---------------------------------------------------------------------------
 // Temporadas
 // ---------------------------------------------------------------------------
@@ -209,18 +222,13 @@ export const persons = pgTable(
     phone: text("phone"),
     birthDate: date("birth_date"),
     nationalId: text("national_id"), // DNI/NIE
-    isMember: boolean("is_member").notNull().default(true), // socio
-    memberNumber: integer("member_number"), // nº de socio correlativo (para el carné)
     address: text("address"),
     city: text("city"),
     photoFilename: text("photo_filename"), // nombre de archivo original (referencia, sin subir)
     photoPath: text("photo_path"), // ruta del objeto en Supabase Storage (bucket person-photos)
     medicalCertUntil: date("medical_cert_until"), // caducidad del reconocimiento médico
     iban: text("iban"), // cuenta para domiciliar cuotas
-    /** Tutor/a legal, para menores. Referencia a otra fila de `persons`. */
-    guardianId: uuid("guardian_id").references((): AnyPgColumn => persons.id, {
-      onDelete: "set null",
-    }),
+    sepaConsent: boolean("sepa_consent").notNull().default(false), // permiso de domiciliación de la cuota
     shirtSize: text("shirt_size"),
     pantsSize: text("pants_size"),
     shoeSize: text("shoe_size"),
@@ -228,10 +236,7 @@ export const persons = pgTable(
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    uniqueIndex("persons_email_idx").on(t.email),
-    uniqueIndex("persons_member_number_idx").on(t.memberNumber),
-  ],
+  (t) => [uniqueIndex("persons_email_idx").on(t.email)],
 );
 
 /**
@@ -304,6 +309,54 @@ export const personNotes = pgTable("person_notes", {
   authorName: text("author_name"), // nombre/email de quien la escribió, en el momento de escribirla
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Tutor/a legal de una persona (para menores). Relación N:M en vez de un campo
+ * escalar en `persons`: un menor puede tener varios tutores. `isPrimary` marca
+ * cuál se muestra cuando una pantalla solo tiene espacio para uno (carné,
+ * resumen de ficha); si hay varios tutores y ninguno marcado, se usa el primero.
+ */
+export const personGuardians = pgTable(
+  "person_guardians",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => persons.id, { onDelete: "cascade" }),
+    guardianId: uuid("guardian_id")
+      .notNull()
+      .references(() => persons.id, { onDelete: "cascade" }),
+    isPrimary: boolean("is_primary").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("person_guardians_pair_idx").on(t.personId, t.guardianId)],
+);
+
+/**
+ * Condición de socio de una persona. Concepto aparte de jugar/entrenar (una
+ * persona no se hace socia por tener una `membership`): es alta explícita,
+ * con su propio número correlativo y ciclo de vida (alta/baja), para más
+ * adelante soportar remesas SEPA propias. Una persona tiene como mucho una
+ * fila (se cancela en vez de borrarse, para conservar el histórico).
+ */
+export const clubMembers = pgTable(
+  "club_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => persons.id, { onDelete: "cascade" }),
+    status: clubMemberStatus("status").notNull().default("active"),
+    memberNumber: integer("member_number"), // nº de socio correlativo (para el carné)
+    joinedAt: date("joined_at").notNull(),
+    cancelledAt: date("cancelled_at"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("club_members_person_idx").on(t.personId),
+    uniqueIndex("club_members_member_number_idx").on(t.memberNumber),
+  ],
+);
 
 /** Vínculo persona ↔ equipo con su rol (una persona puede estar en varios equipos). */
 export const memberships = pgTable(
@@ -614,6 +667,83 @@ export const announcements = pgTable("announcements", {
 });
 
 // ---------------------------------------------------------------------------
+// Inscripciones: formulario público de alta de jugador/entrenador, pendiente
+// de validación por un administrador antes de integrarse en `persons`.
+// ---------------------------------------------------------------------------
+
+/**
+ * Solicitud de inscripción enviada por el propio interesado (o su tutor), sin
+ * sesión. Es una zona de aterrizaje: nada de esto toca `persons` hasta que un
+ * admin/staff la aprueba desde `/inscripciones`. Los campos marcados "solo
+ * jugador" quedan `null` en las de entrenador.
+ */
+export const registrations = pgTable("registrations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: registrationKind("kind").notNull(),
+  status: registrationStatus("status").notNull().default("pending"),
+  seasonId: uuid("season_id")
+    .notNull()
+    .references(() => seasons.id, { onDelete: "restrict" }),
+
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  birthDate: date("birth_date"),
+  nationalId: text("national_id"),
+  address: text("address"),
+  city: text("city"),
+  phone: text("phone"),
+  email: text("email"),
+  iban: text("iban"),
+
+  // Solo jugador:
+  shirtSize: text("shirt_size"),
+  pantsSize: text("pants_size"),
+  shoeSize: text("shoe_size"),
+  installmentsChosen: integer("installments_chosen"), // plazos elegidos; informativo, no genera cuotas
+  sepaConsent: boolean("sepa_consent").notNull().default(false),
+
+  imageConsent: boolean("image_consent").notNull().default(false),
+
+  photoPath: text("photo_path"), // bucket registration-documents
+  idFrontPath: text("id_front_path"),
+  idBackPath: text("id_back_path"),
+
+  /** Ficha de `persons` que el revisor confirma como la misma persona (si existía). */
+  matchedPersonId: uuid("matched_person_id").references(() => persons.id, {
+    onDelete: "set null",
+  }),
+
+  reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Tutor/a indicado en una solicitud de jugador menor. Puede haber varios; no
+ * hay columna "principal" aquí, `sortOrder` conserva el orden de entrada del
+ * formulario (el primero pasa a ser el tutor principal al aprobar).
+ */
+export const registrationGuardians = pgTable("registration_guardians", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  registrationId: uuid("registration_id")
+    .notNull()
+    .references(() => registrations.id, { onDelete: "cascade" }),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  birthDate: date("birth_date"),
+  nationalId: text("national_id"),
+  address: text("address"),
+  city: text("city"),
+  phone: text("phone"),
+  email: text("email"),
+  matchedPersonId: uuid("matched_person_id").references(() => persons.id, {
+    onDelete: "set null",
+  }),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+// ---------------------------------------------------------------------------
 // Relaciones (para consultas relacionales de Drizzle)
 // ---------------------------------------------------------------------------
 
@@ -698,12 +828,31 @@ export const personsRelations = relations(persons, ({ many, one }) => ({
   documents: many(personDocuments),
   noteEntries: many(personNotes),
   tags: many(personTags),
-  guardian: one(persons, {
-    fields: [persons.guardianId],
-    references: [persons.id],
-    relationName: "guardianOf",
+  /** Filas donde esta persona es la tutelada (sus propios tutores). */
+  guardianRows: many(personGuardians, { relationName: "personGuardianRows" }),
+  /** Filas donde esta persona es tutora de alguien más. */
+  guardianOfRows: many(personGuardians, { relationName: "guardianPersonRows" }),
+  clubMember: one(clubMembers, {
+    fields: [persons.id],
+    references: [clubMembers.personId],
   }),
-  dependents: many(persons, { relationName: "guardianOf" }),
+}));
+
+export const clubMembersRelations = relations(clubMembers, ({ one }) => ({
+  person: one(persons, { fields: [clubMembers.personId], references: [persons.id] }),
+}));
+
+export const personGuardiansRelations = relations(personGuardians, ({ one }) => ({
+  person: one(persons, {
+    fields: [personGuardians.personId],
+    references: [persons.id],
+    relationName: "personGuardianRows",
+  }),
+  guardian: one(persons, {
+    fields: [personGuardians.guardianId],
+    references: [persons.id],
+    relationName: "guardianPersonRows",
+  }),
 }));
 
 export const personTagsRelations = relations(personTags, ({ one }) => ({
@@ -747,6 +896,27 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
   fee: one(fees, { fields: [payments.feeId], references: [fees.id] }),
   person: one(persons, {
     fields: [payments.personId],
+    references: [persons.id],
+  }),
+}));
+
+export const registrationsRelations = relations(registrations, ({ one, many }) => ({
+  season: one(seasons, { fields: [registrations.seasonId], references: [seasons.id] }),
+  matchedPerson: one(persons, {
+    fields: [registrations.matchedPersonId],
+    references: [persons.id],
+  }),
+  reviewer: one(users, { fields: [registrations.reviewedBy], references: [users.id] }),
+  guardians: many(registrationGuardians),
+}));
+
+export const registrationGuardiansRelations = relations(registrationGuardians, ({ one }) => ({
+  registration: one(registrations, {
+    fields: [registrationGuardians.registrationId],
+    references: [registrations.id],
+  }),
+  matchedPerson: one(persons, {
+    fields: [registrationGuardians.matchedPersonId],
     references: [persons.id],
   }),
 }));

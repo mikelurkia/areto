@@ -21,7 +21,10 @@ const PHOTO_BUCKET = "person-photos";
 
 /** En `cache()`: la piden `generateMetadata` y la página en el mismo render. */
 const getPerson = cache((personId: string) =>
-  db.query.persons.findFirst({ where: eq(persons.id, personId) }),
+  db.query.persons.findFirst({
+    where: eq(persons.id, personId),
+    with: { clubMember: true },
+  }),
 );
 
 export async function generateMetadata({
@@ -54,6 +57,8 @@ export default async function MemberCardPage({
   if (!person) notFound();
 
   const fullName = `${person.firstName} ${person.lastName}`;
+  const isMember = person.clubMember?.status === "active";
+  const memberNumber = person.clubMember?.memberNumber ?? null;
 
   const photoUrl = await getSignedUrl(PHOTO_BUCKET, person.photoPath);
 
@@ -63,7 +68,7 @@ export default async function MemberCardPage({
   const proto = h.get("x-forwarded-proto") ?? "https";
   const cardUrl = `${proto}://${host}/${locale}/personas/${person.id}`;
   const qrSvg =
-    person.memberNumber !== null
+    memberNumber !== null
       ? await QRCode.toString(cardUrl, { type: "svg", margin: 0, width: 132 })
       : null;
 
@@ -79,15 +84,15 @@ export default async function MemberCardPage({
           <ArrowLeftIcon data-icon="inline-start" />
           {t("backToPersona")}
         </Button>
-        {person.memberNumber !== null ? <PrintButton label={t("printAction")} /> : null}
+        {memberNumber !== null ? <PrintButton label={t("printAction")} /> : null}
       </div>
 
-      {person.memberNumber === null ? (
+      {memberNumber === null ? (
         <div className="mx-auto flex w-full max-w-md flex-col items-center gap-3 rounded-lg border border-dashed p-8 text-center">
           <p className="text-sm text-muted-foreground">
-            {person.isMember ? t("memberCardNoNumber") : t("memberCardNotMember")}
+            {isMember ? t("memberCardNoNumber") : t("memberCardNotMember")}
           </p>
-          {person.isMember ? <AssignMemberNumberButton personId={person.id} /> : null}
+          {isMember ? <AssignMemberNumberButton personId={person.id} /> : null}
         </div>
       ) : (
         <div className="mx-auto w-full max-w-sm overflow-hidden rounded-xl border shadow-sm">
@@ -107,7 +112,7 @@ export default async function MemberCardPage({
               <p className="truncate text-base font-semibold">{fullName}</p>
               <p className="text-xs text-muted-foreground">{t("memberNumberLabel")}</p>
               <p className="text-2xl font-bold tabular-nums tracking-tight">
-                {person.memberNumber}
+                {memberNumber}
               </p>
             </div>
             {qrSvg ? (

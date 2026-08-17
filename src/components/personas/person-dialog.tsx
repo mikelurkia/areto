@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
-import { PencilIcon, PlusIcon, UserRoundIcon } from "lucide-react";
+import { useActionState, useState } from "react";
+import { PencilIcon, PlusIcon, UserRoundIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { createPerson, updatePerson } from "@/app/[locale]/(app)/personas/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -47,12 +48,13 @@ type Person = {
   address: string | null;
   city: string | null;
   iban: string | null;
-  guardianId: string | null;
+  guardians: { id: string; firstName: string; lastName: string }[];
   medicalCertUntil: string | null;
   shirtSize: string | null;
   pantsSize: string | null;
   shoeSize: string | null;
   photoConsent: boolean;
+  sepaConsent: boolean;
   notes: string | null;
 };
 
@@ -79,6 +81,9 @@ export function PersonDialog(props: PersonDialogProps) {
     props.mode === "edit" ? props.photoUrl : null,
   );
   const guardianOptions = props.guardianOptions.filter((p) => p.id !== person?.id);
+  const [guardianIds, setGuardianIds] = useState<string[]>(
+    props.mode === "edit" ? props.person.guardians.map((g) => g.id) : [],
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -228,30 +233,52 @@ export function PersonDialog(props: PersonDialogProps) {
                 <FieldLabel htmlFor="person-guardian">
                   {t("guardianLabel")}
                 </FieldLabel>
+                {guardianIds.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {guardianIds.map((id) => {
+                      const g = guardianOptions.find((o) => o.id === id);
+                      if (!g) return null;
+                      const name = `${g.firstName} ${g.lastName}`;
+                      return (
+                        <Badge key={id} variant="secondary" className="gap-1 pr-1">
+                          {name}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setGuardianIds((prev) => prev.filter((x) => x !== id))
+                            }
+                            aria-label={t("removeGuardianSr", { name })}
+                            className="rounded-full hover:bg-black/10"
+                          >
+                            <XIcon className="size-3" />
+                          </button>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <Select
-                  name="guardianId"
-                  defaultValue={person?.guardianId ?? "none"}
+                  value=""
+                  onValueChange={(value) => {
+                    if (value && !guardianIds.includes(value)) {
+                      setGuardianIds((prev) => [...prev, value]);
+                    }
+                  }}
                 >
                   <SelectTrigger id="person-guardian" className="w-full">
-                    <SelectValue>
-                      {(value: string) => {
-                        if (value === "none") return t("guardianNone");
-                        const guardian = guardianOptions.find((g) => g.id === value);
-                        return guardian
-                          ? `${guardian.firstName} ${guardian.lastName}`
-                          : t("guardianNone");
-                      }}
-                    </SelectValue>
+                    <SelectValue>{() => t("addGuardianPlaceholder")}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">{t("guardianNone")}</SelectItem>
-                    {guardianOptions.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>
-                        {g.firstName} {g.lastName}
-                      </SelectItem>
-                    ))}
+                    {guardianOptions
+                      .filter((g) => !guardianIds.includes(g.id))
+                      .map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.firstName} {g.lastName}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
+                <input type="hidden" name="guardianIds" value={guardianIds.join(",")} />
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field>
@@ -342,6 +369,16 @@ export function PersonDialog(props: PersonDialogProps) {
                   />
                   <Label htmlFor="person-photo-consent" className="font-normal">
                     {t("photoConsentLabel")}
+                  </Label>
+                </Field>
+                <Field orientation="horizontal">
+                  <Checkbox
+                    id="person-sepa-consent"
+                    name="sepaConsent"
+                    defaultChecked={person?.sepaConsent ?? false}
+                  />
+                  <Label htmlFor="person-sepa-consent" className="font-normal">
+                    {t("sepaConsentLabel")}
                   </Label>
                 </Field>
               </div>

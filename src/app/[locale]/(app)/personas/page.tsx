@@ -43,7 +43,12 @@ export default async function PersonasPage({
     db.query.persons.findMany({
       orderBy: (persons, { asc }) => [asc(persons.lastName), asc(persons.firstName)],
       with: {
-        guardian: true,
+        guardianRows: {
+          with: { guardian: { columns: { id: true, firstName: true, lastName: true } } },
+          orderBy: (g, { desc }) => [desc(g.isPrimary)],
+        },
+        guardianOfRows: { columns: { id: true } },
+        clubMember: { columns: { status: true, memberNumber: true } },
         memberships: { with: { team: { with: { season: true } } } },
         qualifications: { columns: { title: true, expiresOn: true } },
         tags: { columns: { tag: true } },
@@ -65,15 +70,6 @@ export default async function PersonasPage({
     lastName: p.lastName,
   }));
 
-  const dependentsCountByGuardianId = new Map<string, number>();
-  for (const p of allPersons) {
-    if (!p.guardianId) continue;
-    dependentsCountByGuardianId.set(
-      p.guardianId,
-      (dependentsCountByGuardianId.get(p.guardianId) ?? 0) + 1,
-    );
-  }
-
   const personRows = allPersons.map((p) => ({
     id: p.id,
     firstName: p.firstName,
@@ -82,21 +78,23 @@ export default async function PersonasPage({
     phone: p.phone,
     birthDate: p.birthDate,
     nationalId: p.nationalId,
-    isMember: p.isMember,
-    memberNumber: p.memberNumber,
+    isMember: p.clubMember?.status === "active",
+    memberNumber: p.clubMember?.memberNumber ?? null,
     address: p.address,
     city: p.city,
     iban: p.iban,
-    guardianId: p.guardianId,
     medicalCertUntil: p.medicalCertUntil,
     shirtSize: p.shirtSize,
     pantsSize: p.pantsSize,
     shoeSize: p.shoeSize,
     photoConsent: p.photoConsent,
+    sepaConsent: p.sepaConsent,
     notes: p.notes,
-    guardian: p.guardian
-      ? { firstName: p.guardian.firstName, lastName: p.guardian.lastName }
-      : null,
+    guardians: p.guardianRows.map((r) => ({
+      id: r.guardian.id,
+      firstName: r.guardian.firstName,
+      lastName: r.guardian.lastName,
+    })),
     memberships: p.memberships.map((m) => ({
       teamId: m.teamId,
       role: m.role,
@@ -108,7 +106,7 @@ export default async function PersonasPage({
       expiresOn: q.expiresOn,
     })),
     tags: p.tags.map((t) => t.tag),
-    dependentsCount: dependentsCountByGuardianId.get(p.id) ?? 0,
+    dependentsCount: p.guardianOfRows.length,
     isPastMember: isPastMember(p.memberships),
   }));
 

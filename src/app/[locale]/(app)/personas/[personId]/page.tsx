@@ -10,11 +10,11 @@ import {
   TriangleAlertIcon,
   UserRoundIcon,
 } from "lucide-react";
-import { and, eq, ne } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { personTags, persons } from "@/db/schema";
+import { personGuardians, personTags, persons } from "@/db/schema";
 import {
   addPersonDocument,
   addPersonNote,
@@ -75,8 +75,12 @@ const getPerson = cache((personId: string) =>
   db.query.persons.findFirst({
     where: eq(persons.id, personId),
     with: {
-      guardian: true,
-      dependents: true,
+      guardianRows: {
+        with: { guardian: true },
+        orderBy: (g, { desc }) => [desc(g.isPrimary)],
+      },
+      guardianOfRows: { with: { person: true } },
+      clubMember: true,
       memberships: { with: { team: { with: { season: true } } } },
       qualifications: { orderBy: (q, { desc }) => [desc(q.createdAt)] },
       documents: { orderBy: (d, { desc }) => [desc(d.createdAt)] },
@@ -105,31 +109,39 @@ type FamilyPerson = {
  */
 async function FamilySection({
   personId,
-  guardianId,
-  guardian,
+  guardians,
   dependents,
   minorWithoutGuardian,
   minorGuardian,
 }: {
   personId: string;
-  guardianId: string | null;
-  guardian: FamilyPerson | null;
+  guardians: FamilyPerson[];
   dependents: FamilyPerson[];
   minorWithoutGuardian: boolean;
   minorGuardian: boolean;
 }) {
-  // Hermanos/as = otras personas con el mismo tutor legal (no se guarda).
-  const siblings = guardianId
-    ? await db.query.persons.findMany({
-        where: and(eq(persons.guardianId, guardianId), ne(persons.id, personId)),
-        orderBy: (p, { asc }) => [asc(p.birthDate)],
-      })
-    : [];
+  // Hermanos/as = otras personas que comparten al menos uno de estos tutores (no se guarda).
+  const guardianIds = guardians.map((g) => g.id);
+  const siblingRows =
+    guardianIds.length > 0
+      ? await db.query.personGuardians.findMany({
+          where: inArray(personGuardians.guardianId, guardianIds),
+          with: { person: true },
+        })
+      : [];
+  const siblingsById = new Map<string, FamilyPerson>();
+  for (const row of siblingRows) {
+    if (row.personId === personId) continue;
+    siblingsById.set(row.personId, row.person);
+  }
+  const siblings = [...siblingsById.values()].sort((a, b) =>
+    (a.birthDate ?? "").localeCompare(b.birthDate ?? ""),
+  );
 
   // Fotos de todos los familiares en una sola tanda de URLs firmadas.
   const familyPhotoUrls = await getSignedUrls(
     PHOTO_BUCKET,
-    [...(guardian ? [guardian] : []), ...siblings, ...dependents],
+    [...guardians, ...siblings, ...dependents],
     (p) => p.photoPath,
     (p) => p.id,
   );
@@ -146,7 +158,7 @@ async function FamilySection({
 
   return (
     <FamilyPanel
-      guardian={guardian ? toFamilyMember(guardian) : null}
+      guardians={guardians.map(toFamilyMember)}
       siblings={siblings.map(toFamilyMember)}
       dependents={dependents.map(toFamilyMember)}
       minorWithoutGuardian={minorWithoutGuardian}
@@ -236,8 +248,10 @@ export default async function PersonDetailPage({
 
   const today = new Date().toISOString().slice(0, 10);
   const fullName = `${person.firstName} ${person.lastName}`;
-  const isMinorWithoutGuardian = isMinor(person.birthDate) && !person.guardianId;
-  const hasMinorGuardian = !!person.guardian && isMinor(person.guardian.birthDate);
+  const isMinorWithoutGuardian = isMinor(person.birthDate) && person.guardianRows.length === 0;
+  const hasMinorGuardian = person.guardianRows.some((r) => isMinor(r.guardian.birthDate));
+  const isMember = person.clubMember?.status === "active";
+  const memberNumber = person.clubMember?.memberNumber ?? null;
 
   const membershipsBySeason = new Map<
     string,
@@ -280,7 +294,7 @@ export default async function PersonDetailPage({
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{fullName}</h1>
             <div className="mt-1 flex flex-wrap gap-1">
-              {person.isMember ? (
+              {isMember ? (
                 <Badge variant="secondary">{t("memberBadge")}</Badge>
               ) : null}
               {[...new Set(person.memberships.map((m) => m.role))].map((role) => (
@@ -288,9 +302,9 @@ export default async function PersonDetailPage({
                   {tEquipos(`roleOption.${role}`)}
                 </Badge>
               ))}
-              {person.dependents.length > 0 ? (
+              {person.guardianOfRows.length > 0 ? (
                 <Badge variant="secondary">
-                  {t("guardianOfBadge", { count: person.dependents.length })}
+                  {t("guardianOfBadge", { count: person.guardianOfRows.length })}
                 </Badge>
               ) : null}
               {isMinorWithoutGuardian ? (
@@ -338,7 +352,16 @@ export default async function PersonDetailPage({
           {canManage ? (
             <PersonDialog
               mode="edit"
-              person={person}
+              person={{
+                ...person,
+                isMember,
+                memberNumber,
+                guardians: person.guardianRows.map((r) => ({
+                  id: r.guardian.id,
+                  firstName: r.guardian.firstName,
+                  lastName: r.guardian.lastName,
+                })),
+              }}
               photoUrl={photoUrl}
               guardianOptions={allPersons}
             />
@@ -436,8 +459,8 @@ export default async function PersonDetailPage({
                 <InfoRow
                   label={t("memberNumberLabel")}
                   value={
-                    person.memberNumber ??
-                    (person.isMember ? (
+                    memberNumber ??
+                    (isMember ? (
                       <span className="print:hidden">
                         <AssignMemberNumberButton personId={person.id} />
                       </span>
@@ -465,9 +488,11 @@ export default async function PersonDetailPage({
               <div className="flex flex-wrap gap-1">
                 {person.photoConsent ? (
                   <Badge variant="secondary">{t("photoConsentLabel")}</Badge>
-                ) : (
-                  "—"
-                )}
+                ) : null}
+                {person.sepaConsent ? (
+                  <Badge variant="secondary">{t("sepaConsentLabel")}</Badge>
+                ) : null}
+                {!person.photoConsent && !person.sepaConsent ? "—" : null}
               </div>
             </div>
 
@@ -486,9 +511,8 @@ export default async function PersonDetailPage({
           <Suspense fallback={<FamilySectionSkeleton />}>
             <FamilySection
               personId={person.id}
-              guardianId={person.guardianId}
-              guardian={person.guardian}
-              dependents={person.dependents}
+              guardians={person.guardianRows.map((r) => r.guardian)}
+              dependents={person.guardianOfRows.map((r) => r.person)}
               minorWithoutGuardian={isMinorWithoutGuardian}
               minorGuardian={hasMinorGuardian}
             />

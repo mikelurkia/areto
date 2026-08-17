@@ -384,6 +384,42 @@ create policy "sponsor_documents_delete_staff"
     )
   );
 
+-- 9) Storage: documentos de solicitudes de inscripción ------------------------
+-- Bucket privado. A diferencia de los anteriores, NO tiene política de
+-- `insert`: el formulario público (sin sesión) sube fotos con la clave de
+-- servicio desde el servidor (ver `uploadFileAsAdmin`), que bypassa RLS por
+-- diseño. Abrir aquí una política de `insert` para `anon` permitiría a
+-- cualquiera escribir en el bucket sin pasar por la Server Action. Solo
+-- lectura para `admin`/`staff` (contienen fotos de DNI/NIE, más sensibles que
+-- una foto de carné).
+insert into storage.buckets (id, name, public)
+values ('registration-documents', 'registration-documents', false)
+on conflict (id) do nothing;
+
+drop policy if exists "registration_documents_select_staff" on storage.objects;
+create policy "registration_documents_select_staff"
+  on storage.objects for select
+  to authenticated
+  using (
+    bucket_id = 'registration-documents'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
+
+drop policy if exists "registration_documents_delete_staff" on storage.objects;
+create policy "registration_documents_delete_staff"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'registration-documents'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
+
 -- ============================================================================
 -- Bootstrap del primer administrador (ejecútalo tras registrarte por primera vez):
 --

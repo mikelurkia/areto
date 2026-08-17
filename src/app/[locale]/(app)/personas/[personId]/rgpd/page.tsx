@@ -22,8 +22,9 @@ const getPersonRecord = cache((personId: string) =>
   db.query.persons.findFirst({
     where: eq(persons.id, personId),
     with: {
-      guardian: true,
-      dependents: true,
+      guardianRows: { with: { guardian: true } },
+      guardianOfRows: { with: { person: true } },
+      clubMember: true,
       memberships: { with: { team: { with: { season: true } } } },
       qualifications: { orderBy: (q, { desc }) => [desc(q.createdAt)] },
       documents: { orderBy: (d, { desc }) => [desc(d.createdAt)] },
@@ -145,7 +146,7 @@ export default async function PersonRgpdPage({
           <Row label={t("nationalIdLabel")} value={person.nationalId} />
           <Row
             label={t("memberBadge")}
-            value={person.isMember ? t("rgpdYes") : t("rgpdNo")}
+            value={person.clubMember?.status === "active" ? t("rgpdYes") : t("rgpdNo")}
           />
         </Section>
 
@@ -167,25 +168,30 @@ export default async function PersonRgpdPage({
             value={person.photoConsent ? t("rgpdYes") : t("rgpdNo")}
           />
           <Row
+            label={t("sepaConsentLabel")}
+            value={person.sepaConsent ? t("rgpdYes") : t("rgpdNo")}
+          />
+          <Row
             label={t("rgpdHasPhotoLabel")}
             value={person.photoPath ? t("rgpdYes") : t("rgpdNo")}
           />
           <Row label={t("notesLabel")} value={person.notes} />
         </Section>
 
-        {person.guardian || person.dependents.length > 0 ? (
+        {person.guardianRows.length > 0 || person.guardianOfRows.length > 0 ? (
           <Section title={t("tabFamily")}>
-            {person.guardian ? (
+            {person.guardianRows.map((r) => (
               <Row
+                key={r.id}
                 label={t("rgpdGuardianLabel")}
-                value={`${person.guardian.firstName} ${person.guardian.lastName}`}
+                value={`${r.guardian.firstName} ${r.guardian.lastName}`}
               />
-            ) : null}
-            {person.dependents.map((d) => (
+            ))}
+            {person.guardianOfRows.map((r) => (
               <Row
-                key={d.id}
+                key={r.id}
                 label={t("rgpdDependentLabel")}
-                value={`${d.firstName} ${d.lastName}`}
+                value={`${r.person.firstName} ${r.person.lastName}`}
               />
             ))}
           </Section>

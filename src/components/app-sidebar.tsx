@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarDays,
   ChevronsUpDown,
+  ClipboardCheckIcon,
   ClipboardList,
   HandshakeIcon,
   LayoutDashboard,
@@ -139,7 +140,10 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
     { title: tNav("cuotas"), href: "/cuotas", icon: Wallet },
     { title: tNav("avisos"), href: "/avisos", icon: Megaphone },
     ...(canManageClub
-      ? [{ title: tNav("club"), href: "/club", icon: Building2 }]
+      ? [
+          { title: tNav("inscripciones"), href: "/inscripciones", icon: ClipboardCheckIcon },
+          { title: tNav("club"), href: "/club", icon: Building2 },
+        ]
       : []),
   ];
 

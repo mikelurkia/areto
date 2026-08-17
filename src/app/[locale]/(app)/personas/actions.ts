@@ -6,8 +6,10 @@ import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import {
+  clubMembers,
   memberships,
   personDocuments,
+  personGuardians,
   personNotes,
   personQualifications,
   personTags,
@@ -63,9 +65,25 @@ async function removeQualificationFileObject(path: string) {
   await removeFile(QUALIFICATIONS_BUCKET, path);
 }
 
-function readGuardianId(formData: FormData): string {
-  const raw = String(formData.get("guardianId") ?? "").trim();
-  return raw === "none" ? "" : raw;
+/** Ids de tutor enviados por el diálogo como lista separada por comas (ver `guardianIds` hidden input). */
+function readGuardianIds(formData: FormData, excludeId?: string): string[] {
+  const raw = String(formData.get("guardianIds") ?? "").trim();
+  if (!raw) return [];
+  const ids = raw.split(",").map((id) => id.trim()).filter(Boolean);
+  return [...new Set(ids)].filter((id) => id !== excludeId);
+}
+
+/** Reemplaza los tutores de una persona: borra los actuales e inserta los nuevos (el primero, principal). */
+async function replaceGuardians(personId: string, guardianIds: string[]) {
+  await db.delete(personGuardians).where(eq(personGuardians.personId, personId));
+  if (guardianIds.length === 0) return;
+  await db.insert(personGuardians).values(
+    guardianIds.map((guardianId, i) => ({
+      personId,
+      guardianId,
+      isPrimary: i === 0,
+    })),
+  );
 }
 
 function readMemberNumber(formData: FormData): number | null {
@@ -87,6 +105,46 @@ function isUniqueViolation(error: unknown, constraint: string): boolean {
   );
 }
 
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Sincroniza la condición de socio (tabla `club_members`) con el checkbox y
+ * el nº del formulario de persona. Alta = upsert a `active` (crea la fila si
+ * no existía); baja = cancela sin borrar, para conservar el histórico y el nº
+ * ya asignado (no se reutiliza).
+ */
+async function syncClubMembership(
+  personId: string,
+  isMember: boolean,
+  memberNumber: number | null,
+) {
+  const existing = await db.query.clubMembers.findFirst({
+    where: eq(clubMembers.personId, personId),
+  });
+  if (isMember) {
+    if (existing) {
+      await db
+        .update(clubMembers)
+        .set({ status: "active", memberNumber, cancelledAt: null })
+        .where(eq(clubMembers.id, existing.id));
+    } else {
+      await db.insert(clubMembers).values({
+        personId,
+        status: "active",
+        memberNumber,
+        joinedAt: today(),
+      });
+    }
+  } else if (existing && existing.status === "active") {
+    await db
+      .update(clubMembers)
+      .set({ status: "cancelled", cancelledAt: today() })
+      .where(eq(clubMembers.id, existing.id));
+  }
+}
+
 function readPersonFields(formData: FormData) {
   return {
     firstName: String(formData.get("firstName") ?? "").trim(),
@@ -100,12 +158,12 @@ function readPersonFields(formData: FormData) {
     address: String(formData.get("address") ?? "").trim(),
     city: String(formData.get("city") ?? "").trim(),
     iban: String(formData.get("iban") ?? "").trim(),
-    guardianId: readGuardianId(formData),
     medicalCertUntil: String(formData.get("medicalCertUntil") ?? "").trim(),
     shirtSize: String(formData.get("shirtSize") ?? "").trim(),
     pantsSize: String(formData.get("pantsSize") ?? "").trim(),
     shoeSize: String(formData.get("shoeSize") ?? "").trim(),
     photoConsent: formData.get("photoConsent") === "on",
+    sepaConsent: formData.get("sepaConsent") === "on",
     removePhoto: formData.get("removePhoto") === "on",
     notes: String(formData.get("notes") ?? "").trim(),
   };
@@ -126,6 +184,7 @@ export async function createPerson(
 
   const fields = readPersonFields(formData);
   const photo = readPhoto(formData);
+  const guardianIds = readGuardianIds(formData);
   if (!fields.firstName) return { error: t("firstNameRequired") };
   if (!fields.lastName) return { error: t("lastNameRequired") };
   if (fields.nationalId && !isValidNationalId(fields.nationalId)) {
@@ -150,25 +209,24 @@ export async function createPerson(
           phone: fields.phone || null,
           birthDate: fields.birthDate || null,
           nationalId: fields.nationalId || null,
-          isMember: fields.isMember,
-          memberNumber: fields.memberNumber,
           address: fields.address || null,
           city: fields.city || null,
           iban: fields.iban || null,
-          guardianId: fields.guardianId || null,
           medicalCertUntil: fields.medicalCertUntil || null,
           shirtSize: fields.shirtSize || null,
           pantsSize: fields.pantsSize || null,
           shoeSize: fields.shoeSize || null,
           photoConsent: fields.photoConsent,
+          sepaConsent: fields.sepaConsent,
           notes: fields.notes || null,
         })
         .returning({ id: persons.id });
 
       return person.id;
     });
+    await syncClubMembership(personId, fields.isMember, fields.memberNumber);
   } catch (error) {
-    if (isUniqueViolation(error, "persons_member_number_idx")) {
+    if (isUniqueViolation(error, "club_members_member_number_idx")) {
       return { error: t("memberNumberTaken") };
     }
     if (error && typeof error === "object" && "code" in error && error.code === "23505") {
@@ -181,6 +239,7 @@ export async function createPerson(
     const path = await uploadPersonPhoto(personId, photo);
     await db.update(persons).set({ photoPath: path }).where(eq(persons.id, personId));
   }
+  await replaceGuardians(personId, guardianIds);
 
   revalidatePath("/", "layout");
   return { message: t("personCreated") };
@@ -196,13 +255,11 @@ export async function updatePerson(
   const id = String(formData.get("id") ?? "");
   const fields = readPersonFields(formData);
   const photo = readPhoto(formData);
+  const guardianIds = readGuardianIds(formData, id);
   if (!fields.firstName) return { error: t("firstNameRequired") };
   if (!fields.lastName) return { error: t("lastNameRequired") };
   if (fields.nationalId && !isValidNationalId(fields.nationalId)) {
     return { error: t("nationalIdInvalid") };
-  }
-  if (fields.guardianId && fields.guardianId === id) {
-    return { error: t("guardianSelfError") };
   }
   if (photo && !ALLOWED_PHOTO_TYPES.includes(photo.type)) {
     return { error: t("photoInvalidType") };
@@ -226,22 +283,21 @@ export async function updatePerson(
         phone: fields.phone || null,
         birthDate: fields.birthDate || null,
         nationalId: fields.nationalId || null,
-        isMember: fields.isMember,
-        memberNumber: fields.memberNumber,
         address: fields.address || null,
         city: fields.city || null,
         iban: fields.iban || null,
-        guardianId: fields.guardianId || null,
         medicalCertUntil: fields.medicalCertUntil || null,
         shirtSize: fields.shirtSize || null,
         pantsSize: fields.pantsSize || null,
         shoeSize: fields.shoeSize || null,
         photoConsent: fields.photoConsent,
+        sepaConsent: fields.sepaConsent,
         notes: fields.notes || null,
       })
       .where(eq(persons.id, id));
+    await syncClubMembership(id, fields.isMember, fields.memberNumber);
   } catch (error) {
-    if (isUniqueViolation(error, "persons_member_number_idx")) {
+    if (isUniqueViolation(error, "club_members_member_number_idx")) {
       return { error: t("memberNumberTaken") };
     }
     if (error && typeof error === "object" && "code" in error && error.code === "23505") {
@@ -258,6 +314,7 @@ export async function updatePerson(
     await removePersonPhotoObject(existing.photoPath);
     await db.update(persons).set({ photoPath: null }).where(eq(persons.id, id));
   }
+  await replaceGuardians(id, guardianIds);
 
   revalidatePath("/", "layout");
   return { message: t("personUpdated") };
@@ -442,9 +499,9 @@ export async function assignNextMemberNumber(
   await requireRole([...MANAGE_ROLES]);
 
   const id = String(formData.get("id") ?? "");
-  const existing = await db.query.persons.findFirst({
-    where: eq(persons.id, id),
-    columns: { memberNumber: true },
+  const existing = await db.query.clubMembers.findFirst({
+    where: eq(clubMembers.personId, id),
+    columns: { id: true, memberNumber: true },
   });
   if (!existing) return { error: t("memberNumberAssignFailed") };
   if (existing.memberNumber !== null) {
@@ -453,15 +510,15 @@ export async function assignNextMemberNumber(
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const [row] = await db
-      .select({ max: sql<number>`coalesce(max(${persons.memberNumber}), 0)` })
-      .from(persons);
+      .select({ max: sql<number>`coalesce(max(${clubMembers.memberNumber}), 0)` })
+      .from(clubMembers);
     const next = (row?.max ?? 0) + 1 + attempt;
     try {
-      await db.update(persons).set({ memberNumber: next }).where(eq(persons.id, id));
+      await db.update(clubMembers).set({ memberNumber: next }).where(eq(clubMembers.id, existing.id));
       revalidatePath("/", "layout");
       return { message: t("memberNumberAssigned", { number: next }) };
     } catch (error) {
-      if (isUniqueViolation(error, "persons_member_number_idx")) continue;
+      if (isUniqueViolation(error, "club_members_member_number_idx")) continue;
       throw error;
     }
   }
@@ -472,7 +529,34 @@ export async function bulkSetMember(personIds: string[], isMember: boolean): Pro
   await requireRole([...MANAGE_ROLES]);
   if (personIds.length === 0) return;
 
-  await db.update(persons).set({ isMember }).where(inArray(persons.id, personIds));
+  const existingRows = await db.query.clubMembers.findMany({
+    where: inArray(clubMembers.personId, personIds),
+  });
+  const existingByPerson = new Map(existingRows.map((r) => [r.personId, r]));
+
+  if (isMember) {
+    const toInsert = personIds.filter((id) => !existingByPerson.has(id));
+    const toReactivate = existingRows.filter((r) => r.status !== "active").map((r) => r.id);
+    if (toInsert.length > 0) {
+      await db
+        .insert(clubMembers)
+        .values(toInsert.map((personId) => ({ personId, status: "active" as const, joinedAt: today() })));
+    }
+    if (toReactivate.length > 0) {
+      await db
+        .update(clubMembers)
+        .set({ status: "active", cancelledAt: null })
+        .where(inArray(clubMembers.id, toReactivate));
+    }
+  } else {
+    const toCancel = existingRows.filter((r) => r.status === "active").map((r) => r.id);
+    if (toCancel.length > 0) {
+      await db
+        .update(clubMembers)
+        .set({ status: "cancelled", cancelledAt: today() })
+        .where(inArray(clubMembers.id, toCancel));
+    }
+  }
 
   revalidatePath("/", "layout");
 }

@@ -79,6 +79,14 @@ export default async function Home({
             {t("openPanel")}
             <ArrowRight data-icon="inline-end" />
           </Button>
+          <Button
+            render={<Link href="/inscripcion" />}
+            nativeButton={false}
+            variant="outline"
+            size="lg"
+          >
+            {t("registerAction")}
+          </Button>
         </div>
       </section>
 

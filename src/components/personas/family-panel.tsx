@@ -22,7 +22,7 @@ export type FamilyMember = {
 };
 
 type FamilyPanelProps = {
-  guardian: FamilyMember | null;
+  guardians: FamilyMember[];
   siblings: FamilyMember[];
   dependents: FamilyMember[];
   minorWithoutGuardian: boolean;
@@ -112,14 +112,14 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export async function FamilyPanel({
-  guardian,
+  guardians,
   siblings,
   dependents,
   minorWithoutGuardian,
   minorGuardian,
 }: FamilyPanelProps) {
   const t = await getTranslations("Personas");
-  const isEmpty = !guardian && siblings.length === 0 && dependents.length === 0;
+  const isEmpty = guardians.length === 0 && siblings.length === 0 && dependents.length === 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -142,8 +142,12 @@ export async function FamilyPanel({
 
       <div className="flex flex-col gap-3">
         <SectionTitle>{t("guardianLabel")}</SectionTitle>
-        {guardian ? (
-          <MemberCard member={guardian} />
+        {guardians.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {guardians.map((member) => (
+              <MemberCard key={member.id} member={member} />
+            ))}
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">{t("guardianNone")}</p>
         )}

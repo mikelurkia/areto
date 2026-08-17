@@ -295,6 +295,27 @@
       "when": 1786959653881,
       "tag": "0041_special_lady_ursula",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1786991010798,
+      "tag": "0042_violet_mole_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1786991022976,
+      "tag": "0043_high_lilith",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1786998824060,
+      "tag": "0044_orange_mariko_yashida",
+      "breakpoints": true
     }
   ]
 }

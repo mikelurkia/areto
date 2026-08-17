@@ -65,14 +65,14 @@ type PersonRow = {
   address: string | null;
   city: string | null;
   iban: string | null;
-  guardianId: string | null;
   medicalCertUntil: string | null;
   shirtSize: string | null;
   pantsSize: string | null;
   shoeSize: string | null;
   photoConsent: boolean;
+  sepaConsent: boolean;
   notes: string | null;
-  guardian: { firstName: string; lastName: string } | null;
+  guardians: { id: string; firstName: string; lastName: string }[];
   memberships: {
     teamId: string;
     role: string;
@@ -214,7 +214,7 @@ export function PersonasBrowser({
       p.memberNumber !== null ? String(p.memberNumber) : "",
       p.nationalId ?? "",
       p.memberships.map((m) => m.team.name).join(" / "),
-      p.guardian ? `${p.guardian.firstName} ${p.guardian.lastName}` : "",
+      p.guardians.map((g) => `${g.firstName} ${g.lastName}`).join(" / "),
       p.email ?? "",
       p.phone ?? "",
       p.isMember ? t("memberBadge") : "",
