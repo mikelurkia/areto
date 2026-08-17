@@ -46,7 +46,9 @@
     "avisos": "Avisos",
     "temporada": "Temporadas",
     "club": "Club",
-    "federations": "Aplicaciones federativas"
+    "federations": "Aplicaciones federativas",
+    "federationGipuzkoana": "Federación Gipuzcoana",
+    "federationVasca": "Federación Vasca"
   },
   "Sidebar": {
     "groupLabel": "Gestión",

@@ -46,7 +46,9 @@
     "avisos": "Oharrak",
     "temporada": "Denboraldiak",
     "club": "Kluba",
-    "federations": "Federazio-aplikazioak"
+    "federations": "Federazio-aplikazioak",
+    "federationGipuzkoana": "Gipuzkoako Federazioa",
+    "federationVasca": "Euskadiko Federazioa"
   },
   "Sidebar": {
     "groupLabel": "Kudeaketa",
