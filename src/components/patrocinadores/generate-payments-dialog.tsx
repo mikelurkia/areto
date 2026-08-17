@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { LayersIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 
 type TermOption = { id: string; label: string };
@@ -41,9 +42,9 @@ export function GenerateAnnualitiesDialog({
   defaultFirstYear: number;
 }) {
   const t = useTranslations("Patrocinadores");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(`generar-anualidades:${defaultTermId}`);
   const [state, formAction] = useActionState(generateAnnualities, {});
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   return (

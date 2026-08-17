@@ -7,7 +7,7 @@ import {
   UserIcon,
 } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { seasons, teams } from "@/db/schema";
@@ -28,25 +28,36 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export async function generateMetadata() {
-  const t = await getTranslations("Metadata");
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Metadata" });
   return { title: t("equipos") };
 }
 
 export default async function EquiposPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{ season?: string }>;
 }) {
+  const { locale } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
   const user = await requireUser();
   const t = await getTranslations("Equipos");
   const canManage = user.role === "admin" || user.role === "staff";
 
-  const { season: seasonParam } = await searchParams;
-
-  const allSeasons = await db.query.seasons.findMany({
-    orderBy: desc(seasons.name),
-  });
+  // Los equipos sí dependen de la temporada elegida, pero el parámetro de la URL
+  // y el listado de temporadas se pueden resolver a la vez.
+  const [{ season: seasonParam }, allSeasons] = await Promise.all([
+    searchParams,
+    db.query.seasons.findMany({ orderBy: desc(seasons.name) }),
+  ]);
 
   const selectedSeason =
     allSeasons.find((s) => s.id === seasonParam) ??
@@ -64,7 +75,6 @@ export default async function EquiposPage({
                 columns: {
                   birthDate: true,
                   medicalCertUntil: true,
-                  formSigned: true,
                 },
               },
             },
@@ -85,8 +95,6 @@ export default async function EquiposPage({
     if (alerts.medicalExpiring > 0)
       lines.push(t("healthMedicalExpiring", { count: alerts.medicalExpiring }));
     if (alerts.noJersey > 0) lines.push(t("healthNoJersey", { count: alerts.noJersey }));
-    if (alerts.formMissing > 0)
-      lines.push(t("healthFormMissing", { count: alerts.formMissing }));
     return lines;
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { PencilIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { TEAM_CATEGORIES } from "@/components/equipos/team-categories";
 import { TEAM_GENDERS } from "@/components/equipos/team-genders";
@@ -47,12 +48,16 @@ type TeamDialogProps =
 
 export function TeamDialog(props: TeamDialogProps) {
   const t = useTranslations("Equipos");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(
+    props.mode === "create"
+      ? `equipo-nuevo:${props.seasonId}`
+      : `equipo:${props.team.id}`,
+  );
   const [state, formAction] = useActionState(
     props.mode === "create" ? createTeam : updateTeam,
     {},
   );
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   return (

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { getLocale } from "next-intl/server";
 
@@ -23,8 +24,13 @@ export type CurrentUser = {
 /**
  * Usuario autenticado + su perfil (rol, club, idioma). Devuelve `null` si no hay sesión.
  * El rol/idioma se leen de la tabla de perfil `users` (poblada por el trigger de Supabase).
+ *
+ * Envuelto en `cache()` de React: la comprobación cuesta una petición HTTP a
+ * Supabase Auth más una consulta a `users`, y en cada render la piden el layout,
+ * la página y a veces `generateMetadata`. Con `cache()` se ejecuta una sola vez
+ * por petición y las siguientes llamadas son gratis.
  */
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!isSupabaseConfigured) return null;
 
   const supabase = await createClient();
@@ -46,7 +52,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     personId: profile?.personId ?? null,
     locale: profile?.locale ?? routing.defaultLocale,
   };
-}
+});
 
 /** Exige sesión. Redirige a /login si no la hay. */
 export async function requireUser(): Promise<CurrentUser> {

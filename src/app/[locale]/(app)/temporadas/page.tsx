@@ -1,6 +1,6 @@
 import { CalendarDaysIcon } from "lucide-react";
 import { desc } from "drizzle-orm";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
@@ -21,15 +21,26 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export async function generateMetadata() {
-  const t = await getTranslations("Metadata");
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Metadata" });
   return { title: t("temporada") };
 }
 
-export default async function TemporadasPage() {
+export default async function TemporadasPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
   const user = await requireUser();
   const t = await getTranslations("Temporadas");
-  const locale = await getLocale();
   const canManage = user.role === "admin" || user.role === "staff";
 
   const allSeasons = await db.query.seasons.findMany({

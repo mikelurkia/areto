@@ -60,7 +60,6 @@ export async function addMembership(
       role: readRole(formData),
       jerseyNumber: readJerseyNumber(formData),
       positions: readPositions(formData),
-      isCaptain: formData.get("isCaptain") === "on",
       position: String(formData.get("position") ?? "").trim() || null,
     });
   } catch (error) {
@@ -83,19 +82,58 @@ export async function updateMembership(
 
   const id = String(formData.get("id") ?? "");
 
+  // La capitanía no se toca aquí: es del equipo (ver `updateTeamCaptain`).
   await db
     .update(memberships)
     .set({
       role: readRole(formData),
       jerseyNumber: readJerseyNumber(formData),
       positions: readPositions(formData),
-      isCaptain: formData.get("isCaptain") === "on",
       position: String(formData.get("position") ?? "").trim() || null,
     })
     .where(eq(memberships.id, id));
 
   revalidatePath("/", "layout");
   return { message: t("memberUpdated") };
+}
+
+/**
+ * Designa al capitán del equipo. Es una característica del equipo, no de la
+ * persona: el brazalete es único, así que la acción se lo quita a quien lo
+ * tuviera antes. Sin selección (o con una membresía de otro equipo) el equipo
+ * se queda sin capitán.
+ */
+export async function updateTeamCaptain(
+  _prev: MembershipState,
+  formData: FormData,
+): Promise<MembershipState> {
+  const t = await getTranslations("Equipos");
+  await requireRole([...MANAGE_ROLES]);
+
+  const teamId = String(formData.get("teamId") ?? "");
+  const selectedId = String(formData.get("captainMembershipId") ?? "");
+
+  const teamMemberships = await db.query.memberships.findMany({
+    where: eq(memberships.teamId, teamId),
+    columns: { id: true, isCaptain: true },
+  });
+
+  const captainId = teamMemberships.some((m) => m.id === selectedId) ? selectedId : null;
+  const updates = teamMemberships.filter((m) => m.isCaptain !== (m.id === captainId));
+
+  if (updates.length > 0) {
+    await db.transaction(async (tx) => {
+      for (const membership of updates) {
+        await tx
+          .update(memberships)
+          .set({ isCaptain: membership.id === captainId })
+          .where(eq(memberships.id, membership.id));
+      }
+    });
+  }
+
+  revalidatePath("/", "layout");
+  return { message: t("captainUpdated") };
 }
 
 export async function removeMembership(

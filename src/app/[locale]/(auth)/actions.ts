@@ -103,9 +103,19 @@ export async function signInWithGoogle(
   return { error: t("googleFailed") };
 }
 
-export async function logout() {
+/**
+ * Cierra la sesión y devuelve a dónde ir. No redirige por su cuenta a propósito:
+ * quien la llama hace una navegación completa del navegador.
+ *
+ * Con Cache Components, React conserva las pantallas visitadas montadas
+ * (`<Activity>`), así que una navegación cliente dejaría en memoria el estado del
+ * usuario anterior —borradores en diálogos, filtros de tablas—. Una recarga
+ * completa lo descarta todo, que es lo que se espera al salir de una cuenta en un
+ * ordenador compartido del club.
+ */
+export async function logout(): Promise<{ redirectTo: string }> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
-  localizedRedirect({ href: "/login", locale: await getLocale() });
+  return { redirectTo: `/${await getLocale()}/login` };
 }

@@ -1,4 +1,4 @@
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ExternalLinkIcon, ReceiptTextIcon, TriangleAlertIcon } from "lucide-react";
 
 import { db } from "@/db";
@@ -29,26 +29,47 @@ import {
 const LOGO_BUCKET = "sponsorship-logos";
 const CONTRACT_BUCKET = "sponsorship-contracts";
 
-export async function generateMetadata() {
-  const t = await getTranslations("Metadata");
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Metadata" });
   return { title: t("patrocinadores") };
 }
 
-export default async function PatrocinadoresPage() {
+export default async function PatrocinadoresPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
   await requireRole(["admin", "staff"]);
   const t = await getTranslations("Patrocinadores");
-  const locale = await getLocale();
-  const today = new Date().toISOString().slice(0, 10);
 
-  const allSponsors = await db.query.sponsors.findMany({
-    with: { contactPerson: true, terms: { with: { payments: true } } },
-    orderBy: (sponsors, { asc }) => [asc(sponsors.name)],
-  });
+  // Patrocinadores y personas (para el selector de contacto) no dependen entre
+  // sí: en paralelo.
+  const [allSponsors, allPersons] = await Promise.all([
+    db.query.sponsors.findMany({
+      with: { contactPerson: true, terms: { with: { payments: true } } },
+      orderBy: (sponsors, { asc }) => [asc(sponsors.name)],
+    }),
+    db.query.persons.findMany({
+      columns: { id: true, firstName: true, lastName: true },
+      orderBy: (persons, { asc }) => [asc(persons.lastName), asc(persons.firstName)],
+    }),
+  ]);
 
   const currencyFmt = new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "EUR",
   });
+
+  // El reloj, después de las consultas (ver next-prerender-current-time).
+  const today = new Date().toISOString().slice(0, 10);
 
   // Bandeja de vencidos: cobros con vencimiento pasado y aún sin cobrar.
   const overduePayments = allSponsors
@@ -89,11 +110,6 @@ export default async function PatrocinadoresPage() {
   const yearSummary = [...yearMap.entries()]
     .map(([year, v]) => ({ year, ...v }))
     .sort((a, b) => b.year.localeCompare(a.year));
-
-  const allPersons = await db.query.persons.findMany({
-    columns: { id: true, firstName: true, lastName: true },
-    orderBy: (persons, { asc }) => [asc(persons.lastName), asc(persons.firstName)],
-  });
 
   // KPIs de la temporada actual (sep–ago) y desglose por nivel.
   const currentSeasonYear = seasonYearOf(today);

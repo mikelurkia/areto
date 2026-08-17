@@ -1,5 +1,5 @@
 import { Users } from "lucide-react";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { requireRole } from "@/lib/auth";
@@ -11,8 +11,13 @@ import { PersonDialog } from "@/components/personas/person-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Button } from "@/components/ui/button";
 
-export async function generateMetadata() {
-  const t = await getTranslations("Metadata");
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Metadata" });
   return { title: t("personas") };
 }
 
@@ -20,25 +25,35 @@ export async function generateMetadata() {
  * Restringido a admin/staff: la ficha de persona incluye DNI, IBAN, dirección
  * y datos médicos de todo el club, no solo de quien consulta.
  */
-export default async function PersonasPage() {
+export default async function PersonasPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
   await requireRole(["admin", "staff"]);
   const t = await getTranslations("Personas");
   const canManage = true;
 
-  const allPersons = await db.query.persons.findMany({
-    orderBy: (persons, { asc }) => [asc(persons.lastName), asc(persons.firstName)],
-    with: {
-      guardian: true,
-      memberships: { with: { team: { with: { season: true } } } },
-      qualifications: { columns: { title: true, expiresOn: true } },
-      tags: { columns: { tag: true } },
-    },
-  });
-
-  const allTeams = await db.query.teams.findMany({
-    with: { season: true },
-    orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
-  });
+  // Personas y equipos no dependen entre sí: en paralelo, para no pagar dos
+  // idas y vueltas a la base de datos en serie.
+  const [allPersons, allTeams] = await Promise.all([
+    db.query.persons.findMany({
+      orderBy: (persons, { asc }) => [asc(persons.lastName), asc(persons.firstName)],
+      with: {
+        guardian: true,
+        memberships: { with: { team: { with: { season: true } } } },
+        qualifications: { columns: { title: true, expiresOn: true } },
+        tags: { columns: { tag: true } },
+      },
+    }),
+    db.query.teams.findMany({
+      with: { season: true },
+      orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
+    }),
+  ]);
   const teamOptions = allTeams.map((team) => ({
     id: team.id,
     label: teamSeasonLabel(team, team.season),
@@ -77,7 +92,6 @@ export default async function PersonasPage() {
     shirtSize: p.shirtSize,
     pantsSize: p.pantsSize,
     shoeSize: p.shoeSize,
-    formSigned: p.formSigned,
     photoConsent: p.photoConsent,
     notes: p.notes,
     guardian: p.guardian

@@ -1,12 +1,13 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { clubSettings } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { CLUB_SETTINGS_TAG } from "@/lib/club";
 
 export type ClubState = {
   error?: string;
@@ -43,6 +44,10 @@ export async function updateClubSettings(
     await db.insert(clubSettings).values(values);
   }
 
+  // `updateTag` (no `revalidateTag`) porque quien acaba de guardar tiene que ver
+  // su cambio en la siguiente petición, no una versión en caché mientras se
+  // refresca por detrás.
+  updateTag(CLUB_SETTINGS_TAG);
   revalidatePath("/", "layout");
   return { message: t("clubDataSaved") };
 }

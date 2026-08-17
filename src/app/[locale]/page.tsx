@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ArrowRight, CalendarDays, Users, Wallet } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
@@ -12,12 +12,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export async function generateMetadata() {
-  const t = await getTranslations("Metadata");
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Metadata" });
   return { title: t("home") };
 }
 
-export default async function Home() {
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const t = await getTranslations("Landing");
 
   const features = [

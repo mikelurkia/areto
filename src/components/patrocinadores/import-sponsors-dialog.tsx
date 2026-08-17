@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { UploadIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -20,13 +20,14 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 
 export function ImportSponsorsDialog() {
   const t = useTranslations("Patrocinadores");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam("importar-patrocinadores");
   const [state, formAction] = useActionState(importSponsors, {});
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   return (

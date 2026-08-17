@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { sponsorPayments } from "@/db/schema";
@@ -12,20 +12,26 @@ import { Link } from "@/i18n/navigation";
 import { PrintButton } from "@/components/print-button";
 import { Button } from "@/components/ui/button";
 
-export async function generateMetadata() {
-  const t = await getTranslations("Patrocinadores");
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; sponsorId: string; paymentId: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Patrocinadores" });
   return { title: t("invoiceTitle") };
 }
 
 export default async function SponsorInvoicePage({
   params,
 }: {
-  params: Promise<{ sponsorId: string; paymentId: string }>;
+  params: Promise<{ locale: string; sponsorId: string; paymentId: string }>;
 }) {
-  const { sponsorId, paymentId } = await params;
+  const { locale, sponsorId, paymentId } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
   await requireRole(["admin", "staff"]);
   const t = await getTranslations("Patrocinadores");
-  const locale = await getLocale();
 
   const [payment, club] = await Promise.all([
     db.query.sponsorPayments.findFirst({

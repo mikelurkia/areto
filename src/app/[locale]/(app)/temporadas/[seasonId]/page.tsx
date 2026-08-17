@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -6,8 +7,8 @@ import {
   UserCheckIcon,
   UserIcon,
 } from "lucide-react";
-import { eq, ne } from "drizzle-orm";
-import { getLocale, getTranslations } from "next-intl/server";
+import { eq } from "drizzle-orm";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { seasons, teams } from "@/db/schema";
@@ -28,38 +29,55 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+/** En `cache()`: la piden `generateMetadata` y la página en el mismo render. */
+const getSeason = cache((seasonId: string) =>
+  db.query.seasons.findFirst({ where: eq(seasons.id, seasonId) }),
+);
+
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ seasonId: string }>;
+  params: Promise<{ locale: string; seasonId: string }>;
 }) {
   const { seasonId } = await params;
-  const season = await db.query.seasons.findFirst({ where: eq(seasons.id, seasonId) });
+  const season = await getSeason(seasonId);
   return { title: season?.name ?? "Areto" };
 }
 
 export default async function TemporadaDetailPage({
   params,
 }: {
-  params: Promise<{ seasonId: string }>;
+  params: Promise<{ locale: string; seasonId: string }>;
 }) {
-  const { seasonId } = await params;
+  const { locale, seasonId } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
   const user = await requireUser();
   const t = await getTranslations("Temporadas");
   const tEquipos = await getTranslations("Equipos");
-  const locale = await getLocale();
   const canManage = user.role === "admin" || user.role === "staff";
 
-  const season = await db.query.seasons.findFirst({ where: eq(seasons.id, seasonId) });
+  // Las tres consultas se resuelven con el `seasonId` de la URL, así que van en
+  // paralelo; la temporada actual se descarta después del listado completo.
+  const [season, seasonTeams, allSeasons] = await Promise.all([
+    getSeason(seasonId),
+    db.query.teams.findMany({
+      where: eq(teams.seasonId, seasonId),
+      orderBy: (tm, { asc }) => [asc(tm.category), asc(tm.name)],
+      with: {
+        memberships: { columns: { role: true } },
+      },
+    }),
+    canManage
+      ? db.query.seasons.findMany({
+          orderBy: (s, { desc }) => [desc(s.name)],
+          with: {
+            teams: { columns: { id: true, name: true, category: true, gender: true } },
+          },
+        })
+      : [],
+  ]);
   if (!season) notFound();
-
-  const seasonTeams = await db.query.teams.findMany({
-    where: eq(teams.seasonId, season.id),
-    orderBy: (tm, { asc }) => [asc(tm.category), asc(tm.name)],
-    with: {
-      memberships: { columns: { role: true } },
-    },
-  });
 
   // Temporadas de origen para "traer equipos en lote": las demás temporadas con
   // al menos un equipo. Marcamos los que ya se trajeron a esta (previousTeamId).
@@ -68,15 +86,7 @@ export default async function TemporadaDetailPage({
       .map((tm) => tm.previousTeamId)
       .filter((id): id is string => id !== null),
   );
-  const otherSeasons = canManage
-    ? await db.query.seasons.findMany({
-        where: ne(seasons.id, season.id),
-        orderBy: (s, { desc }) => [desc(s.name)],
-        with: {
-          teams: { columns: { id: true, name: true, category: true, gender: true } },
-        },
-      })
-    : [];
+  const otherSeasons = allSeasons.filter((s) => s.id !== season.id);
   const categoryGenderLabel = (category: string | null, gender: string | null) =>
     [
       category ? tEquipos(`category.${category}`) : null,

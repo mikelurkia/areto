@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -7,7 +8,7 @@ import {
   ReceiptTextIcon,
 } from "lucide-react";
 import { eq } from "drizzle-orm";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { sponsors } from "@/db/schema";
@@ -76,29 +77,12 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ sponsorId: string }>;
-}) {
-  const { sponsorId } = await params;
-  const sponsor = await db.query.sponsors.findFirst({
-    where: eq(sponsors.id, sponsorId),
-  });
-  return { title: sponsor?.name ?? "Areto" };
-}
-
-export default async function SponsorDetailPage({
-  params,
-}: {
-  params: Promise<{ sponsorId: string }>;
-}) {
-  const { sponsorId } = await params;
-  await requireRole(["admin", "staff"]);
-  const t = await getTranslations("Patrocinadores");
-  const locale = await getLocale();
-
-  const sponsor = await db.query.sponsors.findFirst({
+/**
+ * Ficha del patrocinador con sus acuerdos, contactos y documentos. En `cache()`
+ * para que `generateMetadata` y la página compartan una sola consulta.
+ */
+const getSponsor = cache((sponsorId: string) =>
+  db.query.sponsors.findFirst({
     where: eq(sponsors.id, sponsorId),
     with: {
       contactPerson: true,
@@ -112,16 +96,42 @@ export default async function SponsorDetailPage({
       documents: { orderBy: (docs, { desc }) => [desc(docs.createdAt)] },
       noteEntries: { orderBy: (notes, { desc }) => [desc(notes.createdAt)] },
     },
-  });
-  if (!sponsor) notFound();
+  }),
+);
 
-  const allPersons = await db.query.persons.findMany({
-    columns: { id: true, firstName: true, lastName: true },
-    orderBy: (persons, { asc }) => [
-      asc(persons.lastName),
-      asc(persons.firstName),
-    ],
-  });
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; sponsorId: string }>;
+}) {
+  const { sponsorId } = await params;
+  const sponsor = await getSponsor(sponsorId);
+  return { title: sponsor?.name ?? "Areto" };
+}
+
+export default async function SponsorDetailPage({
+  params,
+}: {
+  params: Promise<{ locale: string; sponsorId: string }>;
+}) {
+  const { locale, sponsorId } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
+  await requireRole(["admin", "staff"]);
+  const t = await getTranslations("Patrocinadores");
+
+  // La ficha y el listado de personas (selector de contacto) son independientes.
+  const [sponsor, allPersons] = await Promise.all([
+    getSponsor(sponsorId),
+    db.query.persons.findMany({
+      columns: { id: true, firstName: true, lastName: true },
+      orderBy: (persons, { asc }) => [
+        asc(persons.lastName),
+        asc(persons.firstName),
+      ],
+    }),
+  ]);
+  if (!sponsor) notFound();
 
   const [logoUrl, contractUrls, documentFileUrls] = await Promise.all([
     getSignedUrl(LOGO_BUCKET, sponsor.logoPath),

@@ -224,7 +224,6 @@ export const persons = pgTable(
     shirtSize: text("shirt_size"),
     pantsSize: text("pants_size"),
     shoeSize: text("shoe_size"),
-    formSigned: boolean("form_signed").notNull().default(false), // ficha firmada
     photoConsent: boolean("photo_consent").notNull().default(false), // permiso de imagen
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -321,7 +320,12 @@ export const memberships = pgTable(
     jerseyNumber: integer("jersey_number"),
     /** Puesto(s) en la pista (solo aplica a jugadores; puede haber varios). */
     positions: playerPosition("positions").array().notNull().default([]),
-    isCaptain: boolean("is_captain").notNull().default(false), // capitán (brazalete)
+    /**
+     * Capitanía (brazalete). Es una característica del equipo, no de la
+     * persona: se designa desde la ficha del equipo, que garantiza un único
+     * capitán (ver `updateTeamCaptain` en equipos/[teamId]/actions.ts).
+     */
+    isCaptain: boolean("is_captain").notNull().default(false),
     position: text("position"), // cargo libre: delegado, 2º entrenador, fisio, subcapitán...
     joinedAt: date("joined_at"),
   },

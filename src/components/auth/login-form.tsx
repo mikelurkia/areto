@@ -38,7 +38,7 @@ export function LoginForm({ next }: { next: string }) {
     signInWithGoogle,
     initialState,
   );
-  useActionToast(signupState.message);
+  useActionToast(signupState);
 
   return (
     <div className="flex w-full flex-col gap-4">

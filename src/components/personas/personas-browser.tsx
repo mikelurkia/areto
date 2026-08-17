@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
-  CornerDownRightIcon,
   DownloadIcon,
   MailIcon,
   MessageCircleIcon,
@@ -71,7 +70,6 @@ type PersonRow = {
   shirtSize: string | null;
   pantsSize: string | null;
   shoeSize: string | null;
-  formSigned: boolean;
   photoConsent: boolean;
   notes: string | null;
   guardian: { firstName: string; lastName: string } | null;
@@ -91,6 +89,9 @@ type TeamOption = { id: string; label: string };
 type GuardianOption = { id: string; firstName: string; lastName: string };
 
 const EXPIRY_WINDOW_DAYS = 60;
+
+/** Equipos visibles por fila antes de resumir el resto en un «+N». */
+const MAX_TEAM_BADGES = 2;
 
 function csvEscape(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
@@ -131,6 +132,13 @@ export function PersonasBrowser({
   const [bulkTeam, setBulkTeam] = useState("");
   const [bulkRole, setBulkRole] = useState<"player" | "coach" | "staff">("player");
   const [isBulkPending, startBulkTransition] = useTransition();
+
+  // Al abrir la pantalla el gesto habitual es buscar, así que el cursor ya
+  // está en el filtro. `preventScroll` evita el salto de página en móvil.
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    searchRef.current?.focus({ preventScroll: true });
+  }, []);
 
   const expiryCutoff = useMemo(() => {
     const cutoff = new Date();
@@ -179,8 +187,7 @@ export function PersonasBrowser({
       result = result.filter(
         (p) =>
           !p.isPastMember &&
-          (!p.formSigned ||
-            !p.photoConsent ||
+          (!p.photoConsent ||
             p.medicalCertUntil === null ||
             p.medicalCertUntil < today),
       );
@@ -190,43 +197,6 @@ export function PersonasBrowser({
     }
     return result;
   }, [persons, query, team, role, expiry, expiryCutoff, docs, today, tag]);
-
-  /**
-   * Reordena `filtered` para que cada dependiente aparezca justo detrás de su
-   * tutor/a (en vez de en su posición alfabética propia), en lugar de filas
-   * sueltas sin relación visual aparente.
-   */
-  const groupedByFamily = useMemo(() => {
-    const idsInList = new Set(filtered.map((p) => p.id));
-    const childrenByGuardian = new Map<string, PersonRow[]>();
-    for (const p of filtered) {
-      if (p.guardianId && idsInList.has(p.guardianId)) {
-        const list = childrenByGuardian.get(p.guardianId) ?? [];
-        list.push(p);
-        childrenByGuardian.set(p.guardianId, list);
-      }
-    }
-    const result: { person: PersonRow; isDependent: boolean }[] = [];
-    const visited = new Set<string>();
-    for (const p of filtered) {
-      if (visited.has(p.id)) continue;
-      if (p.guardianId && idsInList.has(p.guardianId)) continue;
-      visited.add(p.id);
-      result.push({ person: p, isDependent: false });
-      for (const child of childrenByGuardian.get(p.id) ?? []) {
-        if (visited.has(child.id)) continue;
-        visited.add(child.id);
-        result.push({ person: child, isDependent: true });
-      }
-    }
-    for (const p of filtered) {
-      if (!visited.has(p.id)) {
-        visited.add(p.id);
-        result.push({ person: p, isDependent: false });
-      }
-    }
-    return result;
-  }, [filtered]);
 
   function handleExportCsv() {
     const headers = [
@@ -261,16 +231,15 @@ export function PersonasBrowser({
     URL.revokeObjectURL(url);
   }
 
-  const pageCount = Math.max(1, Math.ceil(groupedByFamily.length / PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
-  const pageEntries = groupedByFamily.slice(
+  const pagePersons = filtered.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   );
 
   const allPageSelected =
-    pageEntries.length > 0 &&
-    pageEntries.every((entry) => selectedIds.has(entry.person.id));
+    pagePersons.length > 0 && pagePersons.every((p) => selectedIds.has(p.id));
 
   // Emails de la selección, para el envío masivo con copia oculta (BCC).
   const bulkEmails = useMemo(
@@ -298,9 +267,7 @@ export function PersonasBrowser({
   function toggleSelectAll(checked: boolean) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      pageEntries.forEach((entry) =>
-        checked ? next.add(entry.person.id) : next.delete(entry.person.id),
-      );
+      pagePersons.forEach((p) => (checked ? next.add(p.id) : next.delete(p.id)));
       return next;
     });
   }
@@ -357,6 +324,7 @@ export function PersonasBrowser({
         <div className="relative">
           <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            ref={searchRef}
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             placeholder={t("searchPlaceholder")}
@@ -556,7 +524,8 @@ export function PersonasBrowser({
         />
       ) : (
         <>
-          <Table>
+          {/* Una fila por persona: celdas a `py-1` y todo el contenido en línea. */}
+          <Table className="[&_td]:py-1">
             <TableHeader>
               <TableRow>
                 {canManage ? (
@@ -569,6 +538,7 @@ export function PersonasBrowser({
                   </TableHead>
                 ) : null}
                 <TableHead>{t("colName")}</TableHead>
+                <TableHead>{t("colNationalId")}</TableHead>
                 <TableHead>{t("colTeam")}</TableHead>
                 <TableHead>{t("colContact")}</TableHead>
                 <TableHead>{t("colStatus")}</TableHead>
@@ -580,133 +550,136 @@ export function PersonasBrowser({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pageEntries.map(({ person, isDependent }) => (
-                <TableRow key={person.id}>
-                  {canManage ? (
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedIds.has(person.id)}
-                        onCheckedChange={(checked) =>
-                          toggleSelected(person.id, checked === true)
-                        }
-                        aria-label={t("bulkSelectRowSr", {
-                          name: `${person.firstName} ${person.lastName}`,
-                        })}
-                      />
-                    </TableCell>
-                  ) : null}
-                  <TableCell className="font-medium">
-                    <div
-                      className={`flex items-center gap-3 ${isDependent ? "pl-5" : ""}`}
-                    >
-                      {isDependent ? (
-                        <CornerDownRightIcon className="-mr-1 size-3.5 shrink-0 text-muted-foreground" />
-                      ) : null}
-                      <Avatar size="sm">
-                        <AvatarFallback>
-                          {initials(person.firstName, person.lastName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <div className="flex items-baseline gap-1.5">
-                          <Link
-                            href={`/personas/${person.id}`}
-                            className="hover:underline"
-                          >
-                            {person.firstName} {person.lastName}
-                          </Link>
-                          {person.birthDate ? (
-                            <span className="text-xs font-normal text-muted-foreground">
-                              {t("ageYears", {
-                                count: calculateAge(person.birthDate),
-                              })}
-                            </span>
-                          ) : null}
-                        </div>
-                        {isDependent && person.guardian ? (
+              {pagePersons.map((person) => {
+                const fullName = `${person.firstName} ${person.lastName}`;
+                const visibleTeams = person.memberships.slice(0, MAX_TEAM_BADGES);
+                const hiddenTeams = person.memberships.slice(MAX_TEAM_BADGES);
+                const membershipRoles = [
+                  ...new Set(person.memberships.map((m) => m.role)),
+                ];
+                const hasStatus = person.isMember || membershipRoles.length > 0;
+                return (
+                  <TableRow key={person.id}>
+                    {canManage ? (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(person.id)}
+                          onCheckedChange={(checked) =>
+                            toggleSelected(person.id, checked === true)
+                          }
+                          aria-label={t("bulkSelectRowSr", { name: fullName })}
+                        />
+                      </TableCell>
+                    ) : null}
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Avatar size="sm">
+                          <AvatarFallback>
+                            {initials(person.firstName, person.lastName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Link
+                          href={`/personas/${person.id}`}
+                          className="hover:underline"
+                        >
+                          {fullName}
+                        </Link>
+                        {person.birthDate ? (
                           <span className="text-xs font-normal text-muted-foreground">
-                            {t("guardianInline", {
-                              name: `${person.guardian.firstName} ${person.guardian.lastName}`,
+                            {t("ageYears", {
+                              count: calculateAge(person.birthDate),
                             })}
                           </span>
-                        ) : person.nationalId ? (
-                          <span className="text-xs font-normal text-muted-foreground">
-                            {person.nationalId}
-                          </span>
                         ) : null}
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="whitespace-normal">
-                    {person.memberships.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {person.memberships.map((m) => (
-                          <Badge
-                            key={m.teamId}
-                            variant="outline"
-                            className="font-normal"
-                          >
-                            {m.jerseyNumber
-                              ? `${m.team.name} · #${m.jerseyNumber}`
-                              : m.team.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {person.phone || person.email ? (
-                      <div className="flex flex-col gap-0.5 text-sm text-muted-foreground">
-                        {person.phone ? (
-                          <a
-                            href={`tel:${person.phone}`}
-                            className="flex items-center gap-1 hover:text-foreground hover:underline"
-                          >
-                            <PhoneIcon className="size-3.5 shrink-0" />
-                            {person.phone}
-                          </a>
-                        ) : null}
-                        {person.email ? (
-                          <a
-                            href={`mailto:${person.email}`}
-                            className="flex items-center gap-1 hover:text-foreground hover:underline"
-                          >
-                            <MailIcon className="size-3.5 shrink-0" />
-                            <span className="max-w-[14rem] truncate">
-                              {person.email}
-                            </span>
-                          </a>
-                        ) : null}
-                        {person.phone ? (
-                          <a
-                            href={whatsappLink(person.phone)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-1 hover:text-foreground hover:underline"
-                          >
-                            <MessageCircleIcon className="size-3.5 shrink-0" />
-                            {t("whatsappAction")}
-                          </a>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {(() => {
-                      const membershipRoles = [
-                        ...new Set(person.memberships.map((m) => m.role)),
-                      ];
-                      const hasAnyBadge =
-                        person.isMember ||
-                        membershipRoles.length > 0 ||
-                        person.dependentsCount > 0;
-                      if (!hasAnyBadge) return "—";
-                      return (
-                        <div className="flex flex-wrap gap-1">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {person.nationalId ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      {person.memberships.length > 0 ? (
+                        <div className="flex items-center gap-1">
+                          {visibleTeams.map((m) => (
+                            <Badge
+                              key={m.teamId}
+                              variant="outline"
+                              className="font-normal"
+                            >
+                              {m.jerseyNumber
+                                ? `${m.team.name} · #${m.jerseyNumber}`
+                                : m.team.name}
+                            </Badge>
+                          ))}
+                          {hiddenTeams.length > 0 ? (
+                            <Badge
+                              variant="outline"
+                              className="font-normal"
+                              title={hiddenTeams.map((m) => m.team.name).join(", ")}
+                            >
+                              +{hiddenTeams.length}
+                            </Badge>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {person.phone || person.email ? (
+                        <div className="flex items-center gap-0.5">
+                          {person.phone ? (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground"
+                              render={<a href={`tel:${person.phone}`} />}
+                              nativeButton={false}
+                              title={person.phone}
+                              aria-label={`${t("colPhone")}: ${person.phone}`}
+                            >
+                              <PhoneIcon />
+                            </Button>
+                          ) : null}
+                          {person.phone ? (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground"
+                              render={
+                                <a
+                                  href={whatsappLink(person.phone)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                />
+                              }
+                              nativeButton={false}
+                              title={t("whatsappAction")}
+                              aria-label={t("whatsappAction")}
+                            >
+                              <MessageCircleIcon />
+                            </Button>
+                          ) : null}
+                          {person.email ? (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground"
+                              render={<a href={`mailto:${person.email}`} />}
+                              nativeButton={false}
+                              title={person.email}
+                              aria-label={`${t("colEmail")}: ${person.email}`}
+                            >
+                              <MailIcon />
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {hasStatus ? (
+                        <div className="flex items-center gap-1">
                           {person.isMember ? (
                             <Badge variant="secondary">{t("memberBadge")}</Badge>
                           ) : null}
@@ -715,31 +688,27 @@ export function PersonasBrowser({
                               {tEquipos(`roleOption.${role}`)}
                             </Badge>
                           ))}
-                          {person.dependentsCount > 0 ? (
-                            <Badge variant="secondary">
-                              {t("guardianOfBadge", { count: person.dependentsCount })}
-                            </Badge>
-                          ) : null}
                         </div>
-                      );
-                    })()}
-                  </TableCell>
-                  {canManage ? (
-                    <TableCell className="flex justify-end gap-1">
-                      <PersonDialog
-                        mode="edit"
-                        person={person}
-                        photoUrl={null}
-                        guardianOptions={guardianOptions}
-                      />
-                      <DeletePersonDialog
-                        id={person.id}
-                        name={`${person.firstName} ${person.lastName}`}
-                      />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
-                  ) : null}
-                </TableRow>
-              ))}
+                    {canManage ? (
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <PersonDialog
+                            mode="edit"
+                            person={person}
+                            photoUrl={null}
+                            guardianOptions={guardianOptions}
+                          />
+                          <DeletePersonDialog id={person.id} name={fullName} />
+                        </div>
+                      </TableCell>
+                    ) : null}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
           {pageCount > 1 ? (

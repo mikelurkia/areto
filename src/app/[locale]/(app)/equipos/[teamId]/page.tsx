@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -6,11 +7,11 @@ import {
   TriangleAlertIcon,
   UserRoundIcon,
 } from "lucide-react";
-import { eq, ne, notInArray } from "drizzle-orm";
-import { getTranslations } from "next-intl/server";
+import { eq } from "drizzle-orm";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { memberships, persons, seasons, teams } from "@/db/schema";
+import { memberships, teams } from "@/db/schema";
 import {
   addTeamDocument,
   addTeamNote,
@@ -21,6 +22,7 @@ import {
 import { requireUser } from "@/lib/auth";
 import { fileTypeLabel } from "@/lib/file-type";
 import { computeRosterHealth } from "@/lib/roster-health";
+import { sortRoster } from "@/lib/roster-order";
 import { getSignedUrls } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
 import { RosterHealth } from "@/components/equipos/roster-health";
@@ -28,6 +30,7 @@ import { RenewTeamDialog } from "@/components/equipos/renew-team-dialog";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { MembershipTable } from "@/components/equipos/membership-table";
+import { TeamCaptainCard } from "@/components/equipos/team-captain-card";
 import { DocumentDialog } from "@/components/document-dialog";
 import { NotesLog } from "@/components/notes-log";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -47,55 +50,73 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const PHOTO_BUCKET = "person-photos";
 const TEAM_DOCUMENTS_BUCKET = "team-documents";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ teamId: string }>;
-}) {
-  const { teamId } = await params;
-  const team = await db.query.teams.findFirst({ where: eq(teams.id, teamId) });
-  return { title: team?.name ?? "Areto" };
-}
-
-export default async function TeamDetailPage({
-  params,
-}: {
-  params: Promise<{ teamId: string }>;
-}) {
-  const { teamId } = await params;
-  const user = await requireUser();
-  const t = await getTranslations("Equipos");
-  const canManage = user.role === "admin" || user.role === "staff";
-
-  const team = await db.query.teams.findFirst({
+/**
+ * Ficha del equipo. En `cache()` para que `generateMetadata` y la página
+ * compartan una única consulta por petición, en vez de lanzar dos.
+ */
+const getTeam = cache((teamId: string) =>
+  db.query.teams.findFirst({
     where: eq(teams.id, teamId),
     with: {
       season: true,
       documents: { orderBy: (d, { desc }) => [desc(d.createdAt)] },
       noteEntries: { orderBy: (n, { desc }) => [desc(n.createdAt)] },
     },
-  });
+  }),
+);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; teamId: string }>;
+}) {
+  const { teamId } = await params;
+  const team = await getTeam(teamId);
+  return { title: team?.name ?? "Areto" };
+}
+
+export default async function TeamDetailPage({
+  params,
+}: {
+  params: Promise<{ locale: string; teamId: string }>;
+}) {
+  const { locale, teamId } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
+  const user = await requireUser();
+  const t = await getTranslations("Equipos");
+  const canManage = user.role === "admin" || user.role === "staff";
+
+  // Primera tanda, en paralelo: nada de esto depende del resto. Temporadas y
+  // personas se traen completas y se filtran en memoria (pocas filas) para no
+  // encadenar consultas que esperen a `team` o a las membresías.
+  const [team, roster, allSeasons, allPersons] = await Promise.all([
+    getTeam(teamId),
+    db.query.memberships.findMany({
+      where: eq(memberships.teamId, teamId),
+      with: { person: true },
+      orderBy: (memberships, { asc }) => [asc(memberships.jerseyNumber)],
+    }),
+    canManage
+      ? db.query.seasons.findMany({
+          orderBy: (seasons, { desc }) => [desc(seasons.name)],
+        })
+      : [],
+    db.query.persons.findMany({
+      orderBy: (persons, { asc }) => [asc(persons.lastName), asc(persons.firstName)],
+      columns: { id: true, firstName: true, lastName: true },
+    }),
+  ]);
   if (!team) notFound();
 
-  const teamMemberships = await db.query.memberships.findMany({
-    where: eq(memberships.teamId, teamId),
-    with: { person: true },
-    orderBy: (memberships, { asc }) => [asc(memberships.jerseyNumber)],
-  });
+  // Orden de plantilla: cuerpo técnico primero y jugadores por puesto
+  // (ver `sortRoster`); el dorsal solo desempata dentro de cada grupo.
+  const teamMemberships = sortRoster(roster);
 
-  const otherSeasons = canManage
-    ? await db.query.seasons.findMany({
-        where: ne(seasons.id, team.seasonId),
-        orderBy: (seasons, { desc }) => [desc(seasons.name)],
-      })
-    : [];
+  const otherSeasons = allSeasons.filter((season) => season.id !== team.seasonId);
 
-  const memberIds = teamMemberships.map((m) => m.personId);
-  const availablePersons = await db.query.persons.findMany({
-    where: memberIds.length > 0 ? notInArray(persons.id, memberIds) : undefined,
-    orderBy: (persons, { asc }) => [asc(persons.lastName), asc(persons.firstName)],
-    columns: { id: true, firstName: true, lastName: true },
-  });
+  const memberIds = new Set(teamMemberships.map((m) => m.personId));
+  const availablePersons = allPersons.filter((person) => !memberIds.has(person.id));
 
   const [photoUrls, documentFileUrls] = await Promise.all([
     getSignedUrls(PHOTO_BUCKET, teamMemberships, (m) => m.person.photoPath, (m) => m.personId),
@@ -107,43 +128,53 @@ export default async function TeamDetailPage({
     team,
   );
 
-  // Dorsales ocupados por jugadores (para el mapa de dorsales del diálogo).
-  const takenJerseys = teamMemberships
-    .filter((m) => m.role === "player" && m.jerseyNumber !== null)
-    .map((m) => m.jerseyNumber as number);
+  // Capitanía: el brazalete lo lleva un jugador, así que el selector solo
+  // ofrece jugadores, ordenados por nombre.
+  const captainOptions = teamMemberships
+    .filter((m) => m.role === "player")
+    .map((m) => ({
+      membershipId: m.id,
+      name: `${m.person.firstName} ${m.person.lastName}`,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const captainMembershipId = teamMemberships.find((m) => m.isCaptain)?.id ?? null;
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
-      <div className="print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href="/equipos" />}
-          nativeButton={false}
-        >
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToTeams")}
-        </Button>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{team.name}</h1>
-          <p className="text-muted-foreground">
-            {team.category ? t(`category.${team.category}`) : t("categoryNone")}
-            {team.gender ? ` · ${t(`gender.${team.gender}`)}` : ""}
-            {" · "}
-            {team.season.name}
-            {team.minBirthYear !== null && team.maxBirthYear !== null
-              ? ` · ${team.minBirthYear}–${team.maxBirthYear}`
-              : ""}
-          </p>
-          {team.federationGroup || team.federationCode ? (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {team.federationGroup ?? ""}
-              {team.federationGroup && team.federationCode ? " · " : ""}
-              {team.federationCode ? t("federationCodeShort", { code: team.federationCode }) : ""}
+    <div className="flex flex-1 flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("backToTeams")}
+            title={t("backToTeams")}
+            render={<Link href="/equipos" />}
+            nativeButton={false}
+            className="-ml-1 print:hidden"
+          >
+            <ArrowLeftIcon />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-semibold tracking-tight">{team.name}</h1>
+            {/* Una sola línea de metadatos: categoría, temporada, años y datos
+                federativos, para no comerse el alto de la ficha. */}
+            <p className="truncate text-sm text-muted-foreground">
+              {[
+                team.category ? t(`category.${team.category}`) : t("categoryNone"),
+                team.gender ? t(`gender.${team.gender}`) : null,
+                team.season.name,
+                team.minBirthYear !== null && team.maxBirthYear !== null
+                  ? `${team.minBirthYear}–${team.maxBirthYear}`
+                  : null,
+                team.federationGroup,
+                team.federationCode
+                  ? t("federationCodeShort", { code: team.federationCode })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
-          ) : null}
+          </div>
         </div>
         <div className="flex gap-2 print:hidden">
           {user.role !== "member" ? (
@@ -176,17 +207,25 @@ export default async function TeamDetailPage({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="plantilla" keepMounted className="flex flex-col gap-4">
-          <div className="flex justify-end print:hidden">
-            {canManage ? (
+        <TabsContent value="plantilla" keepMounted className="flex flex-col gap-3">
+          {/* Capitán y alta de miembro comparten fila: son las dos acciones de
+              plantilla y así no ocupan dos bloques distintos. */}
+          {canManage ? (
+            <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
+              {captainOptions.length > 0 ? (
+                <TeamCaptainCard
+                  teamId={team.id}
+                  players={captainOptions}
+                  captainMembershipId={captainMembershipId}
+                />
+              ) : null}
               <MembershipDialog
                 mode="create"
                 teamId={team.id}
                 availablePersons={availablePersons}
-                takenJerseys={takenJerseys}
               />
-            ) : null}
-          </div>
+            </div>
+          ) : null}
 
           {teamMemberships.length > 0 ? (
             <RosterHealth stats={rosterStats} alerts={rosterAlerts} />
@@ -205,7 +244,6 @@ export default async function TeamDetailPage({
               t={t}
               subjectHeader={t("colPerson")}
               nameFor={(m) => `${m.person.firstName} ${m.person.lastName}`}
-              takenJerseysFor={(m) => takenJerseys.filter((n) => n !== m.jerseyNumber)}
               renderSubject={(m) => {
                 const photoUrl = photoUrls.get(m.personId) ?? null;
                 const personName = `${m.person.firstName} ${m.person.lastName}`;

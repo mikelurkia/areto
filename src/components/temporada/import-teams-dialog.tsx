@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 
 type SourceTeam = {
@@ -58,9 +59,9 @@ export function ImportTeamsDialog({
   variant?: "outline" | "default";
 }) {
   const t = useTranslations("Temporadas");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(`traer-equipos:${targetSeasonId}`);
   const [state, formAction] = useActionState(importTeamsFromSeason, {});
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   const importableOf = (seasonId: string) =>

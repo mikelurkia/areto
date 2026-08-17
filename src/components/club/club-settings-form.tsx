@@ -24,7 +24,7 @@ type ClubSettingsValues = {
 export function ClubSettingsForm({ settings }: { settings: ClubSettingsValues | null }) {
   const t = useTranslations("Club");
   const [state, action] = useActionState(updateClubSettings, initialState);
-  useActionToast(state.message);
+  useActionToast(state);
 
   // `key` fuerza el remount de los inputs no controlados cuando cambian los
   // datos guardados, para que el defaultValue se refresque tras guardar.

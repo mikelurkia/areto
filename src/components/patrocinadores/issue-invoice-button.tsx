@@ -1,29 +1,28 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState } from "react";
 import { FileTextIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { issueSponsorInvoice } from "@/app/[locale]/(app)/patrocinadores/actions";
-import { Button } from "@/components/ui/button";
-import { useActionToast } from "@/hooks/use-action-toast";
+import { SubmitIconButton } from "@/components/submit-icon-button";
+import { useActionResult, useActionToast } from "@/hooks/use-action-toast";
 
 export function IssueInvoiceButton({ id }: { id: string }) {
   const t = useTranslations("Patrocinadores");
   const [state, action] = useActionState(issueSponsorInvoice, {});
-  useActionToast(state.message);
-  useEffect(() => {
-    if (state.error) toast.error(state.error);
-  }, [state.error]);
+  useActionToast(state);
+  useActionResult(state, (result) => {
+    if (result.error) toast.error(result.error);
+  });
 
   return (
     <form action={action} className="print:hidden">
       <input type="hidden" name="id" value={id} />
-      <Button type="submit" variant="ghost" size="icon-sm">
+      <SubmitIconButton label={t("issueInvoiceSr")}>
         <FileTextIcon />
-        <span className="sr-only">{t("issueInvoiceSr")}</span>
-      </Button>
+      </SubmitIconButton>
     </form>
   );
 }

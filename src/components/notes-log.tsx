@@ -1,14 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useRef } from "react";
 import { Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { NoteActionState } from "@/lib/entity-notes";
 import { SubmitButton } from "@/components/submit-button";
-import { Button } from "@/components/ui/button";
+import { SubmitIconButton } from "@/components/submit-icon-button";
 import { Textarea } from "@/components/ui/textarea";
-import { useActionToast } from "@/hooks/use-action-toast";
+import { useActionResult, useActionToast } from "@/hooks/use-action-toast";
 
 type NoteEntry = {
   id: string;
@@ -33,20 +33,14 @@ function DeleteNoteButton({
 }) {
   const t = useTranslations(namespace);
   const [state, action] = useActionState(deleteAction, {});
-  useActionToast(state.message);
+  useActionToast(state);
 
   return (
     <form action={action} className="print:hidden">
       <input type="hidden" name="id" value={id} />
-      <Button
-        type="submit"
-        variant="ghost"
-        size="icon-sm"
-        className="text-destructive"
-      >
+      <SubmitIconButton label={t("deleteNoteSr")} className="text-destructive">
         <Trash2Icon />
-        <span className="sr-only">{t("deleteNoteSr")}</span>
-      </Button>
+      </SubmitIconButton>
     </form>
   );
 }
@@ -74,10 +68,11 @@ export function NotesLog({
   const t = useTranslations(namespace);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction] = useActionState(addAction, {});
-  useActionToast(state.message);
-  useEffect(() => {
-    if (state.message) formRef.current?.reset();
-  }, [state]);
+  useActionToast(state);
+  // Vaciar el campo solo cuando llega una nota nueva, no al volver a la pantalla.
+  useActionResult(state, (result) => {
+    if (result.message) formRef.current?.reset();
+  });
 
   return (
     <div className="flex flex-col gap-4">

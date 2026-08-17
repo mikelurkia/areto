@@ -1,9 +1,10 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { ArrowLeftIcon, UserRoundIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
 import QRCode from "qrcode";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { persons } from "@/db/schema";
@@ -18,13 +19,18 @@ import { Button } from "@/components/ui/button";
 
 const PHOTO_BUCKET = "person-photos";
 
+/** En `cache()`: la piden `generateMetadata` y la página en el mismo render. */
+const getPerson = cache((personId: string) =>
+  db.query.persons.findFirst({ where: eq(persons.id, personId) }),
+);
+
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ personId: string }>;
+  params: Promise<{ locale: string; personId: string }>;
 }) {
   const { personId } = await params;
-  const person = await db.query.persons.findFirst({ where: eq(persons.id, personId) });
+  const person = await getPerson(personId);
   return {
     title: person ? `Carné · ${person.firstName} ${person.lastName}` : "Areto",
   };
@@ -33,15 +39,16 @@ export async function generateMetadata({
 export default async function MemberCardPage({
   params,
 }: {
-  params: Promise<{ personId: string }>;
+  params: Promise<{ locale: string; personId: string }>;
 }) {
-  const { personId } = await params;
+  const { locale, personId } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
   await requireRole(["admin", "staff"]);
   const t = await getTranslations("Personas");
-  const locale = await getLocale();
 
   const [person, club] = await Promise.all([
-    db.query.persons.findFirst({ where: eq(persons.id, personId) }),
+    getPerson(personId),
     getClubSettings(),
   ]);
   if (!person) notFound();

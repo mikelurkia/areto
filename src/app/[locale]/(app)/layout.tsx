@@ -1,24 +1,28 @@
-import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
 
+import { AppHeader } from "@/components/app-header";
 import { AppSidebar } from "@/components/app-sidebar";
-import { LocaleSwitcher } from "@/components/locale-switcher";
-import { ThemeToggle } from "@/components/theme-toggle";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
+import { AppSidebarSkeleton } from "@/components/app-sidebar-skeleton";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { requireUser } from "@/lib/auth";
 import { getFederationAccounts } from "@/lib/club";
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+/**
+ * Sesión y accesos federativos del sidebar, aislados en su propio <Suspense>.
+ *
+ * Antes el layout los esperaba con `await` en su cuerpo, y eso bloqueaba la
+ * navegación completa: según la documentación de `layout.js` ("Interaction with
+ * loading.js"), sin Cache Components el acceso a datos de runtime en el layout
+ * impide que se muestre cualquier `loading.tsx` de las rutas hijas. Con el
+ * `await` aquí dentro, el marco de la app pinta al instante y el contenido de la
+ * página se renderiza en paralelo con la comprobación de sesión.
+ *
+ * Esto no relaja la autorización: cada página protegida llama a
+ * `requireRole`/`requireUser` por su cuenta antes de consultar datos, y
+ * `src/proxy.ts` corta las rutas privadas antes de llegar al layout.
+ */
+async function AppSidebarWithSession() {
   const user = await requireUser();
-  const t = await getTranslations("AppLayout");
   const canManageClub = user.role === "admin" || user.role === "staff";
   const federations = canManageClub
     ? (await getFederationAccounts()).map((f) => ({
@@ -29,23 +33,29 @@ export default async function AppLayout({
     : [];
 
   return (
+    <AppSidebar
+      user={{ email: user.email, role: user.role }}
+      federations={federations}
+    />
+  );
+}
+
+/**
+ * Layout sincrónico a propósito: no debe hacer ningún `await`. Todo lo que
+ * necesite datos de runtime va dentro de un <Suspense>.
+ */
+export default function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
     <SidebarProvider>
-      <AppSidebar
-        user={{ email: user.email, role: user.role }}
-        federations={federations}
-      />
+      <Suspense fallback={<AppSidebarSkeleton />}>
+        <AppSidebarWithSession />
+      </Suspense>
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4 print:hidden">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <span className="text-sm font-medium text-muted-foreground">
-            {t("headerTitle")}
-          </span>
-          <div className="ml-auto flex items-center gap-1">
-            <ThemeToggle />
-            <LocaleSwitcher persist />
-          </div>
-        </header>
+        <AppHeader />
         <main className="flex flex-1 flex-col gap-4 p-4 md:p-6">
           {children}
         </main>

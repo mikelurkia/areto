@@ -11,7 +11,7 @@ import { useActionToast } from "@/hooks/use-action-toast";
 export function AssignMemberNumberButton({ personId }: { personId: string }) {
   const t = useTranslations("Personas");
   const [state, action] = useActionState(assignNextMemberNumber, {});
-  useActionToast(state.message);
+  useActionToast(state);
 
   return (
     <form action={action}>

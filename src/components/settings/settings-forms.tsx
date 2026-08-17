@@ -36,7 +36,7 @@ function FormError({ state }: { state: SettingsState }) {
 export function ProfileForm({ fullName }: { fullName: string | null }) {
   const t = useTranslations("Settings");
   const [state, action] = useActionState(updateProfile, initialState);
-  useActionToast(state.message);
+  useActionToast(state);
 
   return (
     <form action={action}>
@@ -61,7 +61,7 @@ export function ProfileForm({ fullName }: { fullName: string | null }) {
 export function EmailForm({ email }: { email: string }) {
   const t = useTranslations("Settings");
   const [state, action] = useActionState(updateEmail, initialState);
-  useActionToast(state.message);
+  useActionToast(state);
 
   return (
     <form action={action}>
@@ -87,7 +87,7 @@ export function EmailForm({ email }: { email: string }) {
 export function PasswordForm() {
   const t = useTranslations("Settings");
   const [state, action] = useActionState(updatePassword, initialState);
-  useActionToast(state.message);
+  useActionToast(state);
 
   return (
     <form action={action}>

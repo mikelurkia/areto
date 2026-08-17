@@ -1,7 +1,8 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { persons } from "@/db/schema";
@@ -13,13 +14,32 @@ import { Link } from "@/i18n/navigation";
 import { PrintButton } from "@/components/print-button";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Todo lo que el club guarda de la persona (el informe RGPD es exhaustivo).
+ * En `cache()` para no repetir la consulta en `generateMetadata`.
+ */
+const getPersonRecord = cache((personId: string) =>
+  db.query.persons.findFirst({
+    where: eq(persons.id, personId),
+    with: {
+      guardian: true,
+      dependents: true,
+      memberships: { with: { team: { with: { season: true } } } },
+      qualifications: { orderBy: (q, { desc }) => [desc(q.createdAt)] },
+      documents: { orderBy: (d, { desc }) => [desc(d.createdAt)] },
+      tags: { orderBy: (tag, { asc }) => [asc(tag.tag)] },
+      payments: { with: { fee: { with: { season: true } } } },
+    },
+  }),
+);
+
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ personId: string }>;
+  params: Promise<{ locale: string; personId: string }>;
 }) {
   const { personId } = await params;
-  const person = await db.query.persons.findFirst({ where: eq(persons.id, personId) });
+  const person = await getPersonRecord(personId);
   return {
     title: person ? `RGPD · ${person.firstName} ${person.lastName}` : "Areto",
   };
@@ -55,27 +75,17 @@ function Section({
 export default async function PersonRgpdPage({
   params,
 }: {
-  params: Promise<{ personId: string }>;
+  params: Promise<{ locale: string; personId: string }>;
 }) {
-  const { personId } = await params;
+  const { locale, personId } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
   await requireRole(["admin", "staff"]);
   const t = await getTranslations("Personas");
   const tEquipos = await getTranslations("Equipos");
-  const locale = await getLocale();
 
   const [person, club] = await Promise.all([
-    db.query.persons.findFirst({
-      where: eq(persons.id, personId),
-      with: {
-        guardian: true,
-        dependents: true,
-        memberships: { with: { team: { with: { season: true } } } },
-        qualifications: { orderBy: (q, { desc }) => [desc(q.createdAt)] },
-        documents: { orderBy: (d, { desc }) => [desc(d.createdAt)] },
-        tags: { orderBy: (tag, { asc }) => [asc(tag.tag)] },
-        payments: { with: { fee: { with: { season: true } } } },
-      },
-    }),
+    getPersonRecord(personId),
     getClubSettings(),
   ]);
   if (!person) notFound();
@@ -152,10 +162,6 @@ export default async function PersonRgpdPage({
           <Row label={t("shirtSizeLabel")} value={person.shirtSize} />
           <Row label={t("pantsSizeLabel")} value={person.pantsSize} />
           <Row label={t("shoeSizeLabel")} value={person.shoeSize} />
-          <Row
-            label={t("formSignedLabel")}
-            value={person.formSigned ? t("rgpdYes") : t("rgpdNo")}
-          />
           <Row
             label={t("photoConsentLabel")}
             value={person.photoConsent ? t("rgpdYes") : t("rgpdNo")}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { PencilIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -23,6 +23,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useFrozenWhileOpen } from "@/hooks/use-frozen-while-open";
 
@@ -41,12 +42,16 @@ type SponsorContactDialogProps =
 
 export function SponsorContactDialog(props: SponsorContactDialogProps) {
   const t = useTranslations("Patrocinadores");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(
+    props.mode === "create"
+      ? `contacto-nuevo:${props.sponsorId}`
+      : `contacto:${props.contact.id}`,
+  );
   const [state, formAction] = useActionState(
     props.mode === "create" ? addSponsorContact : updateSponsorContact,
     {},
   );
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   const contact = useFrozenWhileOpen(open, props.mode === "edit" ? props.contact : null);

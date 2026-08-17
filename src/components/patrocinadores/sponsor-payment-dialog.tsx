@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { PencilIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useFrozenWhileOpen } from "@/hooks/use-frozen-while-open";
 
@@ -62,12 +63,16 @@ type SponsorPaymentDialogProps =
 
 export function SponsorPaymentDialog(props: SponsorPaymentDialogProps) {
   const t = useTranslations("Patrocinadores");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(
+    props.mode === "create"
+      ? `anualidad-nueva:${props.defaultTermId}`
+      : `anualidad:${props.payment.id}`,
+  );
   const [state, formAction] = useActionState(
     props.mode === "create" ? addSponsorPayment : updateSponsorPayment,
     {},
   );
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   const payment = useFrozenWhileOpen(open, props.mode === "edit" ? props.payment : null);

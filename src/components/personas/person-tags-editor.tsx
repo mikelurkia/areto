@@ -1,20 +1,20 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useRef } from "react";
 import { XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { addPersonTag, deletePersonTag } from "@/app/[locale]/(app)/personas/actions";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { useActionToast } from "@/hooks/use-action-toast";
+import { useActionResult, useActionToast } from "@/hooks/use-action-toast";
 
 type Tag = { id: string; tag: string };
 
 function DeleteTagButton({ id, tag }: { id: string; tag: string }) {
   const t = useTranslations("Personas");
   const [state, action] = useActionState(deletePersonTag, {});
-  useActionToast(state.message);
+  useActionToast(state);
 
   return (
     <form action={action} className="print:hidden">
@@ -42,10 +42,11 @@ export function PersonTagsEditor({
   const t = useTranslations("Personas");
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction] = useActionState(addPersonTag, {});
-  useActionToast(state.message);
-  useEffect(() => {
-    if (state.message) formRef.current?.reset();
-  }, [state]);
+  useActionToast(state);
+  // Vaciar el campo solo cuando llega una etiqueta nueva, no al volver a la pantalla.
+  useActionResult(state, (result) => {
+    if (result.message) formRef.current?.reset();
+  });
 
   return (
     <div className="flex flex-wrap items-center gap-1">

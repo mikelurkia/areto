@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -9,6 +9,7 @@ import {
   deleteSeason,
   updateSeason,
 } from "@/app/[locale]/(app)/temporadas/actions";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,12 +41,14 @@ type SeasonDialogProps = { mode: "create" } | { mode: "edit"; season: Season };
 
 export function SeasonDialog(props: SeasonDialogProps) {
   const t = useTranslations("Temporadas");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(
+    props.mode === "create" ? "temporada-nueva" : `temporada:${props.season.id}`,
+  );
   const [state, action] = useActionState(
     props.mode === "create" ? createSeason : updateSeason,
     {},
   );
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   const season = props.mode === "edit" ? props.season : null;
@@ -143,9 +146,9 @@ export function SeasonDialog(props: SeasonDialogProps) {
 
 export function DeleteSeasonDialog({ id, name }: { id: string; name: string }) {
   const t = useTranslations("Temporadas");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(`borrar-temporada:${id}`);
   const [state, action] = useActionState(deleteSeason, {});
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   return (

@@ -4,14 +4,22 @@ import { NextResponse, type NextRequest } from "next/server";
 import { routing } from "@/i18n/routing";
 import { isSupabaseConfigured, SUPABASE_KEY, SUPABASE_URL } from "./config";
 
-/** Rutas internas que requieren sesión iniciada (sin el prefijo de idioma). */
+/**
+ * Rutas internas que requieren sesión iniciada (sin el prefijo de idioma).
+ * Debe cubrir todo el grupo `(app)`: el layout ya no bloquea el render con la
+ * comprobación de sesión (la resuelve dentro de un <Suspense>), así que este
+ * corte es la primera barrera para las peticiones anónimas.
+ */
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/personas",
   "/equipos",
+  "/temporadas",
   "/calendario",
+  "/patrocinadores",
   "/cuotas",
   "/avisos",
+  "/club",
   "/ajustes",
 ];
 

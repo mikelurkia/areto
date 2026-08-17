@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { PaperclipIcon, PencilIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -20,6 +20,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useFrozenWhileOpen } from "@/hooks/use-frozen-while-open";
 
@@ -47,12 +48,16 @@ type DocumentDialogProps = {
 /** Diálogo de crear/editar documento, compartido por persona/equipo/patrocinador. */
 export function DocumentDialog(props: DocumentDialogProps) {
   const t = useTranslations(props.namespace);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(
+    props.mode === "create"
+      ? `documento-nuevo:${props.parentId}`
+      : `documento:${props.document.id}`,
+  );
   const [state, formAction] = useActionState(
     props.mode === "create" ? props.addAction : props.updateAction,
     {},
   );
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   const document = useFrozenWhileOpen(

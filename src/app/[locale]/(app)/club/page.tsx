@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { ClubSettingsForm } from "@/components/club/club-settings-form";
 import { FederationAccountsList } from "@/components/club/federation-accounts-list";
@@ -12,12 +12,24 @@ import {
 import { requireRole } from "@/lib/auth";
 import { getClubSettings, getFederationAccounts } from "@/lib/club";
 
-export async function generateMetadata() {
-  const t = await getTranslations("Metadata");
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Metadata" });
   return { title: t("club") };
 }
 
-export default async function ClubPage() {
+export default async function ClubPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
   await requireRole(["admin", "staff"]);
   const t = await getTranslations("Club");
   const [clubSettings, federationAccounts] = await Promise.all([

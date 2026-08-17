@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { RefreshCwIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 
 type SeasonOption = { id: string; name: string; isCurrent: boolean };
@@ -40,9 +41,9 @@ export function RenewTeamDialog({
   seasons: SeasonOption[];
 }) {
   const t = useTranslations("Equipos");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(`renovar-equipo:${teamId}`);
   const [state, formAction] = useActionState(renewTeam, {});
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   if (seasons.length === 0) return null;

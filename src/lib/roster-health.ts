@@ -12,7 +12,6 @@ type HealthMembership = {
   person: {
     birthDate: string | null;
     medicalCertUntil: string | null;
-    formSigned: boolean;
   };
 };
 
@@ -28,7 +27,6 @@ export type RosterHealthAlerts = {
   noJersey: number;
   medicalExpired: number;
   medicalExpiring: number;
-  formMissing: number;
   ageOutOfRange: number;
 };
 
@@ -37,7 +35,7 @@ export type RosterHealth = {
   alerts: RosterHealthAlerts;
   /** Avisos "duros" (rojos): dorsales duplicados, fuera de edad, médico caducado. */
   hardCount: number;
-  /** Avisos "blandos" (ámbar): médico por caducar, sin dorsal, sin ficha. */
+  /** Avisos "blandos" (ámbar): médico por caducar, sin dorsal. */
   softCount: number;
 };
 
@@ -89,7 +87,6 @@ export function computeRosterHealth(
       m.person.medicalCertUntil >= today &&
       m.person.medicalCertUntil <= soonStr,
   ).length;
-  const formMissing = memberships.filter((m) => !m.person.formSigned).length;
   const noJersey = players.filter((m) => m.jerseyNumber === null).length;
 
   const stats: RosterHealthStats = {
@@ -103,7 +100,6 @@ export function computeRosterHealth(
     noJersey,
     medicalExpired,
     medicalExpiring,
-    formMissing,
     ageOutOfRange,
   };
 
@@ -111,8 +107,7 @@ export function computeRosterHealth(
     (duplicateJerseys.length > 0 ? 1 : 0) +
     (ageOutOfRange > 0 ? 1 : 0) +
     (medicalExpired > 0 ? 1 : 0);
-  const softCount =
-    (medicalExpiring > 0 ? 1 : 0) + (noJersey > 0 ? 1 : 0) + (formMissing > 0 ? 1 : 0);
+  const softCount = (medicalExpiring > 0 ? 1 : 0) + (noJersey > 0 ? 1 : 0);
 
   return { stats, alerts, hardCount, softCount };
 }

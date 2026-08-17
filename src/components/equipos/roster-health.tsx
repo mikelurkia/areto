@@ -17,15 +17,15 @@ export type RosterHealthAlerts = {
   noJersey: number;
   medicalExpired: number;
   medicalExpiring: number;
-  formMissing: number;
   ageOutOfRange: number;
 };
 
+/** Cifra y etiqueta en línea: el resumen es una franja, no un panel. */
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex items-baseline gap-1.5">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-lg font-semibold tabular-nums">{value}</dd>
+      <dd className="text-sm font-semibold tabular-nums">{value}</dd>
     </div>
   );
 }
@@ -77,17 +77,10 @@ export function RosterHealth({
       </Badge>,
     );
   }
-  if (alerts.formMissing > 0) {
-    alertBadges.push(
-      <Badge key="form" variant="secondary">
-        {t("healthFormMissing", { count: alerts.formMissing })}
-      </Badge>,
-    );
-  }
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border p-4">
-      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-3 py-2">
+      <dl className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <Stat label={t("healthPlayers")} value={stats.players} />
         <Stat label={t("healthGoalkeepers")} value={stats.goalkeepers} />
         <Stat label={t("healthCoaches")} value={stats.coaches} />
@@ -97,14 +90,12 @@ export function RosterHealth({
         />
       </dl>
       {alertBadges.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-          <TriangleAlertIcon className="size-4 text-muted-foreground" />
+        <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          <TriangleAlertIcon className="size-3.5 text-muted-foreground" />
           {alertBadges}
         </div>
       ) : (
-        <p className="flex items-center gap-2 border-t pt-3 text-sm text-muted-foreground">
-          {t("healthAllGood")}
-        </p>
+        <p className="ml-auto text-xs text-muted-foreground">{t("healthAllGood")}</p>
       )}
     </div>
   );

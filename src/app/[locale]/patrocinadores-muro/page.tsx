@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { ArrowLeftIcon, HandshakeIcon } from "lucide-react";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { db } from "@/db";
 import { getClubSettings } from "@/lib/club";
@@ -16,12 +18,13 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 
 const LOGO_BUCKET = "sponsorship-logos";
 
-// Datos frescos por petición (patrocinadores vigentes + URLs de logo firmadas
-// de corta duración). No prerenderizar en build.
-export const dynamic = "force-dynamic";
-
-export async function generateMetadata() {
-  const t = await getTranslations("Patrocinadores");
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Patrocinadores" });
   return { title: t("publicWallTitle") };
 }
 
@@ -33,18 +36,26 @@ type WallSponsor = {
   isPrincipal: boolean;
 };
 
-export default async function PublicSponsorsWallPage() {
+/**
+ * Rejilla de patrocinadores vigentes. Se queda sin cachear a propósito: las URL
+ * firmadas de los logos caducan en una hora, así que se calculan por petición y
+ * fluyen tras el armazón (cabecera y titular, que sí son estáticos).
+ */
+async function SponsorWall() {
   const t = await getTranslations("Patrocinadores");
-
-  const today = new Date().toISOString().slice(0, 10);
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() + SPONSORSHIP_EXPIRY_WINDOW_DAYS);
-  const cutoff = cutoffDate.toISOString().slice(0, 10);
 
   const allSponsors = await db.query.sponsors.findMany({
     with: { terms: true },
     orderBy: (sponsors, { asc }) => [asc(sponsors.name)],
   });
+
+  // El reloj se lee después de la consulta a propósito: con Cache Components,
+  // leer la hora antes de tocar datos dinámicos congelaría "hoy" en el armazón
+  // estático (ver next-prerender-current-time).
+  const today = new Date().toISOString().slice(0, 10);
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() + SPONSORSHIP_EXPIRY_WINDOW_DAYS);
+  const cutoff = cutoffDate.toISOString().slice(0, 10);
 
   // Solo patrocinadores con un patrocinio vigente esta temporada (vigente o
   // por vencer, no vencidos ni sin patrocinio).
@@ -81,7 +92,68 @@ export default async function PublicSponsorsWallPage() {
   const principals = sponsors.filter((s) => s.isPrincipal);
   const rest = sponsors.filter((s) => !s.isPrincipal);
 
-  const club = await getClubSettings();
+  if (sponsors.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center text-muted-foreground">
+        <HandshakeIcon className="size-8" />
+        <p>{t("publicWallEmpty")}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      {principals.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {principals.map((s) => (
+            <SponsorCard
+              key={s.id}
+              sponsor={s}
+              size="lg"
+              principalLabel={t("tier.principal")}
+            />
+          ))}
+        </div>
+      ) : null}
+      {rest.length > 0 ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {rest.map((s) => (
+            <SponsorCard key={s.id} sponsor={s} size="md" />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Hueco de la rejilla mientras se firman los logos. */
+function SponsorWallSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4" aria-hidden>
+      {Array.from({ length: 8 }, (_, i) => (
+        <Skeleton key={i} className="h-24 w-full rounded-lg" />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Muro público. Cabecera y titular se prerenderizan (el nombre del club sale de
+ * `getClubSettings`, que está cacheada) y la rejilla llega por streaming.
+ */
+export default async function PublicSponsorsWallPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
+
+  const [t, club] = await Promise.all([
+    getTranslations("Patrocinadores"),
+    getClubSettings(),
+  ]);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -113,34 +185,9 @@ export default async function PublicSponsorsWallPage() {
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-6 pb-24">
-        {sponsors.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center text-muted-foreground">
-            <HandshakeIcon className="size-8" />
-            <p>{t("publicWallEmpty")}</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-8">
-            {principals.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {principals.map((s) => (
-                  <SponsorCard
-                    key={s.id}
-                    sponsor={s}
-                    size="lg"
-                    principalLabel={t("tier.principal")}
-                  />
-                ))}
-              </div>
-            ) : null}
-            {rest.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {rest.map((s) => (
-                  <SponsorCard key={s.id} sponsor={s} size="md" />
-                ))}
-              </div>
-            ) : null}
-          </div>
-        )}
+        <Suspense fallback={<SponsorWallSkeleton />}>
+          <SponsorWall />
+        </Suspense>
       </section>
     </div>
   );

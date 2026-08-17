@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { PencilIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -8,6 +8,7 @@ import {
   addMembership,
   updateMembership,
 } from "@/app/[locale]/(app)/equipos/[teamId]/actions";
+import { MembershipPersonCombobox } from "@/components/equipos/membership-person-combobox";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useFrozenWhileOpen } from "@/hooks/use-frozen-while-open";
 
@@ -40,17 +42,20 @@ const PLAYER_POSITIONS = ["cierre", "ala", "pivot", "portero"] as const;
 type PersonOption = { id: string; firstName: string; lastName: string };
 type TeamOption = { id: string; label: string };
 
+/**
+ * La capitanía no está aquí: es una característica del equipo y se designa en
+ * su ficha (ver `TeamCaptainCard`), que garantiza un único capitán.
+ */
 type Membership = {
   id: string;
   personName: string;
   role: (typeof MEMBERSHIP_ROLES)[number];
   jerseyNumber: number | null;
   positions: string[];
-  isCaptain: boolean;
   position: string | null;
 };
 
-type MembershipDialogProps = (
+type MembershipDialogProps =
   | { mode: "create"; teamId: string; availablePersons: PersonOption[] }
   | {
       mode: "create-person";
@@ -58,49 +63,29 @@ type MembershipDialogProps = (
       personName: string;
       availableTeams: TeamOption[];
     }
-  | { mode: "edit"; membership: Membership }
-) & {
-  /** Dorsales ya ocupados en el equipo, para el mapa de dorsales (contexto equipo). */
-  takenJerseys?: number[];
-};
+  | { mode: "edit"; membership: Membership };
 
 export function MembershipDialog(props: MembershipDialogProps) {
   const t = useTranslations("Equipos");
   const isCreate = props.mode === "create" || props.mode === "create-person";
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(
+    props.mode === "create"
+      ? `membresia-nueva:${props.teamId}`
+      : props.mode === "create-person"
+        ? `membresia-persona:${props.personId}`
+        : `membresia:${props.membership.id}`,
+  );
   const [state, formAction] = useActionState(
     isCreate ? addMembership : updateMembership,
     {},
   );
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   const membership = useFrozenWhileOpen(
     open,
     props.mode === "edit" ? props.membership : null,
   );
-
-  // Siembra el dorsal desde la membership al abrir. Ajuste de estado en render
-  // (patrón recomendado de React) en vez de un efecto con setState.
-  const [jersey, setJersey] = useState("");
-  const [wasOpen, setWasOpen] = useState(false);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) {
-      setJersey(
-        props.mode === "edit" && props.membership.jerseyNumber !== null
-          ? String(props.membership.jerseyNumber)
-          : "",
-      );
-    }
-  }
-
-  // El mapa de dorsales solo aparece en contexto de equipo (cuando se pasa la
-  // prop, aunque sea un array vacío); desde la ficha de persona no.
-  const showJerseyMap = props.takenJerseys !== undefined;
-  const takenJerseys = props.takenJerseys ?? [];
-  const takenSet = new Set(takenJerseys);
-  const maxJersey = Math.max(20, ...takenJerseys, Number(jersey) || 0);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -143,27 +128,11 @@ export function MembershipDialog(props: MembershipDialogProps) {
                 <FieldLabel htmlFor="membership-person">
                   {t("personLabel")}
                 </FieldLabel>
-                <Select name="personId">
-                  <SelectTrigger id="membership-person" className="w-full">
-                    <SelectValue placeholder={t("selectPerson")}>
-                      {(value: string) => {
-                        const person = props.availablePersons.find(
-                          (p) => p.id === value,
-                        );
-                        return person
-                          ? `${person.firstName} ${person.lastName}`
-                          : t("selectPerson");
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {props.availablePersons.map((person) => (
-                      <SelectItem key={person.id} value={person.id}>
-                        {person.firstName} {person.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MembershipPersonCombobox
+                  key={open ? "open" : "closed"}
+                  id="membership-person"
+                  persons={props.availablePersons}
+                />
               </Field>
             ) : props.mode === "create-person" ? (
               <Field>
@@ -222,44 +191,10 @@ export function MembershipDialog(props: MembershipDialogProps) {
                   name="jerseyNumber"
                   type="number"
                   min={0}
-                  value={jersey}
-                  onChange={(e) => setJersey(e.target.value)}
+                  defaultValue={membership?.jerseyNumber ?? ""}
                 />
               </Field>
             </div>
-            {showJerseyMap ? (
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-muted-foreground">
-                  {t("jerseyMapHint")}
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  {Array.from({ length: maxJersey }, (_, i) => i + 1).map((n) => {
-                    const isTaken = takenSet.has(n);
-                    const isSelected = Number(jersey) === n;
-                    return (
-                      <button
-                        key={n}
-                        type="button"
-                        disabled={isTaken && !isSelected}
-                        onClick={() => setJersey(isSelected ? "" : String(n))}
-                        title={
-                          isTaken && !isSelected ? t("jerseyTakenLabel", { number: n }) : undefined
-                        }
-                        className={`size-7 rounded-md border text-xs tabular-nums transition-colors ${
-                          isSelected
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : isTaken
-                              ? "cursor-not-allowed border-transparent bg-muted text-muted-foreground/50 line-through"
-                              : "border-input hover:bg-accent"
-                        }`}
-                      >
-                        {n}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
             <Field>
               <FieldLabel>{t("playerPositionLabel")}</FieldLabel>
               <div className="grid grid-cols-2 gap-x-3 gap-y-2">
@@ -277,16 +212,6 @@ export function MembershipDialog(props: MembershipDialogProps) {
                   </Field>
                 ))}
               </div>
-            </Field>
-            <Field orientation="horizontal">
-              <Checkbox
-                id="membership-captain"
-                name="isCaptain"
-                defaultChecked={membership?.isCaptain ?? false}
-              />
-              <Label htmlFor="membership-captain" className="font-normal">
-                {t("captainLabel")}
-              </Label>
             </Field>
             <Field>
               <FieldLabel htmlFor="membership-position">

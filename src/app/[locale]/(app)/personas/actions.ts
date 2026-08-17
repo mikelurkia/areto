@@ -105,7 +105,6 @@ function readPersonFields(formData: FormData) {
     shirtSize: String(formData.get("shirtSize") ?? "").trim(),
     pantsSize: String(formData.get("pantsSize") ?? "").trim(),
     shoeSize: String(formData.get("shoeSize") ?? "").trim(),
-    formSigned: formData.get("formSigned") === "on",
     photoConsent: formData.get("photoConsent") === "on",
     removePhoto: formData.get("removePhoto") === "on",
     notes: String(formData.get("notes") ?? "").trim(),
@@ -161,7 +160,6 @@ export async function createPerson(
           shirtSize: fields.shirtSize || null,
           pantsSize: fields.pantsSize || null,
           shoeSize: fields.shoeSize || null,
-          formSigned: fields.formSigned,
           photoConsent: fields.photoConsent,
           notes: fields.notes || null,
         })
@@ -238,7 +236,6 @@ export async function updatePerson(
         shirtSize: fields.shirtSize || null,
         pantsSize: fields.pantsSize || null,
         shoeSize: fields.shoeSize || null,
-        formSigned: fields.formSigned,
         photoConsent: fields.photoConsent,
         notes: fields.notes || null,
       })

@@ -1,6 +1,6 @@
 import { ArrowLeftIcon } from "lucide-react";
 import { isNotNull } from "drizzle-orm";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { sponsorPayments } from "@/db/schema";
@@ -13,15 +13,26 @@ import {
 } from "@/components/patrocinadores/invoice-register";
 import { Button } from "@/components/ui/button";
 
-export async function generateMetadata() {
-  const t = await getTranslations("Patrocinadores");
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Patrocinadores" });
   return { title: t("invoiceRegisterTitle") };
 }
 
-export default async function InvoiceRegisterPage() {
+export default async function InvoiceRegisterPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
   await requireRole(["admin", "staff"]);
   const t = await getTranslations("Patrocinadores");
-  const locale = await getLocale();
 
   const payments = await db.query.sponsorPayments.findMany({
     where: isNotNull(sponsorPayments.invoiceNumber),

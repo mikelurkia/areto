@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 
 import { mergePersons } from "@/app/[locale]/(app)/personas/duplicados/actions";
@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 
 type CandidatePerson = {
@@ -40,9 +41,9 @@ export function MergeDuplicatesDialog({
   candidates: CandidatePerson[];
 }) {
   const t = useTranslations("Personas");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(`fusionar:${candidates.map((c) => c.id).toSorted().join("_")}`);
   const [state, formAction] = useActionState(mergePersons, {});
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   function label(id: string) {

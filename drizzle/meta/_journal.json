@@ -288,6 +288,13 @@
       "when": 1786955406320,
       "tag": "0040_thick_captain_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1786959653881,
+      "tag": "0041_special_lady_ursula",
+      "breakpoints": true
     }
   ]
 }

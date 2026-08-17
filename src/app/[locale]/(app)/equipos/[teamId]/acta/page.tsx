@@ -1,7 +1,8 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { memberships, teams } from "@/db/schema";
@@ -19,33 +20,40 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+/** En `cache()`: la piden `generateMetadata` y la página en el mismo render. */
+const getTeam = cache((teamId: string) =>
+  db.query.teams.findFirst({
+    where: eq(teams.id, teamId),
+    with: { season: true },
+  }),
+);
+
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ teamId: string }>;
+  params: Promise<{ locale: string; teamId: string }>;
 }) {
-  const { teamId } = await params;
-  const team = await db.query.teams.findFirst({ where: eq(teams.id, teamId) });
-  const t = await getTranslations("Equipos");
+  const { locale, teamId } = await params;
+  const [team, t] = await Promise.all([
+    getTeam(teamId),
+    getTranslations({ locale, namespace: "Equipos" }),
+  ]);
   return { title: team ? `${t("rosterSheetTitle")} · ${team.name}` : "Areto" };
 }
 
 export default async function TeamRosterSheetPage({
   params,
 }: {
-  params: Promise<{ teamId: string }>;
+  params: Promise<{ locale: string; teamId: string }>;
 }) {
-  const { teamId } = await params;
+  const { locale, teamId } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
   await requireRole(["admin", "staff", "coach"]);
   const t = await getTranslations("Equipos");
 
-  const team = await db.query.teams.findFirst({
-    where: eq(teams.id, teamId),
-    with: { season: true },
-  });
-  if (!team) notFound();
-
-  const [teamMemberships, club] = await Promise.all([
+  const [team, teamMemberships, club] = await Promise.all([
+    getTeam(teamId),
     db.query.memberships.findMany({
       where: eq(memberships.teamId, teamId),
       with: { person: true },
@@ -53,6 +61,7 @@ export default async function TeamRosterSheetPage({
     }),
     getClubSettings(),
   ]);
+  if (!team) notFound();
 
   // Jugadores primero (por dorsal), luego cuerpo técnico.
   const players = teamMemberships.filter((m) => m.role === "player");

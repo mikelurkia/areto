@@ -59,7 +59,6 @@ export async function mergePersons(
         photoPath: primary.photoPath ?? duplicate.photoPath,
         notes: [primary.notes, duplicate.notes].filter(Boolean).join(" · ") || null,
         isMember: primary.isMember || duplicate.isMember,
-        formSigned: primary.formSigned || duplicate.formSigned,
         photoConsent: primary.photoConsent || duplicate.photoConsent,
       })
       .where(eq(persons.id, primaryId));

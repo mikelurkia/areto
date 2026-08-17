@@ -1,5 +1,7 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
 import { and, eq, isNotNull, lte, ne } from "drizzle-orm";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { CalendarDays, HandshakeIcon, ShieldHalf, TriangleAlertIcon, Users, Wallet } from "lucide-react";
 
 import { db } from "@/db";
@@ -13,6 +15,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isPastMember } from "@/lib/membership";
 import { seasonYearOf } from "@/lib/sponsorship";
 import { Link } from "@/i18n/navigation";
+import { CardSkeleton } from "@/components/skeletons";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -135,27 +138,152 @@ async function getSponsorshipSummary(today: string) {
   return { committedCents, collectedCents, pendingCents: committedCents - collectedCents };
 }
 
-export async function generateMetadata() {
-  const t = await getTranslations("Metadata");
-  return { title: t("dashboard") };
-}
-
-export default async function DashboardPage() {
-  const t = await getTranslations("Dashboard");
-  const user = await getCurrentUser();
-  const canSeeExpirations = user
-    ? (MANAGE_ROLES as readonly string[]).includes(user.role)
-    : false;
-
+/**
+ * Ventana de vencimientos: hoy y la fecha límite de aviso.
+ *
+ * `connection()` marca el componente como de tiempo de petición antes de leer el
+ * reloj. Aquí la fecha hace falta *para construir* la consulta, así que no se
+ * puede posponer; sin esto, el prerender congelaría "hoy" en el armazón estático
+ * (ver next-prerender-current-time).
+ */
+async function expiryWindow() {
+  await connection();
   const today = new Date().toISOString().slice(0, 10);
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() + EXPIRY_WINDOW_DAYS);
-  const cutoff = cutoffDate.toISOString().slice(0, 10);
+  return { today, cutoff: cutoffDate.toISOString().slice(0, 10) };
+}
 
-  const expiringItems = canSeeExpirations ? await getExpiringItems(today, cutoff) : [];
-  const sponsorship = canSeeExpirations ? await getSponsorshipSummary(today) : null;
-  const locale = await getLocale();
-  const currencyFmt = new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" });
+/**
+ * Tarjeta de patrocinio. Componente propio para poder darle su <Suspense>: sus
+ * consultas no deben retrasar el resto del panel.
+ */
+async function SponsorshipCard() {
+  const { today } = await expiryWindow();
+  const [sponsorship, t, locale] = await Promise.all([
+    getSponsorshipSummary(today),
+    getTranslations("Dashboard"),
+    getLocale(),
+  ]);
+  const currencyFmt = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "EUR",
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <HandshakeIcon className="size-4" />
+          {t("sponsorshipSection")}
+        </CardTitle>
+        <CardDescription>{t("sponsorshipSectionHint")}</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <p className="text-xs text-muted-foreground">{t("sponsorshipCommitted")}</p>
+          <p className="text-2xl font-semibold">
+            {currencyFmt.format(sponsorship.committedCents / 100)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">{t("sponsorshipCollected")}</p>
+          <p className="text-2xl font-semibold">
+            {currencyFmt.format(sponsorship.collectedCents / 100)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">{t("sponsorshipPending")}</p>
+          <p className="text-2xl font-semibold">
+            {currencyFmt.format(sponsorship.pendingCents / 100)}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Tarjeta de vencimientos próximos. Es la parte más lenta del panel (tres
+ * consultas y un filtrado por membresías activas), así que fluye aparte.
+ */
+async function ExpiringCard() {
+  const { today, cutoff } = await expiryWindow();
+  const [expiringItems, t] = await Promise.all([
+    getExpiringItems(today, cutoff),
+    getTranslations("Dashboard"),
+  ]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <TriangleAlertIcon className="size-4" />
+          {t("expiringSection")}
+        </CardTitle>
+        <CardDescription>
+          {t("expiringSectionHint", { days: EXPIRY_WINDOW_DAYS })}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        {expiringItems.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("noExpiringDescription")}</p>
+        ) : (
+          expiringItems.map((item) => (
+            <div key={item.key} className="flex flex-wrap items-center gap-2 text-sm">
+              <Link href={item.href} className="font-medium hover:underline">
+                {item.label}
+              </Link>
+              <span className="text-muted-foreground">
+                {item.type === "medical"
+                  ? t("expiringMedicalCertLabel")
+                  : item.type === "sponsorship"
+                    ? t("expiringSponsorshipLabel")
+                    : item.detail}
+              </span>
+              <Badge variant={item.expired ? "destructive" : "warning"} className="ml-auto">
+                {item.expired
+                  ? t("expiredBadge", { date: item.date })
+                  : t("expiresBadge", { date: item.date })}
+              </Badge>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Metadata" });
+  return { title: t("dashboard") };
+}
+
+/**
+ * El armazón (título y KPIs) solo necesita el rol, así que aparece de inmediato
+ * y las dos tarjetas con consultas fluyen después, cada una a su ritmo.
+ */
+export default async function DashboardPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
+
+  const [t, user] = await Promise.all([
+    getTranslations("Dashboard"),
+    getCurrentUser(),
+  ]);
+  const canSeeExpirations = user
+    ? (MANAGE_ROLES as readonly string[]).includes(user.role)
+    : false;
 
   const stats = [
     { key: "people", value: "—", icon: Users },
@@ -188,83 +316,15 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {sponsorship ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <HandshakeIcon className="size-4" />
-              {t("sponsorshipSection")}
-            </CardTitle>
-            <CardDescription>{t("sponsorshipSectionHint")}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-3">
-            <div>
-              <p className="text-xs text-muted-foreground">{t("sponsorshipCommitted")}</p>
-              <p className="text-2xl font-semibold">
-                {currencyFmt.format(sponsorship.committedCents / 100)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t("sponsorshipCollected")}</p>
-              <p className="text-2xl font-semibold">
-                {currencyFmt.format(sponsorship.collectedCents / 100)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t("sponsorshipPending")}</p>
-              <p className="text-2xl font-semibold">
-                {currencyFmt.format(sponsorship.pendingCents / 100)}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
       {canSeeExpirations ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TriangleAlertIcon className="size-4" />
-              {t("expiringSection")}
-            </CardTitle>
-            <CardDescription>
-              {t("expiringSectionHint", { days: EXPIRY_WINDOW_DAYS })}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            {expiringItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t("noExpiringDescription")}
-              </p>
-            ) : (
-              expiringItems.map((item) => (
-                <div
-                  key={item.key}
-                  className="flex flex-wrap items-center gap-2 text-sm"
-                >
-                  <Link href={item.href} className="font-medium hover:underline">
-                    {item.label}
-                  </Link>
-                  <span className="text-muted-foreground">
-                    {item.type === "medical"
-                      ? t("expiringMedicalCertLabel")
-                      : item.type === "sponsorship"
-                        ? t("expiringSponsorshipLabel")
-                        : item.detail}
-                  </span>
-                  <Badge
-                    variant={item.expired ? "destructive" : "warning"}
-                    className="ml-auto"
-                  >
-                    {item.expired
-                      ? t("expiredBadge", { date: item.date })
-                      : t("expiresBadge", { date: item.date })}
-                  </Badge>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+        <>
+          <Suspense fallback={<CardSkeleton lines={2} />}>
+            <SponsorshipCard />
+          </Suspense>
+          <Suspense fallback={<CardSkeleton lines={8} />}>
+            <ExpiringCard />
+          </Suspense>
+        </>
       ) : null}
     </div>
   );

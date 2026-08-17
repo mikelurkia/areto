@@ -1,3 +1,4 @@
+import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -9,11 +10,11 @@ import {
   TriangleAlertIcon,
   UserRoundIcon,
 } from "lucide-react";
-import { and, eq, ne, notInArray } from "drizzle-orm";
-import { getTranslations } from "next-intl/server";
+import { and, eq, ne } from "drizzle-orm";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { personTags, persons, teams } from "@/db/schema";
+import { personTags, persons } from "@/db/schema";
 import {
   addPersonDocument,
   addPersonNote,
@@ -42,6 +43,7 @@ import { PrintButton } from "@/components/print-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -65,32 +67,12 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ personId: string }>;
-}) {
-  const { personId } = await params;
-  const person = await db.query.persons.findFirst({
-    where: eq(persons.id, personId),
-  });
-  return {
-    title: person ? `${person.firstName} ${person.lastName}` : "Areto",
-  };
-}
-
-export default async function PersonDetailPage({
-  params,
-}: {
-  params: Promise<{ personId: string }>;
-}) {
-  const { personId } = await params;
-  await requireRole(["admin", "staff"]);
-  const t = await getTranslations("Personas");
-  const tEquipos = await getTranslations("Equipos");
-  const canManage = true;
-
-  const person = await db.query.persons.findFirst({
+/**
+ * Ficha completa de la persona. En `cache()` para que `generateMetadata` y la
+ * página compartan una única consulta por petición, en vez de lanzar dos.
+ */
+const getPerson = cache((personId: string) =>
+  db.query.persons.findFirst({
     where: eq(persons.id, personId),
     with: {
       guardian: true,
@@ -101,30 +83,151 @@ export default async function PersonDetailPage({
       noteEntries: { orderBy: (n, { desc }) => [desc(n.createdAt)] },
       tags: { orderBy: (tag, { asc }) => [asc(tag.tag)] },
     },
+  }),
+);
+
+/** Persona vista desde el panel de familia: solo lo que pinta una ficha breve. */
+type FamilyPerson = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  email: string | null;
+  birthDate: string | null;
+  photoPath: string | null;
+};
+
+/**
+ * Panel de familia. Vive aparte porque es la parte más lenta de la ficha:
+ * consulta las hermanas/os (parentesco derivado del tutor legal) y firma las
+ * fotos de todos los familiares. Con su propio <Suspense> ya no retrasa los
+ * datos de la persona.
+ */
+async function FamilySection({
+  personId,
+  guardianId,
+  guardian,
+  dependents,
+  minorWithoutGuardian,
+  minorGuardian,
+}: {
+  personId: string;
+  guardianId: string | null;
+  guardian: FamilyPerson | null;
+  dependents: FamilyPerson[];
+  minorWithoutGuardian: boolean;
+  minorGuardian: boolean;
+}) {
+  // Hermanos/as = otras personas con el mismo tutor legal (no se guarda).
+  const siblings = guardianId
+    ? await db.query.persons.findMany({
+        where: and(eq(persons.guardianId, guardianId), ne(persons.id, personId)),
+        orderBy: (p, { asc }) => [asc(p.birthDate)],
+      })
+    : [];
+
+  // Fotos de todos los familiares en una sola tanda de URLs firmadas.
+  const familyPhotoUrls = await getSignedUrls(
+    PHOTO_BUCKET,
+    [...(guardian ? [guardian] : []), ...siblings, ...dependents],
+    (p) => p.photoPath,
+    (p) => p.id,
+  );
+
+  const toFamilyMember = (p: FamilyPerson): FamilyMember => ({
+    id: p.id,
+    name: `${p.firstName} ${p.lastName}`,
+    photoUrl: familyPhotoUrls.get(p.id) ?? null,
+    phone: p.phone,
+    email: p.email,
+    ageYears: p.birthDate ? calculateAge(p.birthDate) : null,
+    isMinor: isMinor(p.birthDate),
   });
+
+  return (
+    <FamilyPanel
+      guardian={guardian ? toFamilyMember(guardian) : null}
+      siblings={siblings.map(toFamilyMember)}
+      dependents={dependents.map(toFamilyMember)}
+      minorWithoutGuardian={minorWithoutGuardian}
+      minorGuardian={minorGuardian}
+    />
+  );
+}
+
+/** Fallback del panel de familia: etiqueta de sección y una ficha de persona. */
+function FamilySectionSkeleton() {
+  return (
+    <div className="flex flex-col gap-4" aria-hidden>
+      {[0, 1].map((i) => (
+        <div key={i} className="flex flex-col gap-2">
+          <Skeleton className="h-3 w-28" />
+          <div className="flex items-center gap-3 rounded-lg border p-3">
+            <Skeleton className="size-8 shrink-0 rounded-full" />
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Skeleton className="h-4 w-44" />
+              <Skeleton className="h-3 w-56" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; personId: string }>;
+}) {
+  const { personId } = await params;
+  const person = await getPerson(personId);
+  return {
+    title: person ? `${person.firstName} ${person.lastName}` : "Areto",
+  };
+}
+
+export default async function PersonDetailPage({
+  params,
+}: {
+  params: Promise<{ locale: string; personId: string }>;
+}) {
+  const { locale, personId } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
+  await requireRole(["admin", "staff"]);
+  const t = await getTranslations("Personas");
+  const tEquipos = await getTranslations("Equipos");
+  const canManage = true;
+
+  // Primera tanda: todo lo que no depende de la propia ficha. Los equipos se
+  // traen completos y se filtran en memoria (son pocas filas), así esta consulta
+  // deja de esperar a que lleguen las membresías de la persona.
+  const [person, existingTagRows, allPersons, allTeams] = await Promise.all([
+    getPerson(personId),
+    db.selectDistinct({ tag: personTags.tag }).from(personTags).orderBy(personTags.tag),
+    db.query.persons.findMany({
+      columns: { id: true, firstName: true, lastName: true },
+    }),
+    db.query.teams.findMany({
+      with: { season: true },
+      orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
+    }),
+  ]);
   if (!person) notFound();
 
-  const existingTagRows = await db
-    .selectDistinct({ tag: personTags.tag })
-    .from(personTags)
-    .orderBy(personTags.tag);
   const existingTags = existingTagRows.map((r) => r.tag);
 
-  const allPersons = await db.query.persons.findMany({
-    columns: { id: true, firstName: true, lastName: true },
-  });
+  const memberTeamIds = new Set(person.memberships.map((m) => m.teamId));
+  const availableTeamOptions = allTeams
+    .filter((team) => !memberTeamIds.has(team.id))
+    .map((team) => ({
+      id: team.id,
+      label: teamSeasonLabel(team, team.season),
+    }));
 
-  const memberTeamIds = person.memberships.map((m) => m.teamId);
-  const availableTeams = await db.query.teams.findMany({
-    where: memberTeamIds.length > 0 ? notInArray(teams.id, memberTeamIds) : undefined,
-    with: { season: true },
-    orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
-  });
-  const availableTeamOptions = availableTeams.map((team) => ({
-    id: team.id,
-    label: teamSeasonLabel(team, team.season),
-  }));
-
+  // Segunda tanda: las firmas de Storage que necesita la ficha ya cargada. Lo de
+  // la familia va por su cuenta, en <FamilySection>.
   const [photoUrl, qualificationFileUrls, documentFileUrls] = await Promise.all([
     getSignedUrl(PHOTO_BUCKET, person.photoPath),
     getSignedUrls(QUALIFICATIONS_BUCKET, person.qualifications, (q) => q.filePath, (q) => q.id),
@@ -151,47 +254,6 @@ export default async function PersonDetailPage({
     if (a.season.isCurrent !== b.season.isCurrent) return a.season.isCurrent ? -1 : 1;
     return (b.season.startsOn ?? "").localeCompare(a.season.startsOn ?? "");
   });
-
-  // Parentesco: hermanos/as = otras personas con el mismo tutor legal (derivado,
-  // no se guarda). Junto al tutor y a las personas a cargo forman la familia.
-  const siblings = person.guardianId
-    ? await db.query.persons.findMany({
-        where: and(eq(persons.guardianId, person.guardianId), ne(persons.id, person.id)),
-        orderBy: (p, { asc }) => [asc(p.birthDate)],
-      })
-    : [];
-
-  // Fotos de todos los familiares en una sola tanda de URLs firmadas.
-  const familyPeople = [
-    ...(person.guardian ? [person.guardian] : []),
-    ...siblings,
-    ...person.dependents,
-  ];
-  const familyPhotoUrls = await getSignedUrls(
-    PHOTO_BUCKET,
-    familyPeople,
-    (p) => p.photoPath,
-    (p) => p.id,
-  );
-
-  function toFamilyMember(p: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    phone: string | null;
-    email: string | null;
-    birthDate: string | null;
-  }): FamilyMember {
-    return {
-      id: p.id,
-      name: `${p.firstName} ${p.lastName}`,
-      photoUrl: familyPhotoUrls.get(p.id) ?? null,
-      phone: p.phone,
-      email: p.email,
-      ageYears: p.birthDate ? calculateAge(p.birthDate) : null,
-      isMinor: isMinor(p.birthDate),
-    };
-  }
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -401,13 +463,11 @@ export default async function PersonDetailPage({
                 {t("consentSection")}
               </h2>
               <div className="flex flex-wrap gap-1">
-                {person.formSigned ? (
-                  <Badge variant="secondary">{t("formSignedLabel")}</Badge>
-                ) : null}
                 {person.photoConsent ? (
                   <Badge variant="secondary">{t("photoConsentLabel")}</Badge>
-                ) : null}
-                {!person.formSigned && !person.photoConsent ? "—" : null}
+                ) : (
+                  "—"
+                )}
               </div>
             </div>
 
@@ -423,13 +483,16 @@ export default async function PersonDetailPage({
         </TabsContent>
 
         <TabsContent value="familia" keepMounted>
-          <FamilyPanel
-            guardian={person.guardian ? toFamilyMember(person.guardian) : null}
-            siblings={siblings.map(toFamilyMember)}
-            dependents={person.dependents.map(toFamilyMember)}
-            minorWithoutGuardian={isMinorWithoutGuardian}
-            minorGuardian={hasMinorGuardian}
-          />
+          <Suspense fallback={<FamilySectionSkeleton />}>
+            <FamilySection
+              personId={person.id}
+              guardianId={person.guardianId}
+              guardian={person.guardian}
+              dependents={person.dependents}
+              minorWithoutGuardian={isMinorWithoutGuardian}
+              minorGuardian={hasMinorGuardian}
+            />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="equipos" keepMounted className="flex flex-col gap-4">
@@ -466,9 +529,16 @@ export default async function PersonDetailPage({
                   subjectHeader={t("colTeam")}
                   nameFor={() => fullName}
                   renderSubject={(m) => (
-                    <Link href={`/equipos/${m.team.id}`} className="hover:underline">
-                      {m.team.name}
-                    </Link>
+                    <span className="flex items-center gap-2">
+                      <Link href={`/equipos/${m.team.id}`} className="hover:underline">
+                        {m.team.name}
+                      </Link>
+                      {m.isCaptain ? (
+                        <Badge variant="outline" title={tEquipos("captainLabel")}>
+                          {tEquipos("captainShort")}
+                        </Badge>
+                      ) : null}
+                    </span>
                   )}
                 />
               </div>

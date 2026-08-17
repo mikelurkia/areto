@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -18,6 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 
 export function DeleteTeamDialog({
@@ -28,9 +29,9 @@ export function DeleteTeamDialog({
   name: string;
 }) {
   const t = useTranslations("Equipos");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(`borrar-equipo:${id}`);
   const [state, action] = useActionState(deleteTeam, {});
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   return (

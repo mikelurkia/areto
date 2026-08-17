@@ -226,7 +226,18 @@ export function AppSidebar({ user, federations = [] }: AppSidebarProps) {
                     <Settings />
                     {t("settings")}
                   </DropdownMenuItem>
-                  <form action={logout}>
+                  {/*
+                    Salida con recarga completa: `logout` solo cierra la sesión y
+                    dice a dónde ir, y el navegador va ahí de cero. Así no queda
+                    en memoria el estado de las pantallas del usuario anterior,
+                    que React conserva montadas entre navegaciones.
+                  */}
+                  <form
+                    action={async () => {
+                      const { redirectTo } = await logout();
+                      window.location.href = redirectTo;
+                    }}
+                  >
                     <DropdownMenuItem
                       nativeButton
                       render={

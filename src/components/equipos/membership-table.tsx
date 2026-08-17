@@ -27,10 +27,7 @@ type Translate = (key: string, values?: Record<string, string | number | Date>) 
  * Tabla de membresías (persona ↔ equipo), compartida por la pestaña
  * "Plantilla" del equipo (equipo→personas) y la pestaña "Equipos" de la
  * persona (persona→equipos): mismas columnas de rol/dorsal/puestos.
- * Solo cambia la columna "sujeto" (persona o equipo,
- * vía `renderSubject`) y si se muestra el mapa de dorsales del diálogo de
- * edición (`takenJerseysFor`, solo en contexto equipo — ver comentario en
- * `MembershipDialog`).
+ * Solo cambia la columna "sujeto" (persona o equipo, vía `renderSubject`).
  */
 export function MembershipTable<T extends MembershipRow>({
   items,
@@ -39,7 +36,6 @@ export function MembershipTable<T extends MembershipRow>({
   subjectHeader,
   renderSubject,
   nameFor,
-  takenJerseysFor,
 }: {
   items: readonly T[];
   canManage: boolean;
@@ -47,7 +43,6 @@ export function MembershipTable<T extends MembershipRow>({
   subjectHeader: ReactNode;
   renderSubject: (item: T) => ReactNode;
   nameFor: (item: T) => string;
-  takenJerseysFor?: (item: T) => number[];
 }) {
   return (
     <Table>
@@ -92,14 +87,12 @@ export function MembershipTable<T extends MembershipRow>({
                 <TableCell className="flex justify-end gap-1 print:hidden">
                   <MembershipDialog
                     mode="edit"
-                    takenJerseys={takenJerseysFor?.(m)}
                     membership={{
                       id: m.id,
                       personName: name,
                       role: m.role,
                       jerseyNumber: m.jerseyNumber,
                       positions: m.positions,
-                      isCaptain: m.isCaptain,
                       position: m.position,
                     }}
                   />

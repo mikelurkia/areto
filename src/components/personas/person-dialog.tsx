@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { PencilIcon, PlusIcon, UserRoundIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useFrozenWhileOpen } from "@/hooks/use-frozen-while-open";
 
@@ -51,7 +52,6 @@ type Person = {
   shirtSize: string | null;
   pantsSize: string | null;
   shoeSize: string | null;
-  formSigned: boolean;
   photoConsent: boolean;
   notes: string | null;
 };
@@ -65,12 +65,12 @@ type PersonDialogProps = (
 
 export function PersonDialog(props: PersonDialogProps) {
   const t = useTranslations("Personas");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDialogParam(props.mode === "create" ? "persona-nueva" : `persona:${props.person.id}`);
   const [state, formAction] = useActionState(
     props.mode === "create" ? createPerson : updatePerson,
     {},
   );
-  useActionToast(state.message);
+  useActionToast(state);
   useCloseOnActionSuccess(state, setOpen);
 
   const person = useFrozenWhileOpen(open, props.mode === "edit" ? props.person : null);
@@ -332,16 +332,6 @@ export function PersonDialog(props: PersonDialogProps) {
                   />
                   <Label htmlFor="person-is-member" className="font-normal">
                     {t("isMemberLabel")}
-                  </Label>
-                </Field>
-                <Field orientation="horizontal">
-                  <Checkbox
-                    id="person-form-signed"
-                    name="formSigned"
-                    defaultChecked={person?.formSigned ?? false}
-                  />
-                  <Label htmlFor="person-form-signed" className="font-normal">
-                    {t("formSignedLabel")}
                   </Label>
                 </Field>
                 <Field orientation="horizontal">
