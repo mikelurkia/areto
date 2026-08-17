@@ -353,6 +353,7 @@
     "action": "Crear equipo",
     "cancel": "Cancelar",
     "noSeasons": "Este club todavía no tiene temporadas.",
+    "currentBadge": "Actual",
     "newTeamTitle": "Crear equipo",
     "editTeamTitle": "Editar equipo",
     "nameLabel": "Nombre",

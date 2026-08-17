@@ -61,10 +61,10 @@ const FEDERATION_LOGOS: Record<
 > = {
   "gipuzkoafutbola.eus": {
     src: "/federations/gipuzkoana.png",
-    width: 372,
-    height: 89,
+    width: 450,
+    height: 554,
   },
-  "euskadifutbol.eus": { src: "/federations/vasca.png", width: 350, height: 90 },
+  "euskadifutbol.eus": { src: "/federations/vasca.png", width: 512, height: 512 },
 };
 
 function federationLogo(url: string) {
@@ -139,37 +139,42 @@ export function AppSidebar({ user, federations = [] }: AppSidebarProps) {
         </SidebarGroup>
 
         {federations.length > 0 ? (
-          <SidebarGroup className="mt-auto group-data-[collapsible=icon]:hidden">
+          <SidebarGroup className="mt-auto">
             <SidebarGroupLabel>{tNav("federations")}</SidebarGroupLabel>
-            <div className="flex flex-col gap-2 px-2">
+            <SidebarMenu>
               {federations.map((federation) => {
                 const logo = federationLogo(federation.url);
                 return (
-                  <a
-                    key={federation.id}
-                    href={federation.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    title={federation.name}
-                    className="flex h-11 items-center justify-center rounded-md bg-neutral-900 px-3 ring-1 ring-border transition-colors hover:bg-neutral-800"
-                  >
-                    {logo ? (
-                      <Image
-                        src={logo.src}
-                        alt={federation.name}
-                        width={logo.width}
-                        height={logo.height}
-                        className="max-h-7 w-auto object-contain"
-                      />
-                    ) : (
-                      <span className="truncate text-sm font-medium text-white">
-                        {federation.name}
-                      </span>
-                    )}
-                  </a>
+                  <SidebarMenuItem key={federation.id}>
+                    <SidebarMenuButton
+                      tooltip={federation.name}
+                      render={
+                        <a
+                          href={federation.url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        />
+                      }
+                    >
+                      {logo ? (
+                        // Chip oscuro: el logo gipuzkoano es blanco (invisible
+                        // sobre fondo claro), así ambos se ven bien.
+                        <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded bg-neutral-900">
+                          <Image
+                            src={logo.src}
+                            alt=""
+                            width={logo.width}
+                            height={logo.height}
+                            className="size-full object-contain p-px"
+                          />
+                        </span>
+                      ) : null}
+                      <span>{federation.name}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 );
               })}
-            </div>
+            </SidebarMenu>
           </SidebarGroup>
         ) : null}
       </SidebarContent>
