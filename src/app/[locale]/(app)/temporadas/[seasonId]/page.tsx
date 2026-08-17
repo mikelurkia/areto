@@ -2,6 +2,7 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import {
   ArrowLeftIcon,
+  BellIcon,
   BriefcaseIcon,
   ShieldHalf,
   UserCheckIcon,
@@ -13,6 +14,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { db } from "@/db";
 import { seasons, teams } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { Link } from "@/i18n/navigation";
 import { DeleteSeasonDialog, SeasonDialog } from "@/components/temporada/season-dialog";
 import { ImportTeamsDialog } from "@/components/temporada/import-teams-dialog";
@@ -20,6 +22,7 @@ import { TeamDialog } from "@/components/equipos/team-dialog";
 import { DeleteTeamDialog } from "@/components/equipos/delete-team-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -57,9 +60,9 @@ export default async function TemporadaDetailPage({
   const tEquipos = await getTranslations("Equipos");
   const canManage = user.role === "admin" || user.role === "staff";
 
-  // Las tres consultas se resuelven con el `seasonId` de la URL, así que van en
+  // Las cuatro consultas se resuelven con el `seasonId` de la URL, así que van en
   // paralelo; la temporada actual se descarta después del listado completo.
-  const [season, seasonTeams, allSeasons] = await Promise.all([
+  const [season, seasonTeams, allSeasons, renewals] = await Promise.all([
     getSeason(seasonId),
     db.query.teams.findMany({
       where: eq(teams.seasonId, seasonId),
@@ -76,6 +79,7 @@ export default async function TemporadaDetailPage({
           },
         })
       : [],
+    loadSeasonRenewals(seasonId),
   ]);
   if (!season) notFound();
 
@@ -143,6 +147,30 @@ export default async function TemporadaDetailPage({
           ) : null}
         </div>
       </div>
+
+      {renewals.total > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4">
+          <div className="flex items-center gap-3">
+            <BellIcon className="size-5 shrink-0 text-muted-foreground" />
+            <div>
+              <p className="font-medium">{t("renewalsSectionTitle")}</p>
+              <p className="text-sm text-muted-foreground">
+                {renewals.missingCount > 0
+                  ? t("renewalsSummary", { missing: renewals.missingCount, total: renewals.total })
+                  : t("renewalsAllDone")}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            render={<Link href={`/temporadas/${season.id}/pendientes`} />}
+            nativeButton={false}
+          >
+            {t("viewRenewalsAction")}
+          </Button>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
