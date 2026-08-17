@@ -1,19 +1,29 @@
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
+const MOBILE_QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
 
+function subscribe(onStoreChange: () => void) {
+  const mql = window.matchMedia(MOBILE_QUERY)
+  mql.addEventListener("change", onStoreChange)
+  return () => mql.removeEventListener("change", onStoreChange)
+}
+
+function getSnapshot() {
+  return window.matchMedia(MOBILE_QUERY).matches
+}
+
+/** En el servidor no hay viewport: se asume escritorio y React corrige al hidratar. */
+function getServerSnapshot() {
+  return false
+}
+
+/**
+ * `matchMedia` es un sistema externo, así que se lee con `useSyncExternalStore`
+ * en vez de copiarlo a un `useState` desde un efecto: leer el ancho en el render
+ * evita el segundo render en cascada y deja que React use el valor del servidor
+ * durante la hidratación, sin desajuste.
+ */
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
-
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
-
-  return !!isMobile
+  return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }
