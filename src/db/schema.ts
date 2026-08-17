@@ -226,6 +226,8 @@ export const persons = pgTable(
     city: text("city"),
     photoFilename: text("photo_filename"), // nombre de archivo original (referencia, sin subir)
     photoPath: text("photo_path"), // ruta del objeto en Supabase Storage (bucket person-photos)
+    idFrontPath: text("id_front_path"), // DNI/NIE frontal (bucket person-documents)
+    idBackPath: text("id_back_path"), // DNI/NIE trasera (bucket person-documents)
     medicalCertUntil: date("medical_cert_until"), // caducidad del reconocimiento médico
     iban: text("iban"), // cuenta para domiciliar cuotas
     sepaConsent: boolean("sepa_consent").notNull().default(false), // permiso de domiciliación de la cuota

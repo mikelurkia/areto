@@ -169,6 +169,8 @@
     "guardianNone": "Tutorerik gabe",
     "ibanLabel": "IBAN",
     "ibanPlaceholder": "ES00 0000 0000 0000 0000 0000",
+    "idFrontLabel": "NAN (aurrealdea)",
+    "idBackLabel": "NAN (atzealdea)",
     "medicalCertLabel": "Ziurtagiri medikoa noiz arte",
     "shirtSizeLabel": "Kamiseta neurria",
     "pantsSizeLabel": "Galtza neurria",
@@ -481,6 +483,10 @@
     "guardianMatchLabel": "{index}. tutorea bera al da...?",
     "possibleMatchBadge": "Baliteke bat etortzea",
     "createNewPerson": "Pertsona berria sortu",
+    "changesDetectedTitle": "Pertsona honekin lotzean detektatutako aldaketak",
+    "currentValueLabel": "Uneko balioa",
+    "newValueLabel": "Balio berria",
+    "keepOriginalValue": "Uneko balioa mantendu",
     "approveAction": "Onartu eta integratu",
     "rejectionReasonLabel": "Ukatzeko arrazoia",
     "rejectionReasonPlaceholder": "Azaldu zergatik ukatzen den, interesdunari jakinarazteko.",
@@ -491,9 +497,7 @@
     "registrationRejected": "Eskaera ukatu da.",
     "notFound": "Ez da eskaerarik aurkitu.",
     "alreadyReviewed": "Eskaera hau jada berrikusi da.",
-    "duplicatePersonFound": "Jada badago NAN edo email bera duen pertsona bat. Iradokitako bat-etortzeak berrikusi eta eskaera pertsona horri lotu, berria sortu ordez.",
-    "idFrontDocLabel": "NAN (aurrealdea)",
-    "idBackDocLabel": "NAN (atzealdea)"
+    "duplicatePersonFound": "Jada badago NAN edo email bera duen pertsona bat. Iradokitako bat-etortzeak berrikusi eta eskaera pertsona horri lotu, berria sortu ordez."
   },
   "Equipos": {
     "title": "Taldeak",

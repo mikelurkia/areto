@@ -169,6 +169,8 @@
     "guardianNone": "Sin tutor/a",
     "ibanLabel": "IBAN",
     "ibanPlaceholder": "ES00 0000 0000 0000 0000 0000",
+    "idFrontLabel": "DNI/NIE (frontal)",
+    "idBackLabel": "DNI/NIE (trasera)",
     "medicalCertLabel": "Certificado médico hasta",
     "shirtSizeLabel": "Talla camiseta",
     "pantsSizeLabel": "Talla pantalón",
@@ -481,6 +483,10 @@
     "guardianMatchLabel": "¿Tutor/a {index} es el mismo que...?",
     "possibleMatchBadge": "Posible coincidencia",
     "createNewPerson": "Crear una persona nueva",
+    "changesDetectedTitle": "Cambios detectados al vincular con esta persona",
+    "currentValueLabel": "Valor actual",
+    "newValueLabel": "Valor nuevo",
+    "keepOriginalValue": "Mantener el valor actual",
     "approveAction": "Aprobar e integrar",
     "rejectionReasonLabel": "Motivo del rechazo",
     "rejectionReasonPlaceholder": "Explica por qué se rechaza, para poder avisar al interesado.",
@@ -491,9 +497,7 @@
     "registrationRejected": "Solicitud rechazada.",
     "notFound": "No se ha encontrado la solicitud.",
     "alreadyReviewed": "Esta solicitud ya se ha revisado.",
-    "duplicatePersonFound": "Ya existe una persona con este DNI/NIE o email. Revisa las coincidencias sugeridas y vincula la solicitud a esa persona en vez de crear una nueva.",
-    "idFrontDocLabel": "DNI/NIE (frontal)",
-    "idBackDocLabel": "DNI/NIE (trasera)"
+    "duplicatePersonFound": "Ya existe una persona con este DNI/NIE o email. Revisa las coincidencias sugeridas y vincula la solicitud a esa persona en vez de crear una nueva."
   },
   "Equipos": {
     "title": "Equipos",

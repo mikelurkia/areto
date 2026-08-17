@@ -1,7 +1,5 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
@@ -9,7 +7,6 @@ import { getTranslations } from "next-intl/server";
 import { db } from "@/db";
 import {
   memberships,
-  personDocuments,
   personGuardians,
   persons,
   registrationGuardians,
@@ -43,6 +40,51 @@ function isUniqueViolation(err: unknown, constraintName?: string): boolean {
   }
   if (!constraintName) return true;
   return (cause as { constraint_name?: string }).constraint_name === constraintName;
+}
+
+const PERSON_UPDATE_FIELDS = [
+  "firstName",
+  "lastName",
+  "birthDate",
+  "nationalId",
+  "address",
+  "city",
+  "phone",
+  "email",
+  "iban",
+  "shirtSize",
+  "pantsSize",
+  "shoeSize",
+] as const;
+
+const GUARDIAN_UPDATE_FIELDS = [
+  "firstName",
+  "lastName",
+  "birthDate",
+  "nationalId",
+  "address",
+  "phone",
+  "email",
+] as const;
+
+/** Si el revisor ha marcado "mantener el valor actual" al vincular con una
+ * persona existente (ver el diff en `review-form.tsx`), se respeta ese valor
+ * en vez del que trae la inscripción. */
+function applyKeepOverrides<T extends Record<string, unknown>>(
+  fresh: T,
+  existing: T | null,
+  formData: FormData,
+  keepPrefix: string,
+  fields: readonly (keyof T)[],
+): T {
+  if (!existing) return fresh;
+  const result = { ...fresh };
+  for (const field of fields) {
+    if (formData.get(`keep_${keepPrefix}_${String(field)}`) === "on") {
+      result[field] = existing[field];
+    }
+  }
+  return result;
 }
 
 function readEditableFields(formData: FormData) {
@@ -145,9 +187,25 @@ export async function approveRegistration(
       let personId: string;
       if (matchedPersonId !== "new") {
         personId = matchedPersonId;
-        await tx
-          .update(persons)
-          .set({
+        const existingPerson = await tx.query.persons.findFirst({
+          where: eq(persons.id, personId),
+          columns: {
+            firstName: true,
+            lastName: true,
+            birthDate: true,
+            nationalId: true,
+            address: true,
+            city: true,
+            phone: true,
+            email: true,
+            iban: true,
+            shirtSize: true,
+            pantsSize: true,
+            shoeSize: true,
+          },
+        });
+        const fields = applyKeepOverrides(
+          {
             firstName: registration.firstName,
             lastName: registration.lastName,
             birthDate: registration.birthDate,
@@ -160,6 +218,16 @@ export async function approveRegistration(
             shirtSize: registration.shirtSize,
             pantsSize: registration.pantsSize,
             shoeSize: registration.shoeSize,
+          },
+          existingPerson ?? null,
+          formData,
+          "person",
+          PERSON_UPDATE_FIELDS,
+        );
+        await tx
+          .update(persons)
+          .set({
+            ...fields,
             photoConsent: registration.imageConsent,
             sepaConsent: registration.sepaConsent,
           })
@@ -193,9 +261,20 @@ export async function approveRegistration(
         let guardianPersonId: string;
         if (matchValue !== "new") {
           guardianPersonId = matchValue;
-          await tx
-            .update(persons)
-            .set({
+          const existingGuardian = await tx.query.persons.findFirst({
+            where: eq(persons.id, guardianPersonId),
+            columns: {
+              firstName: true,
+              lastName: true,
+              birthDate: true,
+              nationalId: true,
+              address: true,
+              phone: true,
+              email: true,
+            },
+          });
+          const guardianFields = applyKeepOverrides(
+            {
               firstName: g.firstName,
               lastName: g.lastName,
               birthDate: g.birthDate,
@@ -203,8 +282,13 @@ export async function approveRegistration(
               address: g.address,
               phone: g.phone,
               email: g.email,
-            })
-            .where(eq(persons.id, guardianPersonId));
+            },
+            existingGuardian ?? null,
+            formData,
+            `guardian_${g.id}`,
+            GUARDIAN_UPDATE_FIELDS,
+          );
+          await tx.update(persons).set(guardianFields).where(eq(persons.id, guardianPersonId));
         } else {
           const [insertedGuardian] = await tx
             .insert(persons)
@@ -263,7 +347,15 @@ export async function approveRegistration(
     throw err;
   }
 
-  if (registration.photoPath) {
+  // Foto y DNI son, como los campos de texto, valores únicos por persona que
+  // esta aprobación podría sobrescribir: si se vincula con una persona
+  // existente y el revisor ha marcado "mantener el actual" (ver el diff en
+  // `review-form.tsx`), no se tocan. Al crear una persona nueva no hay nada
+  // que mantener, así que siempre se aplican.
+  const keepExistingFile = (key: "photo" | "idFront" | "idBack") =>
+    matchedPersonId !== "new" && formData.get(`keep_person_${key}`) === "on";
+
+  if (registration.photoPath && !keepExistingFile("photo")) {
     const targetPath = `${personId}/photo.${extFromPath(registration.photoPath)}`;
     await copyFileBetweenBuckets(
       REGISTRATION_BUCKET,
@@ -274,16 +366,16 @@ export async function approveRegistration(
     await db.update(persons).set({ photoPath: targetPath }).where(eq(persons.id, personId));
   }
 
-  const idDocs: { path: string | null; label: string }[] = [
-    { path: registration.idFrontPath, label: t("idFrontDocLabel") },
-    { path: registration.idBackPath, label: t("idBackDocLabel") },
-  ];
-  for (const doc of idDocs) {
-    if (!doc.path) continue;
-    const docId = randomUUID();
-    const targetPath = `${personId}/${docId}.${extFromPath(doc.path)}`;
-    await copyFileBetweenBuckets(REGISTRATION_BUCKET, doc.path, PERSON_DOCUMENTS_BUCKET, targetPath);
-    await db.insert(personDocuments).values({ id: docId, personId, label: doc.label, filePath: targetPath });
+  if (registration.idFrontPath && !keepExistingFile("idFront")) {
+    const targetPath = `${personId}/id-front.${extFromPath(registration.idFrontPath)}`;
+    await copyFileBetweenBuckets(REGISTRATION_BUCKET, registration.idFrontPath, PERSON_DOCUMENTS_BUCKET, targetPath);
+    await db.update(persons).set({ idFrontPath: targetPath }).where(eq(persons.id, personId));
+  }
+
+  if (registration.idBackPath && !keepExistingFile("idBack")) {
+    const targetPath = `${personId}/id-back.${extFromPath(registration.idBackPath)}`;
+    await copyFileBetweenBuckets(REGISTRATION_BUCKET, registration.idBackPath, PERSON_DOCUMENTS_BUCKET, targetPath);
+    await db.update(persons).set({ idBackPath: targetPath }).where(eq(persons.id, personId));
   }
 
   revalidatePath("/", "layout");

@@ -240,8 +240,10 @@ export default async function PersonDetailPage({
 
   // Segunda tanda: las firmas de Storage que necesita la ficha ya cargada. Lo de
   // la familia va por su cuenta, en <FamilySection>.
-  const [photoUrl, qualificationFileUrls, documentFileUrls] = await Promise.all([
+  const [photoUrl, idFrontUrl, idBackUrl, qualificationFileUrls, documentFileUrls] = await Promise.all([
     getSignedUrl(PHOTO_BUCKET, person.photoPath),
+    getSignedUrl(DOCUMENTS_BUCKET, person.idFrontPath),
+    getSignedUrl(DOCUMENTS_BUCKET, person.idBackPath),
     getSignedUrls(QUALIFICATIONS_BUCKET, person.qualifications, (q) => q.filePath, (q) => q.id),
     getSignedUrls(DOCUMENTS_BUCKET, person.documents, (d) => d.filePath, (d) => d.id),
   ]);
@@ -465,6 +467,36 @@ export default async function PersonDetailPage({
                         <AssignMemberNumberButton personId={person.id} />
                       </span>
                     ) : null)
+                  }
+                />
+                <InfoRow
+                  label={t("idFrontLabel")}
+                  value={
+                    idFrontUrl ? (
+                      <a
+                        href={idFrontUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {t("documentViewFile")}
+                      </a>
+                    ) : null
+                  }
+                />
+                <InfoRow
+                  label={t("idBackLabel")}
+                  value={
+                    idBackUrl ? (
+                      <a
+                        href={idBackUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {t("documentViewFile")}
+                      </a>
+                    ) : null
                   }
                 />
               </dl>

@@ -8,13 +8,15 @@ import { registrations, teams } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { findCandidates } from "@/lib/person-matching";
 import { teamSeasonLabel } from "@/lib/team-label";
-import { getSignedUrl } from "@/lib/supabase/storage";
+import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
 import { ReviewForm, type RegistrationDetail } from "@/components/inscripciones/review-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 const PHOTO_BUCKET = "registration-documents";
+const PERSON_PHOTO_BUCKET = "person-photos";
+const PERSON_DOCUMENTS_BUCKET = "person-documents";
 
 const STATUS_VARIANT = {
   pending: "warning",
@@ -44,7 +46,24 @@ export default async function RegistrationDetailPage({
 
   const [allPersons, seasonTeams, photoUrl, idFrontUrl, idBackUrl] = await Promise.all([
     db.query.persons.findMany({
-      columns: { id: true, firstName: true, lastName: true, nationalId: true, email: true },
+      columns: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        nationalId: true,
+        email: true,
+        birthDate: true,
+        address: true,
+        city: true,
+        phone: true,
+        iban: true,
+        shirtSize: true,
+        pantsSize: true,
+        shoeSize: true,
+        photoPath: true,
+        idFrontPath: true,
+        idBackPath: true,
+      },
     }),
     db.query.teams.findMany({
       where: eq(teams.seasonId, registration.seasonId),
@@ -54,6 +73,16 @@ export default async function RegistrationDetailPage({
     getSignedUrl(PHOTO_BUCKET, registration.photoPath),
     getSignedUrl(PHOTO_BUCKET, registration.idFrontPath),
     getSignedUrl(PHOTO_BUCKET, registration.idBackPath),
+  ]);
+
+  // Solo la persona principal tiene foto/DNI nuevos que comparar (los tutores
+  // no llevan ficheros en el formulario), así que solo firmamos sus propias
+  // coincidencias — un conjunto pequeño, no toda la tabla de personas.
+  const mainCandidates = findCandidates(registration, allPersons);
+  const [candidatePhotoUrls, candidateIdFrontUrls, candidateIdBackUrls] = await Promise.all([
+    getSignedUrls(PERSON_PHOTO_BUCKET, mainCandidates, (p) => p.photoPath, (p) => p.id),
+    getSignedUrls(PERSON_DOCUMENTS_BUCKET, mainCandidates, (p) => p.idFrontPath, (p) => p.id),
+    getSignedUrls(PERSON_DOCUMENTS_BUCKET, mainCandidates, (p) => p.idBackPath, (p) => p.id),
   ]);
 
   const detail: RegistrationDetail = {
@@ -76,7 +105,15 @@ export default async function RegistrationDetailPage({
     sepaConsent: registration.sepaConsent,
     termsConsent: registration.termsConsent,
     imageConsent: registration.imageConsent,
-    candidates: findCandidates(registration, allPersons),
+    newPhotoUrl: photoUrl,
+    newIdFrontUrl: idFrontUrl,
+    newIdBackUrl: idBackUrl,
+    candidates: mainCandidates.map((c) => ({
+      ...c,
+      photoUrl: candidatePhotoUrls.get(c.id) ?? null,
+      idFrontUrl: candidateIdFrontUrls.get(c.id) ?? null,
+      idBackUrl: candidateIdBackUrls.get(c.id) ?? null,
+    })),
     guardians: registration.guardians.map((g) => ({
       id: g.id,
       firstName: g.firstName,
