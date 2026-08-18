@@ -229,12 +229,26 @@ export const persons = pgTable(
     idFrontPath: text("id_front_path"), // DNI/NIE frontal (bucket person-documents)
     idBackPath: text("id_back_path"), // DNI/NIE trasera (bucket person-documents)
     medicalCertUntil: date("medical_cert_until"), // caducidad del reconocimiento médico
-    iban: text("iban"), // cuenta para domiciliar cuotas
+    iban: text("iban"), // cuenta para domiciliar cuotas; titularidad de esta misma persona
     sepaConsent: boolean("sepa_consent").notNull().default(false), // permiso de domiciliación de la cuota
+    // Fecha de aceptación del consentimiento vigente; NULL si nunca se aceptó
+    // o si se revocó (al revocar se pierde la fecha anterior a propósito).
+    sepaConsentAt: timestamp("sepa_consent_at", { withTimezone: true }),
+    // Persona cuyo iban/sepaConsent hay que usar para cobrar las cuotas de
+    // este registro (normalmente el tutor principal de un menor). NULL =
+    // esta misma persona es la titular de su domiciliación.
+    payerPersonId: uuid("payer_person_id").references((): AnyPgColumn => persons.id, {
+      onDelete: "set null",
+    }),
     shirtSize: text("shirt_size"),
     pantsSize: text("pants_size"),
     shoeSize: text("shoe_size"),
     photoConsent: boolean("photo_consent").notNull().default(false), // permiso de imagen
+    photoConsentAt: timestamp("photo_consent_at", { withTimezone: true }),
+    termsConsent: boolean("terms_consent").notNull().default(false), // acepta condiciones de traslados y devolución de equipación
+    termsConsentAt: timestamp("terms_consent_at", { withTimezone: true }),
+    privacyConsent: boolean("privacy_consent").notNull().default(false), // acepta el tratamiento de datos (RGPD)
+    privacyConsentAt: timestamp("privacy_consent_at", { withTimezone: true }),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -706,9 +720,14 @@ export const registrations = pgTable("registrations", {
   shoeSize: text("shoe_size"),
   installmentsChosen: integer("installments_chosen"), // plazos elegidos; informativo, no genera cuotas
   sepaConsent: boolean("sepa_consent").notNull().default(false),
+  sepaConsentAt: timestamp("sepa_consent_at", { withTimezone: true }),
   termsConsent: boolean("terms_consent").notNull().default(false), // acepta condiciones de traslados y devolución de equipación
+  termsConsentAt: timestamp("terms_consent_at", { withTimezone: true }),
 
-  imageConsent: boolean("image_consent").notNull().default(false),
+  photoConsent: boolean("photo_consent").notNull().default(false), // mismo nombre que persons.photoConsent (antes "imageConsent")
+  photoConsentAt: timestamp("photo_consent_at", { withTimezone: true }),
+  privacyConsent: boolean("privacy_consent").notNull().default(false), // acepta el tratamiento de datos (RGPD)
+  privacyConsentAt: timestamp("privacy_consent_at", { withTimezone: true }),
 
   photoPath: text("photo_path"), // bucket registration-documents
   idFrontPath: text("id_front_path"),
@@ -838,6 +857,14 @@ export const personsRelations = relations(persons, ({ many, one }) => ({
   guardianRows: many(personGuardians, { relationName: "personGuardianRows" }),
   /** Filas donde esta persona es tutora de alguien más. */
   guardianOfRows: many(personGuardians, { relationName: "guardianPersonRows" }),
+  /** Persona cuyo iban/sepaConsent se usa para cobrar las cuotas de esta persona. */
+  payerPerson: one(persons, {
+    fields: [persons.payerPersonId],
+    references: [persons.id],
+    relationName: "payerPerson",
+  }),
+  /** Personas que delegan su cobro en esta (sus tutelados). */
+  payeeOf: many(persons, { relationName: "payerPerson" }),
   clubMember: one(clubMembers, {
     fields: [persons.id],
     references: [clubMembers.personId],

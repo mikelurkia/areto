@@ -104,7 +104,8 @@ export default async function RegistrationDetailPage({
     installmentsChosen: registration.installmentsChosen,
     sepaConsent: registration.sepaConsent,
     termsConsent: registration.termsConsent,
-    imageConsent: registration.imageConsent,
+    photoConsent: registration.photoConsent,
+    privacyConsent: registration.privacyConsent,
     newPhotoUrl: photoUrl,
     newIdFrontUrl: idFrontUrl,
     newIdBackUrl: idBackUrl,
@@ -130,6 +131,8 @@ export default async function RegistrationDetailPage({
   const teamOptions = seasonTeams.map((team) => ({
     id: team.id,
     label: teamSeasonLabel(team, team.season),
+    minBirthYear: team.minBirthYear,
+    maxBirthYear: team.maxBirthYear,
   }));
 
   const fullName = `${registration.firstName} ${registration.lastName}`;

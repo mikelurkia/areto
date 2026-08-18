@@ -84,6 +84,12 @@ export function PersonDialog(props: PersonDialogProps) {
   const [guardianIds, setGuardianIds] = useState<string[]>(
     props.mode === "edit" ? props.person.guardians.map((g) => g.id) : [],
   );
+  // Un menor no puede ser titular de un mandato SEPA: si hay tutores, el
+  // principal (el primero de la lista) dispone del iban de esta persona.
+  const hasGuardians = guardianIds.length > 0;
+  const payerGuardian = hasGuardians
+    ? guardianOptions.find((o) => o.id === guardianIds[0])
+    : undefined;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -281,15 +287,28 @@ export function PersonDialog(props: PersonDialogProps) {
                 <input type="hidden" name="guardianIds" value={guardianIds.join(",")} />
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="person-iban">{t("ibanLabel")}</FieldLabel>
-                  <Input
-                    id="person-iban"
-                    name="iban"
-                    defaultValue={person?.iban ?? ""}
-                    placeholder={t("ibanPlaceholder")}
-                  />
-                </Field>
+                {hasGuardians ? (
+                  <Field>
+                    <FieldLabel>{t("ibanLabel")}</FieldLabel>
+                    <p className="text-sm text-muted-foreground">
+                      {payerGuardian
+                        ? t("ibanHandledByGuardian", {
+                            name: `${payerGuardian.firstName} ${payerGuardian.lastName}`,
+                          })
+                        : t("ibanHandledByGuardianGeneric")}
+                    </p>
+                  </Field>
+                ) : (
+                  <Field>
+                    <FieldLabel htmlFor="person-iban">{t("ibanLabel")}</FieldLabel>
+                    <Input
+                      id="person-iban"
+                      name="iban"
+                      defaultValue={person?.iban ?? ""}
+                      placeholder={t("ibanPlaceholder")}
+                    />
+                  </Field>
+                )}
                 <Field>
                   <FieldLabel htmlFor="person-medical-cert">
                     {t("medicalCertLabel")}
@@ -371,16 +390,18 @@ export function PersonDialog(props: PersonDialogProps) {
                     {t("photoConsentLabel")}
                   </Label>
                 </Field>
-                <Field orientation="horizontal">
-                  <Checkbox
-                    id="person-sepa-consent"
-                    name="sepaConsent"
-                    defaultChecked={person?.sepaConsent ?? false}
-                  />
-                  <Label htmlFor="person-sepa-consent" className="font-normal">
-                    {t("sepaConsentLabel")}
-                  </Label>
-                </Field>
+                {hasGuardians ? null : (
+                  <Field orientation="horizontal">
+                    <Checkbox
+                      id="person-sepa-consent"
+                      name="sepaConsent"
+                      defaultChecked={person?.sepaConsent ?? false}
+                    />
+                    <Label htmlFor="person-sepa-consent" className="font-normal">
+                      {t("sepaConsentLabel")}
+                    </Label>
+                  </Field>
+                )}
               </div>
               <Field>
                 <FieldLabel htmlFor="person-notes">{t("notesLabel")}</FieldLabel>

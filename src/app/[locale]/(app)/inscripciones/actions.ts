@@ -14,6 +14,7 @@ import {
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { isValidNationalId } from "@/lib/national-id";
+import { resolvePayerFields } from "@/lib/payer";
 import { readGuardians } from "@/lib/registration-guardians";
 import { copyFileBetweenBuckets } from "@/lib/supabase/storage";
 
@@ -57,6 +58,11 @@ const PERSON_UPDATE_FIELDS = [
   "shoeSize",
 ] as const;
 
+/** Cuando hay tutor pagador, el iban ya no es un campo propio del jugador. */
+const PERSON_UPDATE_FIELDS_WITHOUT_IBAN = PERSON_UPDATE_FIELDS.filter(
+  (field) => field !== "iban",
+);
+
 const GUARDIAN_UPDATE_FIELDS = [
   "firstName",
   "lastName",
@@ -66,6 +72,10 @@ const GUARDIAN_UPDATE_FIELDS = [
   "phone",
   "email",
 ] as const;
+
+/** El tutor principal (el primero introducido) es quien domicilia la cuota:
+ * su iban sí es un campo editable/comparable, a diferencia del resto. */
+const GUARDIAN_PAYER_UPDATE_FIELDS = [...GUARDIAN_UPDATE_FIELDS, "iban"] as const;
 
 /** Si el revisor ha marcado "mantener el valor actual" al vincular con una
  * persona existente (ver el diff en `review-form.tsx`), se respeta ese valor
@@ -102,8 +112,9 @@ function readEditableFields(formData: FormData) {
     pantsSize: String(formData.get("pantsSize") ?? "").trim(),
     shoeSize: String(formData.get("shoeSize") ?? "").trim(),
     installmentsChosen: Number(formData.get("installmentsChosen") ?? "1") === 2 ? 2 : 1,
-    // sepaConsent, termsConsent e imageConsent NO son editables aquí a propósito:
-    // deben reflejar siempre fielmente lo que la persona autorizó al enviar el formulario.
+    // sepaConsent, termsConsent, photoConsent y privacyConsent NO son editables aquí
+    // a propósito: deben reflejar siempre fielmente lo que la persona autorizó al
+    // enviar el formulario.
   };
 }
 
@@ -185,6 +196,91 @@ export async function approveRegistration(
   try {
     personId = await db.transaction(async (tx) => {
       let personId: string;
+
+      // Los tutores se procesan primero: el tutor principal (el primero
+      // introducido) es quien domicilia la cuota de un jugador menor, así
+      // que hace falta conocer su id antes de dar de alta/actualizar al
+      // jugador con el `payerPersonId` correcto.
+      const guardianPersonIds: string[] = [];
+      for (const [i, g] of registration.guardians.entries()) {
+        const isPayer = i === 0;
+        const matchValue = String(formData.get(`matchedFor_${g.id}`) ?? "new");
+        let guardianPersonId: string;
+        if (matchValue !== "new") {
+          guardianPersonId = matchValue;
+          const existingGuardian = await tx.query.persons.findFirst({
+            where: eq(persons.id, guardianPersonId),
+            columns: {
+              firstName: true,
+              lastName: true,
+              birthDate: true,
+              nationalId: true,
+              address: true,
+              phone: true,
+              email: true,
+              iban: true,
+            },
+          });
+          const guardianFields = applyKeepOverrides(
+            {
+              firstName: g.firstName,
+              lastName: g.lastName,
+              birthDate: g.birthDate,
+              nationalId: g.nationalId,
+              address: g.address,
+              phone: g.phone,
+              email: g.email,
+              ...(isPayer ? { iban: registration.iban } : {}),
+            },
+            existingGuardian ?? null,
+            formData,
+            `guardian_${g.id}`,
+            isPayer ? GUARDIAN_PAYER_UPDATE_FIELDS : GUARDIAN_UPDATE_FIELDS,
+          );
+          await tx
+            .update(persons)
+            .set({
+              ...guardianFields,
+              ...(isPayer
+                ? {
+                    sepaConsent: registration.sepaConsent,
+                    sepaConsentAt: registration.sepaConsentAt,
+                  }
+                : {}),
+            })
+            .where(eq(persons.id, guardianPersonId));
+        } else {
+          const [insertedGuardian] = await tx
+            .insert(persons)
+            .values({
+              firstName: g.firstName,
+              lastName: g.lastName,
+              birthDate: g.birthDate,
+              nationalId: g.nationalId,
+              address: g.address,
+              phone: g.phone,
+              email: g.email,
+              ...(isPayer
+                ? {
+                    iban: registration.iban,
+                    sepaConsent: registration.sepaConsent,
+                    sepaConsentAt: registration.sepaConsentAt,
+                  }
+                : {}),
+            })
+            .returning({ id: persons.id });
+          guardianPersonId = insertedGuardian.id;
+        }
+        guardianPersonIds.push(guardianPersonId);
+        await tx
+          .update(registrationGuardians)
+          .set({ matchedPersonId: guardianPersonId })
+          .where(eq(registrationGuardians.id, g.id));
+      }
+
+      const payer = resolvePayerFields(guardianPersonIds, registration.iban, registration.sepaConsent);
+      const payerPersonId = payer.payerPersonId;
+
       if (matchedPersonId !== "new") {
         personId = matchedPersonId;
         const existingPerson = await tx.query.persons.findFirst({
@@ -214,7 +310,7 @@ export async function approveRegistration(
             city: registration.city,
             phone: registration.phone,
             email: registration.email,
-            iban: registration.iban,
+            iban: payer.iban,
             shirtSize: registration.shirtSize,
             pantsSize: registration.pantsSize,
             shoeSize: registration.shoeSize,
@@ -222,14 +318,21 @@ export async function approveRegistration(
           existingPerson ?? null,
           formData,
           "person",
-          PERSON_UPDATE_FIELDS,
+          payerPersonId ? PERSON_UPDATE_FIELDS_WITHOUT_IBAN : PERSON_UPDATE_FIELDS,
         );
         await tx
           .update(persons)
           .set({
             ...fields,
-            photoConsent: registration.imageConsent,
-            sepaConsent: registration.sepaConsent,
+            photoConsent: registration.photoConsent,
+            photoConsentAt: registration.photoConsentAt,
+            termsConsent: registration.termsConsent,
+            termsConsentAt: registration.termsConsentAt,
+            privacyConsent: registration.privacyConsent,
+            privacyConsentAt: registration.privacyConsentAt,
+            sepaConsent: payer.sepaConsent,
+            sepaConsentAt: payer.sepaConsent ? registration.sepaConsentAt : null,
+            payerPersonId,
           })
           .where(eq(persons.id, personId));
       } else {
@@ -244,67 +347,22 @@ export async function approveRegistration(
             city: registration.city,
             phone: registration.phone,
             email: registration.email,
-            iban: registration.iban,
+            iban: payer.iban,
             shirtSize: registration.shirtSize,
             pantsSize: registration.pantsSize,
             shoeSize: registration.shoeSize,
-            photoConsent: registration.imageConsent,
-            sepaConsent: registration.sepaConsent,
+            photoConsent: registration.photoConsent,
+            photoConsentAt: registration.photoConsentAt,
+            termsConsent: registration.termsConsent,
+            termsConsentAt: registration.termsConsentAt,
+            privacyConsent: registration.privacyConsent,
+            privacyConsentAt: registration.privacyConsentAt,
+            sepaConsent: payer.sepaConsent,
+            sepaConsentAt: payer.sepaConsent ? registration.sepaConsentAt : null,
+            payerPersonId,
           })
           .returning({ id: persons.id });
         personId = inserted.id;
-      }
-
-      const guardianPersonIds: string[] = [];
-      for (const g of registration.guardians) {
-        const matchValue = String(formData.get(`matchedFor_${g.id}`) ?? "new");
-        let guardianPersonId: string;
-        if (matchValue !== "new") {
-          guardianPersonId = matchValue;
-          const existingGuardian = await tx.query.persons.findFirst({
-            where: eq(persons.id, guardianPersonId),
-            columns: {
-              firstName: true,
-              lastName: true,
-              birthDate: true,
-              nationalId: true,
-              address: true,
-              phone: true,
-              email: true,
-            },
-          });
-          const guardianFields = applyKeepOverrides(
-            {
-              firstName: g.firstName,
-              lastName: g.lastName,
-              birthDate: g.birthDate,
-              nationalId: g.nationalId,
-              address: g.address,
-              phone: g.phone,
-              email: g.email,
-            },
-            existingGuardian ?? null,
-            formData,
-            `guardian_${g.id}`,
-            GUARDIAN_UPDATE_FIELDS,
-          );
-          await tx.update(persons).set(guardianFields).where(eq(persons.id, guardianPersonId));
-        } else {
-          const [insertedGuardian] = await tx
-            .insert(persons)
-            .values({
-              firstName: g.firstName,
-              lastName: g.lastName,
-              birthDate: g.birthDate,
-              nationalId: g.nationalId,
-              address: g.address,
-              phone: g.phone,
-              email: g.email,
-            })
-            .returning({ id: persons.id });
-          guardianPersonId = insertedGuardian.id;
-        }
-        guardianPersonIds.push(guardianPersonId);
       }
 
       if (guardianPersonIds.length > 0) {

@@ -80,6 +80,7 @@ const getPerson = cache((personId: string) =>
         orderBy: (g, { desc }) => [desc(g.isPrimary)],
       },
       guardianOfRows: { with: { person: true } },
+      payerPerson: true,
       clubMember: true,
       memberships: { with: { team: { with: { season: true } } } },
       qualifications: { orderBy: (q, { desc }) => [desc(q.createdAt)] },
@@ -250,6 +251,14 @@ export default async function PersonDetailPage({
 
   const today = new Date().toISOString().slice(0, 10);
   const fullName = `${person.firstName} ${person.lastName}`;
+  const consentDateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+  const fmtConsentDate = (d: Date | string | null) => (d ? consentDateFmt.format(new Date(d)) : null);
+  const photoConsentDate = fmtConsentDate(person.photoConsentAt);
+  const sepaConsentDate = fmtConsentDate(
+    person.payerPerson ? person.payerPerson.sepaConsentAt : person.sepaConsentAt,
+  );
+  const termsConsentDate = fmtConsentDate(person.termsConsentAt);
+  const privacyConsentDate = fmtConsentDate(person.privacyConsentAt);
   const isMinorWithoutGuardian = isMinor(person.birthDate) && person.guardianRows.length === 0;
   const hasMinorGuardian = person.guardianRows.some((r) => isMinor(r.guardian.birthDate));
   const isMember = person.clubMember?.status === "active";
@@ -308,6 +317,9 @@ export default async function PersonDetailPage({
                 <Badge variant="secondary">
                   {t("guardianOfBadge", { count: person.guardianOfRows.length })}
                 </Badge>
+              ) : null}
+              {isMinor(person.birthDate) ? (
+                <Badge variant="outline">{t("minorTag")}</Badge>
               ) : null}
               {isMinorWithoutGuardian ? (
                 <Badge variant="destructive" title={t("minorWithoutGuardianWarning")}>
@@ -453,7 +465,16 @@ export default async function PersonDetailPage({
               <dl className="grid grid-cols-2 gap-3">
                 <InfoRow label={t("birthDateLabel")} value={person.birthDate} />
                 <InfoRow label={t("nationalIdLabel")} value={person.nationalId} />
-                <InfoRow label={t("ibanLabel")} value={person.iban} />
+                <InfoRow
+                  label={t("ibanLabel")}
+                  value={
+                    person.payerPerson
+                      ? t("ibanHandledByGuardian", {
+                          name: `${person.payerPerson.firstName} ${person.payerPerson.lastName}`,
+                        })
+                      : person.iban
+                  }
+                />
                 <InfoRow
                   label={t("medicalCertLabel")}
                   value={person.medicalCertUntil}
@@ -519,12 +540,57 @@ export default async function PersonDetailPage({
               </h2>
               <div className="flex flex-wrap gap-1">
                 {person.photoConsent ? (
-                  <Badge variant="secondary">{t("photoConsentLabel")}</Badge>
+                  <Badge
+                    variant="secondary"
+                    title={
+                      photoConsentDate
+                        ? t("consentSinceLabel", { date: photoConsentDate })
+                        : undefined
+                    }
+                  >
+                    {t("photoConsentLabel")}
+                  </Badge>
                 ) : null}
-                {person.sepaConsent ? (
-                  <Badge variant="secondary">{t("sepaConsentLabel")}</Badge>
+                {(person.payerPerson ? person.payerPerson.sepaConsent : person.sepaConsent) ? (
+                  <Badge
+                    variant="secondary"
+                    title={
+                      sepaConsentDate ? t("consentSinceLabel", { date: sepaConsentDate }) : undefined
+                    }
+                  >
+                    {t("sepaConsentLabel")}
+                  </Badge>
                 ) : null}
-                {!person.photoConsent && !person.sepaConsent ? "—" : null}
+                {person.termsConsent ? (
+                  <Badge
+                    variant="secondary"
+                    title={
+                      termsConsentDate
+                        ? t("consentSinceLabel", { date: termsConsentDate })
+                        : undefined
+                    }
+                  >
+                    {t("termsConsentLabel")}
+                  </Badge>
+                ) : null}
+                {person.privacyConsent ? (
+                  <Badge
+                    variant="secondary"
+                    title={
+                      privacyConsentDate
+                        ? t("consentSinceLabel", { date: privacyConsentDate })
+                        : undefined
+                    }
+                  >
+                    {t("privacyConsentLabel")}
+                  </Badge>
+                ) : null}
+                {!person.photoConsent &&
+                !(person.payerPerson ? person.payerPerson.sepaConsent : person.sepaConsent) &&
+                !person.termsConsent &&
+                !person.privacyConsent
+                  ? "—"
+                  : null}
               </div>
             </div>
 

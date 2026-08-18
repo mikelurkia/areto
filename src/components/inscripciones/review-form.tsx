@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import { PlusIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -9,6 +9,7 @@ import {
   rejectRegistration,
   updateRegistration,
 } from "@/app/[locale]/(app)/inscripciones/actions";
+import { isBirthYearOutOfRange } from "@/lib/roster-health";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,8 +48,10 @@ type PersonCandidate = {
 
 /** Campos que `approveRegistration` sobrescribe hoy al vincular con una
  * persona existente (sin los consentimientos, que siempre toman el valor
- * recién enviado). Los tutores no llevan `city`/`iban`/tallas: es una
- * asimetría ya existente en el `UPDATE` de tutores, no algo nuevo. */
+ * recién enviado). Los tutores no llevan `city`/tallas. El `iban` solo se
+ * compara aquí cuando no hay tutores: un menor no puede ser titular de un
+ * mandato SEPA, así que si los hay el iban se compara en el tutor principal
+ * (ver `GUARDIAN_PAYER_DIFF_FIELDS`), no en el jugador. */
 const PERSON_DIFF_FIELDS = [
   "firstName",
   "lastName",
@@ -64,6 +67,8 @@ const PERSON_DIFF_FIELDS = [
   "shoeSize",
 ] as const;
 
+const PERSON_DIFF_FIELDS_WITHOUT_IBAN = PERSON_DIFF_FIELDS.filter((f) => f !== "iban");
+
 const GUARDIAN_DIFF_FIELDS = [
   "firstName",
   "lastName",
@@ -73,6 +78,9 @@ const GUARDIAN_DIFF_FIELDS = [
   "phone",
   "email",
 ] as const;
+
+/** El tutor principal (el primero de la lista) es quien domicilia la cuota. */
+const GUARDIAN_PAYER_DIFF_FIELDS = [...GUARDIAN_DIFF_FIELDS, "iban"] as const;
 
 const FIELD_LABEL_KEYS: Record<string, string> = {
   firstName: "firstNameLabel",
@@ -134,7 +142,8 @@ export type RegistrationDetail = {
   installmentsChosen: number | null;
   sepaConsent: boolean;
   termsConsent: boolean;
-  imageConsent: boolean;
+  photoConsent: boolean;
+  privacyConsent: boolean;
   newPhotoUrl: string | null;
   newIdFrontUrl: string | null;
   newIdBackUrl: string | null;
@@ -311,7 +320,12 @@ export function ReviewForm({
   teamOptions,
 }: {
   registration: RegistrationDetail;
-  teamOptions: { id: string; label: string }[];
+  teamOptions: {
+    id: string;
+    label: string;
+    minBirthYear: number | null;
+    maxBirthYear: number | null;
+  }[];
 }) {
   const t = useTranslations("Inscripciones");
 
@@ -330,6 +344,12 @@ export function ReviewForm({
   );
   const nextGuardianKey = useRef(guardianKeys.length);
   const [teamId, setTeamId] = useState("");
+  const hasGuardians = registration.kind === "player" && registration.guardians.length > 0;
+  const selectedTeam = teamOptions.find((o) => o.id === teamId) ?? null;
+  const teamAgeMismatch =
+    registration.kind === "player" &&
+    selectedTeam !== null &&
+    isBirthYearOutOfRange(registration.birthDate, selectedTeam);
 
   return (
     <div className="flex flex-col gap-8">
@@ -503,7 +523,11 @@ export function ReviewForm({
             {registration.kind === "player" ? (
               <ConsentRow label={t("termsConsentShortLabel")} granted={registration.termsConsent} />
             ) : null}
-            <ConsentRow label={t("imageConsentShortLabel")} granted={registration.imageConsent} />
+            <ConsentRow label={t("imageConsentShortLabel")} granted={registration.photoConsent} />
+            <ConsentRow
+              label={t("privacyConsentShortLabel")}
+              granted={registration.privacyConsent}
+            />
           </div>
         </FieldGroup>
 
@@ -537,6 +561,16 @@ export function ReviewForm({
             </Select>
             <input type="hidden" name="teamId" value={teamId} />
             <p className="text-xs text-muted-foreground">{t("teamOptionalHint")}</p>
+            {teamAgeMismatch && selectedTeam ? (
+              <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
+                <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
+                {t("teamAgeMismatchWarning", {
+                  min: selectedTeam.minBirthYear ?? "",
+                  max: selectedTeam.maxBirthYear ?? "",
+                  year: registration.birthDate ? registration.birthDate.slice(0, 4) : "",
+                })}
+              </p>
+            ) : null}
           </Field>
 
           <MatchSelect
@@ -552,12 +586,12 @@ export function ReviewForm({
               city: registration.city,
               phone: registration.phone,
               email: registration.email,
-              iban: registration.iban,
+              iban: hasGuardians ? null : registration.iban,
               shirtSize: registration.shirtSize,
               pantsSize: registration.pantsSize,
               shoeSize: registration.shoeSize,
             }}
-            diffFields={PERSON_DIFF_FIELDS}
+            diffFields={hasGuardians ? PERSON_DIFF_FIELDS_WITHOUT_IBAN : PERSON_DIFF_FIELDS}
             keepPrefix="person"
             photoDiff={{
               newPhotoUrl: registration.newPhotoUrl,
@@ -566,25 +600,29 @@ export function ReviewForm({
             }}
           />
 
-          {registration.guardians.map((g, i) => (
-            <MatchSelect
-              key={g.id}
-              name={`matchedFor_${g.id}`}
-              candidates={g.candidates}
-              placeholder={t("guardianMatchLabel", { index: i + 1 })}
-              newValues={{
-                firstName: g.firstName,
-                lastName: g.lastName,
-                birthDate: g.birthDate,
-                nationalId: g.nationalId,
-                address: g.address,
-                phone: g.phone,
-                email: g.email,
-              }}
-              diffFields={GUARDIAN_DIFF_FIELDS}
-              keepPrefix={`guardian_${g.id}`}
-            />
-          ))}
+          {registration.guardians.map((g, i) => {
+            const isPayer = i === 0;
+            return (
+              <MatchSelect
+                key={g.id}
+                name={`matchedFor_${g.id}`}
+                candidates={g.candidates}
+                placeholder={t("guardianMatchLabel", { index: i + 1 })}
+                newValues={{
+                  firstName: g.firstName,
+                  lastName: g.lastName,
+                  birthDate: g.birthDate,
+                  nationalId: g.nationalId,
+                  address: g.address,
+                  phone: g.phone,
+                  email: g.email,
+                  ...(isPayer ? { iban: registration.iban } : {}),
+                }}
+                diffFields={isPayer ? GUARDIAN_PAYER_DIFF_FIELDS : GUARDIAN_DIFF_FIELDS}
+                keepPrefix={`guardian_${g.id}`}
+              />
+            );
+          })}
 
           {approveState.error ? (
             <p className="text-sm text-destructive">{approveState.error}</p>

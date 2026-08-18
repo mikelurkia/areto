@@ -16,9 +16,11 @@ import {
   persons,
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { nextConsentAt, stampConsent } from "@/lib/consent";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
 import { isValidNationalId } from "@/lib/national-id";
+import { resolvePayerFields } from "@/lib/payer";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 
 export type PersonState = {
@@ -197,6 +199,8 @@ export async function createPerson(
     return { error: t("photoTooLarge") };
   }
 
+  const payer = resolvePayerFields(guardianIds, fields.iban || null, fields.sepaConsent);
+
   let personId: string;
   try {
     personId = await db.transaction(async (tx) => {
@@ -211,13 +215,16 @@ export async function createPerson(
           nationalId: fields.nationalId || null,
           address: fields.address || null,
           city: fields.city || null,
-          iban: fields.iban || null,
+          iban: payer.iban,
           medicalCertUntil: fields.medicalCertUntil || null,
           shirtSize: fields.shirtSize || null,
           pantsSize: fields.pantsSize || null,
           shoeSize: fields.shoeSize || null,
           photoConsent: fields.photoConsent,
-          sepaConsent: fields.sepaConsent,
+          photoConsentAt: stampConsent(fields.photoConsent),
+          sepaConsent: payer.sepaConsent,
+          sepaConsentAt: stampConsent(payer.sepaConsent),
+          payerPersonId: payer.payerPersonId,
           notes: fields.notes || null,
         })
         .returning({ id: persons.id });
@@ -270,8 +277,16 @@ export async function updatePerson(
 
   const existing = await db.query.persons.findFirst({
     where: eq(persons.id, id),
-    columns: { photoPath: true },
+    columns: {
+      photoPath: true,
+      photoConsent: true,
+      photoConsentAt: true,
+      sepaConsent: true,
+      sepaConsentAt: true,
+    },
   });
+
+  const payer = resolvePayerFields(guardianIds, fields.iban || null, fields.sepaConsent);
 
   try {
     await db
@@ -285,13 +300,24 @@ export async function updatePerson(
         nationalId: fields.nationalId || null,
         address: fields.address || null,
         city: fields.city || null,
-        iban: fields.iban || null,
+        iban: payer.iban,
         medicalCertUntil: fields.medicalCertUntil || null,
         shirtSize: fields.shirtSize || null,
         pantsSize: fields.pantsSize || null,
         shoeSize: fields.shoeSize || null,
         photoConsent: fields.photoConsent,
-        sepaConsent: fields.sepaConsent,
+        photoConsentAt: nextConsentAt(
+          existing?.photoConsent ?? false,
+          fields.photoConsent,
+          existing?.photoConsentAt ?? null,
+        ),
+        sepaConsent: payer.sepaConsent,
+        sepaConsentAt: nextConsentAt(
+          existing?.sepaConsent ?? false,
+          payer.sepaConsent,
+          existing?.sepaConsentAt ?? null,
+        ),
+        payerPersonId: payer.payerPersonId,
         notes: fields.notes || null,
       })
       .where(eq(persons.id, id));

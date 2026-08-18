@@ -24,6 +24,7 @@ const getPersonRecord = cache((personId: string) =>
     with: {
       guardianRows: { with: { guardian: true } },
       guardianOfRows: { with: { person: true } },
+      payerPerson: true,
       clubMember: true,
       memberships: { with: { team: { with: { season: true } } } },
       qualifications: { orderBy: (q, { desc }) => [desc(q.createdAt)] },
@@ -95,6 +96,16 @@ export default async function PersonRgpdPage({
   const generatedOn = new Intl.DateTimeFormat(locale, {
     dateStyle: "long",
   }).format(new Date());
+  // Un menor no puede ser titular de un mandato SEPA: si hay tutor
+  // principal pagador, el iban/consentimiento vigentes son los suyos.
+  const payer = person.payerPerson;
+  const consentDateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+  const fmtConsentDate = (d: Date | string | null) => (d ? consentDateFmt.format(new Date(d)) : null);
+  const consentValue = (granted: boolean, at: Date | string | null) => {
+    if (!granted) return t("rgpdNo");
+    const date = fmtConsentDate(at);
+    return date ? t("consentSinceLabel", { date }) : t("rgpdYes");
+  };
   const money = (cents: number) =>
     new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(
       cents / 100,
@@ -155,7 +166,14 @@ export default async function PersonRgpdPage({
           <Row label={t("phoneLabel")} value={person.phone} />
           <Row label={t("addressLabel")} value={person.address} />
           <Row label={t("cityLabel")} value={person.city} />
-          <Row label={t("ibanLabel")} value={person.iban} />
+          <Row
+            label={t("ibanLabel")}
+            value={
+              payer
+                ? t("ibanHandledByGuardian", { name: `${payer.firstName} ${payer.lastName}` })
+                : person.iban
+            }
+          />
         </Section>
 
         <Section title={t("rgpdOtherDataSection")}>
@@ -165,11 +183,22 @@ export default async function PersonRgpdPage({
           <Row label={t("shoeSizeLabel")} value={person.shoeSize} />
           <Row
             label={t("photoConsentLabel")}
-            value={person.photoConsent ? t("rgpdYes") : t("rgpdNo")}
+            value={consentValue(person.photoConsent, person.photoConsentAt)}
           />
           <Row
             label={t("sepaConsentLabel")}
-            value={person.sepaConsent ? t("rgpdYes") : t("rgpdNo")}
+            value={consentValue(
+              payer ? payer.sepaConsent : person.sepaConsent,
+              payer ? payer.sepaConsentAt : person.sepaConsentAt,
+            )}
+          />
+          <Row
+            label={t("termsConsentLabel")}
+            value={consentValue(person.termsConsent, person.termsConsentAt)}
+          />
+          <Row
+            label={t("privacyConsentLabel")}
+            value={consentValue(person.privacyConsent, person.privacyConsentAt)}
           />
           <Row
             label={t("rgpdHasPhotoLabel")}

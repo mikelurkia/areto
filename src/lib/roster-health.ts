@@ -41,6 +41,18 @@ export type RosterHealth = {
 
 const EXPIRING_DAYS = 30;
 
+/** Mismo criterio que `ageOutOfRange` pero para una sola persona, reutilizado
+ * al aprobar una inscripción (aviso no bloqueante si el equipo elegido no
+ * encaja con la fecha de nacimiento). */
+export function isBirthYearOutOfRange(
+  birthDate: string | null,
+  team: { minBirthYear: number | null; maxBirthYear: number | null },
+): boolean {
+  if (!birthDate || team.minBirthYear === null || team.maxBirthYear === null) return false;
+  const year = Number(birthDate.slice(0, 4));
+  return year < team.minBirthYear || year > team.maxBirthYear;
+}
+
 export function computeRosterHealth(
   memberships: HealthMembership[],
   team: { minBirthYear: number | null; maxBirthYear: number | null },

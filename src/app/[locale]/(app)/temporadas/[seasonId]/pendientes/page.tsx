@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, ShieldHalf } from "lucide-react";
+import { ArrowLeftIcon, MailIcon, MessageCircleIcon, ShieldHalf } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -7,9 +7,11 @@ import { db } from "@/db";
 import { seasons } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { loadSeasonRenewals, type RenewalStatus } from "@/lib/season-renewals";
+import { mailtoLink, whatsappLink } from "@/lib/contact-links";
 import { Link } from "@/i18n/navigation";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -18,6 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+// Solo tiene sentido avisar de estas dos: son las que no tienen la
+// inscripción resuelta (mismo criterio que `missingCount` en season-renewals.ts).
+const REMINDABLE_STATUSES: RenewalStatus[] = ["missing", "rejected"];
 
 const STATUS_VARIANT: Record<RenewalStatus, "secondary" | "warning" | "destructive" | "outline"> = {
   approved: "secondary",
@@ -98,34 +104,92 @@ export default async function SeasonRenewalsPage({
               <TableHead>{t("colTeam")}</TableHead>
               <TableHead>{t("colStatus")}</TableHead>
               <TableHead>{t("colContact")}</TableHead>
+              <TableHead>{t("colReminder")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.personId}>
-                <TableCell className="font-medium">
-                  <Link href={`/personas/${row.personId}`} className="hover:underline">
-                    {row.personName}
-                  </Link>
-                </TableCell>
-                <TableCell>{row.teamName}</TableCell>
-                <TableCell>
-                  <Badge variant={STATUS_VARIANT[row.status]}>{t(`status${capitalize(row.status)}`)}</Badge>
-                </TableCell>
-                <TableCell>
-                  {row.contactPhone || row.contactEmail ? (
-                    <div className="flex flex-col text-sm">
-                      <span>{row.contactName}</span>
-                      <span className="text-muted-foreground">
-                        {[row.contactPhone, row.contactEmail].filter(Boolean).join(" · ")}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">{t("noContact")}</span>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+            {rows.map((row) => {
+              const canRemind = REMINDABLE_STATUSES.includes(row.status);
+              const message = t("reminderMessage", {
+                contactName: row.contactName,
+                personName: row.personName,
+                team: row.teamName,
+                season: season.name,
+              });
+              return (
+                <TableRow key={row.personId}>
+                  <TableCell className="font-medium">
+                    <Link href={`/personas/${row.personId}`} className="hover:underline">
+                      {row.personName}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{row.teamName}</TableCell>
+                  <TableCell>
+                    <Badge variant={STATUS_VARIANT[row.status]}>{t(`status${capitalize(row.status)}`)}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {row.contactPhone || row.contactEmail ? (
+                      <div className="flex flex-col text-sm">
+                        <span>{row.contactName}</span>
+                        <span className="text-muted-foreground">
+                          {[row.contactPhone, row.contactEmail].filter(Boolean).join(" · ")}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">{t("noContact")}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {canRemind && (row.contactPhone || row.contactEmail) ? (
+                      <div className="flex items-center gap-0.5">
+                        {row.contactPhone ? (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground"
+                            render={
+                              <a
+                                href={whatsappLink(row.contactPhone, message)}
+                                target="_blank"
+                                rel="noreferrer"
+                              />
+                            }
+                            nativeButton={false}
+                            title={t("remindWhatsappAction")}
+                            aria-label={t("remindWhatsappAction")}
+                          >
+                            <MessageCircleIcon />
+                          </Button>
+                        ) : null}
+                        {row.contactEmail ? (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground"
+                            render={
+                              <a
+                                href={mailtoLink(
+                                  row.contactEmail,
+                                  t("reminderEmailSubject", { personName: row.personName }),
+                                  message,
+                                )}
+                              />
+                            }
+                            nativeButton={false}
+                            title={t("remindEmailAction")}
+                            aria-label={t("remindEmailAction")}
+                          >
+                            <MailIcon />
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       )}

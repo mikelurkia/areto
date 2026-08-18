@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { db } from "@/db";
 import { registrationGuardians, registrations, seasons } from "@/db/schema";
 import { isMinor } from "@/lib/age";
+import { stampConsent } from "@/lib/consent";
 import { isValidNationalId } from "@/lib/national-id";
 import { readGuardians } from "@/lib/registration-guardians";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
@@ -13,7 +14,9 @@ import { extensionFromMimeType, uploadFileAsAdmin } from "@/lib/supabase/storage
 
 export type RegistrationState = {
   error?: string;
+  fieldErrors?: Record<string, string>;
   success?: boolean;
+  registrationId?: string;
 };
 
 const PHOTO_BUCKET = "registration-documents";
@@ -37,7 +40,8 @@ function readCommonFields(formData: FormData) {
     phone: String(formData.get("phone") ?? "").trim(),
     email: String(formData.get("email") ?? "").trim(),
     iban: String(formData.get("iban") ?? "").trim(),
-    imageConsent: formData.get("imageConsent") === "on",
+    photoConsent: formData.get("photoConsent") === "on",
+    privacyConsent: formData.get("privacyConsent") === "on",
   };
 }
 
@@ -75,40 +79,66 @@ export async function submitPlayerRegistration(
   const idFront = readFile(formData, "idFront");
   const idBack = readFile(formData, "idBack");
 
-  if (!fields.firstName) return { error: t("firstNameRequired") };
-  if (!fields.lastName) return { error: t("lastNameRequired") };
-  if (!fields.birthDate) return { error: t("birthDateRequired") };
+  const errors: Record<string, string> = {};
+
+  if (!fields.firstName) errors.firstName = t("firstNameRequired");
+  if (!fields.lastName) errors.lastName = t("lastNameRequired");
+  if (!fields.birthDate) errors.birthDate = t("birthDateRequired");
   if (fields.nationalId && !isValidNationalId(fields.nationalId)) {
-    return { error: t("nationalIdInvalid") };
+    errors.nationalId = t("nationalIdInvalid");
   }
-  if (!fields.address) return { error: t("addressRequired") };
-  if (!fields.city) return { error: t("cityRequired") };
-  if (!fields.phone) return { error: t("phoneRequired") };
-  if (!fields.email) return { error: t("emailRequired") };
-  if (!shirtSize) return { error: t("shirtSizeRequired") };
-  if (!pantsSize) return { error: t("pantsSizeRequired") };
-  if (!shoeSize) return { error: t("shoeSizeRequired") };
-  if (!fields.iban) return { error: t("ibanRequired") };
-  if (!sepaConsent) return { error: t("sepaConsentRequired") };
-  if (!termsConsent) return { error: t("termsConsentRequired") };
-  if (!photo) return { error: t("photoRequired") };
-  if (!idFront) return { error: t("idFrontRequired") };
-  if (!idBack) return { error: t("idBackRequired") };
-  for (const file of [photo, idFront, idBack]) {
+  if (!fields.address) errors.address = t("addressRequired");
+  if (!fields.city) errors.city = t("cityRequired");
+  if (!fields.phone) errors.phone = t("phoneRequired");
+  if (!fields.email) errors.email = t("emailRequired");
+  if (!shirtSize) errors.shirtSize = t("shirtSizeRequired");
+  if (!pantsSize) errors.pantsSize = t("pantsSizeRequired");
+  if (!shoeSize) errors.shoeSize = t("shoeSizeRequired");
+  if (!fields.iban) errors.iban = t("ibanRequired");
+  if (!sepaConsent) errors.sepaConsent = t("sepaConsentRequired");
+  if (!termsConsent) errors.termsConsent = t("termsConsentRequired");
+  if (!fields.privacyConsent) errors.privacyConsent = t("privacyConsentRequired");
+  if (!photo) errors.photo = t("photoRequired");
+  if (!idFront) errors.idFront = t("idFrontRequired");
+  if (!idBack) errors.idBack = t("idBackRequired");
+  for (const [key, file] of [
+    ["photo", photo],
+    ["idFront", idFront],
+    ["idBack", idBack],
+  ] as const) {
     if (file && (!ALLOWED_PHOTO_TYPES.includes(file.type) || file.size > MAX_PHOTO_BYTES)) {
-      return { error: t("photoInvalid") };
+      errors[key] = t("photoInvalid");
     }
   }
   if (isMinor(fields.birthDate)) {
-    if (guardians.length === 0) return { error: t("guardianRequired") };
-    for (const g of guardians) {
-      if (!g.firstName || !g.lastName) return { error: t("guardianNameRequired") };
-      if (!g.birthDate) return { error: t("guardianBirthDateRequired") };
-      if (!g.phone) return { error: t("guardianPhoneRequired") };
-      if (!g.email) return { error: t("guardianEmailRequired") };
-      if (!g.address) return { error: t("guardianAddressRequired") };
-    }
+    if (guardians.length === 0) errors.guardians = t("guardianRequired");
+    // Validado por posición en el formulario (no sobre `guardians`, que ya viene filtrado
+    // de bloques vacíos) para que cada mensaje señale el mismo bloque visual que lo generó.
+    const guardianFirstNames = formData.getAll("guardianFirstName").map((v) => String(v).trim());
+    const guardianLastNames = formData.getAll("guardianLastName").map((v) => String(v).trim());
+    const guardianBirthDates = formData.getAll("guardianBirthDate").map((v) => String(v).trim());
+    const guardianPhones = formData.getAll("guardianPhone").map((v) => String(v).trim());
+    const guardianEmails = formData.getAll("guardianEmail").map((v) => String(v).trim());
+    const guardianAddresses = formData.getAll("guardianAddress").map((v) => String(v).trim());
+    guardianFirstNames.forEach((firstName, i) => {
+      const lastName = guardianLastNames[i] ?? "";
+      if (!firstName && !lastName) return;
+      if (!firstName || !lastName) errors[`guardian-${i}-name`] = t("guardianNameRequired");
+      if (!(guardianBirthDates[i] ?? "")) {
+        errors[`guardian-${i}-birthDate`] = t("guardianBirthDateRequired");
+      }
+      if (!(guardianPhones[i] ?? "")) errors[`guardian-${i}-phone`] = t("guardianPhoneRequired");
+      if (!(guardianEmails[i] ?? "")) errors[`guardian-${i}-email`] = t("guardianEmailRequired");
+      if (!(guardianAddresses[i] ?? "")) {
+        errors[`guardian-${i}-address`] = t("guardianAddressRequired");
+      }
+    });
   }
+
+  if (Object.keys(errors).length > 0) {
+    return { error: t("formHasErrors"), fieldErrors: errors };
+  }
+
   if ((photo || idFront || idBack) && !isSupabaseAdminConfigured) {
     return { error: t("uploadsUnavailable") };
   }
@@ -135,8 +165,13 @@ export async function submitPlayerRegistration(
       shoeSize: shoeSize || null,
       installmentsChosen,
       sepaConsent,
+      sepaConsentAt: stampConsent(sepaConsent),
       termsConsent,
-      imageConsent: fields.imageConsent,
+      termsConsentAt: stampConsent(termsConsent),
+      photoConsent: fields.photoConsent,
+      photoConsentAt: stampConsent(fields.photoConsent),
+      privacyConsent: fields.privacyConsent,
+      privacyConsentAt: stampConsent(fields.privacyConsent),
     })
     .returning({ id: registrations.id });
 
@@ -172,7 +207,7 @@ export async function submitPlayerRegistration(
       .where(eq(registrations.id, registration.id));
   }
 
-  return { success: true };
+  return { success: true, registrationId: registration.id };
 }
 
 export async function submitCoachRegistration(
@@ -182,6 +217,7 @@ export async function submitCoachRegistration(
   const t = await getTranslations("Inscripciones");
 
   const fields = readCommonFields(formData);
+  const sepaConsent = formData.get("sepaConsent") === "on";
   const photo = readFile(formData, "photo");
   const idFront = readFile(formData, "idFront");
   const idBack = readFile(formData, "idBack");
@@ -197,6 +233,8 @@ export async function submitCoachRegistration(
   if (!fields.phone) return { error: t("phoneRequired") };
   if (!fields.email) return { error: t("emailRequired") };
   if (!fields.iban) return { error: t("ibanRequired") };
+  if (!sepaConsent) return { error: t("sepaConsentRequired") };
+  if (!fields.privacyConsent) return { error: t("privacyConsentRequired") };
   if (!photo) return { error: t("photoRequired") };
   if (!idFront) return { error: t("idFrontRequired") };
   if (!idBack) return { error: t("idBackRequired") };
@@ -226,7 +264,12 @@ export async function submitCoachRegistration(
       phone: fields.phone || null,
       email: fields.email || null,
       iban: fields.iban || null,
-      imageConsent: fields.imageConsent,
+      sepaConsent,
+      sepaConsentAt: stampConsent(sepaConsent),
+      photoConsent: fields.photoConsent,
+      photoConsentAt: stampConsent(fields.photoConsent),
+      privacyConsent: fields.privacyConsent,
+      privacyConsentAt: stampConsent(fields.privacyConsent),
     })
     .returning({ id: registrations.id });
 
@@ -246,5 +289,5 @@ export async function submitCoachRegistration(
       .where(eq(registrations.id, registration.id));
   }
 
-  return { success: true };
+  return { success: true, registrationId: registration.id };
 }

@@ -10,7 +10,11 @@ import {
   clubMembers,
   memberships,
   payments,
+  personDocuments,
   personGuardians,
+  personNotes,
+  personQualifications,
+  personTags,
   persons,
   users,
 } from "@/db/schema";
@@ -192,6 +196,37 @@ export async function mergePersons(
       .update(users)
       .set({ personId: primaryId })
       .where(eq(users.personId, duplicateId));
+
+    // Etiquetas: reasignar, salvo que el principal ya tuviera la misma
+    // (índice único personId+tag).
+    const dupTags = await tx.query.personTags.findMany({
+      where: eq(personTags.personId, duplicateId),
+    });
+    for (const row of dupTags) {
+      const clash = await tx.query.personTags.findFirst({
+        where: and(eq(personTags.personId, primaryId), eq(personTags.tag, row.tag)),
+      });
+      if (clash) {
+        await tx.delete(personTags).where(eq(personTags.id, row.id));
+      } else {
+        await tx.update(personTags).set({ personId: primaryId }).where(eq(personTags.id, row.id));
+      }
+    }
+
+    // Notas, documentos y titulaciones: sin restricción única, se reasignan
+    // sin más para no perderlas al borrar el duplicado.
+    await tx
+      .update(personNotes)
+      .set({ personId: primaryId })
+      .where(eq(personNotes.personId, duplicateId));
+    await tx
+      .update(personDocuments)
+      .set({ personId: primaryId })
+      .where(eq(personDocuments.personId, duplicateId));
+    await tx
+      .update(personQualifications)
+      .set({ personId: primaryId })
+      .where(eq(personQualifications.personId, duplicateId));
 
     await tx.delete(persons).where(eq(persons.id, duplicateId));
   });

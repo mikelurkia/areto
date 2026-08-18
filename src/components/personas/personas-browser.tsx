@@ -16,7 +16,8 @@ import {
   bulkAddToTeam,
   bulkSetMember,
 } from "@/app/[locale]/(app)/personas/actions";
-import { calculateAge } from "@/lib/age";
+import { calculateAge, isMinor } from "@/lib/age";
+import { whatsappLink } from "@/lib/contact-links";
 import { Link } from "@/i18n/navigation";
 import { DeletePersonDialog } from "@/components/personas/delete-person-dialog";
 import { PersonDialog } from "@/components/personas/person-dialog";
@@ -97,11 +98,6 @@ function csvEscape(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
-/** Enlace wa.me a partir de un teléfono (mejor esfuerzo: solo dígitos). */
-function whatsappLink(phone: string): string {
-  return `https://wa.me/${phone.replace(/\D/g, "")}`;
-}
-
 function initials(firstName: string, lastName: string): string {
   return `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
 }
@@ -168,6 +164,10 @@ export function PersonasBrowser({
       result = result.filter((p) => p.memberships.some((m) => m.role === role));
     } else if (role === "guardian") {
       result = result.filter((p) => p.dependentsCount > 0);
+    } else if (role === "minorWithoutGuardian") {
+      result = result.filter(
+        (p) => p.birthDate !== null && isMinor(p.birthDate) && p.guardians.length === 0,
+      );
     }
     if (expiry === "medical") {
       result = result.filter(
@@ -363,6 +363,7 @@ export function PersonasBrowser({
                   return tEquipos(`roleOption.${value}`);
                 }
                 if (value === "guardian") return t("filterRoleGuardian");
+                if (value === "minorWithoutGuardian") return t("filterRoleMinorWithoutGuardian");
                 return t("filterRoleAll");
               }}
             </SelectValue>
@@ -374,6 +375,9 @@ export function PersonasBrowser({
             <SelectItem value="coach">{tEquipos("roleOption.coach")}</SelectItem>
             <SelectItem value="staff">{tEquipos("roleOption.staff")}</SelectItem>
             <SelectItem value="guardian">{t("filterRoleGuardian")}</SelectItem>
+            <SelectItem value="minorWithoutGuardian">
+              {t("filterRoleMinorWithoutGuardian")}
+            </SelectItem>
           </SelectContent>
         </Select>
         <Select value={expiry} onValueChange={handleExpiryChange}>
@@ -590,6 +594,11 @@ export function PersonasBrowser({
                               count: calculateAge(person.birthDate),
                             })}
                           </span>
+                        ) : null}
+                        {person.birthDate && isMinor(person.birthDate) ? (
+                          <Badge variant="outline" className="text-xs">
+                            {t("minorTag")}
+                          </Badge>
                         ) : null}
                       </div>
                     </TableCell>
