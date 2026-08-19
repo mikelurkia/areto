@@ -1,7 +1,6 @@
 import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeftIcon,
   CreditCardIcon,
   MailIcon,
   MessageCircleIcon,
@@ -23,11 +22,13 @@ import {
   updatePersonDocument,
 } from "@/app/[locale]/(app)/personas/actions";
 import { requireRole } from "@/lib/auth";
+import { resolveBackHref } from "@/lib/back-href";
 import { calculateAge, isMinor } from "@/lib/age";
 import { fileTypeLabel } from "@/lib/file-type";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { MembershipTable } from "@/components/equipos/membership-table";
 import { AssignMemberNumberButton } from "@/components/personas/assign-member-number-button";
@@ -110,12 +111,14 @@ type FamilyPerson = {
  */
 async function FamilySection({
   personId,
+  personName,
   guardians,
   dependents,
   minorWithoutGuardian,
   minorGuardian,
 }: {
   personId: string;
+  personName: string;
   guardians: FamilyPerson[];
   dependents: FamilyPerson[];
   minorWithoutGuardian: boolean;
@@ -164,6 +167,8 @@ async function FamilySection({
       dependents={dependents.map(toFamilyMember)}
       minorWithoutGuardian={minorWithoutGuardian}
       minorGuardian={minorGuardian}
+      backTo={`/personas/${personId}`}
+      backLabel={personName}
     />
   );
 }
@@ -202,10 +207,14 @@ export async function generateMetadata({
 
 export default async function PersonDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; personId: string }>;
+  searchParams: Promise<{ from?: string; fromLabel?: string }>;
 }) {
   const { locale, personId } = await params;
+  const { from, fromLabel } = await searchParams;
+  const backHref = resolveBackHref(from, "/personas");
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
   await requireRole(["admin", "staff"]);
@@ -280,18 +289,15 @@ export default async function PersonDetailPage({
     return (b.season.startsOn ?? "").localeCompare(a.season.startsOn ?? "");
   });
 
+  const backLabel =
+    fromLabel && backHref !== "/personas"
+      ? t("backToPersonasFrom", { name: fromLabel })
+      : t("backToPersonas");
+
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div className="print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href="/personas" />}
-          nativeButton={false}
-        >
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToPersonas")}
-        </Button>
+        <BackLink href={backHref} label={backLabel} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -609,6 +615,7 @@ export default async function PersonDetailPage({
           <Suspense fallback={<FamilySectionSkeleton />}>
             <FamilySection
               personId={person.id}
+              personName={fullName}
               guardians={person.guardianRows.map((r) => r.guardian)}
               dependents={person.guardianOfRows.map((r) => r.person)}
               minorWithoutGuardian={isMinorWithoutGuardian}
@@ -652,7 +659,10 @@ export default async function PersonDetailPage({
                   nameFor={() => fullName}
                   renderSubject={(m) => (
                     <span className="flex items-center gap-2">
-                      <Link href={`/equipos/${m.team.id}`} className="hover:underline">
+                      <Link
+                        href={`/equipos/${m.team.id}?from=${encodeURIComponent(`/personas/${person.id}`)}&fromLabel=${encodeURIComponent(fullName)}`}
+                        className="hover:underline"
+                      >
                         {m.team.name}
                       </Link>
                       {m.isCaptain ? (

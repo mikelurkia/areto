@@ -128,7 +128,7 @@ export default async function PersonDuplicatesPage({
                     className="flex flex-wrap items-center gap-2 text-sm"
                   >
                     <Link
-                      href={`/personas/${person.id}`}
+                      href={`/personas/${person.id}?from=${encodeURIComponent("/personas/duplicados")}&fromLabel=${encodeURIComponent(t("duplicatesTitle"))}`}
                       className="font-medium hover:underline"
                     >
                       {person.firstName} {person.lastName}

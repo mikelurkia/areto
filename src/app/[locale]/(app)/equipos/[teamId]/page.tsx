@@ -1,7 +1,6 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeftIcon,
   ClipboardListIcon,
   ShieldHalf,
   TriangleAlertIcon,
@@ -20,11 +19,13 @@ import {
   updateTeamDocument,
 } from "@/app/[locale]/(app)/equipos/[teamId]/actions";
 import { requireUser } from "@/lib/auth";
+import { resolveBackHref } from "@/lib/back-href";
 import { fileTypeLabel } from "@/lib/file-type";
 import { computeRosterHealth } from "@/lib/roster-health";
 import { sortRoster } from "@/lib/roster-order";
 import { getSignedUrls } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import { RosterHealth } from "@/components/equipos/roster-health";
 import { RenewTeamDialog } from "@/components/equipos/renew-team-dialog";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
@@ -77,10 +78,14 @@ export async function generateMetadata({
 
 export default async function TeamDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; teamId: string }>;
+  searchParams: Promise<{ from?: string; fromLabel?: string }>;
 }) {
   const { locale, teamId } = await params;
+  const { from, fromLabel } = await searchParams;
+  const backHref = resolveBackHref(from, "/equipos");
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
   const user = await requireUser();
@@ -139,21 +144,16 @@ export default async function TeamDetailPage({
     .sort((a, b) => a.name.localeCompare(b.name));
   const captainMembershipId = teamMemberships.find((m) => m.isCaptain)?.id ?? null;
 
+  const backLabel =
+    fromLabel && backHref !== "/equipos"
+      ? t("backToTeamsFrom", { name: fromLabel })
+      : t("backToTeams");
+
   return (
     <div className="flex flex-1 flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={t("backToTeams")}
-            title={t("backToTeams")}
-            render={<Link href="/equipos" />}
-            nativeButton={false}
-            className="-ml-1 print:hidden"
-          >
-            <ArrowLeftIcon />
-          </Button>
+          <BackLink href={backHref} label={backLabel} iconOnly className="-ml-1" />
           <div className="min-w-0">
             <h1 className="truncate text-xl font-semibold tracking-tight">{team.name}</h1>
             {/* Una sola línea de metadatos: categoría, temporada, años y datos
@@ -264,7 +264,10 @@ export default async function TeamDetailPage({
                         <UserRoundIcon className="size-3" />
                       </AvatarFallback>
                     </Avatar>
-                    <Link href={`/personas/${m.personId}`} className="hover:underline">
+                    <Link
+                      href={`/personas/${m.personId}?from=${encodeURIComponent(`/equipos/${team.id}`)}&fromLabel=${encodeURIComponent(team.name)}`}
+                      className="hover:underline"
+                    >
                       {personName}
                     </Link>
                     {m.isCaptain ? (

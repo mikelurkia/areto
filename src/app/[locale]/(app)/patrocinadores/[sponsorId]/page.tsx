@@ -1,7 +1,6 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeftIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   HandshakeIcon,
@@ -20,6 +19,7 @@ import {
   updateSponsorDocument,
 } from "@/app/[locale]/(app)/patrocinadores/actions";
 import { requireRole } from "@/lib/auth";
+import { resolveBackHref } from "@/lib/back-href";
 import { fileTypeLabel } from "@/lib/file-type";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import {
@@ -30,6 +30,7 @@ import {
   SPONSORSHIP_EXPIRY_WINDOW_DAYS,
 } from "@/lib/sponsorship";
 import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import { DeleteSponsorContactDialog } from "@/components/patrocinadores/delete-sponsor-contact-dialog";
 import { DeleteSponsorDialog } from "@/components/patrocinadores/delete-sponsor-dialog";
 import { DeleteSponsorPaymentDialog } from "@/components/patrocinadores/delete-sponsor-payment-dialog";
@@ -111,10 +112,14 @@ export async function generateMetadata({
 
 export default async function SponsorDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; sponsorId: string }>;
+  searchParams: Promise<{ from?: string; fromLabel?: string }>;
 }) {
   const { locale, sponsorId } = await params;
+  const { from, fromLabel } = await searchParams;
+  const backHref = resolveBackHref(from, "/patrocinadores");
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
   await requireRole(["admin", "staff"]);
@@ -195,18 +200,15 @@ export default async function SponsorDetailPage({
     ),
   }));
 
+  const backLabel =
+    fromLabel && backHref !== "/patrocinadores"
+      ? t("backToSponsorshipsFrom", { name: fromLabel })
+      : t("backToSponsorships");
+
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div className="print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href="/patrocinadores" />}
-          nativeButton={false}
-        >
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToSponsorships")}
-        </Button>
+        <BackLink href={backHref} label={backLabel} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -277,7 +279,7 @@ export default async function SponsorDetailPage({
                   value={
                     sponsor.contactPerson ? (
                       <Link
-                        href={`/personas/${sponsor.contactPerson.id}`}
+                        href={`/personas/${sponsor.contactPerson.id}?from=${encodeURIComponent(`/patrocinadores/${sponsor.id}`)}&fromLabel=${encodeURIComponent(sponsor.name)}`}
                         className="hover:underline"
                       >
                         {sponsor.contactPerson.firstName}{" "}

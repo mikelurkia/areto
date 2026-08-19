@@ -119,7 +119,10 @@ export default async function SeasonRenewalsPage({
               return (
                 <TableRow key={row.personId}>
                   <TableCell className="font-medium">
-                    <Link href={`/personas/${row.personId}`} className="hover:underline">
+                    <Link
+                      href={`/personas/${row.personId}?from=${encodeURIComponent(`/temporadas/${season.id}/pendientes`)}&fromLabel=${encodeURIComponent(season.name)}`}
+                      className="hover:underline"
+                    >
                       {row.personName}
                     </Link>
                   </TableCell>

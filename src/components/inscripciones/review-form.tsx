@@ -10,7 +10,7 @@ import {
   updateRegistration,
 } from "@/app/[locale]/(app)/inscripciones/actions";
 import { isBirthYearOutOfRange } from "@/lib/roster-health";
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -209,6 +209,7 @@ function MatchSelect({
   photoDiff?: { newPhotoUrl: string | null; newIdFrontUrl: string | null; newIdBackUrl: string | null };
 }) {
   const t = useTranslations("Inscripciones");
+  const pathname = usePathname();
   const [value, setValue] = useState(candidates.length === 1 ? candidates[0].id : "new");
   const selected = value !== "new" ? candidates.find((c) => c.id === value) ?? null : null;
   const changedFields = selected
@@ -266,7 +267,12 @@ function MatchSelect({
       {candidates.length > 0 ? (
         <div className="flex flex-wrap gap-1">
           {candidates.map((c) => (
-            <Link key={c.id} href={`/personas/${c.id}`} target="_blank" className="text-xs">
+            <Link
+              key={c.id}
+              href={`/personas/${c.id}?from=${encodeURIComponent(pathname)}`}
+              target="_blank"
+              className="text-xs"
+            >
               <Badge variant="outline" className="hover:bg-muted">
                 {t("possibleMatchBadge")}: {c.firstName} {c.lastName}
               </Badge>

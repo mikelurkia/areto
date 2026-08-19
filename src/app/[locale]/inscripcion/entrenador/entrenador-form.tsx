@@ -114,7 +114,7 @@ export function EntrenadorForm() {
           </Label>
         </Field>
         <Link
-          href="/inscripcion/jugador/sepa"
+          href={`/inscripcion/jugador/sepa?from=${encodeURIComponent("/inscripcion/entrenador")}`}
           target="_blank"
           className="text-xs text-muted-foreground underline hover:text-foreground"
         >
@@ -190,7 +190,7 @@ export function EntrenadorForm() {
           </Label>
         </Field>
         <Link
-          href="/inscripcion/privacidad"
+          href={`/inscripcion/privacidad?from=${encodeURIComponent("/inscripcion/entrenador")}`}
           target="_blank"
           className="text-xs text-muted-foreground underline hover:text-foreground"
         >

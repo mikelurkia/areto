@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { DownloadIcon, ReceiptTextIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { PrintButton } from "@/components/print-button";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,7 @@ export function InvoiceRegister({
   locale: string;
 }) {
   const t = useTranslations("Patrocinadores");
+  const pathname = usePathname();
   const [year, setYear] = useState("all");
 
   function formatAmount(amountCents: number) {
@@ -156,7 +157,7 @@ export function InvoiceRegister({
                 <TableCell className="font-medium">{inv.invoiceNumber}</TableCell>
                 <TableCell>
                   <Link
-                    href={`/patrocinadores/${inv.sponsorId}`}
+                    href={`/patrocinadores/${inv.sponsorId}?from=${encodeURIComponent(pathname)}&fromLabel=${encodeURIComponent(t("invoiceRegisterLink"))}`}
                     className="hover:underline"
                   >
                     {inv.sponsorName}

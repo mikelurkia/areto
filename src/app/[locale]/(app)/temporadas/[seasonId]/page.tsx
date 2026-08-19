@@ -208,7 +208,10 @@ export default async function TemporadaDetailPage({
             {seasonTeams.map((team) => (
               <TableRow key={team.id}>
                 <TableCell className="font-medium">
-                  <Link href={`/equipos/${team.id}`} className="hover:underline">
+                  <Link
+                    href={`/equipos/${team.id}?from=${encodeURIComponent(`/temporadas/${season.id}`)}&fromLabel=${encodeURIComponent(season.name)}`}
+                    className="hover:underline"
+                  >
                     {team.name}
                   </Link>
                 </TableCell>

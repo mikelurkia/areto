@@ -27,6 +27,8 @@ type FamilyPanelProps = {
   dependents: FamilyMember[];
   minorWithoutGuardian: boolean;
   minorGuardian: boolean;
+  backTo: string;
+  backLabel: string;
 };
 
 function initials(name: string): string {
@@ -38,8 +40,17 @@ function initials(name: string): string {
     .join("");
 }
 
-async function MemberCard({ member }: { member: FamilyMember }) {
+async function MemberCard({
+  member,
+  backTo,
+  backLabel,
+}: {
+  member: FamilyMember;
+  backTo: string;
+  backLabel: string;
+}) {
   const t = await getTranslations("Personas");
+  const href = `/personas/${member.id}?from=${encodeURIComponent(backTo)}&fromLabel=${encodeURIComponent(backLabel)}`;
   return (
     <div className="flex items-center gap-3 rounded-lg border p-3">
       <Avatar>
@@ -52,7 +63,7 @@ async function MemberCard({ member }: { member: FamilyMember }) {
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href={`/personas/${member.id}`}
+            href={href}
             className="font-medium hover:underline"
           >
             {member.name}
@@ -93,7 +104,7 @@ async function MemberCard({ member }: { member: FamilyMember }) {
       </div>
 
       <Link
-        href={`/personas/${member.id}`}
+        href={href}
         className="shrink-0 text-muted-foreground hover:text-foreground print:hidden"
         aria-label={t("viewProfileSr", { name: member.name })}
       >
@@ -117,6 +128,8 @@ export async function FamilyPanel({
   dependents,
   minorWithoutGuardian,
   minorGuardian,
+  backTo,
+  backLabel,
 }: FamilyPanelProps) {
   const t = await getTranslations("Personas");
   const isEmpty = guardians.length === 0 && siblings.length === 0 && dependents.length === 0;
@@ -145,7 +158,7 @@ export async function FamilyPanel({
         {guardians.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {guardians.map((member) => (
-              <MemberCard key={member.id} member={member} />
+              <MemberCard key={member.id} member={member} backTo={backTo} backLabel={backLabel} />
             ))}
           </div>
         ) : (
@@ -158,7 +171,7 @@ export async function FamilyPanel({
           <SectionTitle>{t("siblingsSection")}</SectionTitle>
           <div className="grid gap-3 sm:grid-cols-2">
             {siblings.map((member) => (
-              <MemberCard key={member.id} member={member} />
+              <MemberCard key={member.id} member={member} backTo={backTo} backLabel={backLabel} />
             ))}
           </div>
         </div>
@@ -169,7 +182,7 @@ export async function FamilyPanel({
           <SectionTitle>{t("dependentsLabel")}</SectionTitle>
           <div className="grid gap-3 sm:grid-cols-2">
             {dependents.map((member) => (
-              <MemberCard key={member.id} member={member} />
+              <MemberCard key={member.id} member={member} backTo={backTo} backLabel={backLabel} />
             ))}
           </div>
         </div>
