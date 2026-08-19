@@ -36,9 +36,13 @@ import { MembershipTable } from "@/components/equipos/membership-table";
 import { MaskedIbanText } from "@/components/masked-iban";
 import { AssignMemberNumberButton } from "@/components/personas/assign-member-number-button";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
+import { DeleteInjuryReportDialog } from "@/components/personas/delete-injury-report-dialog";
+import { DeleteMedicalCheckupDialog } from "@/components/personas/delete-medical-checkup-dialog";
 import { DeleteQualificationDialog } from "@/components/personas/delete-qualification-dialog";
 import { DocumentDialog } from "@/components/document-dialog";
 import { FamilyPanel, type FamilyMember } from "@/components/personas/family-panel";
+import { InjuryReportDialog } from "@/components/personas/injury-report-dialog";
+import { MedicalCheckupDialog } from "@/components/personas/medical-checkup-dialog";
 import { PersonDialog } from "@/components/personas/person-dialog";
 import { NotesLog } from "@/components/notes-log";
 import { PersonTagsEditor } from "@/components/personas/person-tags-editor";
@@ -61,6 +65,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const PHOTO_BUCKET = "person-photos";
 const QUALIFICATIONS_BUCKET = "person-qualifications";
 const DOCUMENTS_BUCKET = "person-documents";
+const MEDICAL_CHECKUPS_BUCKET = "person-medical-checkups";
+const INJURY_REPORTS_BUCKET = "person-injury-reports";
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -88,6 +94,8 @@ const getPerson = cache((personId: string) =>
       clubMember: true,
       memberships: { with: { team: { with: { season: true } } } },
       qualifications: { orderBy: (q, { desc }) => [desc(q.createdAt)] },
+      medicalCheckups: { orderBy: (m, { desc }) => [desc(m.occurredOn)] },
+      injuryReports: { orderBy: (r, { desc }) => [desc(r.occurredOn)] },
       documents: { orderBy: (d, { desc }) => [desc(d.createdAt)] },
       noteEntries: { orderBy: (n, { desc }) => [desc(n.createdAt)] },
       tags: { orderBy: (tag, { asc }) => [asc(tag.tag)] },
@@ -258,12 +266,22 @@ export default async function PersonDetailPage({
 
   // Segunda tanda: las firmas de Storage que necesita la ficha ya cargada. Lo de
   // la familia va por su cuenta, en <FamilySection>.
-  const [photoUrl, idFrontUrl, idBackUrl, qualificationFileUrls, documentFileUrls] = await Promise.all([
+  const [
+    photoUrl,
+    idFrontUrl,
+    idBackUrl,
+    qualificationFileUrls,
+    documentFileUrls,
+    medicalCheckupFileUrls,
+    injuryReportFileUrls,
+  ] = await Promise.all([
     getSignedUrl(PHOTO_BUCKET, person.photoPath),
     getSignedUrl(DOCUMENTS_BUCKET, person.idFrontPath),
     getSignedUrl(DOCUMENTS_BUCKET, person.idBackPath),
     getSignedUrls(QUALIFICATIONS_BUCKET, person.qualifications, (q) => q.filePath, (q) => q.id),
     getSignedUrls(DOCUMENTS_BUCKET, person.documents, (d) => d.filePath, (d) => d.id),
+    getSignedUrls(MEDICAL_CHECKUPS_BUCKET, person.medicalCheckups, (m) => m.filePath, (m) => m.id),
+    getSignedUrls(INJURY_REPORTS_BUCKET, person.injuryReports, (r) => r.filePath, (r) => r.id),
   ]);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -404,6 +422,11 @@ export default async function PersonDetailPage({
           </TabsTrigger>
           <TabsTrigger value="titulaciones">
             {t("tabQualifications", { count: person.qualifications.length })}
+          </TabsTrigger>
+          <TabsTrigger value="medico">
+            {t("tabMedical", {
+              count: person.medicalCheckups.length + person.injuryReports.length,
+            })}
           </TabsTrigger>
           <TabsTrigger value="documentos">
             {t("tabDocuments", { count: person.documents.length })}
@@ -775,6 +798,184 @@ export default async function PersonDetailPage({
               </TableBody>
             </Table>
           )}
+        </TabsContent>
+
+        <TabsContent value="medico" keepMounted className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("medicalCheckupsSection")}
+              </h2>
+              {canManage ? (
+                <span className="print:hidden">
+                  <MedicalCheckupDialog mode="create" personId={person.id} />
+                </span>
+              ) : null}
+            </div>
+            {person.medicalCheckups.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t("noMedicalCheckupsDescription")}
+              </p>
+            ) : (
+              <>
+                {(() => {
+                  const latest = person.medicalCheckups[0];
+                  const isExpired = latest.expiresOn ? latest.expiresOn < today : false;
+                  return latest.expiresOn ? (
+                    <Badge
+                      variant={isExpired ? "destructive" : "secondary"}
+                      className="w-fit"
+                    >
+                      {isExpired
+                        ? t("medicalCheckupExpiredBadge", { date: latest.expiresOn })
+                        : t("medicalCheckupExpiresBadge", { date: latest.expiresOn })}
+                    </Badge>
+                  ) : null;
+                })()}
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("medicalCheckupOccurredOnLabel")}</TableHead>
+                      <TableHead>{t("medicalCheckupIssuerLabel")}</TableHead>
+                      <TableHead>{t("medicalCheckupExpiresOnLabel")}</TableHead>
+                      <TableHead>{t("medicalCheckupViewFile")}</TableHead>
+                      {canManage ? (
+                        <TableHead className="text-right print:hidden">
+                          {t("colActions")}
+                        </TableHead>
+                      ) : null}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {person.medicalCheckups.map((m) => {
+                      const isExpired = m.expiresOn ? m.expiresOn < today : false;
+                      const fileUrl = medicalCheckupFileUrls.get(m.id) ?? null;
+                      return (
+                        <TableRow key={m.id}>
+                          <TableCell className="font-medium">{m.occurredOn}</TableCell>
+                          <TableCell>{m.issuer ?? "—"}</TableCell>
+                          <TableCell>
+                            {m.expiresOn ? (
+                              <Badge variant={isExpired ? "destructive" : "secondary"}>
+                                {isExpired
+                                  ? t("medicalCheckupExpiredBadge", { date: m.expiresOn })
+                                  : t("medicalCheckupExpiresBadge", { date: m.expiresOn })}
+                              </Badge>
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {fileUrl ? (
+                              <a
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                {t("medicalCheckupViewFile")}
+                              </a>
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
+                          {canManage ? (
+                            <TableCell className="flex justify-end gap-1 print:hidden">
+                              <MedicalCheckupDialog
+                                mode="edit"
+                                checkup={{
+                                  id: m.id,
+                                  occurredOn: m.occurredOn,
+                                  expiresOn: m.expiresOn,
+                                  issuer: m.issuer,
+                                  notes: m.notes,
+                                }}
+                                fileUrl={fileUrl}
+                              />
+                              <DeleteMedicalCheckupDialog id={m.id} date={m.occurredOn} />
+                            </TableCell>
+                          ) : null}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("injuryReportsSection")}
+              </h2>
+              {canManage ? (
+                <span className="print:hidden">
+                  <InjuryReportDialog mode="create" personId={person.id} />
+                </span>
+              ) : null}
+            </div>
+            {person.injuryReports.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t("noInjuryReportsDescription")}
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("injuryReportOccurredOnLabel")}</TableHead>
+                    <TableHead>{t("injuryReportDescriptionLabel")}</TableHead>
+                    <TableHead>{t("injuryReportViewFile")}</TableHead>
+                    {canManage ? (
+                      <TableHead className="text-right print:hidden">
+                        {t("colActions")}
+                      </TableHead>
+                    ) : null}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {person.injuryReports.map((r) => {
+                    const fileUrl = injuryReportFileUrls.get(r.id) ?? null;
+                    return (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">{r.occurredOn}</TableCell>
+                        <TableCell>{r.description}</TableCell>
+                        <TableCell>
+                          {fileUrl ? (
+                            <a
+                              href={fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              {t("injuryReportViewFile")}
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        {canManage ? (
+                          <TableCell className="flex justify-end gap-1 print:hidden">
+                            <InjuryReportDialog
+                              mode="edit"
+                              report={{
+                                id: r.id,
+                                occurredOn: r.occurredOn,
+                                description: r.description,
+                                notes: r.notes,
+                              }}
+                              fileUrl={fileUrl}
+                            />
+                            <DeleteInjuryReportDialog id={r.id} date={r.occurredOn} />
+                          </TableCell>
+                        ) : null}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="documentos" keepMounted className="flex flex-col gap-4">

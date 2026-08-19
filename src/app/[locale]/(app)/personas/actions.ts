@@ -10,6 +10,8 @@ import {
   memberships,
   personDocuments,
   personGuardians,
+  personInjuryReports,
+  personMedicalCheckups,
   personNotes,
   personQualifications,
   personTags,
@@ -72,6 +74,62 @@ async function uploadQualificationFile(
 
 async function removeQualificationFileObject(path: string) {
   await removeFile(QUALIFICATIONS_BUCKET, path);
+}
+
+const MEDICAL_CHECKUPS_BUCKET = "person-medical-checkups";
+const INJURY_REPORTS_BUCKET = "person-injury-reports";
+const MAX_MEDICAL_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+const ALLOWED_MEDICAL_FILE_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
+async function uploadMedicalCheckupFile(
+  personId: string,
+  checkupId: string,
+  file: File,
+): Promise<string> {
+  const path = `${personId}/${checkupId}.${extensionFromMimeType(file.type)}`;
+  await uploadFile(MEDICAL_CHECKUPS_BUCKET, path, file);
+  return path;
+}
+
+async function removeMedicalCheckupFileObject(path: string) {
+  await removeFile(MEDICAL_CHECKUPS_BUCKET, path);
+}
+
+async function uploadInjuryReportFile(
+  personId: string,
+  reportId: string,
+  file: File,
+): Promise<string> {
+  const path = `${personId}/${reportId}.${extensionFromMimeType(file.type)}`;
+  await uploadFile(INJURY_REPORTS_BUCKET, path, file);
+  return path;
+}
+
+async function removeInjuryReportFileObject(path: string) {
+  await removeFile(INJURY_REPORTS_BUCKET, path);
+}
+
+/**
+ * `persons.medical_cert_until` no se edita a mano: se deriva del reconocimiento
+ * médico más reciente (por `occurred_on`) cada vez que cambia el historial de
+ * reconocimientos, para que las alertas de plantilla/acta/dashboard que ya
+ * leen esa columna sigan funcionando sin tocarlas.
+ */
+async function recomputeMedicalCertUntil(personId: string) {
+  const latest = await db.query.personMedicalCheckups.findFirst({
+    where: eq(personMedicalCheckups.personId, personId),
+    orderBy: (m, { desc }) => [desc(m.occurredOn)],
+    columns: { expiresOn: true },
+  });
+  await db
+    .update(persons)
+    .set({ medicalCertUntil: latest?.expiresOn ?? null })
+    .where(eq(persons.id, personId));
 }
 
 /** Ids de tutor enviados por el diálogo como lista separada por comas (ver `guardianIds` hidden input). */
@@ -190,7 +248,6 @@ function readPersonFields(formData: FormData) {
     address: String(formData.get("address") ?? "").trim(),
     city: String(formData.get("city") ?? "").trim(),
     iban: String(formData.get("iban") ?? "").trim(),
-    medicalCertUntil: String(formData.get("medicalCertUntil") ?? "").trim(),
     shirtSize: String(formData.get("shirtSize") ?? "").trim(),
     pantsSize: String(formData.get("pantsSize") ?? "").trim(),
     shoeSize: String(formData.get("shoeSize") ?? "").trim(),
@@ -318,7 +375,6 @@ export async function createPerson(
           address: fields.address || null,
           city: fields.city || null,
           iban: payer.iban,
-          medicalCertUntil: fields.medicalCertUntil || null,
           shirtSize: fields.shirtSize || null,
           pantsSize: fields.pantsSize || null,
           shoeSize: fields.shoeSize || null,
@@ -405,7 +461,6 @@ export async function updatePerson(
         address: fields.address || null,
         city: fields.city || null,
         iban: payer.iban,
-        medicalCertUntil: fields.medicalCertUntil || null,
         shirtSize: fields.shirtSize || null,
         pantsSize: fields.pantsSize || null,
         shoeSize: fields.shoeSize || null,
@@ -606,6 +661,264 @@ export async function deleteQualification(
 
   revalidatePath("/", "layout");
   return { message: t("qualificationDeleted") };
+}
+
+function readMedicalCheckupFields(formData: FormData) {
+  return {
+    occurredOn: String(formData.get("occurredOn") ?? "").trim(),
+    expiresOn: String(formData.get("expiresOn") ?? "").trim(),
+    issuer: String(formData.get("issuer") ?? "").trim(),
+    notes: String(formData.get("notes") ?? "").trim(),
+    removeFile: formData.get("removeFile") === "on",
+  };
+}
+
+function readMedicalFile(formData: FormData): File | null {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return null;
+  return file;
+}
+
+export async function addMedicalCheckup(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requireRole([...MANAGE_ROLES]);
+
+  const personId = String(formData.get("personId") ?? "");
+  const fields = readMedicalCheckupFields(formData);
+  const file = readMedicalFile(formData);
+  if (!fields.occurredOn) return { error: t("medicalCheckupOccurredOnRequired") };
+  if (file && !ALLOWED_MEDICAL_FILE_TYPES.includes(file.type)) {
+    return { error: t("medicalCheckupFileInvalidType") };
+  }
+  if (file && file.size > MAX_MEDICAL_FILE_BYTES) {
+    return { error: t("medicalCheckupFileTooLarge") };
+  }
+
+  const [checkup] = await db
+    .insert(personMedicalCheckups)
+    .values({
+      personId,
+      occurredOn: fields.occurredOn,
+      expiresOn: fields.expiresOn || null,
+      issuer: fields.issuer || null,
+      notes: fields.notes || null,
+    })
+    .returning({ id: personMedicalCheckups.id });
+
+  if (file) {
+    const path = await uploadMedicalCheckupFile(personId, checkup.id, file);
+    await db
+      .update(personMedicalCheckups)
+      .set({ filePath: path })
+      .where(eq(personMedicalCheckups.id, checkup.id));
+  }
+
+  await recomputeMedicalCertUntil(personId);
+  revalidatePath("/", "layout");
+  return { message: t("medicalCheckupAdded") };
+}
+
+export async function updateMedicalCheckup(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requireRole([...MANAGE_ROLES]);
+
+  const id = String(formData.get("id") ?? "");
+  const fields = readMedicalCheckupFields(formData);
+  const file = readMedicalFile(formData);
+  if (!fields.occurredOn) return { error: t("medicalCheckupOccurredOnRequired") };
+  if (file && !ALLOWED_MEDICAL_FILE_TYPES.includes(file.type)) {
+    return { error: t("medicalCheckupFileInvalidType") };
+  }
+  if (file && file.size > MAX_MEDICAL_FILE_BYTES) {
+    return { error: t("medicalCheckupFileTooLarge") };
+  }
+
+  const existing = await db.query.personMedicalCheckups.findFirst({
+    where: eq(personMedicalCheckups.id, id),
+    columns: { personId: true, filePath: true },
+  });
+  if (!existing) return { error: t("medicalCheckupNotFound") };
+
+  await db
+    .update(personMedicalCheckups)
+    .set({
+      occurredOn: fields.occurredOn,
+      expiresOn: fields.expiresOn || null,
+      issuer: fields.issuer || null,
+      notes: fields.notes || null,
+    })
+    .where(eq(personMedicalCheckups.id, id));
+
+  if (file) {
+    if (existing.filePath) await removeMedicalCheckupFileObject(existing.filePath);
+    const path = await uploadMedicalCheckupFile(existing.personId, id, file);
+    await db
+      .update(personMedicalCheckups)
+      .set({ filePath: path })
+      .where(eq(personMedicalCheckups.id, id));
+  } else if (fields.removeFile && existing.filePath) {
+    await removeMedicalCheckupFileObject(existing.filePath);
+    await db
+      .update(personMedicalCheckups)
+      .set({ filePath: null })
+      .where(eq(personMedicalCheckups.id, id));
+  }
+
+  await recomputeMedicalCertUntil(existing.personId);
+  revalidatePath("/", "layout");
+  return { message: t("medicalCheckupUpdated") };
+}
+
+export async function deleteMedicalCheckup(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requireRole([...MANAGE_ROLES]);
+
+  const id = String(formData.get("id") ?? "");
+
+  const existing = await db.query.personMedicalCheckups.findFirst({
+    where: eq(personMedicalCheckups.id, id),
+    columns: { personId: true, filePath: true },
+  });
+
+  await db.delete(personMedicalCheckups).where(eq(personMedicalCheckups.id, id));
+  if (existing?.filePath) await removeMedicalCheckupFileObject(existing.filePath);
+  if (existing) await recomputeMedicalCertUntil(existing.personId);
+
+  revalidatePath("/", "layout");
+  return { message: t("medicalCheckupDeleted") };
+}
+
+function readInjuryReportFields(formData: FormData) {
+  return {
+    occurredOn: String(formData.get("occurredOn") ?? "").trim(),
+    description: String(formData.get("description") ?? "").trim(),
+    notes: String(formData.get("notes") ?? "").trim(),
+    removeFile: formData.get("removeFile") === "on",
+  };
+}
+
+export async function addInjuryReport(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requireRole([...MANAGE_ROLES]);
+
+  const personId = String(formData.get("personId") ?? "");
+  const fields = readInjuryReportFields(formData);
+  const file = readMedicalFile(formData);
+  if (!fields.occurredOn) return { error: t("injuryReportOccurredOnRequired") };
+  if (!fields.description) return { error: t("injuryReportDescriptionRequired") };
+  if (file && !ALLOWED_MEDICAL_FILE_TYPES.includes(file.type)) {
+    return { error: t("injuryReportFileInvalidType") };
+  }
+  if (file && file.size > MAX_MEDICAL_FILE_BYTES) {
+    return { error: t("injuryReportFileTooLarge") };
+  }
+
+  const [report] = await db
+    .insert(personInjuryReports)
+    .values({
+      personId,
+      occurredOn: fields.occurredOn,
+      description: fields.description,
+      notes: fields.notes || null,
+    })
+    .returning({ id: personInjuryReports.id });
+
+  if (file) {
+    const path = await uploadInjuryReportFile(personId, report.id, file);
+    await db
+      .update(personInjuryReports)
+      .set({ filePath: path })
+      .where(eq(personInjuryReports.id, report.id));
+  }
+
+  revalidatePath("/", "layout");
+  return { message: t("injuryReportAdded") };
+}
+
+export async function updateInjuryReport(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requireRole([...MANAGE_ROLES]);
+
+  const id = String(formData.get("id") ?? "");
+  const fields = readInjuryReportFields(formData);
+  const file = readMedicalFile(formData);
+  if (!fields.occurredOn) return { error: t("injuryReportOccurredOnRequired") };
+  if (!fields.description) return { error: t("injuryReportDescriptionRequired") };
+  if (file && !ALLOWED_MEDICAL_FILE_TYPES.includes(file.type)) {
+    return { error: t("injuryReportFileInvalidType") };
+  }
+  if (file && file.size > MAX_MEDICAL_FILE_BYTES) {
+    return { error: t("injuryReportFileTooLarge") };
+  }
+
+  const existing = await db.query.personInjuryReports.findFirst({
+    where: eq(personInjuryReports.id, id),
+    columns: { personId: true, filePath: true },
+  });
+  if (!existing) return { error: t("injuryReportNotFound") };
+
+  await db
+    .update(personInjuryReports)
+    .set({
+      occurredOn: fields.occurredOn,
+      description: fields.description,
+      notes: fields.notes || null,
+    })
+    .where(eq(personInjuryReports.id, id));
+
+  if (file) {
+    if (existing.filePath) await removeInjuryReportFileObject(existing.filePath);
+    const path = await uploadInjuryReportFile(existing.personId, id, file);
+    await db
+      .update(personInjuryReports)
+      .set({ filePath: path })
+      .where(eq(personInjuryReports.id, id));
+  } else if (fields.removeFile && existing.filePath) {
+    await removeInjuryReportFileObject(existing.filePath);
+    await db
+      .update(personInjuryReports)
+      .set({ filePath: null })
+      .where(eq(personInjuryReports.id, id));
+  }
+
+  revalidatePath("/", "layout");
+  return { message: t("injuryReportUpdated") };
+}
+
+export async function deleteInjuryReport(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requireRole([...MANAGE_ROLES]);
+
+  const id = String(formData.get("id") ?? "");
+
+  const existing = await db.query.personInjuryReports.findFirst({
+    where: eq(personInjuryReports.id, id),
+    columns: { filePath: true },
+  });
+
+  await db.delete(personInjuryReports).where(eq(personInjuryReports.id, id));
+  if (existing?.filePath) await removeInjuryReportFileObject(existing.filePath);
+
+  revalidatePath("/", "layout");
+  return { message: t("injuryReportDeleted") };
 }
 
 const personDocumentActions = makeDocumentActions({

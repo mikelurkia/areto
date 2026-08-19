@@ -298,6 +298,41 @@ export const personQualifications = pgTable("person_qualifications", {
 });
 
 /**
+ * Reconocimiento médico realizado a una persona. `medical_cert_until` en
+ * `persons` se deriva automáticamente del `expires_on` del reconocimiento más
+ * reciente (por `occurred_on`) — ver `recomputeMedicalCertUntil` en
+ * personas/actions.ts.
+ */
+export const personMedicalCheckups = pgTable("person_medical_checkups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  personId: uuid("person_id")
+    .notNull()
+    .references(() => persons.id, { onDelete: "cascade" }),
+  occurredOn: date("occurred_on").notNull(),
+  expiresOn: date("expires_on"),
+  issuer: text("issuer"), // centro/médico
+  filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-medical-checkups)
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Parte de lesión de un jugador/a: fecha, descripción y documento adjunto
+ * opcional (el parte médico en sí).
+ */
+export const personInjuryReports = pgTable("person_injury_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  personId: uuid("person_id")
+    .notNull()
+    .references(() => persons.id, { onDelete: "cascade" }),
+  occurredOn: date("occurred_on").notNull(),
+  description: text("description").notNull(),
+  filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-injury-reports)
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * Documento genérico de una persona (DNI escaneado, ficha firmada, autorización
  * de imagen...). A diferencia de `person_qualifications`, no lleva fechas ni
  * emisor: es solo un archivo con una etiqueta libre. El archivo es obligatorio
@@ -869,6 +904,8 @@ export const personsRelations = relations(persons, ({ many, one }) => ({
   memberships: many(memberships),
   payments: many(payments),
   qualifications: many(personQualifications),
+  medicalCheckups: many(personMedicalCheckups),
+  injuryReports: many(personInjuryReports),
   documents: many(personDocuments),
   noteEntries: many(personNotes),
   tags: many(personTags),
@@ -921,6 +958,20 @@ export const personTagsRelations = relations(personTags, ({ one }) => ({
 export const personQualificationsRelations = relations(personQualifications, ({ one }) => ({
   person: one(persons, {
     fields: [personQualifications.personId],
+    references: [persons.id],
+  }),
+}));
+
+export const personMedicalCheckupsRelations = relations(personMedicalCheckups, ({ one }) => ({
+  person: one(persons, {
+    fields: [personMedicalCheckups.personId],
+    references: [persons.id],
+  }),
+}));
+
+export const personInjuryReportsRelations = relations(personInjuryReports, ({ one }) => ({
+  person: one(persons, {
+    fields: [personInjuryReports.personId],
     references: [persons.id],
   }),
 }));

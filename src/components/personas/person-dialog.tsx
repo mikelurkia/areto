@@ -69,7 +69,6 @@ type Person = {
   city: string | null;
   iban: string | null;
   guardians: { id: string; firstName: string; lastName: string }[];
-  medicalCertUntil: string | null;
   shirtSize: string | null;
   pantsSize: string | null;
   shoeSize: string | null;
@@ -346,19 +345,6 @@ export function PersonDialog(props: PersonDialogProps) {
               <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 {t("sportsDataSection")}
               </h2>
-              <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="person-medical-cert">
-                    {t("medicalCertLabel")}
-                  </FieldLabel>
-                  <Input
-                    id="person-medical-cert"
-                    name="medicalCertUntil"
-                    type="date"
-                    defaultValue={person?.medicalCertUntil ?? ""}
-                  />
-                </Field>
-              </div>
               <div className="grid grid-cols-3 gap-3">
                 <Field>
                   <FieldLabel htmlFor="person-shirt-size">

@@ -440,6 +440,104 @@ create policy "registration_documents_delete_staff"
     )
   );
 
+-- 10) Storage: reconocimientos médicos de personas ----------------------------
+-- Mismo patrón que person-qualifications: bucket privado, URLs firmadas de
+-- corta duración generadas por el servidor.
+insert into storage.buckets (id, name, public)
+values ('person-medical-checkups', 'person-medical-checkups', false)
+on conflict (id) do nothing;
+
+drop policy if exists "person_medical_checkups_select_authenticated" on storage.objects;
+create policy "person_medical_checkups_select_authenticated"
+  on storage.objects for select
+  to authenticated
+  using (bucket_id = 'person-medical-checkups');
+
+drop policy if exists "person_medical_checkups_write_staff" on storage.objects;
+create policy "person_medical_checkups_write_staff"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'person-medical-checkups'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
+
+drop policy if exists "person_medical_checkups_update_staff" on storage.objects;
+create policy "person_medical_checkups_update_staff"
+  on storage.objects for update
+  to authenticated
+  using (
+    bucket_id = 'person-medical-checkups'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
+
+drop policy if exists "person_medical_checkups_delete_staff" on storage.objects;
+create policy "person_medical_checkups_delete_staff"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'person-medical-checkups'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
+
+-- 11) Storage: partes de lesión de personas ------------------------------------
+-- Mismo patrón que person-qualifications: bucket privado, URLs firmadas de
+-- corta duración generadas por el servidor.
+insert into storage.buckets (id, name, public)
+values ('person-injury-reports', 'person-injury-reports', false)
+on conflict (id) do nothing;
+
+drop policy if exists "person_injury_reports_select_authenticated" on storage.objects;
+create policy "person_injury_reports_select_authenticated"
+  on storage.objects for select
+  to authenticated
+  using (bucket_id = 'person-injury-reports');
+
+drop policy if exists "person_injury_reports_write_staff" on storage.objects;
+create policy "person_injury_reports_write_staff"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'person-injury-reports'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
+
+drop policy if exists "person_injury_reports_update_staff" on storage.objects;
+create policy "person_injury_reports_update_staff"
+  on storage.objects for update
+  to authenticated
+  using (
+    bucket_id = 'person-injury-reports'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
+
+drop policy if exists "person_injury_reports_delete_staff" on storage.objects;
+create policy "person_injury_reports_delete_staff"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'person-injury-reports'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
+
 -- ============================================================================
 -- Bootstrap del primer administrador (ejecútalo tras registrarte por primera vez):
 --
