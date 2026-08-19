@@ -8,6 +8,7 @@ import {
   ChevronsUpDown,
   ClipboardCheckIcon,
   ClipboardList,
+  GlobeIcon,
   HandshakeIcon,
   LayoutDashboard,
   LogOut,
@@ -173,6 +174,14 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                 </SidebarMenuItem>
               );
             })}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                render={<Link href="/" target="_blank" rel="noreferrer noopener" />}
+              >
+                <GlobeIcon />
+                <span>{tNav("publicSite")}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 
