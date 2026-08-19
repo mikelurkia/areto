@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { ClubSettingsForm } from "@/components/club/club-settings-form";
 import { FederationAccountsList } from "@/components/club/federation-accounts-list";
+import { RegistrationAvailabilityForm } from "@/components/club/registration-availability-form";
 import {
   Card,
   CardContent,
@@ -52,6 +53,19 @@ export default async function ClubPage({
           </CardHeader>
           <CardContent>
             <ClubSettingsForm settings={clubSettings} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("registrationSection")}</CardTitle>
+            <CardDescription>{t("registrationDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RegistrationAvailabilityForm
+              playerRegistrationOpen={clubSettings?.playerRegistrationOpen ?? false}
+              memberRegistrationOpen={clubSettings?.memberRegistrationOpen ?? false}
+            />
           </CardContent>
         </Card>
 

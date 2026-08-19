@@ -161,43 +161,45 @@ export default async function RegistrationDetailPage({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("documentsSection")}
-        </h2>
-        <div className="flex flex-wrap gap-4">
-          {(
-            [
-              { url: photoUrl, label: t("photoLabel"), className: "h-32 w-32" },
-              { url: idFrontUrl, label: t("idFrontLabel"), className: "h-32 w-48" },
-              { url: idBackUrl, label: t("idBackLabel"), className: "h-32 w-48" },
-            ] as const
-          ).map((doc) =>
-            doc.url ? (
-              <a
-                key={doc.label}
-                href={doc.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex flex-col items-center gap-1"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={doc.url} alt="" className={`${doc.className} rounded-lg border object-cover`} />
-                <span className="text-xs text-muted-foreground">{doc.label}</span>
-              </a>
-            ) : (
-              <div key={doc.label} className="flex flex-col items-center gap-1">
-                <div
-                  className={`${doc.className} flex items-center justify-center rounded-lg border border-dashed text-xs text-muted-foreground`}
+      {registration.kind !== "member" ? (
+        <div className="flex flex-col gap-2">
+          <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("documentsSection")}
+          </h2>
+          <div className="flex flex-wrap gap-4">
+            {(
+              [
+                { url: photoUrl, label: t("photoLabel"), className: "h-32 w-32" },
+                { url: idFrontUrl, label: t("idFrontLabel"), className: "h-32 w-48" },
+                { url: idBackUrl, label: t("idBackLabel"), className: "h-32 w-48" },
+              ] as const
+            ).map((doc) =>
+              doc.url ? (
+                <a
+                  key={doc.label}
+                  href={doc.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex flex-col items-center gap-1"
                 >
-                  {t("documentMissing")}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={doc.url} alt="" className={`${doc.className} rounded-lg border object-cover`} />
+                  <span className="text-xs text-muted-foreground">{doc.label}</span>
+                </a>
+              ) : (
+                <div key={doc.label} className="flex flex-col items-center gap-1">
+                  <div
+                    className={`${doc.className} flex items-center justify-center rounded-lg border border-dashed text-xs text-muted-foreground`}
+                  >
+                    {t("documentMissing")}
+                  </div>
+                  <span className="text-xs text-muted-foreground">{doc.label}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{doc.label}</span>
-              </div>
-            ),
-          )}
+              ),
+            )}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {registration.status === "pending" ? (
         <ReviewForm registration={detail} teamOptions={teamOptions} />

@@ -125,7 +125,7 @@ function ConsentRow({ label, granted }: { label: string; granted: boolean }) {
 
 export type RegistrationDetail = {
   id: string;
-  kind: "player" | "coach";
+  kind: "player" | "member";
   status: "pending" | "approved" | "rejected";
   firstName: string;
   lastName: string;
@@ -334,6 +334,7 @@ export function ReviewForm({
   }[];
 }) {
   const t = useTranslations("Inscripciones");
+  const tEquipos = useTranslations("Equipos");
 
   const [editState, editAction] = useActionState(updateRegistration, {});
   useActionToast(editState);
@@ -350,10 +351,11 @@ export function ReviewForm({
   );
   const nextGuardianKey = useRef(guardianKeys.length);
   const [teamId, setTeamId] = useState("");
+  const [membershipRole, setMembershipRole] = useState<"player" | "coach" | "staff">("player");
   const hasGuardians = registration.kind === "player" && registration.guardians.length > 0;
   const selectedTeam = teamOptions.find((o) => o.id === teamId) ?? null;
   const teamAgeMismatch =
-    registration.kind === "player" &&
+    membershipRole === "player" &&
     selectedTeam !== null &&
     isBirthYearOutOfRange(registration.birthDate, selectedTeam);
 
@@ -363,7 +365,7 @@ export function ReviewForm({
         <input type="hidden" name="id" value={registration.id} />
         <FieldGroup>
           <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-            {t(registration.kind === "coach" ? "coachSection" : "playerSection")}
+            {t(registration.kind === "player" ? "playerSection" : "memberSection")}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
@@ -523,9 +525,7 @@ export function ReviewForm({
             ) : null}
           </div>
           <div className="flex flex-col gap-2 rounded-lg border p-3">
-            {registration.kind === "player" ? (
-              <ConsentRow label={t("sepaConsentShortLabel")} granted={registration.sepaConsent} />
-            ) : null}
+            <ConsentRow label={t("sepaConsentShortLabel")} granted={registration.sepaConsent} />
             {registration.kind === "player" ? (
               <ConsentRow label={t("termsConsentShortLabel")} granted={registration.termsConsent} />
             ) : null}
@@ -549,40 +549,62 @@ export function ReviewForm({
         </h2>
         <form action={approveAction} className="flex flex-col gap-4">
           <input type="hidden" name="id" value={registration.id} />
-          <Field>
-            <FieldLabel htmlFor="teamId">{t("teamLabel")}</FieldLabel>
-            <Select value={teamId} onValueChange={(v) => setTeamId(v ?? "")}>
-              <SelectTrigger id="teamId" className="w-full">
-                <SelectValue placeholder={t("selectTeamPlaceholder")}>
-                  {(v: string) => teamOptions.find((o) => o.id === v)?.label ?? t("selectTeamPlaceholder")}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {teamOptions.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <input type="hidden" name="teamId" value={teamId} />
-            <p className="text-xs text-muted-foreground">{t("teamOptionalHint")}</p>
-            {teamAgeMismatch && selectedTeam ? (
-              <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
-                <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
-                {t("teamAgeMismatchWarning", {
-                  min: selectedTeam.minBirthYear ?? "",
-                  max: selectedTeam.maxBirthYear ?? "",
-                  year: registration.birthDate ? registration.birthDate.slice(0, 4) : "",
-                })}
-              </p>
-            ) : null}
-          </Field>
+          {registration.kind !== "member" ? (
+            <>
+              <Field>
+                <FieldLabel htmlFor="teamId">{t("teamLabel")}</FieldLabel>
+                <Select value={teamId} onValueChange={(v) => setTeamId(v ?? "")}>
+                  <SelectTrigger id="teamId" className="w-full">
+                    <SelectValue placeholder={t("selectTeamPlaceholder")}>
+                      {(v: string) => teamOptions.find((o) => o.id === v)?.label ?? t("selectTeamPlaceholder")}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamOptions.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <input type="hidden" name="teamId" value={teamId} />
+                <p className="text-xs text-muted-foreground">{t("teamOptionalHint")}</p>
+                {teamAgeMismatch && selectedTeam ? (
+                  <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
+                    <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
+                    {t("teamAgeMismatchWarning", {
+                      min: selectedTeam.minBirthYear ?? "",
+                      max: selectedTeam.maxBirthYear ?? "",
+                      year: registration.birthDate ? registration.birthDate.slice(0, 4) : "",
+                    })}
+                  </p>
+                ) : null}
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="membershipRole">{tEquipos("roleLabel")}</FieldLabel>
+                <Select
+                  value={membershipRole}
+                  onValueChange={(v) => setMembershipRole((v as typeof membershipRole) ?? "player")}
+                >
+                  <SelectTrigger id="membershipRole" className="w-full">
+                    <SelectValue>{(v: string) => tEquipos(`roleOption.${v}` as "roleOption.player")}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="player">{tEquipos("roleOption.player")}</SelectItem>
+                    <SelectItem value="coach">{tEquipos("roleOption.coach")}</SelectItem>
+                    <SelectItem value="staff">{tEquipos("roleOption.staff")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <input type="hidden" name="membershipRole" value={membershipRole} />
+              </Field>
+            </>
+          ) : null}
 
           <MatchSelect
             name="matchedPersonId"
             candidates={registration.candidates}
-            placeholder={t(registration.kind === "coach" ? "coachMatchLabel" : "playerMatchLabel")}
+            placeholder={t(registration.kind === "player" ? "playerMatchLabel" : "memberMatchLabel")}
             newValues={{
               firstName: registration.firstName,
               lastName: registration.lastName,

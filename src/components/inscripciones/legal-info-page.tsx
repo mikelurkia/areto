@@ -1,34 +1,20 @@
-import { ArrowLeftIcon } from "lucide-react";
-import { getTranslations } from "next-intl/server";
-
-import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 
-/** Página pública de texto legal (SEPA, imagen, privacidad, condiciones...),
- * enlazada desde el formulario de inscripción con un "leer texto completo". */
-export async function LegalInfoPage({
-  title,
-  body,
-  backHref = "/inscripcion/jugador",
-}: {
-  title: string;
-  body: string;
-  backHref?: string;
-}) {
-  const t = await getTranslations("Inscripciones");
+/**
+ * Página pública de texto legal (SEPA, imagen, privacidad, condiciones...),
+ * enlazada desde el formulario de inscripción con un "leer texto completo".
+ * Se abre siempre en pestaña nueva (`target="_blank"`), así que no lleva
+ * botón de "volver": esa pestaña no tiene historial al que volver, y un link
+ * a "/inscripcion/jugador" cargaría un formulario vacío, no el que se estaba
+ * rellenando en la pestaña de origen. Cerrar la pestaña es lo correcto.
+ */
+export function LegalInfoPage({ title, body }: { title: string; body: string }) {
   const paragraphs = body.split("\n\n");
 
   return (
     <div className="flex flex-1 flex-col">
       <header className="border-b">
-        <div className="mx-auto flex h-16 w-full max-w-2xl items-center justify-between px-6">
-          <Link
-            href={backHref}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeftIcon data-icon="inline-start" />
-            {t("backToLanding")}
-          </Link>
+        <div className="mx-auto flex h-16 w-full max-w-2xl items-center justify-end px-6">
           <LocaleSwitcher />
         </div>
       </header>

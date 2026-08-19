@@ -53,10 +53,13 @@ export async function generateMetadata({
 
 export default async function SeasonRenewalsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; seasonId: string }>;
+  searchParams: Promise<{ team?: string }>;
 }) {
   const { locale, seasonId } = await params;
+  const { team: teamFilter } = await searchParams;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
   await requireUser();
@@ -68,7 +71,12 @@ export default async function SeasonRenewalsPage({
   ]);
   if (!season) notFound();
 
-  const rows = [...renewals.rows].sort((a, b) => {
+  const filteredRows = teamFilter
+    ? renewals.rows.filter((r) => r.teamId === teamFilter)
+    : renewals.rows;
+  const filteredTeamName = teamFilter ? filteredRows[0]?.teamName : null;
+
+  const rows = [...filteredRows].sort((a, b) => {
     const byStatus = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
     if (byStatus !== 0) return byStatus;
     return a.personName.localeCompare(b.personName, locale);
@@ -86,7 +94,8 @@ export default async function SeasonRenewalsPage({
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">{t("renewalsPageTitle")}</h1>
         <p className="text-muted-foreground">
-          {season.name} · {t("renewalsPageDescription")}
+          {season.name}
+          {filteredTeamName ? ` · ${filteredTeamName}` : ""} · {t("renewalsPageDescription")}
         </p>
       </div>
 

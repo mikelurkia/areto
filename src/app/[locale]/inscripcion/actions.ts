@@ -4,11 +4,12 @@ import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
-import { registrationGuardians, registrations, seasons } from "@/db/schema";
+import { registrationGuardians, registrations } from "@/db/schema";
 import { isMinor } from "@/lib/age";
 import { stampConsent } from "@/lib/consent";
 import { isValidNationalId } from "@/lib/national-id";
 import { readGuardians } from "@/lib/registration-guardians";
+import { getRegistrationAvailability } from "@/lib/registration-settings";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { extensionFromMimeType, uploadFileAsAdmin } from "@/lib/supabase/storage";
 
@@ -45,11 +46,6 @@ function readCommonFields(formData: FormData) {
   };
 }
 
-async function resolveCurrentSeasonId(): Promise<string | null> {
-  const season = await db.query.seasons.findFirst({ where: eq(seasons.isCurrent, true) });
-  return season?.id ?? null;
-}
-
 async function uploadRegistrationPhoto(
   registrationId: string,
   slot: "photo" | "id-front" | "id-back",
@@ -60,7 +56,7 @@ async function uploadRegistrationPhoto(
   return path;
 }
 
-export async function submitPlayerRegistration(
+export async function submitTeamRegistration(
   _prev: RegistrationState,
   formData: FormData,
 ): Promise<RegistrationState> {
@@ -143,8 +139,9 @@ export async function submitPlayerRegistration(
     return { error: t("uploadsUnavailable") };
   }
 
-  const seasonId = await resolveCurrentSeasonId();
+  const { seasonId, teamRegistrationOpen } = await getRegistrationAvailability();
   if (!seasonId) return { error: t("noActiveSeason") };
+  if (!teamRegistrationOpen) return { error: t("registrationClosed") };
 
   try {
     const [registration] = await db
@@ -213,12 +210,12 @@ export async function submitPlayerRegistration(
     // No relanzamos: un fallo aquí (red, Supabase Storage, BD) no debe tirar
     // el error boundary de [locale]/error.tsx, que desmontaría toda la página
     // y borraría lo que el usuario ya había rellenado.
-    console.error("submitPlayerRegistration failed", error);
+    console.error("submitTeamRegistration failed", error);
     return { error: t("submissionFailed") };
   }
 }
 
-export async function submitCoachRegistration(
+export async function submitMemberRegistration(
   _prev: RegistrationState,
   formData: FormData,
 ): Promise<RegistrationState> {
@@ -226,9 +223,6 @@ export async function submitCoachRegistration(
 
   const fields = readCommonFields(formData);
   const sepaConsent = formData.get("sepaConsent") === "on";
-  const photo = readFile(formData, "photo");
-  const idFront = readFile(formData, "idFront");
-  const idBack = readFile(formData, "idBack");
 
   if (!fields.firstName) return { error: t("firstNameRequired") };
   if (!fields.lastName) return { error: t("lastNameRequired") };
@@ -243,26 +237,16 @@ export async function submitCoachRegistration(
   if (!fields.iban) return { error: t("ibanRequired") };
   if (!sepaConsent) return { error: t("sepaConsentRequired") };
   if (!fields.privacyConsent) return { error: t("privacyConsentRequired") };
-  if (!photo) return { error: t("photoRequired") };
-  if (!idFront) return { error: t("idFrontRequired") };
-  if (!idBack) return { error: t("idBackRequired") };
-  for (const file of [photo, idFront, idBack]) {
-    if (file && (!ALLOWED_PHOTO_TYPES.includes(file.type) || file.size > MAX_PHOTO_BYTES)) {
-      return { error: t("photoInvalid") };
-    }
-  }
-  if ((photo || idFront || idBack) && !isSupabaseAdminConfigured) {
-    return { error: t("uploadsUnavailable") };
-  }
 
-  const seasonId = await resolveCurrentSeasonId();
+  const { seasonId, memberOpen } = await getRegistrationAvailability();
   if (!seasonId) return { error: t("noActiveSeason") };
+  if (!memberOpen) return { error: t("registrationClosed") };
 
   try {
     const [registration] = await db
       .insert(registrations)
       .values({
-        kind: "coach",
+        kind: "member",
         seasonId,
         firstName: fields.firstName,
         lastName: fields.lastName,
@@ -275,32 +259,14 @@ export async function submitCoachRegistration(
         iban: fields.iban || null,
         sepaConsent,
         sepaConsentAt: stampConsent(sepaConsent),
-        photoConsent: fields.photoConsent,
-        photoConsentAt: stampConsent(fields.photoConsent),
         privacyConsent: fields.privacyConsent,
         privacyConsentAt: stampConsent(fields.privacyConsent),
       })
       .returning({ id: registrations.id });
 
-    const [photoPath, idFrontPath, idBackPath] = await Promise.all([
-      photo ? uploadRegistrationPhoto(registration.id, "photo", photo) : null,
-      idFront ? uploadRegistrationPhoto(registration.id, "id-front", idFront) : null,
-      idBack ? uploadRegistrationPhoto(registration.id, "id-back", idBack) : null,
-    ]);
-    if (photoPath || idFrontPath || idBackPath) {
-      await db
-        .update(registrations)
-        .set({
-          photoPath: photoPath ?? undefined,
-          idFrontPath: idFrontPath ?? undefined,
-          idBackPath: idBackPath ?? undefined,
-        })
-        .where(eq(registrations.id, registration.id));
-    }
-
     return { success: true, registrationId: registration.id };
   } catch (error) {
-    console.error("submitCoachRegistration failed", error);
+    console.error("submitMemberRegistration failed", error);
     return { error: t("submissionFailed") };
   }
 }

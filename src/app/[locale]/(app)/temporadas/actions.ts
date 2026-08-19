@@ -1,12 +1,13 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { REGISTRATION_AVAILABILITY_TAG } from "@/lib/registration-settings";
 
 export type SeasonState = {
   error?: string;
@@ -41,7 +42,12 @@ export async function createSeason(
       if (makeCurrent) {
         await tx.update(seasons).set({ isCurrent: false });
       }
-      await tx.insert(seasons).values({ name, startsOn, endsOn, isCurrent: makeCurrent });
+      await tx.insert(seasons).values({
+        name,
+        startsOn,
+        endsOn,
+        isCurrent: makeCurrent,
+      });
     });
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "23505") {
@@ -50,6 +56,7 @@ export async function createSeason(
     throw error;
   }
 
+  updateTag(REGISTRATION_AVAILABILITY_TAG);
   revalidatePath("/", "layout");
   return { message: t("seasonCreated") };
 }
@@ -85,6 +92,7 @@ export async function updateSeason(
     throw error;
   }
 
+  updateTag(REGISTRATION_AVAILABILITY_TAG);
   revalidatePath("/", "layout");
   return { message: t("seasonUpdated") };
 }
@@ -107,6 +115,7 @@ export async function deleteSeason(
     throw error;
   }
 
+  updateTag(REGISTRATION_AVAILABILITY_TAG);
   revalidatePath("/", "layout");
   return { message: t("seasonDeleted") };
 }

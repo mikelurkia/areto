@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import {
+  clubMembers,
   memberships,
   personGuardians,
   persons,
@@ -24,6 +25,8 @@ export type RegistrationReviewState = {
 };
 
 const MANAGE_ROLES = ["admin", "staff"] as const;
+const MEMBERSHIP_ROLES = ["player", "coach", "staff"] as const;
+type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
 const REGISTRATION_BUCKET = "registration-documents";
 const PERSON_PHOTO_BUCKET = "person-photos";
 const PERSON_DOCUMENTS_BUCKET = "person-documents";
@@ -184,6 +187,10 @@ export async function approveRegistration(
   const id = String(formData.get("id") ?? "");
   const teamId = String(formData.get("teamId") ?? "").trim() || null;
   const matchedPersonId = String(formData.get("matchedPersonId") ?? "new");
+  const membershipRoleRaw = String(formData.get("membershipRole") ?? "player");
+  const membershipRole: MembershipRole = MEMBERSHIP_ROLES.includes(membershipRoleRaw as MembershipRole)
+    ? (membershipRoleRaw as MembershipRole)
+    : "player";
 
   const registration = await db.query.registrations.findFirst({
     where: eq(registrations.id, id),
@@ -379,8 +386,19 @@ export async function approveRegistration(
       if (teamId) {
         await tx
           .insert(memberships)
-          .values({ personId, teamId, role: registration.kind === "coach" ? "coach" : "player" })
+          .values({ personId, teamId, role: membershipRole })
           .onConflictDoNothing();
+      } else if (registration.kind === "member") {
+        // Alta de socio: sin equipo, cuelga de `club_members` en vez de `memberships`.
+        // Si la persona ya fue socia y causó baja, reactivamos en vez de duplicar
+        // (índice único por `personId`).
+        await tx
+          .insert(clubMembers)
+          .values({ personId, status: "active", joinedAt: new Date().toISOString().slice(0, 10) })
+          .onConflictDoUpdate({
+            target: clubMembers.personId,
+            set: { status: "active", cancelledAt: null },
+          });
       }
 
       await tx

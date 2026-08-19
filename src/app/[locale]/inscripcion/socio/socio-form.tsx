@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { CheckCircle2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { submitCoachRegistration } from "@/app/[locale]/inscripcion/actions";
+import { submitMemberRegistration } from "@/app/[locale]/inscripcion/actions";
 import { useRequiredCheckboxError } from "@/hooks/use-required-checkbox-error";
 import { Link } from "@/i18n/navigation";
 import { Req } from "@/components/inscripciones/required-asterisk";
@@ -14,9 +14,9 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function EntrenadorForm() {
+export function SocioForm() {
   const t = useTranslations("Inscripciones");
-  const [state, formAction] = useActionState(submitCoachRegistration, {});
+  const [state, formAction] = useActionState(submitMemberRegistration, {});
   const sepaConsent = useRequiredCheckboxError();
   const privacyConsent = useRequiredCheckboxError();
 
@@ -43,7 +43,7 @@ export function EntrenadorForm() {
     <form action={formAction} className="flex flex-col gap-8">
       <FieldGroup>
         <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("coachSection")}
+          {t("memberSection")}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field>
@@ -94,7 +94,7 @@ export function EntrenadorForm() {
         <Field>
           <FieldLabel htmlFor="iban">{t("ibanLabel")}</FieldLabel>
           <Input id="iban" name="iban" placeholder="ES00 0000 0000 0000 0000 0000" required />
-          <p className="text-xs text-muted-foreground">{t("coachIbanHint")}</p>
+          <p className="text-xs text-muted-foreground">{t("memberIbanHint")}</p>
         </Field>
         <Field orientation="horizontal">
           <Checkbox
@@ -109,12 +109,12 @@ export function EntrenadorForm() {
             }}
           />
           <Label htmlFor="sepaConsent" className="font-normal">
-            {t("sepaConsentLabel")}
+            {t("sepaConsentLabelMember")}
             <Req />
           </Label>
         </Field>
         <Link
-          href={`/inscripcion/jugador/sepa?from=${encodeURIComponent("/inscripcion/entrenador")}`}
+          href="/inscripcion/jugador/sepa"
           target="_blank"
           className="text-xs text-muted-foreground underline hover:text-foreground"
         >
@@ -125,50 +125,6 @@ export function EntrenadorForm() {
             {t("sepaConsentRequired")}
           </p>
         ) : null}
-      </FieldGroup>
-
-      <FieldGroup>
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("documentsSection")}
-        </h2>
-        <Field>
-          <FieldLabel htmlFor="photo">{t("photoLabel")}</FieldLabel>
-          <Input
-            id="photo"
-            name="photo"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            required
-          />
-        </Field>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field>
-            <FieldLabel htmlFor="idFront">{t("idFrontLabel")}</FieldLabel>
-            <Input
-              id="idFront"
-              name="idFront"
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              required
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="idBack">{t("idBackLabel")}</FieldLabel>
-            <Input
-              id="idBack"
-              name="idBack"
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              required
-            />
-          </Field>
-        </div>
-        <Field orientation="horizontal">
-          <Checkbox id="photoConsent" name="photoConsent" />
-          <Label htmlFor="photoConsent" className="font-normal">
-            {t("imageConsentLabel")}
-          </Label>
-        </Field>
       </FieldGroup>
 
       <FieldGroup>
@@ -190,7 +146,7 @@ export function EntrenadorForm() {
           </Label>
         </Field>
         <Link
-          href={`/inscripcion/privacidad?from=${encodeURIComponent("/inscripcion/entrenador")}`}
+          href="/inscripcion/privacidad"
           target="_blank"
           className="text-xs text-muted-foreground underline hover:text-foreground"
         >

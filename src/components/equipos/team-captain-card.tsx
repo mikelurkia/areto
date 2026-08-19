@@ -76,7 +76,7 @@ export function TeamCaptainCard({
         value={value}
         onValueChange={(next) => setValue(next ?? NONE)}
       >
-        <SelectTrigger id="team-captain" size="sm" className="w-48">
+        <SelectTrigger id="team-captain" size="sm" className="w-64">
           <SelectValue>
             {(value: string) => (value === NONE ? t("captainNone") : nameFor(value))}
           </SelectValue>

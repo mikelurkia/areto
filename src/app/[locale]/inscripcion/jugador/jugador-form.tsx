@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState, type ReactNode } from "react";
 import { CheckCircle2Icon, PlusIcon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { submitPlayerRegistration } from "@/app/[locale]/inscripcion/actions";
+import { submitTeamRegistration } from "@/app/[locale]/inscripcion/actions";
 import { useRequiredCheckboxError } from "@/hooks/use-required-checkbox-error";
 import { isMinor } from "@/lib/age";
 import { Link } from "@/i18n/navigation";
@@ -83,7 +83,7 @@ function PhotoField({
 
 export function JugadorForm() {
   const t = useTranslations("Inscripciones");
-  const [state, formAction] = useActionState(submitPlayerRegistration, {});
+  const [state, formAction] = useActionState(submitTeamRegistration, {});
   const [birthDate, setBirthDate] = useState("");
   const [guardianKeys, setGuardianKeys] = useState<number[]>([0]);
   const [installments, setInstallments] = useState("1");
@@ -95,7 +95,7 @@ export function JugadorForm() {
   const privacyConsent = useRequiredCheckboxError();
   const fieldErrors = state.fieldErrors ?? {};
 
-  const showGuardians = !birthDate || isMinor(birthDate);
+  const showGuardians = birthDate !== "" && isMinor(birthDate);
 
   useEffect(() => {
     if (!state.error) return;
@@ -528,12 +528,12 @@ export function JugadorForm() {
             }}
           />
           <Label htmlFor="sepaConsent" className="font-normal">
-            {t("sepaConsentLabel")}
+            {t("sepaConsentLabelPlayer")}
             <Req />
           </Label>
         </Field>
         <Link
-          href={`/inscripcion/jugador/sepa?from=${encodeURIComponent("/inscripcion/jugador")}`}
+          href="/inscripcion/jugador/sepa"
           target="_blank"
           className="text-xs text-muted-foreground underline hover:text-foreground"
         >
@@ -662,7 +662,7 @@ export function JugadorForm() {
           </Label>
         </Field>
         <Link
-          href={`/inscripcion/privacidad?from=${encodeURIComponent("/inscripcion/jugador")}`}
+          href="/inscripcion/privacidad"
           target="_blank"
           className="text-xs text-muted-foreground underline hover:text-foreground"
         >

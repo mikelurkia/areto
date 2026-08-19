@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import {
+  BellIcon,
   ClipboardListIcon,
   ShieldHalf,
   TriangleAlertIcon,
@@ -23,6 +24,7 @@ import { resolveBackHref } from "@/lib/back-href";
 import { fileTypeLabel } from "@/lib/file-type";
 import { computeRosterHealth } from "@/lib/roster-health";
 import { sortRoster } from "@/lib/roster-order";
+import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { getSignedUrls } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
 import { BackLink } from "@/components/back-link";
@@ -123,10 +125,18 @@ export default async function TeamDetailPage({
   const memberIds = new Set(teamMemberships.map((m) => m.personId));
   const availablePersons = allPersons.filter((person) => !memberIds.has(person.id));
 
-  const [photoUrls, documentFileUrls] = await Promise.all([
+  const [photoUrls, documentFileUrls, seasonRenewals] = await Promise.all([
     getSignedUrls(PHOTO_BUCKET, teamMemberships, (m) => m.person.photoPath, (m) => m.personId),
     getSignedUrls(TEAM_DOCUMENTS_BUCKET, team.documents, (d) => d.filePath, (d) => d.id),
+    loadSeasonRenewals(team.seasonId),
   ]);
+  const teamWebRegistration = seasonRenewals.rows.filter((r) => r.teamId === team.id);
+  const teamWebRegistrationMissing = teamWebRegistration.filter(
+    (r) => r.status === "missing" || r.status === "rejected",
+  ).length;
+  const webRegistrationStatusByPersonId = new Map(
+    teamWebRegistration.map((r) => [r.personId, r.status]),
+  );
 
   const { stats: rosterStats, alerts: rosterAlerts } = computeRosterHealth(
     teamMemberships,
@@ -227,6 +237,33 @@ export default async function TeamDetailPage({
             </div>
           ) : null}
 
+          {teamWebRegistration.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4 print:hidden">
+              <div className="flex items-center gap-3">
+                <BellIcon className="size-5 shrink-0 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">{t("webRegistrationSectionTitle")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {teamWebRegistrationMissing > 0
+                      ? t("webRegistrationSummary", {
+                          missing: teamWebRegistrationMissing,
+                          total: teamWebRegistration.length,
+                        })
+                      : t("webRegistrationAllDone")}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                render={<Link href={`/temporadas/${team.seasonId}/pendientes?team=${team.id}`} />}
+                nativeButton={false}
+              >
+                {t("viewWebRegistrationAction")}
+              </Button>
+            </div>
+          ) : null}
+
           {teamMemberships.length > 0 ? (
             <RosterHealth stats={rosterStats} alerts={rosterAlerts} />
           ) : null}
@@ -256,6 +293,9 @@ export default async function TeamDetailPage({
                   team.minBirthYear !== null &&
                   team.maxBirthYear !== null &&
                   (birthYear < team.minBirthYear || birthYear > team.maxBirthYear);
+                const webRegistrationStatus = webRegistrationStatusByPersonId.get(m.personId);
+                const webRegistrationMissing =
+                  webRegistrationStatus === "missing" || webRegistrationStatus === "rejected";
                 return (
                   <div className="flex items-center gap-2">
                     <Avatar size="sm">
@@ -273,6 +313,11 @@ export default async function TeamDetailPage({
                     {m.isCaptain ? (
                       <Badge variant="outline" title={t("captainLabel")}>
                         {t("captainShort")}
+                      </Badge>
+                    ) : null}
+                    {webRegistrationMissing ? (
+                      <Badge variant="destructive" title={t("webRegistrationMissingLabel")}>
+                        {t("webRegistrationMissingShort")}
                       </Badge>
                     ) : null}
                     {ageOutOfRange ? (

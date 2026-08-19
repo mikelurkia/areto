@@ -26,7 +26,7 @@ import { SectionPlaceholder } from "@/components/section-placeholder";
 
 type RegistrationRow = {
   id: string;
-  kind: "player" | "coach";
+  kind: "player" | "member";
   status: "pending" | "approved" | "rejected";
   firstName: string;
   lastName: string;
@@ -107,7 +107,7 @@ export function RegistrationsBrowser({ registrations }: { registrations: Registr
           <SelectContent>
             <SelectItem value="all">{t("filterKindAll")}</SelectItem>
             <SelectItem value="player">{t("kind.player")}</SelectItem>
-            <SelectItem value="coach">{t("kind.coach")}</SelectItem>
+            <SelectItem value="member">{t("kind.member")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -151,9 +151,13 @@ export function RegistrationsBrowser({ registrations }: { registrations: Registr
                   {r.guardiansCount > 0 ? r.guardiansCount : "—"}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={r.photosCount === 3 ? "secondary" : r.photosCount === 0 ? "destructive" : "warning"}>
-                    {t("photosCount", { count: r.photosCount })}
-                  </Badge>
+                  {r.kind === "member" ? (
+                    <span className="text-muted-foreground">—</span>
+                  ) : (
+                    <Badge variant={r.photosCount === 3 ? "secondary" : r.photosCount === 0 ? "destructive" : "warning"}>
+                      {t("photosCount", { count: r.photosCount })}
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">{r.createdAt}</TableCell>
                 <TableCell>

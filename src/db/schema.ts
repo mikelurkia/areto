@@ -102,8 +102,9 @@ export const sponsorshipAgreementStatus = pgEnum("sponsorship_agreement_status",
   "lost", // perdido / no cuaja
 ]);
 
-/** Tipo de solicitud de inscripción: jugador o entrenador. */
-export const registrationKind = pgEnum("registration_kind", ["player", "coach"]);
+/** Tipo de solicitud de inscripción: alta de equipo (jugador o cuerpo
+ * técnico, el rol se decide al aprobar) o alta de socio. */
+export const registrationKind = pgEnum("registration_kind", ["player", "member"]);
 
 /** Estado de una solicitud de inscripción en el flujo de validación. */
 export const registrationStatus = pgEnum("registration_status", [
@@ -637,6 +638,19 @@ export const clubSettings = pgTable("club_settings", {
   phone: text("phone"),
   iban: text("iban"),
   federationCode: text("federation_code").default("2022"), // código de club en la federación
+  // Interruptores globales: solo hay una temporada activa a la vez, así que el
+  // formulario público de inscripción es un estado del club, no de cada
+  // temporada. Cada inscripción enviada se cuelga de la temporada `isCurrent`
+  // en ese momento (ver `getRegistrationAvailability`).
+  // `playerRegistrationOpen` cubre el alta de equipo (jugador o cuerpo
+  // técnico): el formulario es el mismo para ambos, el rol se decide al
+  // aprobar, no al inscribirse.
+  playerRegistrationOpen: boolean("player_registration_open").notNull().default(false),
+  memberRegistrationOpen: boolean("member_registration_open").notNull().default(false),
+  // Cuota anual de socio. Sin pantalla propia todavía en Ajustes del club
+  // (valor por defecto 2000 = 20€); el campo ya existe para no tener que
+  // volver a tocar el formulario público el día que se haga editable.
+  memberAnnualFeeCents: integer("member_annual_fee_cents").notNull().default(2000),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -686,15 +700,16 @@ export const announcements = pgTable("announcements", {
 });
 
 // ---------------------------------------------------------------------------
-// Inscripciones: formulario público de alta de jugador/entrenador, pendiente
-// de validación por un administrador antes de integrarse en `persons`.
+// Inscripciones: formulario público de alta de equipo (jugador o cuerpo
+// técnico, sin distinción en el intake) o de socio, pendiente de validación
+// por un administrador antes de integrarse en `persons`.
 // ---------------------------------------------------------------------------
 
 /**
  * Solicitud de inscripción enviada por el propio interesado (o su tutor), sin
  * sesión. Es una zona de aterrizaje: nada de esto toca `persons` hasta que un
  * admin/staff la aprueba desde `/inscripciones`. Los campos marcados "solo
- * jugador" quedan `null` en las de entrenador.
+ * equipo" quedan `null` en las de socio.
  */
 export const registrations = pgTable("registrations", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -714,7 +729,7 @@ export const registrations = pgTable("registrations", {
   email: text("email"),
   iban: text("iban"),
 
-  // Solo jugador:
+  // Solo equipo (kind "player"):
   shirtSize: text("shirt_size"),
   pantsSize: text("pants_size"),
   shoeSize: text("shoe_size"),

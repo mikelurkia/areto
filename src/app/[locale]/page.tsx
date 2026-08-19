@@ -45,7 +45,10 @@ export default async function Home({
         <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
             <Image src="/logo.png" alt="" width={32} height={32} className="size-8 object-contain" />
-            <span className="font-semibold">{t("brand")}</span>
+            <div className="leading-tight">
+              <span className="block font-semibold">{t("brand")}</span>
+              <span className="block text-xs text-muted-foreground">{t("brandSubtitle")}</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <LocaleSwitcher />
@@ -85,6 +88,14 @@ export default async function Home({
             size="lg"
           >
             {t("registerAction")}
+          </Button>
+          <Button
+            render={<Link href="/inscripcion/socio" />}
+            nativeButton={false}
+            variant="outline"
+            size="lg"
+          >
+            {t("becomeMemberAction")}
           </Button>
         </div>
       </section>

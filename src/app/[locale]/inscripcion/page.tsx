@@ -1,9 +1,11 @@
-import { ArrowLeftIcon, ArrowRightIcon, ShieldHalfIcon, UserRoundIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, HeartHandshakeIcon, UserRoundIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { Badge } from "@/components/ui/badge";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { getClubSettings } from "@/lib/club";
+import { getRegistrationAvailability } from "@/lib/registration-settings";
 
 export async function generateMetadata({
   params,
@@ -24,9 +26,10 @@ export default async function InscripcionLandingPage({
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
 
-  const [t, club] = await Promise.all([
+  const [t, club, { teamRegistrationOpen, memberOpen }] = await Promise.all([
     getTranslations("Inscripciones"),
     getClubSettings(),
+    getRegistrationAvailability(),
   ]);
 
   return (
@@ -61,7 +64,10 @@ export default async function InscripcionLandingPage({
         >
           <UserRoundIcon className="size-6 text-muted-foreground" />
           <div>
-            <h2 className="font-semibold">{t("playerCardTitle")}</h2>
+            <h2 className="flex items-center gap-2 font-semibold">
+              {t("playerCardTitle")}
+              {teamRegistrationOpen ? null : <Badge variant="secondary">{t("closedBadge")}</Badge>}
+            </h2>
             <p className="text-sm text-muted-foreground">{t("playerCardDescription")}</p>
           </div>
           <span className="mt-auto flex items-center gap-1 text-sm font-medium text-primary">
@@ -70,13 +76,16 @@ export default async function InscripcionLandingPage({
           </span>
         </Link>
         <Link
-          href="/inscripcion/entrenador"
+          href="/inscripcion/socio"
           className="group flex flex-col gap-3 rounded-lg border p-6 transition-colors hover:bg-muted/40"
         >
-          <ShieldHalfIcon className="size-6 text-muted-foreground" />
+          <HeartHandshakeIcon className="size-6 text-muted-foreground" />
           <div>
-            <h2 className="font-semibold">{t("coachCardTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("coachCardDescription")}</p>
+            <h2 className="flex items-center gap-2 font-semibold">
+              {t("memberCardTitle")}
+              {memberOpen ? null : <Badge variant="secondary">{t("closedBadge")}</Badge>}
+            </h2>
+            <p className="text-sm text-muted-foreground">{t("memberCardDescription")}</p>
           </div>
           <span className="mt-auto flex items-center gap-1 text-sm font-medium text-primary">
             {t("startAction")}

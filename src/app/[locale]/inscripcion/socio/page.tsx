@@ -6,7 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { SectionPlaceholder } from "@/components/section-placeholder";
-import { JugadorForm } from "./jugador-form";
+import { SocioForm } from "./socio-form";
 
 export async function generateMetadata({
   params,
@@ -15,10 +15,10 @@ export async function generateMetadata({
 }) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Inscripciones" });
-  return { title: t("playerCardTitle") };
+  return { title: t("memberCardTitle") };
 }
 
-export default async function InscripcionJugadorPage({
+export default async function InscripcionSocioPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
@@ -26,10 +26,14 @@ export default async function InscripcionJugadorPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  const [t, { teamRegistrationOpen, seasonName }] = await Promise.all([
+  const [t, { memberOpen, seasonName, memberAnnualFeeCents }] = await Promise.all([
     getTranslations("Inscripciones"),
     getRegistrationAvailability(),
   ]);
+
+  const feeAmount = new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(
+    memberAnnualFeeCents / 100,
+  );
 
   return (
     <div className="flex flex-1 flex-col">
@@ -47,16 +51,18 @@ export default async function InscripcionJugadorPage({
       </header>
 
       <div className="mx-auto w-full max-w-2xl px-6 py-10">
-        {teamRegistrationOpen ? (
+        {memberOpen ? (
           <>
             <div className="mb-8">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight">{t("playerCardTitle")}</h1>
+                <h1 className="text-2xl font-semibold tracking-tight">{t("memberCardTitle")}</h1>
                 {seasonName ? <Badge variant="secondary">{t("seasonBadge", { season: seasonName })}</Badge> : null}
               </div>
-              <p className="text-muted-foreground">{t("playerFormSubtitle")}</p>
+              <p className="text-muted-foreground">
+                {t("memberFormSubtitle", { amount: feeAmount })}
+              </p>
             </div>
-            <JugadorForm />
+            <SocioForm />
           </>
         ) : (
           <SectionPlaceholder

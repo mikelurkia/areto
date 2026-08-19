@@ -9,6 +9,10 @@ import { findCandidates, type PersonForMatching } from "@/lib/person-matching";
 
 export type RenewalStatus = "approved" | "pending" | "rejected" | "missing";
 
+/** Roles de plantilla que cuentan como alta de equipo a efectos de inscripción
+ * web (excluye patrocinadores u otras relaciones sin membership). */
+const ROSTER_ROLES = ["player", "coach", "staff"] as const;
+
 type RegistrationForMatching = PersonForMatching & {
   status: "pending" | "approved" | "rejected";
   matchedPersonId: string | null;
@@ -59,10 +63,11 @@ export function resolveRenewalStatus(
 }
 
 /**
- * Cruza la plantilla de jugadores de una temporada (vía `memberships` de sus
- * equipos, ya poblada normalmente al renovar/importar equipos del año
- * anterior) con las inscripciones enviadas esa misma temporada, para saber
- * quién todavía no ha confirmado la renovación y a quién avisar.
+ * Cruza la plantilla de una temporada (jugadores y cuerpo técnico, vía
+ * `memberships` de sus equipos, ya poblada normalmente al renovar/importar
+ * equipos del año anterior) con las inscripciones enviadas esa misma
+ * temporada, para saber quién todavía no ha confirmado la renovación y a
+ * quién avisar.
  */
 export async function loadSeasonRenewals(seasonId: string): Promise<SeasonRenewals> {
   const seasonTeams = await db.query.teams.findMany({
@@ -75,7 +80,7 @@ export async function loadSeasonRenewals(seasonId: string): Promise<SeasonRenewa
 
   const [seasonMemberships, seasonRegistrations] = await Promise.all([
     db.query.memberships.findMany({
-      where: and(inArray(memberships.teamId, teamIds), eq(memberships.role, "player")),
+      where: and(inArray(memberships.teamId, teamIds), inArray(memberships.role, ROSTER_ROLES)),
       with: {
         person: {
           columns: {

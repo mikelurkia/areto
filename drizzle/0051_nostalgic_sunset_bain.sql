@@ -1,0 +1,2 @@
+ALTER TABLE "seasons" ADD COLUMN "player_registration_open" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "seasons" ADD COLUMN "coach_registration_open" boolean DEFAULT false NOT NULL;

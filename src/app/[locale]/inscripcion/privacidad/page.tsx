@@ -1,7 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getClubSettings } from "@/lib/club";
-import { resolveBackHref } from "@/lib/back-href";
 import { LegalInfoPage } from "@/components/inscripciones/legal-info-page";
 
 const DEFAULT_LEGAL_NAME = "Aloña Mendi Kirol Elkartea - sección de Fútbol Sala";
@@ -19,14 +18,10 @@ export async function generateMetadata({
 
 export default async function InscripcionPrivacidadPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ from?: string }>;
 }) {
   const { locale } = await params;
-  const { from } = await searchParams;
-  const backHref = resolveBackHref(from, "/inscripcion/jugador");
   setRequestLocale(locale);
   const t = await getTranslations("Inscripciones");
   const settings = await getClubSettings();
@@ -46,5 +41,5 @@ export default async function InscripcionPrivacidadPage({
     t("privacyInfoPageRights"),
   ].join("\n\n");
 
-  return <LegalInfoPage title={t("privacyInfoPageTitle")} body={body} backHref={backHref} />;
+  return <LegalInfoPage title={t("privacyInfoPageTitle")} body={body} />;
 }
