@@ -59,10 +59,12 @@ export default async function PersonasPage({
       orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
     }),
   ]);
-  const teamOptions = allTeams.map((team) => ({
-    id: team.id,
-    label: teamSeasonLabel(team, team.season),
-  }));
+  const teamOptions = allTeams
+    .filter((team) => team.season.isCurrent)
+    .map((team) => ({
+      id: team.id,
+      label: teamSeasonLabel(team, team.season),
+    }));
 
   const guardianOptions = allPersons.map((p) => ({
     id: p.id,
