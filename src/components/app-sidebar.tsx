@@ -148,10 +148,12 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
       : []),
     { title: tNav("temporada"), href: "/temporadas", icon: ClipboardList },
     { title: tNav("equipos"), href: "/equipos", icon: Shirt },
-    { title: tNav("calendario"), href: "/calendario", icon: CalendarDays },
+    // Sin página propia todavía (la ruta ni siquiera existe): deshabilitados
+    // en vez de enlazar a un 404.
+    { title: tNav("calendario"), href: "/calendario", icon: CalendarDays, disabled: true },
     { title: tNav("patrocinadores"), href: "/patrocinadores", icon: HandshakeIcon },
-    { title: tNav("cuotas"), href: "/cuotas", icon: Wallet },
-    { title: tNav("avisos"), href: "/avisos", icon: Megaphone },
+    { title: tNav("cuotas"), href: "/cuotas", icon: Wallet, disabled: true },
+    { title: tNav("avisos"), href: "/avisos", icon: Megaphone, disabled: true },
     ...(canManageClub
       ? [{ title: tNav("club"), href: "/club", icon: Building2 }]
       : []),
@@ -168,13 +170,20 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                 pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    render={<Link href={item.href} />}
-                    isActive={active}
-                  >
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
+                  {item.disabled ? (
+                    <SidebarMenuButton disabled>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton
+                      render={<Link href={item.href} />}
+                      isActive={active}
+                    >
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  )}
                 </SidebarMenuItem>
               );
             })}
