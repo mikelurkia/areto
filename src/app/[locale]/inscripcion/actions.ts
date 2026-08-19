@@ -146,68 +146,76 @@ export async function submitPlayerRegistration(
   const seasonId = await resolveCurrentSeasonId();
   if (!seasonId) return { error: t("noActiveSeason") };
 
-  const [registration] = await db
-    .insert(registrations)
-    .values({
-      kind: "player",
-      seasonId,
-      firstName: fields.firstName,
-      lastName: fields.lastName,
-      birthDate: fields.birthDate,
-      nationalId: fields.nationalId || null,
-      address: fields.address || null,
-      city: fields.city || null,
-      phone: fields.phone || null,
-      email: fields.email || null,
-      iban: fields.iban || null,
-      shirtSize: shirtSize || null,
-      pantsSize: pantsSize || null,
-      shoeSize: shoeSize || null,
-      installmentsChosen,
-      sepaConsent,
-      sepaConsentAt: stampConsent(sepaConsent),
-      termsConsent,
-      termsConsentAt: stampConsent(termsConsent),
-      photoConsent: fields.photoConsent,
-      photoConsentAt: stampConsent(fields.photoConsent),
-      privacyConsent: fields.privacyConsent,
-      privacyConsentAt: stampConsent(fields.privacyConsent),
-    })
-    .returning({ id: registrations.id });
-
-  if (guardians.length > 0) {
-    await db.insert(registrationGuardians).values(
-      guardians.map((g, i) => ({
-        registrationId: registration.id,
-        firstName: g.firstName,
-        lastName: g.lastName,
-        birthDate: g.birthDate || null,
-        nationalId: g.nationalId || null,
-        address: g.address || null,
-        phone: g.phone || null,
-        email: g.email || null,
-        sortOrder: i,
-      })),
-    );
-  }
-
-  const [photoPath, idFrontPath, idBackPath] = await Promise.all([
-    photo ? uploadRegistrationPhoto(registration.id, "photo", photo) : null,
-    idFront ? uploadRegistrationPhoto(registration.id, "id-front", idFront) : null,
-    idBack ? uploadRegistrationPhoto(registration.id, "id-back", idBack) : null,
-  ]);
-  if (photoPath || idFrontPath || idBackPath) {
-    await db
-      .update(registrations)
-      .set({
-        photoPath: photoPath ?? undefined,
-        idFrontPath: idFrontPath ?? undefined,
-        idBackPath: idBackPath ?? undefined,
+  try {
+    const [registration] = await db
+      .insert(registrations)
+      .values({
+        kind: "player",
+        seasonId,
+        firstName: fields.firstName,
+        lastName: fields.lastName,
+        birthDate: fields.birthDate,
+        nationalId: fields.nationalId || null,
+        address: fields.address || null,
+        city: fields.city || null,
+        phone: fields.phone || null,
+        email: fields.email || null,
+        iban: fields.iban || null,
+        shirtSize: shirtSize || null,
+        pantsSize: pantsSize || null,
+        shoeSize: shoeSize || null,
+        installmentsChosen,
+        sepaConsent,
+        sepaConsentAt: stampConsent(sepaConsent),
+        termsConsent,
+        termsConsentAt: stampConsent(termsConsent),
+        photoConsent: fields.photoConsent,
+        photoConsentAt: stampConsent(fields.photoConsent),
+        privacyConsent: fields.privacyConsent,
+        privacyConsentAt: stampConsent(fields.privacyConsent),
       })
-      .where(eq(registrations.id, registration.id));
-  }
+      .returning({ id: registrations.id });
 
-  return { success: true, registrationId: registration.id };
+    if (guardians.length > 0) {
+      await db.insert(registrationGuardians).values(
+        guardians.map((g, i) => ({
+          registrationId: registration.id,
+          firstName: g.firstName,
+          lastName: g.lastName,
+          birthDate: g.birthDate || null,
+          nationalId: g.nationalId || null,
+          address: g.address || null,
+          phone: g.phone || null,
+          email: g.email || null,
+          sortOrder: i,
+        })),
+      );
+    }
+
+    const [photoPath, idFrontPath, idBackPath] = await Promise.all([
+      photo ? uploadRegistrationPhoto(registration.id, "photo", photo) : null,
+      idFront ? uploadRegistrationPhoto(registration.id, "id-front", idFront) : null,
+      idBack ? uploadRegistrationPhoto(registration.id, "id-back", idBack) : null,
+    ]);
+    if (photoPath || idFrontPath || idBackPath) {
+      await db
+        .update(registrations)
+        .set({
+          photoPath: photoPath ?? undefined,
+          idFrontPath: idFrontPath ?? undefined,
+          idBackPath: idBackPath ?? undefined,
+        })
+        .where(eq(registrations.id, registration.id));
+    }
+
+    return { success: true, registrationId: registration.id };
+  } catch (error) {
+    // No relanzamos: un fallo aquí (red, Supabase Storage, BD) no debe tirar
+    // el error boundary de [locale]/error.tsx, que desmontaría toda la página
+    // y borraría lo que el usuario ya había rellenado.
+    console.error("submitPlayerRegistration failed", error);
+    return { error: t("submissionFailed") };
+  }
 }
 
 export async function submitCoachRegistration(
@@ -250,44 +258,49 @@ export async function submitCoachRegistration(
   const seasonId = await resolveCurrentSeasonId();
   if (!seasonId) return { error: t("noActiveSeason") };
 
-  const [registration] = await db
-    .insert(registrations)
-    .values({
-      kind: "coach",
-      seasonId,
-      firstName: fields.firstName,
-      lastName: fields.lastName,
-      birthDate: fields.birthDate,
-      nationalId: fields.nationalId || null,
-      address: fields.address || null,
-      city: fields.city || null,
-      phone: fields.phone || null,
-      email: fields.email || null,
-      iban: fields.iban || null,
-      sepaConsent,
-      sepaConsentAt: stampConsent(sepaConsent),
-      photoConsent: fields.photoConsent,
-      photoConsentAt: stampConsent(fields.photoConsent),
-      privacyConsent: fields.privacyConsent,
-      privacyConsentAt: stampConsent(fields.privacyConsent),
-    })
-    .returning({ id: registrations.id });
-
-  const [photoPath, idFrontPath, idBackPath] = await Promise.all([
-    photo ? uploadRegistrationPhoto(registration.id, "photo", photo) : null,
-    idFront ? uploadRegistrationPhoto(registration.id, "id-front", idFront) : null,
-    idBack ? uploadRegistrationPhoto(registration.id, "id-back", idBack) : null,
-  ]);
-  if (photoPath || idFrontPath || idBackPath) {
-    await db
-      .update(registrations)
-      .set({
-        photoPath: photoPath ?? undefined,
-        idFrontPath: idFrontPath ?? undefined,
-        idBackPath: idBackPath ?? undefined,
+  try {
+    const [registration] = await db
+      .insert(registrations)
+      .values({
+        kind: "coach",
+        seasonId,
+        firstName: fields.firstName,
+        lastName: fields.lastName,
+        birthDate: fields.birthDate,
+        nationalId: fields.nationalId || null,
+        address: fields.address || null,
+        city: fields.city || null,
+        phone: fields.phone || null,
+        email: fields.email || null,
+        iban: fields.iban || null,
+        sepaConsent,
+        sepaConsentAt: stampConsent(sepaConsent),
+        photoConsent: fields.photoConsent,
+        photoConsentAt: stampConsent(fields.photoConsent),
+        privacyConsent: fields.privacyConsent,
+        privacyConsentAt: stampConsent(fields.privacyConsent),
       })
-      .where(eq(registrations.id, registration.id));
-  }
+      .returning({ id: registrations.id });
 
-  return { success: true, registrationId: registration.id };
+    const [photoPath, idFrontPath, idBackPath] = await Promise.all([
+      photo ? uploadRegistrationPhoto(registration.id, "photo", photo) : null,
+      idFront ? uploadRegistrationPhoto(registration.id, "id-front", idFront) : null,
+      idBack ? uploadRegistrationPhoto(registration.id, "id-back", idBack) : null,
+    ]);
+    if (photoPath || idFrontPath || idBackPath) {
+      await db
+        .update(registrations)
+        .set({
+          photoPath: photoPath ?? undefined,
+          idFrontPath: idFrontPath ?? undefined,
+          idBackPath: idBackPath ?? undefined,
+        })
+        .where(eq(registrations.id, registration.id));
+    }
+
+    return { success: true, registrationId: registration.id };
+  } catch (error) {
+    console.error("submitCoachRegistration failed", error);
+    return { error: t("submissionFailed") };
+  }
 }

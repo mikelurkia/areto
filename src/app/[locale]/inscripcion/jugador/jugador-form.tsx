@@ -604,17 +604,6 @@ export function JugadorForm() {
       </FieldGroup>
 
       <FieldGroup>
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("travelSectionTitle")}
-        </h2>
-        <p className="text-sm text-muted-foreground">{t("travelSectionBody")}</p>
-      </FieldGroup>
-
-      <FieldGroup>
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("kitSectionTitle")}
-        </h2>
-        <p className="text-sm text-muted-foreground">{t("kitSectionBody")}</p>
         <Field orientation="horizontal">
           <Checkbox
             id="termsConsent"
@@ -668,17 +657,17 @@ export function JugadorForm() {
             }}
           />
           <Label htmlFor="privacyConsent" className="font-normal">
-            {t("privacyNoticePrefix")}{" "}
-            <Link
-              href="/inscripcion/privacidad"
-              target="_blank"
-              className="underline hover:text-foreground"
-            >
-              {t("privacyNoticeLinkText")}
-            </Link>
+            {t("privacyConsentLabel")}
             <Req />
           </Label>
         </Field>
+        <Link
+          href="/inscripcion/privacidad"
+          target="_blank"
+          className="text-xs text-muted-foreground underline hover:text-foreground"
+        >
+          {t("privacyConsentMoreInfo")}
+        </Link>
         {privacyConsent.error || fieldErrors.privacyConsent ? (
           <p id="privacyConsent-error" className="text-sm text-destructive">
             {t("privacyConsentRequired")}

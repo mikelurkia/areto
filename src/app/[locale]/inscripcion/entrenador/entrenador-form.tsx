@@ -185,17 +185,17 @@ export function EntrenadorForm() {
             }}
           />
           <Label htmlFor="privacyConsent" className="font-normal">
-            {t("privacyNoticePrefix")}{" "}
-            <Link
-              href="/inscripcion/privacidad"
-              target="_blank"
-              className="underline hover:text-foreground"
-            >
-              {t("privacyNoticeLinkText")}
-            </Link>
+            {t("privacyConsentLabel")}
             <Req />
           </Label>
         </Field>
+        <Link
+          href="/inscripcion/privacidad"
+          target="_blank"
+          className="text-xs text-muted-foreground underline hover:text-foreground"
+        >
+          {t("privacyConsentMoreInfo")}
+        </Link>
         {privacyConsent.error ? (
           <p id="privacyConsent-error" className="text-sm text-destructive">
             {t("privacyConsentRequired")}

@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
    * como error en desarrollo y en build.
    */
   cacheComponents: true,
+  experimental: {
+    // El formulario de inscripción envía hasta 3 ficheros (foto + DNI ambas
+    // caras) de hasta 5MB cada uno (ver MAX_PHOTO_BYTES en inscripcion/actions.ts).
+    serverActions: {
+      bodySizeLimit: "20mb",
+    },
+  },
 };
 
 export default withNextIntl(nextConfig);
