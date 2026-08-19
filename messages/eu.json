@@ -186,7 +186,7 @@
     "guardianNone": "Tutorerik gabe",
     "guardianMinorExcludedHint": "Adingabeak ez dira zerrenda honetan agertzen: ezin dute tutore legal izan.",
     "ibanLabel": "IBAN",
-    "ibanPlaceholder": "ES00 0000 0000 0000 0000 0000",
+    "ibanPlaceholder": "ES00 0000 0000 00 0000000000",
     "ibanInvalid": "IBANa ez da baliozkoa (egiaztatu zenbakia).",
     "ibanHandledByGuardian": "{name} tutore nagusiaren bidez helbideratzen da.",
     "ibanHandledByGuardianGeneric": "Tutore nagusiaren bidez helbideratzen da.",

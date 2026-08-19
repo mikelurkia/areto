@@ -4,6 +4,8 @@ import { useState } from "react";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { groupIban } from "@/lib/iban";
+import { useIbanField } from "@/hooks/use-iban-field";
 import { Button } from "@/components/ui/button";
 import {
   InputGroup,
@@ -12,12 +14,12 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 
-/** Oculta todo salvo los últimos 4 caracteres, agrupados de 4 en 4 como en
- * los placeholders de IBAN ya usados en los formularios públicos. */
+/** Oculta todo salvo los últimos 4 caracteres, agrupados como
+ * "XXXX XXXX XXXX XX XXXXXXXXXX". */
 function maskIban(value: string): string {
   const clean = value.replace(/\s+/g, "");
   const masked = clean.length > 4 ? "•".repeat(clean.length - 4) + clean.slice(-4) : clean;
-  return (masked.match(/.{1,4}/g) ?? [masked]).join(" ");
+  return groupIban(masked);
 }
 
 /**
@@ -33,7 +35,7 @@ export function MaskedIbanText({ value }: { value: string }) {
 
   return (
     <span className="inline-flex items-center gap-1.5 font-mono text-sm">
-      {revealed ? value : maskIban(value)}
+      {revealed ? groupIban(value.replace(/\s+/g, "")) : maskIban(value)}
       <Button
         type="button"
         variant="ghost"
@@ -49,7 +51,8 @@ export function MaskedIbanText({ value }: { value: string }) {
 }
 
 /** Igual que un `Input` de IBAN, pero oculto por defecto (tipo password) con
- * botón para revelarlo mientras se edita. */
+ * botón para revelarlo mientras se edita. Se autoformatea mientras se teclea
+ * (`useIbanField`), igual que el resto de campos de IBAN de la aplicación. */
 export function MaskedIbanInput({
   id,
   name,
@@ -67,6 +70,7 @@ export function MaskedIbanInput({
 }) {
   const t = useTranslations("Inscripciones");
   const [revealed, setRevealed] = useState(false);
+  const iban = useIbanField(defaultValue ?? "");
 
   return (
     <InputGroup>
@@ -74,10 +78,10 @@ export function MaskedIbanInput({
         id={id}
         name={name}
         type={revealed ? "text" : "password"}
-        defaultValue={defaultValue}
         placeholder={placeholder}
         required={required}
         aria-invalid={ariaInvalid}
+        {...iban}
       />
       <InputGroupAddon align="inline-end">
         <InputGroupButton

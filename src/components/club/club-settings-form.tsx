@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 
 import { updateClubSettings, type ClubState } from "@/app/[locale]/(app)/club/actions";
+import { useIbanField } from "@/hooks/use-iban-field";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -27,8 +28,10 @@ export function ClubSettingsForm({ settings }: { settings: ClubSettingsValues | 
   useActionToast(state);
 
   // `key` fuerza el remount de los inputs no controlados cuando cambian los
-  // datos guardados, para que el defaultValue se refresque tras guardar.
+  // datos guardados, para que el defaultValue se refresque tras guardar (y,
+  // de paso, el estado inicial de `useIbanField` de abajo).
   const revision = JSON.stringify(settings);
+  const iban = useIbanField(settings?.iban ?? "");
 
   return (
     <form action={action} key={revision}>
@@ -49,7 +52,7 @@ export function ClubSettingsForm({ settings }: { settings: ClubSettingsValues | 
           </Field>
           <Field>
             <FieldLabel htmlFor="club-iban">{t("clubIbanLabel")}</FieldLabel>
-            <Input id="club-iban" name="iban" defaultValue={settings?.iban ?? ""} />
+            <Input id="club-iban" name="iban" {...iban} />
           </Field>
         </div>
         <Field>

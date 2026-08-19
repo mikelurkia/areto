@@ -186,7 +186,7 @@
     "guardianNone": "Sin tutor/a",
     "guardianMinorExcludedHint": "Los menores de edad no aparecen en esta lista: no pueden ser tutores/as legales.",
     "ibanLabel": "IBAN",
-    "ibanPlaceholder": "ES00 0000 0000 0000 0000 0000",
+    "ibanPlaceholder": "ES00 0000 0000 00 0000000000",
     "ibanInvalid": "El IBAN no es válido (revisa el número).",
     "ibanHandledByGuardian": "Se domicilia a través de {name}, su tutor/a principal.",
     "ibanHandledByGuardianGeneric": "Se domicilia a través de su tutor/a principal.",

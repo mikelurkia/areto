@@ -5,6 +5,7 @@ import { CheckCircle2Icon, PlusIcon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { submitTeamRegistration } from "@/app/[locale]/inscripcion/actions";
+import { useIbanField } from "@/hooks/use-iban-field";
 import { useRequiredCheckboxError } from "@/hooks/use-required-checkbox-error";
 import { isMinor } from "@/lib/age";
 import { Link } from "@/i18n/navigation";
@@ -95,6 +96,12 @@ export function JugadorForm() {
   const privacyConsent = useRequiredCheckboxError();
   const fieldErrors = state.fieldErrors ?? {};
   const submitted = state.submitted;
+  // Controlado (a diferencia del resto de campos de texto de este
+  // formulario): necesita interceptar cada pulsación para autoformatear. Al
+  // ser estado de React, ya sobrevive por sí solo al reseteo de campos no
+  // controlados que hace React tras cualquier envío (como `birthDate`) — no
+  // necesita repoblarse desde `submitted`.
+  const iban = useIbanField("");
 
   const showGuardians = birthDate !== "" && isMinor(birthDate);
 
@@ -502,10 +509,10 @@ export function JugadorForm() {
             <Input
               id="iban"
               name="iban"
-              placeholder="ES00 0000 0000 0000 0000 0000"
+              placeholder="ES00 0000 0000 00 0000000000"
               required
-              defaultValue={submitted?.iban ?? ""}
               aria-invalid={fieldErrors.iban ? true : undefined}
+              {...iban}
             />
             <p className="text-xs text-muted-foreground">
               {t(showGuardians ? "playerIbanHintMinor" : "playerIbanHintAdult")}

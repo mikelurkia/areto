@@ -5,6 +5,7 @@ import { CheckCircle2Icon, PlusIcon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { submitMemberRegistration } from "@/app/[locale]/inscripcion/actions";
+import { useIbanField } from "@/hooks/use-iban-field";
 import { useRequiredCheckboxError } from "@/hooks/use-required-checkbox-error";
 import { isMinor } from "@/lib/age";
 import { Link } from "@/i18n/navigation";
@@ -26,8 +27,12 @@ export function SocioForm() {
   const privacyConsent = useRequiredCheckboxError();
   // React resetea los campos no controlados de este formulario tras CUALQUIER
   // envío (éxito o error) — sin repoblar desde aquí, un solo campo inválido
-  // (p. ej. el IBAN) borraría todo lo demás que ya se había escrito.
+  // borraría todo lo demás que ya se había escrito.
   const submitted = state.submitted;
+  // El IBAN es controlado (a diferencia del resto de campos de texto) para
+  // poder autoformatearlo; al ser estado de React ya sobrevive por sí solo a
+  // ese reseteo, sin necesidad de repoblarse desde `submitted`.
+  const iban = useIbanField("");
 
   const showGuardians = birthDate !== "" && isMinor(birthDate);
 
@@ -264,9 +269,9 @@ export function SocioForm() {
           <Input
             id="iban"
             name="iban"
-            placeholder="ES00 0000 0000 0000 0000 0000"
+            placeholder="ES00 0000 0000 00 0000000000"
             required
-            defaultValue={submitted?.iban ?? ""}
+            {...iban}
           />
           <p className="text-xs text-muted-foreground">
             {t(showGuardians ? "memberIbanHintMinor" : "memberIbanHint")}
