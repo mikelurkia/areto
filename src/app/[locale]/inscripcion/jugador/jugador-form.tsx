@@ -94,6 +94,7 @@ export function JugadorForm() {
   const termsConsent = useRequiredCheckboxError();
   const privacyConsent = useRequiredCheckboxError();
   const fieldErrors = state.fieldErrors ?? {};
+  const submitted = state.submitted;
 
   const showGuardians = birthDate !== "" && isMinor(birthDate);
 
@@ -143,6 +144,7 @@ export function JugadorForm() {
               id="firstName"
               name="firstName"
               required
+              defaultValue={submitted?.firstName ?? ""}
               aria-invalid={fieldErrors.firstName ? true : undefined}
             />
             {fieldErrors.firstName ? <FieldError>{fieldErrors.firstName}</FieldError> : null}
@@ -156,6 +158,7 @@ export function JugadorForm() {
               id="lastName"
               name="lastName"
               required
+              defaultValue={submitted?.lastName ?? ""}
               aria-invalid={fieldErrors.lastName ? true : undefined}
             />
             {fieldErrors.lastName ? <FieldError>{fieldErrors.lastName}</FieldError> : null}
@@ -184,6 +187,7 @@ export function JugadorForm() {
               id="nationalId"
               name="nationalId"
               placeholder={t("nationalIdPlaceholder")}
+              defaultValue={submitted?.nationalId ?? ""}
               aria-invalid={fieldErrors.nationalId ? true : undefined}
             />
             {fieldErrors.nationalId ? <FieldError>{fieldErrors.nationalId}</FieldError> : null}
@@ -199,6 +203,7 @@ export function JugadorForm() {
               id="address"
               name="address"
               required
+              defaultValue={submitted?.address ?? ""}
               aria-invalid={fieldErrors.address ? true : undefined}
             />
             {fieldErrors.address ? <FieldError>{fieldErrors.address}</FieldError> : null}
@@ -212,6 +217,7 @@ export function JugadorForm() {
               id="city"
               name="city"
               required
+              defaultValue={submitted?.city ?? ""}
               aria-invalid={fieldErrors.city ? true : undefined}
             />
             {fieldErrors.city ? <FieldError>{fieldErrors.city}</FieldError> : null}
@@ -228,6 +234,7 @@ export function JugadorForm() {
               name="phone"
               type="tel"
               required
+              defaultValue={submitted?.phone ?? ""}
               aria-invalid={fieldErrors.phone ? true : undefined}
             />
             {fieldErrors.phone ? <FieldError>{fieldErrors.phone}</FieldError> : null}
@@ -242,6 +249,7 @@ export function JugadorForm() {
               name="email"
               type="email"
               required
+              defaultValue={submitted?.email ?? ""}
               aria-invalid={fieldErrors.email ? true : undefined}
             />
             {fieldErrors.email ? <FieldError>{fieldErrors.email}</FieldError> : null}
@@ -353,6 +361,7 @@ export function JugadorForm() {
             const phoneError = fieldErrors[`guardian-${i}-phone`];
             const emailError = fieldErrors[`guardian-${i}-email`];
             const addressError = fieldErrors[`guardian-${i}-address`];
+            const existing = submitted?.guardians[i];
             return (
               <div key={key} className="flex flex-col gap-3 rounded-lg border p-4">
                 <div className="flex items-center justify-between">
@@ -382,6 +391,7 @@ export function JugadorForm() {
                       id={`guardian-${key}-firstName`}
                       name="guardianFirstName"
                       required={showGuardians}
+                      defaultValue={existing?.firstName ?? ""}
                       aria-invalid={nameError ? true : undefined}
                     />
                   </Field>
@@ -394,6 +404,7 @@ export function JugadorForm() {
                       id={`guardian-${key}-lastName`}
                       name="guardianLastName"
                       required={showGuardians}
+                      defaultValue={existing?.lastName ?? ""}
                       aria-invalid={nameError ? true : undefined}
                     />
                     {nameError ? <FieldError>{nameError}</FieldError> : null}
@@ -410,6 +421,7 @@ export function JugadorForm() {
                       name="guardianBirthDate"
                       type="date"
                       required={showGuardians}
+                      defaultValue={existing?.birthDate ?? ""}
                       aria-invalid={birthDateError ? true : undefined}
                     />
                     {birthDateError ? <FieldError>{birthDateError}</FieldError> : null}
@@ -418,7 +430,11 @@ export function JugadorForm() {
                     <FieldLabel htmlFor={`guardian-${key}-nationalId`}>
                       {t("nationalIdLabel")}
                     </FieldLabel>
-                    <Input id={`guardian-${key}-nationalId`} name="guardianNationalId" />
+                    <Input
+                      id={`guardian-${key}-nationalId`}
+                      name="guardianNationalId"
+                      defaultValue={existing?.nationalId ?? ""}
+                    />
                   </Field>
                 </div>
                 <Field data-invalid={addressError ? true : undefined}>
@@ -430,6 +446,7 @@ export function JugadorForm() {
                     id={`guardian-${key}-address`}
                     name="guardianAddress"
                     required={showGuardians}
+                    defaultValue={existing?.address ?? ""}
                     aria-invalid={addressError ? true : undefined}
                   />
                   {addressError ? <FieldError>{addressError}</FieldError> : null}
@@ -445,6 +462,7 @@ export function JugadorForm() {
                       name="guardianPhone"
                       type="tel"
                       required={showGuardians}
+                      defaultValue={existing?.phone ?? ""}
                       aria-invalid={phoneError ? true : undefined}
                     />
                     {phoneError ? <FieldError>{phoneError}</FieldError> : null}
@@ -459,6 +477,7 @@ export function JugadorForm() {
                       name="guardianEmail"
                       type="email"
                       required={showGuardians}
+                      defaultValue={existing?.email ?? ""}
                       aria-invalid={emailError ? true : undefined}
                     />
                     {emailError ? <FieldError>{emailError}</FieldError> : null}
@@ -485,6 +504,7 @@ export function JugadorForm() {
               name="iban"
               placeholder="ES00 0000 0000 0000 0000 0000"
               required
+              defaultValue={submitted?.iban ?? ""}
               aria-invalid={fieldErrors.iban ? true : undefined}
             />
             <p className="text-xs text-muted-foreground">
@@ -518,6 +538,7 @@ export function JugadorForm() {
             id="sepaConsent"
             name="sepaConsent"
             required
+            defaultChecked={submitted?.sepaConsent}
             inputRef={sepaConsent.inputRef}
             aria-invalid={sepaConsent.error || fieldErrors.sepaConsent ? true : undefined}
             aria-describedby={
@@ -589,7 +610,7 @@ export function JugadorForm() {
           />
         </div>
         <Field orientation="horizontal">
-          <Checkbox id="photoConsent" name="photoConsent" />
+          <Checkbox id="photoConsent" name="photoConsent" defaultChecked={submitted?.photoConsent} />
           <Label htmlFor="photoConsent" className="font-normal">
             {t("imageConsentLabel")}
           </Label>
@@ -609,6 +630,7 @@ export function JugadorForm() {
             id="termsConsent"
             name="termsConsent"
             required
+            defaultChecked={submitted?.termsConsent}
             inputRef={termsConsent.inputRef}
             aria-invalid={termsConsent.error || fieldErrors.termsConsent ? true : undefined}
             aria-describedby={
@@ -643,6 +665,7 @@ export function JugadorForm() {
             id="privacyConsent"
             name="privacyConsent"
             required
+            defaultChecked={submitted?.privacyConsent}
             inputRef={privacyConsent.inputRef}
             aria-invalid={
               privacyConsent.error || fieldErrors.privacyConsent ? true : undefined

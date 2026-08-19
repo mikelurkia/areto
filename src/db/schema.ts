@@ -764,24 +764,28 @@ export const registrations = pgTable("registrations", {
  * hay columna "principal" aquí, `sortOrder` conserva el orden de entrada del
  * formulario (el primero pasa a ser el tutor principal al aprobar).
  */
-export const registrationGuardians = pgTable("registration_guardians", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  registrationId: uuid("registration_id")
-    .notNull()
-    .references(() => registrations.id, { onDelete: "cascade" }),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  birthDate: date("birth_date"),
-  nationalId: text("national_id"),
-  address: text("address"),
-  city: text("city"),
-  phone: text("phone"),
-  email: text("email"),
-  matchedPersonId: uuid("matched_person_id").references(() => persons.id, {
-    onDelete: "set null",
-  }),
-  sortOrder: integer("sort_order").notNull().default(0),
-});
+export const registrationGuardians = pgTable(
+  "registration_guardians",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    registrationId: uuid("registration_id")
+      .notNull()
+      .references(() => registrations.id, { onDelete: "cascade" }),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    birthDate: date("birth_date"),
+    nationalId: text("national_id"),
+    address: text("address"),
+    city: text("city"),
+    phone: text("phone"),
+    email: text("email"),
+    matchedPersonId: uuid("matched_person_id").references(() => persons.id, {
+      onDelete: "set null",
+    }),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [uniqueIndex("registration_guardians_sort_idx").on(t.registrationId, t.sortOrder)],
+);
 
 // ---------------------------------------------------------------------------
 // Relaciones (para consultas relacionales de Drizzle)
@@ -884,6 +888,13 @@ export const personsRelations = relations(persons, ({ many, one }) => ({
     fields: [persons.id],
     references: [clubMembers.personId],
   }),
+  /** Solicitudes donde el revisor confirmó que esta persona es la interesada
+   * (`registrations.matchedPersonId`). Reverso de `registrationsRelations.matchedPerson`. */
+  registrations: many(registrations),
+  /** Solicitudes donde esta persona quedó emparejada como tutor/a de otra
+   * (`registrationGuardians.matchedPersonId`). Reverso de
+   * `registrationGuardiansRelations.matchedPerson`. */
+  registrationGuardianRows: many(registrationGuardians),
 }));
 
 export const clubMembersRelations = relations(clubMembers, ({ one }) => ({

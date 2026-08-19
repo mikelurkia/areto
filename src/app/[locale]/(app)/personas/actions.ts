@@ -19,13 +19,20 @@ import { requireRole } from "@/lib/auth";
 import { nextConsentAt, stampConsent } from "@/lib/consent";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
+import { isValidIban } from "@/lib/iban";
 import { isValidNationalId } from "@/lib/national-id";
+import { findCandidates } from "@/lib/person-matching";
 import { resolvePayerFields } from "@/lib/payer";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
+import type { PersonCandidate } from "@/components/match-select";
 
 export type PersonState = {
   error?: string;
   message?: string;
+  /** Presente cuando `createPerson` encuentra alguien parecido y espera que el
+   * usuario elija "vincular" o "crear de todas formas" antes de continuar. */
+  candidates?: PersonCandidate[];
+  submittedFields?: Record<string, string | null>;
 };
 
 const MANAGE_ROLES = ["admin", "staff"] as const;
@@ -95,16 +102,39 @@ function readMemberNumber(formData: FormData): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-/** Distingue qué restricción única falló (email vs nº de socio) en un error 23505. */
-function isUniqueViolation(error: unknown, constraint: string): boolean {
-  return (
-    !!error &&
-    typeof error === "object" &&
-    "code" in error &&
-    error.code === "23505" &&
-    "constraint" in error &&
-    error.constraint === constraint
-  );
+/**
+ * Nombre de la restricción única que violó un error de Postgres (23505), o
+ * `null` si no es ese tipo de error. El driver `postgres-js` expone el
+ * nombre real como `constraint_name` (no `constraint`), y Drizzle envuelve el
+ * error real en `.cause` en vez de dejarlo en el nivel superior — verificado
+ * contra la BD real, mismo tipo de envoltorio ya visto para el borrado
+ * protegido por FK en otras acciones de este proyecto.
+ */
+function uniqueViolationConstraint(error: unknown): string | null {
+  const candidates = [error, error instanceof Error ? error.cause : undefined];
+  for (const candidate of candidates) {
+    if (
+      candidate &&
+      typeof candidate === "object" &&
+      "code" in candidate &&
+      (candidate as { code?: unknown }).code === "23505"
+    ) {
+      return (candidate as { constraint_name?: string }).constraint_name ?? null;
+    }
+  }
+  return null;
+}
+
+/** Mensaje de error a mostrar según qué restricción única de `persons`/`club_members` chocó. */
+function uniqueViolationMessage(
+  error: unknown,
+  t: (key: string) => string,
+): string | null {
+  const constraint = uniqueViolationConstraint(error);
+  if (constraint === "club_members_member_number_idx") return t("memberNumberTaken");
+  if (constraint === "persons_national_id_idx") return t("nationalIdTaken");
+  if (constraint === "persons_email_idx") return t("emailTaken");
+  return null;
 }
 
 function today(): string {
@@ -164,8 +194,9 @@ function readPersonFields(formData: FormData) {
     shirtSize: String(formData.get("shirtSize") ?? "").trim(),
     pantsSize: String(formData.get("pantsSize") ?? "").trim(),
     shoeSize: String(formData.get("shoeSize") ?? "").trim(),
-    photoConsent: formData.get("photoConsent") === "on",
-    sepaConsent: formData.get("sepaConsent") === "on",
+    // photoConsent y sepaConsent NO son editables aquí a propósito: deben
+    // reflejar siempre fielmente lo que la persona autorizó al inscribirse
+    // (ver `updateRegistration`), no lo que teclee el staff en esta ficha.
     removePhoto: formData.get("removePhoto") === "on",
     notes: String(formData.get("notes") ?? "").trim(),
   };
@@ -177,12 +208,40 @@ function readPhoto(formData: FormData): File | null {
   return file;
 }
 
+/** Campos usados para detectar/comparar posibles duplicados al crear a mano
+ * (mismo criterio que `PERSON_DIFF_FIELDS` en la revisión de inscripciones). */
+const PERSON_MATCH_FIELDS = [
+  "firstName",
+  "lastName",
+  "birthDate",
+  "nationalId",
+  "address",
+  "city",
+  "phone",
+  "email",
+  "iban",
+  "shirtSize",
+  "pantsSize",
+  "shoeSize",
+] as const;
+
 export async function createPerson(
   _prev: PersonState,
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
   await requireRole([...MANAGE_ROLES]);
+
+  // El usuario ya vio los candidatos (ver más abajo) y decidió vincular con
+  // uno existente: a partir de aquí es una edición normal, mismo camino que
+  // `updatePerson`, para no duplicar la lógica de guardado.
+  const linkPersonId = String(formData.get("linkPersonId") ?? "").trim();
+  if (linkPersonId && linkPersonId !== "new") {
+    const linkedFormData = new FormData();
+    for (const [key, value] of formData.entries()) linkedFormData.append(key, value);
+    linkedFormData.set("id", linkPersonId);
+    return updatePerson(_prev, linkedFormData);
+  }
 
   const fields = readPersonFields(formData);
   const photo = readPhoto(formData);
@@ -192,6 +251,9 @@ export async function createPerson(
   if (fields.nationalId && !isValidNationalId(fields.nationalId)) {
     return { error: t("nationalIdInvalid") };
   }
+  if (fields.iban && !isValidIban(fields.iban)) {
+    return { error: t("ibanInvalid") };
+  }
   if (photo && !ALLOWED_PHOTO_TYPES.includes(photo.type)) {
     return { error: t("photoInvalidType") };
   }
@@ -199,7 +261,47 @@ export async function createPerson(
     return { error: t("photoTooLarge") };
   }
 
-  const payer = resolvePayerFields(guardianIds, fields.iban || null, fields.sepaConsent);
+  // Primer intento (sin `linkPersonId`): comprobar si ya existe alguien
+  // parecido antes de crear una ficha duplicada — mismo mecanismo que la
+  // revisión de inscripciones (`findCandidates` + `MatchSelect`). Si el
+  // usuario ya eligió "crear de todas formas" (`linkPersonId === "new"`), no
+  // se repite la comprobación.
+  if (linkPersonId !== "new") {
+    const pool = await db.query.persons.findMany({
+      columns: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        nationalId: true,
+        email: true,
+        birthDate: true,
+        address: true,
+        city: true,
+        phone: true,
+        iban: true,
+        shirtSize: true,
+        pantsSize: true,
+        shoeSize: true,
+      },
+    });
+    const candidates = findCandidates(
+      {
+        firstName: fields.firstName,
+        lastName: fields.lastName,
+        nationalId: fields.nationalId || null,
+        email: fields.email || null,
+      },
+      pool,
+    );
+    if (candidates.length > 0) {
+      const submittedFields: Record<string, string | null> = {};
+      for (const key of PERSON_MATCH_FIELDS) submittedFields[key] = fields[key] || null;
+      return { candidates, submittedFields };
+    }
+  }
+
+  // Alta manual: sin consentimientos, se conceden al inscribirse, no aquí.
+  const payer = resolvePayerFields(guardianIds, fields.iban || null, false);
 
   let personId: string;
   try {
@@ -220,8 +322,8 @@ export async function createPerson(
           shirtSize: fields.shirtSize || null,
           pantsSize: fields.pantsSize || null,
           shoeSize: fields.shoeSize || null,
-          photoConsent: fields.photoConsent,
-          photoConsentAt: stampConsent(fields.photoConsent),
+          photoConsent: false,
+          photoConsentAt: null,
           sepaConsent: payer.sepaConsent,
           sepaConsentAt: stampConsent(payer.sepaConsent),
           payerPersonId: payer.payerPersonId,
@@ -233,12 +335,8 @@ export async function createPerson(
     });
     await syncClubMembership(personId, fields.isMember, fields.memberNumber);
   } catch (error) {
-    if (isUniqueViolation(error, "club_members_member_number_idx")) {
-      return { error: t("memberNumberTaken") };
-    }
-    if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-      return { error: t("emailTaken") };
-    }
+    const message = uniqueViolationMessage(error, t);
+    if (message) return { error: message };
     throw error;
   }
 
@@ -268,6 +366,9 @@ export async function updatePerson(
   if (fields.nationalId && !isValidNationalId(fields.nationalId)) {
     return { error: t("nationalIdInvalid") };
   }
+  if (fields.iban && !isValidIban(fields.iban)) {
+    return { error: t("ibanInvalid") };
+  }
   if (photo && !ALLOWED_PHOTO_TYPES.includes(photo.type)) {
     return { error: t("photoInvalidType") };
   }
@@ -286,7 +387,10 @@ export async function updatePerson(
     },
   });
 
-  const payer = resolvePayerFields(guardianIds, fields.iban || null, fields.sepaConsent);
+  // Los consentimientos no se editan desde esta ficha: se conservan tal cual
+  // están (ver comentario en `readPersonFields`). Un tutor nuevo sí puede
+  // anular el SEPA propio de la persona, igual que antes.
+  const payer = resolvePayerFields(guardianIds, fields.iban || null, existing?.sepaConsent ?? false);
 
   try {
     await db
@@ -305,12 +409,8 @@ export async function updatePerson(
         shirtSize: fields.shirtSize || null,
         pantsSize: fields.pantsSize || null,
         shoeSize: fields.shoeSize || null,
-        photoConsent: fields.photoConsent,
-        photoConsentAt: nextConsentAt(
-          existing?.photoConsent ?? false,
-          fields.photoConsent,
-          existing?.photoConsentAt ?? null,
-        ),
+        photoConsent: existing?.photoConsent ?? false,
+        photoConsentAt: existing?.photoConsentAt ?? null,
         sepaConsent: payer.sepaConsent,
         sepaConsentAt: nextConsentAt(
           existing?.sepaConsent ?? false,
@@ -323,11 +423,18 @@ export async function updatePerson(
       .where(eq(persons.id, id));
     await syncClubMembership(id, fields.isMember, fields.memberNumber);
   } catch (error) {
-    if (isUniqueViolation(error, "club_members_member_number_idx")) {
+    const constraint = uniqueViolationConstraint(error);
+    if (constraint === "club_members_member_number_idx") {
       return { error: t("memberNumberTaken") };
     }
-    if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-      return { error: t("emailTaken") };
+    // Email/DNI duplicados al EDITAR apuntan a otra ficha ya existente: aquí
+    // no se ofrece vincular (eso cambiaría de qué persona se está editando),
+    // se remite a la herramienta ya existente de fusión de duplicados.
+    if (constraint === "persons_national_id_idx") {
+      return { error: `${t("nationalIdTaken")} ${t("mergeToolHint")}` };
+    }
+    if (constraint === "persons_email_idx") {
+      return { error: `${t("emailTaken")} ${t("mergeToolHint")}` };
     }
     throw error;
   }
@@ -544,7 +651,7 @@ export async function assignNextMemberNumber(
       revalidatePath("/", "layout");
       return { message: t("memberNumberAssigned", { number: next }) };
     } catch (error) {
-      if (isUniqueViolation(error, "club_members_member_number_idx")) continue;
+      if (uniqueViolationConstraint(error) === "club_members_member_number_idx") continue;
       throw error;
     }
   }

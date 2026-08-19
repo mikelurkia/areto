@@ -14,6 +14,7 @@ import {
   registrations,
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { isValidIban } from "@/lib/iban";
 import { isValidNationalId } from "@/lib/national-id";
 import { resolvePayerFields } from "@/lib/payer";
 import { readGuardians } from "@/lib/registration-guardians";
@@ -63,6 +64,15 @@ const PERSON_UPDATE_FIELDS = [
 
 /** Cuando hay tutor pagador, el iban ya no es un campo propio del jugador. */
 const PERSON_UPDATE_FIELDS_WITHOUT_IBAN = PERSON_UPDATE_FIELDS.filter(
+  (field) => field !== "iban",
+);
+
+/** Un socio no tiene tallas: si se incluyeran aquí, aprobar su alta borraría
+ * las tallas ya guardadas de una persona que también fuera jugador. */
+const MEMBER_UPDATE_FIELDS = PERSON_UPDATE_FIELDS.filter(
+  (field) => field !== "shirtSize" && field !== "pantsSize" && field !== "shoeSize",
+);
+const MEMBER_UPDATE_FIELDS_WITHOUT_IBAN = MEMBER_UPDATE_FIELDS.filter(
   (field) => field !== "iban",
 );
 
@@ -129,11 +139,20 @@ export async function updateRegistration(
   await requireRole([...MANAGE_ROLES]);
 
   const id = String(formData.get("id") ?? "");
+  const existing = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });
+  if (!existing) return { error: t("notFound") };
+  if (existing.status !== "pending") return { error: t("alreadyReviewed") };
+
+  const kind = String(formData.get("kind") ?? "player");
+  const isPlayerKind = kind === "player";
   const fields = readEditableFields(formData);
   if (!fields.firstName) return { error: t("firstNameRequired") };
   if (!fields.lastName) return { error: t("lastNameRequired") };
   if (fields.nationalId && !isValidNationalId(fields.nationalId)) {
     return { error: t("nationalIdInvalid") };
+  }
+  if (fields.iban && !isValidIban(fields.iban)) {
+    return { error: t("ibanInvalid") };
   }
 
   await db
@@ -148,10 +167,16 @@ export async function updateRegistration(
       phone: fields.phone || null,
       email: fields.email || null,
       iban: fields.iban || null,
-      shirtSize: fields.shirtSize || null,
-      pantsSize: fields.pantsSize || null,
-      shoeSize: fields.shoeSize || null,
-      installmentsChosen: fields.installmentsChosen,
+      // Un socio no tiene tallas ni plazos: no se tocan esas columnas de la
+      // propia solicitud, igual que no se piden en su formulario.
+      ...(isPlayerKind
+        ? {
+            shirtSize: fields.shirtSize || null,
+            pantsSize: fields.pantsSize || null,
+            shoeSize: fields.shoeSize || null,
+            installmentsChosen: fields.installmentsChosen,
+          }
+        : {}),
     })
     .where(eq(registrations.id, id));
 
@@ -198,6 +223,9 @@ export async function approveRegistration(
   });
   if (!registration) return { error: t("notFound") };
   if (registration.status !== "pending") return { error: t("alreadyReviewed") };
+  if (registration.iban && !isValidIban(registration.iban)) {
+    return { error: t("ibanInvalidFixFirst") };
+  }
 
   let personId: string;
   try {
@@ -287,6 +315,21 @@ export async function approveRegistration(
 
       const payer = resolvePayerFields(guardianPersonIds, registration.iban, registration.sepaConsent);
       const payerPersonId = payer.payerPersonId;
+      const isPlayerKind = registration.kind === "player";
+      // Un socio no tiene tallas ni pide consentimiento de imagen/traslados: si
+      // se incluyeran aquí, aprobar su alta borraría esos datos de una persona
+      // que ya fuera jugador (ver MEMBER_UPDATE_FIELDS).
+      const sizeFields = isPlayerKind
+        ? { shirtSize: registration.shirtSize, pantsSize: registration.pantsSize, shoeSize: registration.shoeSize }
+        : {};
+      const kitConsentFields = isPlayerKind
+        ? {
+            photoConsent: registration.photoConsent,
+            photoConsentAt: registration.photoConsentAt,
+            termsConsent: registration.termsConsent,
+            termsConsentAt: registration.termsConsentAt,
+          }
+        : {};
 
       if (matchedPersonId !== "new") {
         personId = matchedPersonId;
@@ -318,23 +361,24 @@ export async function approveRegistration(
             phone: registration.phone,
             email: registration.email,
             iban: payer.iban,
-            shirtSize: registration.shirtSize,
-            pantsSize: registration.pantsSize,
-            shoeSize: registration.shoeSize,
+            ...sizeFields,
           },
           existingPerson ?? null,
           formData,
           "person",
-          payerPersonId ? PERSON_UPDATE_FIELDS_WITHOUT_IBAN : PERSON_UPDATE_FIELDS,
+          isPlayerKind
+            ? payerPersonId
+              ? PERSON_UPDATE_FIELDS_WITHOUT_IBAN
+              : PERSON_UPDATE_FIELDS
+            : payerPersonId
+              ? MEMBER_UPDATE_FIELDS_WITHOUT_IBAN
+              : MEMBER_UPDATE_FIELDS,
         );
         await tx
           .update(persons)
           .set({
             ...fields,
-            photoConsent: registration.photoConsent,
-            photoConsentAt: registration.photoConsentAt,
-            termsConsent: registration.termsConsent,
-            termsConsentAt: registration.termsConsentAt,
+            ...kitConsentFields,
             privacyConsent: registration.privacyConsent,
             privacyConsentAt: registration.privacyConsentAt,
             sepaConsent: payer.sepaConsent,
@@ -355,13 +399,8 @@ export async function approveRegistration(
             phone: registration.phone,
             email: registration.email,
             iban: payer.iban,
-            shirtSize: registration.shirtSize,
-            pantsSize: registration.pantsSize,
-            shoeSize: registration.shoeSize,
-            photoConsent: registration.photoConsent,
-            photoConsentAt: registration.photoConsentAt,
-            termsConsent: registration.termsConsent,
-            termsConsentAt: registration.termsConsentAt,
+            ...sizeFields,
+            ...kitConsentFields,
             privacyConsent: registration.privacyConsent,
             privacyConsentAt: registration.privacyConsentAt,
             sepaConsent: payer.sepaConsent,
@@ -480,4 +519,32 @@ export async function rejectRegistration(
 
   revalidatePath("/", "layout");
   return { message: t("registrationRejected") };
+}
+
+/**
+ * Reabre una solicitud rechazada a `pending`. Deliberadamente no existe el
+ * equivalente para una aprobada: aprobar puede haber creado/actualizado una
+ * persona, sus tutores, su membership/condición de socio y copiado ficheros
+ * ya integrados, y deshacer eso de forma segura es un problema de
+ * reconciliación de datos, no un simple cambio de estado.
+ */
+export async function reopenRegistration(
+  _prev: RegistrationReviewState,
+  formData: FormData,
+): Promise<RegistrationReviewState> {
+  const t = await getTranslations("Inscripciones");
+  await requireRole([...MANAGE_ROLES]);
+
+  const id = String(formData.get("id") ?? "");
+  const registration = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });
+  if (!registration) return { error: t("notFound") };
+  if (registration.status !== "rejected") return { error: t("onlyRejectedCanReopen") };
+
+  await db
+    .update(registrations)
+    .set({ status: "pending", reviewedBy: null, reviewedAt: null, rejectionReason: null })
+    .where(eq(registrations.id, id));
+
+  revalidatePath("/", "layout");
+  return { message: t("registrationReopened") };
 }

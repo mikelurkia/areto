@@ -10,6 +10,18 @@
 --      (rol por defecto: 'member'; un admin lo asciende cuando corresponda).
 --   2. Activa RLS en `public.users` y permite a cada usuario leer su propio
 --      perfil (las escrituras de la app van por el servidor con Drizzle).
+--
+-- Nota sobre RLS en el resto de tablas: todas las tablas de `public` tienen
+-- RLS activado sin ninguna política propia (lo hace automáticamente una
+-- función `rls_auto_enable()` creada directamente en el editor SQL de
+-- Supabase, fuera de este repo, como red de seguridad ante cualquier tabla
+-- nueva). Esto es intencionado, no un olvido: la aplicación accede a Postgres
+-- vía `DATABASE_URL` con un rol que bypassa RLS (`src/db/index.ts`), y toda la
+-- autorización real ocurre en las Server Actions vía `requireRole()`
+-- (`src/lib/auth.ts`). Si en el futuro se empieza a consultar Supabase
+-- directamente desde el navegador (cliente `anon`/`authenticated`) contra
+-- estas tablas, hará falta escribir políticas explícitas en ese momento —
+-- hasta entonces, PostgREST devolverá cero filas, que es lo deseado.
 -- ============================================================================
 
 -- 1) Trigger: crear perfil al registrarse -----------------------------------
@@ -26,6 +38,14 @@ begin
   return new;
 end;
 $$;
+
+-- Cierra el aviso "SECURITY DEFINER ejecutable por anon/authenticated" del
+-- linter de seguridad de Supabase: al ser una función de trigger (`returns
+-- trigger`), Postgres ya rechaza invocarla directamente fuera de su contexto
+-- de disparo, así que esto no cambia el comportamiento — solo revoca el
+-- `EXECUTE` implícito que PostgREST expone para cualquier función del schema
+-- `public`. El disparo del trigger en sí no depende de este permiso.
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created

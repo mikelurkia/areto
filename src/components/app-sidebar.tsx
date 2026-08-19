@@ -10,11 +10,12 @@ import {
   ClipboardList,
   GlobeIcon,
   HandshakeIcon,
+  IdCard,
   LayoutDashboard,
   LogOut,
   Megaphone,
   Settings,
-  ShieldHalf,
+  Shirt,
   Users,
   Wallet,
 } from "lucide-react";
@@ -139,17 +140,20 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
   const nav = [
     { title: tNav("dashboard"), href: "/dashboard", icon: LayoutDashboard },
     { title: tNav("personas"), href: "/personas", icon: Users },
+    ...(canManageClub
+      ? [
+          { title: tNav("socios"), href: "/socios", icon: IdCard },
+          { title: tNav("inscripciones"), href: "/inscripciones", icon: ClipboardCheckIcon },
+        ]
+      : []),
     { title: tNav("temporada"), href: "/temporadas", icon: ClipboardList },
-    { title: tNav("equipos"), href: "/equipos", icon: ShieldHalf },
+    { title: tNav("equipos"), href: "/equipos", icon: Shirt },
     { title: tNav("calendario"), href: "/calendario", icon: CalendarDays },
     { title: tNav("patrocinadores"), href: "/patrocinadores", icon: HandshakeIcon },
     { title: tNav("cuotas"), href: "/cuotas", icon: Wallet },
     { title: tNav("avisos"), href: "/avisos", icon: Megaphone },
     ...(canManageClub
-      ? [
-          { title: tNav("inscripciones"), href: "/inscripciones", icon: ClipboardCheckIcon },
-          { title: tNav("club"), href: "/club", icon: Building2 },
-        ]
+      ? [{ title: tNav("club"), href: "/club", icon: Building2 }]
       : []),
   ];
 

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "registration_guardians_sort_idx" ON "registration_guardians" USING btree ("registration_id","sort_order");

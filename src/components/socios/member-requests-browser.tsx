@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/table";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 
-type RegistrationRow = {
+export type MemberRequestRow = {
   id: string;
   status: RegistrationStatus;
   firstName: string;
@@ -33,12 +33,12 @@ type RegistrationRow = {
   nationalId: string | null;
   email: string | null;
   phone: string | null;
-  guardiansCount: number;
-  photosCount: number;
   createdAt: string;
 };
 
-export function RegistrationsBrowser({ registrations }: { registrations: RegistrationRow[] }) {
+/** Igual que `RegistrationsBrowser` (inscripciones de equipo) pero sin
+ * columnas de tutores/fotos, que un socio nunca tiene. */
+export function MemberRequestsBrowser({ registrations }: { registrations: MemberRequestRow[] }) {
   const t = useTranslations("Inscripciones");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("pending");
@@ -101,8 +101,6 @@ export function RegistrationsBrowser({ registrations }: { registrations: Registr
               <TableHead>{t("colName")}</TableHead>
               <TableHead>{t("colNationalId")}</TableHead>
               <TableHead>{t("colContact")}</TableHead>
-              <TableHead>{t("colGuardians")}</TableHead>
-              <TableHead>{t("colPhotos")}</TableHead>
               <TableHead>{t("colDate")}</TableHead>
               <TableHead>{t("colStatus")}</TableHead>
             </TableRow>
@@ -111,7 +109,7 @@ export function RegistrationsBrowser({ registrations }: { registrations: Registr
             {filtered.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">
-                  <Link href={`/inscripciones/${r.id}`} className="hover:underline">
+                  <Link href={`/socios/${r.id}`} className="hover:underline">
                     {r.firstName} {r.lastName}
                   </Link>
                 </TableCell>
@@ -120,14 +118,6 @@ export function RegistrationsBrowser({ registrations }: { registrations: Registr
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {r.email || r.phone || "—"}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {r.guardiansCount > 0 ? r.guardiansCount : "—"}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={r.photosCount === 3 ? "secondary" : r.photosCount === 0 ? "destructive" : "warning"}>
-                    {t("photosCount", { count: r.photosCount })}
-                  </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground">{r.createdAt}</TableCell>
                 <TableCell>

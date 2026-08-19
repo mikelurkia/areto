@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -6,23 +6,20 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { db } from "@/db";
 import { registrations, teams } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { formatDateTime } from "@/lib/format-date";
 import { findCandidates } from "@/lib/person-matching";
+import { STATUS_VARIANT } from "@/lib/registration-status";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
 import { ReviewForm, type RegistrationDetail } from "@/components/inscripciones/review-form";
+import { ReviewedRegistrationPanel } from "@/components/inscripciones/reviewed-registration-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 const PHOTO_BUCKET = "registration-documents";
 const PERSON_PHOTO_BUCKET = "person-photos";
 const PERSON_DOCUMENTS_BUCKET = "person-documents";
-
-const STATUS_VARIANT = {
-  pending: "warning",
-  approved: "secondary",
-  rejected: "destructive",
-} as const;
 
 export default async function RegistrationDetailPage({
   params,
@@ -39,10 +36,14 @@ export default async function RegistrationDetailPage({
     where: eq(registrations.id, registrationId),
     with: {
       guardians: { orderBy: (g, { asc }) => [asc(g.sortOrder)] },
-      reviewer: { columns: { email: true } },
+      reviewer: { columns: { email: true, fullName: true } },
+      matchedPerson: { columns: { id: true, firstName: true, lastName: true } },
     },
   });
   if (!registration) notFound();
+  // Esta pantalla es solo de inscripciones de equipo; las de socio se validan
+  // en /socios, con su propio formulario más corto.
+  if (registration.kind !== "player") redirect(`/${locale}/socios/${registrationId}`);
 
   const [allPersons, seasonTeams, photoUrl, idFrontUrl, idBackUrl] = await Promise.all([
     db.query.persons.findMany({
@@ -155,70 +156,67 @@ export default async function RegistrationDetailPage({
               {t(`status.${registration.status}`)}
             </Badge>
             <span className="text-sm text-muted-foreground">
-              {t("submittedOn", { date: registration.createdAt.toISOString().slice(0, 10) })}
+              {t("submittedOn", { date: formatDateTime(registration.createdAt, locale) })}
             </span>
           </div>
         </div>
       </div>
 
-      {registration.kind !== "member" ? (
-        <div className="flex flex-col gap-2">
-          <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("documentsSection")}
-          </h2>
-          <div className="flex flex-wrap gap-4">
-            {(
-              [
-                { url: photoUrl, label: t("photoLabel"), className: "h-32 w-32" },
-                { url: idFrontUrl, label: t("idFrontLabel"), className: "h-32 w-48" },
-                { url: idBackUrl, label: t("idBackLabel"), className: "h-32 w-48" },
-              ] as const
-            ).map((doc) =>
-              doc.url ? (
-                <a
-                  key={doc.label}
-                  href={doc.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex flex-col items-center gap-1"
+      <div className="flex flex-col gap-2">
+        <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          {t("documentsSection")}
+        </h2>
+        <div className="flex flex-wrap gap-4">
+          {(
+            [
+              { url: photoUrl, label: t("photoLabel"), className: "h-32 w-32" },
+              { url: idFrontUrl, label: t("idFrontLabel"), className: "h-32 w-48" },
+              { url: idBackUrl, label: t("idBackLabel"), className: "h-32 w-48" },
+            ] as const
+          ).map((doc) =>
+            doc.url ? (
+              <a
+                key={doc.label}
+                href={doc.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-col items-center gap-1"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={doc.url} alt="" className={`${doc.className} rounded-lg border object-cover`} />
+                <span className="text-xs text-muted-foreground">{doc.label}</span>
+              </a>
+            ) : (
+              <div key={doc.label} className="flex flex-col items-center gap-1">
+                <div
+                  className={`${doc.className} flex items-center justify-center rounded-lg border border-dashed text-xs text-muted-foreground`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={doc.url} alt="" className={`${doc.className} rounded-lg border object-cover`} />
-                  <span className="text-xs text-muted-foreground">{doc.label}</span>
-                </a>
-              ) : (
-                <div key={doc.label} className="flex flex-col items-center gap-1">
-                  <div
-                    className={`${doc.className} flex items-center justify-center rounded-lg border border-dashed text-xs text-muted-foreground`}
-                  >
-                    {t("documentMissing")}
-                  </div>
-                  <span className="text-xs text-muted-foreground">{doc.label}</span>
+                  {t("documentMissing")}
                 </div>
-              ),
-            )}
-          </div>
+                <span className="text-xs text-muted-foreground">{doc.label}</span>
+              </div>
+            ),
+          )}
         </div>
-      ) : null}
+      </div>
 
       {registration.status === "pending" ? (
         <ReviewForm registration={detail} teamOptions={teamOptions} />
       ) : (
-        <div className="flex flex-col gap-2 rounded-lg border p-4 text-sm">
-          {registration.reviewer ? (
-            <p>
-              {t("reviewedBy", {
-                email: registration.reviewer.email,
-                date: registration.reviewedAt?.toISOString().slice(0, 10) ?? "",
-              })}
-            </p>
-          ) : null}
-          {registration.status === "rejected" && registration.rejectionReason ? (
-            <p className="text-muted-foreground">
-              {t("rejectionReasonLabel")}: {registration.rejectionReason}
-            </p>
-          ) : null}
-        </div>
+        <ReviewedRegistrationPanel
+          registrationId={registration.id}
+          kind="player"
+          status={registration.status}
+          reviewer={registration.reviewer}
+          reviewedAt={registration.reviewedAt}
+          rejectionReason={registration.rejectionReason}
+          phone={registration.phone}
+          email={registration.email}
+          fullName={fullName}
+          locale={locale}
+          matchedPerson={registration.matchedPerson}
+          backHref={`/inscripciones/${registrationId}`}
+        />
       )}
     </div>
   );

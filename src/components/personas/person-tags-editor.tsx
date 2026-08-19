@@ -49,7 +49,7 @@ export function PersonTagsEditor({
   });
 
   return (
-    <div className="flex flex-wrap items-center gap-1">
+    <>
       {tags.map((t) => (
         <Badge key={t.id} variant="secondary" className="capitalize">
           {t.tag}
@@ -62,7 +62,7 @@ export function PersonTagsEditor({
           name="tag"
           list="existing-person-tags"
           placeholder={t("addTagPlaceholder")}
-          className="h-6 w-32 text-xs"
+          className="h-5 w-44 rounded-4xl px-2 py-0.5 text-xs"
         />
         <datalist id="existing-person-tags">
           {existingTags.map((tag) => (
@@ -70,6 +70,6 @@ export function PersonTagsEditor({
           ))}
         </datalist>
       </form>
-    </div>
+    </>
   );
 }

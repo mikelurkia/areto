@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { clubSettings } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { CLUB_SETTINGS_TAG } from "@/lib/club";
+import { isValidIban } from "@/lib/iban";
 import { REGISTRATION_AVAILABILITY_TAG } from "@/lib/registration-settings";
 
 export type ClubState = {
@@ -27,13 +28,18 @@ export async function updateClubSettings(
   const t = await getTranslations("Club");
   await requireRole(["admin", "staff"]);
 
+  const iban = String(formData.get("iban") ?? "").trim() || null;
+  if (iban && !isValidIban(iban)) {
+    return { error: t("clubIbanInvalid") };
+  }
+
   const values = {
     legalName: String(formData.get("legalName") ?? "").trim() || null,
     taxId: String(formData.get("taxId") ?? "").trim() || null,
     address: String(formData.get("address") ?? "").trim() || null,
     email: String(formData.get("email") ?? "").trim() || null,
     phone: String(formData.get("phone") ?? "").trim() || null,
-    iban: String(formData.get("iban") ?? "").trim() || null,
+    iban,
     federationCode: String(formData.get("federationCode") ?? "").trim() || null,
     updatedAt: new Date(),
   };

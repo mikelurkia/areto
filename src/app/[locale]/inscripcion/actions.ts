@@ -7,17 +7,54 @@ import { db } from "@/db";
 import { registrationGuardians, registrations } from "@/db/schema";
 import { isMinor } from "@/lib/age";
 import { stampConsent } from "@/lib/consent";
+import { isValidIban } from "@/lib/iban";
 import { isValidNationalId } from "@/lib/national-id";
 import { readGuardians } from "@/lib/registration-guardians";
 import { getRegistrationAvailability } from "@/lib/registration-settings";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { extensionFromMimeType, uploadFileAsAdmin } from "@/lib/supabase/storage";
 
+type SubmittedGuardian = {
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  nationalId: string;
+  address: string;
+  phone: string;
+  email: string;
+};
+
+/** Eco de lo que el usuario había rellenado. React 19 resetea los campos no
+ * controlados de un `<form action>` tras CUALQUIER envío (éxito o error), así
+ * que sin repoblar desde aquí un solo campo inválido (p. ej. el IBAN) borraría
+ * todo lo demás que ya había escrito. */
+type SubmittedFields = {
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  nationalId: string;
+  address: string;
+  city: string;
+  phone: string;
+  email: string;
+  iban: string;
+  photoConsent: boolean;
+  privacyConsent: boolean;
+  shirtSize?: string;
+  pantsSize?: string;
+  shoeSize?: string;
+  installmentsChosen?: number;
+  sepaConsent?: boolean;
+  termsConsent?: boolean;
+  guardians: SubmittedGuardian[];
+};
+
 export type RegistrationState = {
   error?: string;
   fieldErrors?: Record<string, string>;
   success?: boolean;
   registrationId?: string;
+  submitted?: SubmittedFields;
 };
 
 const PHOTO_BUCKET = "registration-documents";
@@ -75,6 +112,17 @@ export async function submitTeamRegistration(
   const idFront = readFile(formData, "idFront");
   const idBack = readFile(formData, "idBack");
 
+  const submitted: SubmittedFields = {
+    ...fields,
+    shirtSize,
+    pantsSize,
+    shoeSize,
+    installmentsChosen,
+    sepaConsent,
+    termsConsent,
+    guardians,
+  };
+
   const errors: Record<string, string> = {};
 
   if (!fields.firstName) errors.firstName = t("firstNameRequired");
@@ -91,6 +139,7 @@ export async function submitTeamRegistration(
   if (!pantsSize) errors.pantsSize = t("pantsSizeRequired");
   if (!shoeSize) errors.shoeSize = t("shoeSizeRequired");
   if (!fields.iban) errors.iban = t("ibanRequired");
+  else if (!isValidIban(fields.iban)) errors.iban = t("ibanInvalid");
   if (!sepaConsent) errors.sepaConsent = t("sepaConsentRequired");
   if (!termsConsent) errors.termsConsent = t("termsConsentRequired");
   if (!fields.privacyConsent) errors.privacyConsent = t("privacyConsentRequired");
@@ -132,16 +181,16 @@ export async function submitTeamRegistration(
   }
 
   if (Object.keys(errors).length > 0) {
-    return { error: t("formHasErrors"), fieldErrors: errors };
+    return { error: t("formHasErrors"), fieldErrors: errors, submitted };
   }
 
   if ((photo || idFront || idBack) && !isSupabaseAdminConfigured) {
-    return { error: t("uploadsUnavailable") };
+    return { error: t("uploadsUnavailable"), submitted };
   }
 
   const { seasonId, teamRegistrationOpen } = await getRegistrationAvailability();
-  if (!seasonId) return { error: t("noActiveSeason") };
-  if (!teamRegistrationOpen) return { error: t("registrationClosed") };
+  if (!seasonId) return { error: t("noActiveSeason"), submitted };
+  if (!teamRegistrationOpen) return { error: t("registrationClosed"), submitted };
 
   try {
     const [registration] = await db
@@ -211,7 +260,7 @@ export async function submitTeamRegistration(
     // el error boundary de [locale]/error.tsx, que desmontaría toda la página
     // y borraría lo que el usuario ya había rellenado.
     console.error("submitTeamRegistration failed", error);
-    return { error: t("submissionFailed") };
+    return { error: t("submissionFailed"), submitted };
   }
 }
 
@@ -223,24 +272,41 @@ export async function submitMemberRegistration(
 
   const fields = readCommonFields(formData);
   const sepaConsent = formData.get("sepaConsent") === "on";
+  const guardians = readGuardians(formData);
 
-  if (!fields.firstName) return { error: t("firstNameRequired") };
-  if (!fields.lastName) return { error: t("lastNameRequired") };
-  if (!fields.birthDate) return { error: t("birthDateRequired") };
+  const submitted: SubmittedFields = { ...fields, sepaConsent, guardians };
+
+  if (!fields.firstName) return { error: t("firstNameRequired"), submitted };
+  if (!fields.lastName) return { error: t("lastNameRequired"), submitted };
+  if (!fields.birthDate) return { error: t("birthDateRequired"), submitted };
   if (fields.nationalId && !isValidNationalId(fields.nationalId)) {
-    return { error: t("nationalIdInvalid") };
+    return { error: t("nationalIdInvalid"), submitted };
   }
-  if (!fields.address) return { error: t("addressRequired") };
-  if (!fields.city) return { error: t("cityRequired") };
-  if (!fields.phone) return { error: t("phoneRequired") };
-  if (!fields.email) return { error: t("emailRequired") };
-  if (!fields.iban) return { error: t("ibanRequired") };
-  if (!sepaConsent) return { error: t("sepaConsentRequired") };
-  if (!fields.privacyConsent) return { error: t("privacyConsentRequired") };
+  if (!fields.address) return { error: t("addressRequired"), submitted };
+  if (!fields.city) return { error: t("cityRequired"), submitted };
+  if (!fields.phone) return { error: t("phoneRequired"), submitted };
+  if (!fields.email) return { error: t("emailRequired"), submitted };
+  if (!fields.iban) return { error: t("ibanRequired"), submitted };
+  if (!isValidIban(fields.iban)) return { error: t("ibanInvalid"), submitted };
+  if (!sepaConsent) return { error: t("sepaConsentRequired"), submitted };
+  if (!fields.privacyConsent) return { error: t("privacyConsentRequired"), submitted };
+  // Un menor no puede ser titular de un mandato SEPA (ver `src/lib/payer.ts`):
+  // igual que en el alta de jugador, si el solicitante es menor hace falta al
+  // menos un tutor, y sus datos deben venir completos.
+  if (isMinor(fields.birthDate) && guardians.length === 0) {
+    return { error: t("guardianRequired"), submitted };
+  }
+  for (const g of guardians) {
+    if (!g.firstName || !g.lastName) return { error: t("guardianNameRequired"), submitted };
+    if (!g.birthDate) return { error: t("guardianBirthDateRequired"), submitted };
+    if (!g.phone) return { error: t("guardianPhoneRequired"), submitted };
+    if (!g.email) return { error: t("guardianEmailRequired"), submitted };
+    if (!g.address) return { error: t("guardianAddressRequired"), submitted };
+  }
 
   const { seasonId, memberOpen } = await getRegistrationAvailability();
-  if (!seasonId) return { error: t("noActiveSeason") };
-  if (!memberOpen) return { error: t("registrationClosed") };
+  if (!seasonId) return { error: t("noActiveSeason"), submitted };
+  if (!memberOpen) return { error: t("registrationClosed"), submitted };
 
   try {
     const [registration] = await db
@@ -264,9 +330,25 @@ export async function submitMemberRegistration(
       })
       .returning({ id: registrations.id });
 
+    if (guardians.length > 0) {
+      await db.insert(registrationGuardians).values(
+        guardians.map((g, i) => ({
+          registrationId: registration.id,
+          firstName: g.firstName,
+          lastName: g.lastName,
+          birthDate: g.birthDate || null,
+          nationalId: g.nationalId || null,
+          address: g.address || null,
+          phone: g.phone || null,
+          email: g.email || null,
+          sortOrder: i,
+        })),
+      );
+    }
+
     return { success: true, registrationId: registration.id };
   } catch (error) {
     console.error("submitMemberRegistration failed", error);
-    return { error: t("submissionFailed") };
+    return { error: t("submissionFailed"), submitted };
   }
 }

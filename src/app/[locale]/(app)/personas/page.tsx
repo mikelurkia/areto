@@ -68,6 +68,7 @@ export default async function PersonasPage({
     id: p.id,
     firstName: p.firstName,
     lastName: p.lastName,
+    birthDate: p.birthDate,
   }));
 
   const personRows = allPersons.map((p) => ({

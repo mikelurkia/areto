@@ -87,7 +87,7 @@ type PersonRow = {
 };
 
 type TeamOption = { id: string; label: string };
-type GuardianOption = { id: string; firstName: string; lastName: string };
+type GuardianOption = { id: string; firstName: string; lastName: string; birthDate: string | null };
 
 const EXPIRY_WINDOW_DAYS = 60;
 

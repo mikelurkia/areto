@@ -386,6 +386,13 @@
       "when": 1787134843780,
       "tag": "0054_mute_whirlwind",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1787163552956,
+      "tag": "0055_careful_outlaw_kid",
+      "breakpoints": true
     }
   ]
 }

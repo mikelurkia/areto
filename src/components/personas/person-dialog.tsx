@@ -5,6 +5,9 @@ import { PencilIcon, PlusIcon, UserRoundIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { createPerson, updatePerson } from "@/app/[locale]/(app)/personas/actions";
+import { isMinor } from "@/lib/age";
+import { MatchSelect } from "@/components/match-select";
+import { MaskedIbanInput } from "@/components/masked-iban";
 import { SubmitButton } from "@/components/submit-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +38,23 @@ import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useFrozenWhileOpen } from "@/hooks/use-frozen-while-open";
 
+/** Igual que `PERSON_DIFF_FIELDS` de la revisión de inscripciones: campos que
+ * se comparan al ofrecer vincular con una persona ya existente. */
+const PERSON_MATCH_DIFF_FIELDS = [
+  "firstName",
+  "lastName",
+  "birthDate",
+  "nationalId",
+  "address",
+  "city",
+  "phone",
+  "email",
+  "iban",
+  "shirtSize",
+  "pantsSize",
+  "shoeSize",
+] as const;
+
 type Person = {
   id: string;
   firstName: string;
@@ -53,12 +73,10 @@ type Person = {
   shirtSize: string | null;
   pantsSize: string | null;
   shoeSize: string | null;
-  photoConsent: boolean;
-  sepaConsent: boolean;
   notes: string | null;
 };
 
-type PersonOption = { id: string; firstName: string; lastName: string };
+type PersonOption = { id: string; firstName: string; lastName: string; birthDate: string | null };
 
 type PersonDialogProps = (
   | { mode: "create" }
@@ -91,6 +109,11 @@ export function PersonDialog(props: PersonDialogProps) {
     ? guardianOptions.find((o) => o.id === guardianIds[0])
     : undefined;
 
+  // Solo al crear: si `createPerson` encontró a alguien parecido, pide
+  // confirmar "vincular con esta persona" o "crear de todas formas" antes de
+  // seguir — mismo mecanismo que la revisión de inscripciones.
+  const pendingCandidates = props.mode === "create" ? state.candidates : undefined;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {props.mode === "create" ? (
@@ -116,6 +139,9 @@ export function PersonDialog(props: PersonDialogProps) {
           {person ? <input type="hidden" name="id" value={person.id} /> : null}
           <div className="max-h-[65vh] overflow-y-auto px-1">
             <FieldGroup>
+              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("personalDataSection")}
+              </h2>
               <Field>
                 <FieldLabel htmlFor="person-photo">{t("photoLabel")}</FieldLabel>
                 <div className="flex items-center gap-3">
@@ -235,6 +261,10 @@ export function PersonDialog(props: PersonDialogProps) {
                   />
                 </Field>
               </div>
+
+              <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("guardianshipSection")}
+              </h2>
               <Field>
                 <FieldLabel htmlFor="person-guardian">
                   {t("guardianLabel")}
@@ -276,7 +306,7 @@ export function PersonDialog(props: PersonDialogProps) {
                   </SelectTrigger>
                   <SelectContent>
                     {guardianOptions
-                      .filter((g) => !guardianIds.includes(g.id))
+                      .filter((g) => !guardianIds.includes(g.id) && !isMinor(g.birthDate))
                       .map((g) => (
                         <SelectItem key={g.id} value={g.id}>
                           {g.firstName} {g.lastName}
@@ -285,30 +315,38 @@ export function PersonDialog(props: PersonDialogProps) {
                   </SelectContent>
                 </Select>
                 <input type="hidden" name="guardianIds" value={guardianIds.join(",")} />
+                <p className="text-xs text-muted-foreground">{t("guardianMinorExcludedHint")}</p>
               </Field>
+
+              <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("feeCollectionSection")}
+              </h2>
+              {hasGuardians ? (
+                <Field>
+                  <FieldLabel>{t("ibanLabel")}</FieldLabel>
+                  <p className="text-sm text-muted-foreground">
+                    {payerGuardian
+                      ? t("ibanHandledByGuardian", {
+                          name: `${payerGuardian.firstName} ${payerGuardian.lastName}`,
+                        })
+                      : t("ibanHandledByGuardianGeneric")}
+                  </p>
+                </Field>
+              ) : (
+                <Field>
+                  <FieldLabel htmlFor="person-iban">{t("ibanLabel")}</FieldLabel>
+                  <MaskedIbanInput
+                    id="person-iban"
+                    name="iban"
+                    defaultValue={person?.iban ?? ""}
+                    placeholder={t("ibanPlaceholder")}
+                  />
+                </Field>
+              )}
+              <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("sportsDataSection")}
+              </h2>
               <div className="grid grid-cols-2 gap-3">
-                {hasGuardians ? (
-                  <Field>
-                    <FieldLabel>{t("ibanLabel")}</FieldLabel>
-                    <p className="text-sm text-muted-foreground">
-                      {payerGuardian
-                        ? t("ibanHandledByGuardian", {
-                            name: `${payerGuardian.firstName} ${payerGuardian.lastName}`,
-                          })
-                        : t("ibanHandledByGuardianGeneric")}
-                    </p>
-                  </Field>
-                ) : (
-                  <Field>
-                    <FieldLabel htmlFor="person-iban">{t("ibanLabel")}</FieldLabel>
-                    <Input
-                      id="person-iban"
-                      name="iban"
-                      defaultValue={person?.iban ?? ""}
-                      placeholder={t("ibanPlaceholder")}
-                    />
-                  </Field>
-                )}
                 <Field>
                   <FieldLabel htmlFor="person-medical-cert">
                     {t("medicalCertLabel")}
@@ -321,19 +359,6 @@ export function PersonDialog(props: PersonDialogProps) {
                   />
                 </Field>
               </div>
-              <Field>
-                <FieldLabel htmlFor="person-member-number">
-                  {t("memberNumberLabel")}
-                </FieldLabel>
-                <Input
-                  id="person-member-number"
-                  name="memberNumber"
-                  type="number"
-                  min={1}
-                  defaultValue={person?.memberNumber ?? ""}
-                  placeholder={t("memberNumberPlaceholder")}
-                />
-              </Field>
               <div className="grid grid-cols-3 gap-3">
                 <Field>
                   <FieldLabel htmlFor="person-shirt-size">
@@ -369,8 +394,25 @@ export function PersonDialog(props: PersonDialogProps) {
                   />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                <Field orientation="horizontal">
+
+              <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("memberStatusSection")}
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                <Field>
+                  <FieldLabel htmlFor="person-member-number">
+                    {t("memberNumberLabel")}
+                  </FieldLabel>
+                  <Input
+                    id="person-member-number"
+                    name="memberNumber"
+                    type="number"
+                    min={1}
+                    defaultValue={person?.memberNumber ?? ""}
+                    placeholder={t("memberNumberPlaceholder")}
+                  />
+                </Field>
+                <Field orientation="horizontal" className="self-end pb-2">
                   <Checkbox
                     id="person-is-member"
                     name="isMember"
@@ -380,29 +422,11 @@ export function PersonDialog(props: PersonDialogProps) {
                     {t("isMemberLabel")}
                   </Label>
                 </Field>
-                <Field orientation="horizontal">
-                  <Checkbox
-                    id="person-photo-consent"
-                    name="photoConsent"
-                    defaultChecked={person?.photoConsent ?? false}
-                  />
-                  <Label htmlFor="person-photo-consent" className="font-normal">
-                    {t("photoConsentLabel")}
-                  </Label>
-                </Field>
-                {hasGuardians ? null : (
-                  <Field orientation="horizontal">
-                    <Checkbox
-                      id="person-sepa-consent"
-                      name="sepaConsent"
-                      defaultChecked={person?.sepaConsent ?? false}
-                    />
-                    <Label htmlFor="person-sepa-consent" className="font-normal">
-                      {t("sepaConsentLabel")}
-                    </Label>
-                  </Field>
-                )}
               </div>
+
+              <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("otherSection")}
+              </h2>
               <Field>
                 <FieldLabel htmlFor="person-notes">{t("notesLabel")}</FieldLabel>
                 <Textarea
@@ -412,6 +436,23 @@ export function PersonDialog(props: PersonDialogProps) {
                   placeholder={t("notesPlaceholder")}
                 />
               </Field>
+
+              {pendingCandidates && pendingCandidates.length > 0 ? (
+                <div className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+                  <p className="text-sm font-medium">{t("duplicateCandidatesTitle")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("duplicateCandidatesDescription")}
+                  </p>
+                  <MatchSelect
+                    name="linkPersonId"
+                    candidates={pendingCandidates}
+                    placeholder={t("duplicateMatchLabel")}
+                    newValues={state.submittedFields ?? {}}
+                    diffFields={PERSON_MATCH_DIFF_FIELDS}
+                    keepPrefix="person"
+                  />
+                </div>
+              ) : null}
             </FieldGroup>
           </div>
           {state.error ? (
@@ -422,7 +463,11 @@ export function PersonDialog(props: PersonDialogProps) {
               {t("cancel")}
             </DialogClose>
             <SubmitButton>
-              {props.mode === "create" ? t("action") : t("saveChanges")}
+              {props.mode === "edit"
+                ? t("saveChanges")
+                : pendingCandidates && pendingCandidates.length > 0
+                  ? t("confirmCreateAction")
+                  : t("action")}
             </SubmitButton>
           </DialogFooter>
         </form>

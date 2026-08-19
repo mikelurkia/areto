@@ -25,12 +25,15 @@ import { requireRole } from "@/lib/auth";
 import { resolveBackHref } from "@/lib/back-href";
 import { calculateAge, isMinor } from "@/lib/age";
 import { fileTypeLabel } from "@/lib/file-type";
+import { formatDateTime } from "@/lib/format-date";
+import { STATUS_VARIANT } from "@/lib/registration-status";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { Link } from "@/i18n/navigation";
 import { BackLink } from "@/components/back-link";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { MembershipTable } from "@/components/equipos/membership-table";
+import { MaskedIbanText } from "@/components/masked-iban";
 import { AssignMemberNumberButton } from "@/components/personas/assign-member-number-button";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { DeleteQualificationDialog } from "@/components/personas/delete-qualification-dialog";
@@ -88,6 +91,10 @@ const getPerson = cache((personId: string) =>
       documents: { orderBy: (d, { desc }) => [desc(d.createdAt)] },
       noteEntries: { orderBy: (n, { desc }) => [desc(n.createdAt)] },
       tags: { orderBy: (tag, { asc }) => [asc(tag.tag)] },
+      registrations: {
+        columns: { id: true, kind: true, status: true, createdAt: true },
+        orderBy: (r, { desc }) => [desc(r.createdAt)],
+      },
     },
   }),
 );
@@ -220,6 +227,7 @@ export default async function PersonDetailPage({
   await requireRole(["admin", "staff"]);
   const t = await getTranslations("Personas");
   const tEquipos = await getTranslations("Equipos");
+  const tInscripciones = await getTranslations("Inscripciones");
   const canManage = true;
 
   // Primera tanda: todo lo que no depende de la propia ficha. Los equipos se
@@ -229,7 +237,7 @@ export default async function PersonDetailPage({
     getPerson(personId),
     db.selectDistinct({ tag: personTags.tag }).from(personTags).orderBy(personTags.tag),
     db.query.persons.findMany({
-      columns: { id: true, firstName: true, lastName: true },
+      columns: { id: true, firstName: true, lastName: true, birthDate: true },
     }),
     db.query.teams.findMany({
       with: { season: true },
@@ -310,7 +318,7 @@ export default async function PersonDetailPage({
           </Avatar>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{fullName}</h1>
-            <div className="mt-1 flex flex-wrap gap-1">
+            <div className="mt-1 flex flex-wrap items-center gap-1">
               {isMember ? (
                 <Badge variant="secondary">{t("memberBadge")}</Badge>
               ) : null}
@@ -339,8 +347,6 @@ export default async function PersonDetailPage({
                   {t("minorGuardianBadge")}
                 </Badge>
               ) : null}
-            </div>
-            <div className="mt-2">
               <PersonTagsEditor
                 personId={person.id}
                 tags={person.tags}
@@ -401,6 +407,9 @@ export default async function PersonDetailPage({
           </TabsTrigger>
           <TabsTrigger value="documentos">
             {t("tabDocuments", { count: person.documents.length })}
+          </TabsTrigger>
+          <TabsTrigger value="inscripciones">
+            {t("tabRegistrations", { count: person.registrations.length })}
           </TabsTrigger>
           <TabsTrigger value="bitacora">
             {t("tabNotesLog", { count: person.noteEntries.length })}
@@ -479,6 +488,8 @@ export default async function PersonDetailPage({
                           name: `${person.payerPerson.firstName} ${person.payerPerson.lastName}`,
                         })
                       : person.iban
+                        ? <MaskedIbanText value={person.iban} />
+                        : null
                   }
                 />
                 <InfoRow
@@ -855,6 +866,51 @@ export default async function PersonDetailPage({
                     </TableRow>
                   );
                 })}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+
+        <TabsContent value="inscripciones" keepMounted className="flex flex-col gap-4">
+          <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("registrationsSection")}
+          </h2>
+          {person.registrations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noRegistrationsDescription")}</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{tInscripciones("colKind")}</TableHead>
+                  <TableHead>{tInscripciones("colStatus")}</TableHead>
+                  <TableHead>{tInscripciones("colDate")}</TableHead>
+                  <TableHead className="text-right">{t("viewRegistrationAction")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {person.registrations.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>
+                      <Badge variant="outline">{tInscripciones(`kind.${r.kind}` as "kind.player")}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[r.status]}>
+                        {tInscripciones(`status.${r.status}` as "status.pending")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateTime(r.createdAt, locale)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link
+                        href={r.kind === "player" ? `/inscripciones/${r.id}` : `/socios/${r.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        {t("viewRegistrationAction")}
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}

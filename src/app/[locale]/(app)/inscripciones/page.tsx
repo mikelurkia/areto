@@ -1,7 +1,9 @@
 import { ClipboardCheckIcon } from "lucide-react";
+import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
+import { registrations } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { RegistrationsBrowser } from "@/components/inscripciones/registrations-browser";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -27,14 +29,16 @@ export default async function InscripcionesPage({
   await requireRole(["admin", "staff"]);
   const t = await getTranslations("Inscripciones");
 
+  // Esta lista es solo de inscripciones de equipo (jugador/entrenador/staff);
+  // las de socio viven en /socios, con su propia validación.
   const all = await db.query.registrations.findMany({
+    where: eq(registrations.kind, "player"),
     orderBy: (r, { desc }) => [desc(r.createdAt)],
     with: { guardians: { columns: { id: true } } },
   });
 
   const rows = all.map((r) => ({
     id: r.id,
-    kind: r.kind,
     status: r.status,
     firstName: r.firstName,
     lastName: r.lastName,
