@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
@@ -60,9 +61,7 @@ export default async function LoginPage({
     <div className="flex flex-1 items-center justify-center p-6">
       <div className="flex w-full max-w-sm flex-col gap-8">
         <Link href="/" className="flex items-center gap-2 self-center">
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-            A
-          </div>
+          <Image src="/logo.png" alt="" width={32} height={32} className="size-8 object-contain" />
           <span className="text-lg font-semibold">Areto</span>
         </Link>
 

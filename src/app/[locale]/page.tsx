@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ArrowRight, CalendarDays, Users, Wallet } from "lucide-react";
 
@@ -43,9 +44,7 @@ export default async function Home({
       <header className="border-b">
         <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-              A
-            </div>
+            <Image src="/logo.png" alt="" width={32} height={32} className="size-8 object-contain" />
             <span className="font-semibold">{t("brand")}</span>
           </div>
           <div className="flex items-center gap-2">

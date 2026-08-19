@@ -69,9 +69,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       <SidebarHeader>
         {/* La marca es estática: se pinta ya, sin esperar a nada. */}
         <div className="flex items-center gap-2 px-2 py-1.5">
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-            A
-          </div>
+          <Image
+            src="/logo.png"
+            alt=""
+            width={32}
+            height={32}
+            className="size-8 shrink-0 object-contain"
+            priority
+          />
           <span className="font-semibold">Areto</span>
         </div>
       </SidebarHeader>
