@@ -39,7 +39,27 @@
         "description": "Control de cuotas de socios, pagos y morosidad del club."
       }
     },
-    "featureFooter": "Próximamente resultados y avisos del club aquí."
+    "featureFooter": "Próximamente resultados y avisos del club aquí.",
+    "carousel": {
+      "firstTeam": {
+        "title": "Primer equipo",
+        "description": "La cara visible del club cada fin de semana."
+      },
+      "history": {
+        "title": "Nuestra historia",
+        "description": "Un vistazo a los orígenes del club."
+      },
+      "wholeClub": {
+        "title": "Todo el club",
+        "description": "Jugadoras, jugadores y cuerpo técnico, de todas las categorías."
+      }
+    },
+    "footer": {
+      "home": "Inicio",
+      "registration": "Inscripción",
+      "sponsors": "Patrocinadores",
+      "privacy": "Privacidad"
+    }
   },
   "Nav": {
     "dashboard": "Panel",

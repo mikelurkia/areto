@@ -1,9 +1,7 @@
-import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { ArrowRight, CalendarDays, Users, Wallet } from "lucide-react";
+import { CalendarDays, Users, Wallet } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
-import { LocaleSwitcher } from "@/components/locale-switcher";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,6 +10,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PublicHeader } from "@/components/public/public-header";
+import { PublicFooter } from "@/components/public/public-footer";
+import { CourtLines } from "@/components/public/court-lines";
+import { HeroCarousel } from "@/components/public/hero-carousel";
 
 export async function generateMetadata({
   params,
@@ -40,72 +42,56 @@ export default async function Home({
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* Cabecera pública */}
-      <header className="border-b">
-        <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="" width={32} height={32} className="size-8 object-contain" />
-            <div className="leading-tight">
-              <span className="block font-semibold">{t("brand")}</span>
-              <span className="block text-xs text-muted-foreground">{t("brandSubtitle")}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <LocaleSwitcher />
-            <Button
-              render={<Link href="/dashboard" />}
-              nativeButton={false}
-              size="sm"
-            >
-              {t("enter")}
-              <ArrowRight data-icon="inline-end" />
-            </Button>
-          </div>
-        </div>
-      </header>
+      <PublicHeader variant="brand" maxWidth="5xl" />
 
       {/* Hero */}
-      <section className="mx-auto flex w-full max-w-5xl flex-col items-start gap-6 px-6 py-20 md:py-28">
-        <h1 className="max-w-2xl text-4xl font-semibold tracking-tight md:text-5xl">
-          {t("heroTitle")}
-        </h1>
-        <p className="max-w-xl text-lg text-muted-foreground">
-          {t("heroDescription")}
-        </p>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button
-            render={<Link href="/dashboard" />}
-            nativeButton={false}
-            size="lg"
-          >
-            {t("openPanel")}
-            <ArrowRight data-icon="inline-end" />
-          </Button>
-          <Button
-            render={<Link href="/inscripcion" />}
-            nativeButton={false}
-            variant="outline"
-            size="lg"
-          >
-            {t("registerAction")}
-          </Button>
-          <Button
-            render={<Link href="/inscripcion/socio" />}
-            nativeButton={false}
-            variant="outline"
-            size="lg"
-          >
-            {t("becomeMemberAction")}
-          </Button>
+      <section className="relative overflow-hidden">
+        <CourtLines className="hidden md:block" />
+        <div className="relative mx-auto grid w-full max-w-5xl gap-10 px-6 py-16 md:grid-cols-2 md:items-center md:py-24">
+          <div className="flex flex-col items-start gap-6">
+            <h1 className="max-w-xl text-4xl font-semibold tracking-tight md:text-5xl">
+              {t("heroTitle")}
+            </h1>
+            <p className="max-w-md text-lg text-muted-foreground">
+              {t("heroDescription")}
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                render={<Link href="/inscripcion" />}
+                nativeButton={false}
+                size="lg"
+                className="shadow-sm shadow-primary/30"
+              >
+                {t("registerAction")}
+              </Button>
+              <Button
+                render={<Link href="/inscripcion/socio" />}
+                nativeButton={false}
+                size="lg"
+                className="border-gold/50 bg-gold/15 text-gold-foreground hover:bg-gold/25"
+                variant="outline"
+              >
+                {t("becomeMemberAction")}
+              </Button>
+            </div>
+          </div>
+          <div className="flex justify-center md:justify-end">
+            <HeroCarousel />
+          </div>
         </div>
       </section>
 
       {/* Características */}
       <section className="mx-auto grid w-full max-w-5xl gap-4 px-6 pb-24 md:grid-cols-3">
         {features.map((feature) => (
-          <Card key={feature.key}>
+          <Card
+            key={feature.key}
+            className="transition-all hover:-translate-y-0.5 hover:shadow-md"
+          >
             <CardHeader>
-              <feature.icon className="size-6 text-muted-foreground" />
+              <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <feature.icon className="size-5" />
+              </div>
               <CardTitle className="mt-2">
                 {t(`features.${feature.key}.title`)}
               </CardTitle>
@@ -119,6 +105,8 @@ export default async function Home({
           </Card>
         ))}
       </section>
+
+      <PublicFooter />
     </div>
   );
 }

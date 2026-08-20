@@ -1,9 +1,11 @@
 import { Suspense } from "react";
-import { ArrowLeftIcon, HandshakeIcon } from "lucide-react";
+import { HandshakeIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PublicHeader } from "@/components/public/public-header";
+import { PublicFooter } from "@/components/public/public-footer";
 
 import { db } from "@/db";
 import { getClubSettings } from "@/lib/club";
@@ -13,8 +15,6 @@ import {
   isSupabaseAdminConfigured,
 } from "@/lib/supabase/admin";
 import { getSignedUrls } from "@/lib/supabase/storage";
-import { Link } from "@/i18n/navigation";
-import { LocaleSwitcher } from "@/components/locale-switcher";
 
 const LOGO_BUCKET = "sponsorship-logos";
 
@@ -157,18 +157,7 @@ export default async function PublicSponsorsWallPage({
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-6">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeftIcon className="size-4" />
-            {t("publicWallBackHome")}
-          </Link>
-          <LocaleSwitcher />
-        </div>
-      </header>
+      <PublicHeader variant="back" maxWidth="5xl" backHref="/" backLabel={t("publicWallBackHome")} />
 
       <section className="mx-auto flex w-full max-w-5xl flex-col items-center gap-3 px-6 py-16 text-center md:py-20">
         {club?.legalName ? (
@@ -189,6 +178,8 @@ export default async function PublicSponsorsWallPage({
           <SponsorWall />
         </Suspense>
       </section>
+
+      <PublicFooter />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { LoginForm } from "@/components/auth/login-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CourtLines } from "@/components/public/court-lines";
 
 export async function generateMetadata({
   params,
@@ -58,11 +59,12 @@ export default async function LoginPage({
   const t = await getTranslations("Login");
 
   return (
-    <div className="flex flex-1 items-center justify-center p-6">
-      <div className="flex w-full max-w-sm flex-col gap-8">
+    <div className="relative flex flex-1 items-center justify-center overflow-hidden p-6">
+      <CourtLines />
+      <div className="relative flex w-full max-w-sm flex-col gap-8">
         <Link href="/" className="flex items-center gap-2 self-center">
           <Image src="/logo.png" alt="" width={32} height={32} className="size-8 object-contain" />
-          <span className="text-lg font-semibold">Areto</span>
+          <span className="font-heading text-lg font-semibold">Areto</span>
         </Link>
 
         <div className="flex flex-col gap-1 text-center">

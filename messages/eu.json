@@ -39,7 +39,27 @@
         "description": "Klubeko bazkideen kuoten, ordainketen eta zorren kontrola."
       }
     },
-    "featureFooter": "Laster, klubeko emaitzak eta oharrak hemen."
+    "featureFooter": "Laster, klubeko emaitzak eta oharrak hemen.",
+    "carousel": {
+      "firstTeam": {
+        "title": "Lehen taldea",
+        "description": "Klubaren aurpegia asteburu bakoitzean."
+      },
+      "history": {
+        "title": "Gure historia",
+        "description": "Begirada bat klubaren jatorriari."
+      },
+      "wholeClub": {
+        "title": "Klub osoa",
+        "description": "Jokalariak eta talde teknikoa, maila guztietakoak."
+      }
+    },
+    "footer": {
+      "home": "Hasiera",
+      "registration": "Izen-ematea",
+      "sponsors": "Babesleak",
+      "privacy": "Pribatutasuna"
+    }
   },
   "Nav": {
     "dashboard": "Panela",

@@ -1,9 +1,10 @@
-import { ArrowLeftIcon, ArrowRightIcon, HeartHandshakeIcon, UserRoundIcon } from "lucide-react";
+import { ArrowRightIcon, HeartHandshakeIcon, UserRoundIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
-import { LocaleSwitcher } from "@/components/locale-switcher";
+import { PublicHeader } from "@/components/public/public-header";
+import { PublicFooter } from "@/components/public/public-footer";
 import { getClubSettings } from "@/lib/club";
 import { getRegistrationAvailability } from "@/lib/registration-settings";
 
@@ -34,18 +35,7 @@ export default async function InscripcionLandingPage({
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex h-16 w-full max-w-3xl items-center justify-between px-6">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeftIcon data-icon="inline-start" />
-            {t("backHome")}
-          </Link>
-          <LocaleSwitcher />
-        </div>
-      </header>
+      <PublicHeader variant="back" maxWidth="3xl" backHref="/" backLabel={t("backHome")} />
 
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-3 px-6 py-16 text-center md:py-20">
         {club?.legalName ? (
@@ -60,9 +50,11 @@ export default async function InscripcionLandingPage({
       <section className="mx-auto grid w-full max-w-3xl gap-4 px-6 pb-24 sm:grid-cols-2">
         <Link
           href="/inscripcion/jugador"
-          className="group flex flex-col gap-3 rounded-lg border p-6 transition-colors hover:bg-muted/40"
+          className="group flex flex-col gap-3 rounded-xl border p-6 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
         >
-          <UserRoundIcon className="size-6 text-muted-foreground" />
+          <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <UserRoundIcon className="size-5" />
+          </div>
           <div>
             <h2 className="flex items-center gap-2 font-semibold">
               {t("playerCardTitle")}
@@ -77,9 +69,11 @@ export default async function InscripcionLandingPage({
         </Link>
         <Link
           href="/inscripcion/socio"
-          className="group flex flex-col gap-3 rounded-lg border p-6 transition-colors hover:bg-muted/40"
+          className="group flex flex-col gap-3 rounded-xl border p-6 transition-all hover:-translate-y-0.5 hover:border-gold/50 hover:shadow-md"
         >
-          <HeartHandshakeIcon className="size-6 text-muted-foreground" />
+          <div className="flex size-10 items-center justify-center rounded-full bg-gold/15 text-gold-foreground">
+            <HeartHandshakeIcon className="size-5" />
+          </div>
           <div>
             <h2 className="flex items-center gap-2 font-semibold">
               {t("memberCardTitle")}
@@ -93,6 +87,8 @@ export default async function InscripcionLandingPage({
           </span>
         </Link>
       </section>
+
+      <PublicFooter />
     </div>
   );
 }

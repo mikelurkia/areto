@@ -1,10 +1,9 @@
-import { ArrowLeftIcon, LockIcon } from "lucide-react";
+import { LockIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getRegistrationAvailability } from "@/lib/registration-settings";
-import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
-import { LocaleSwitcher } from "@/components/locale-switcher";
+import { PublicHeader } from "@/components/public/public-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { JugadorForm } from "./jugador-form";
 
@@ -33,18 +32,7 @@ export default async function InscripcionJugadorPage({
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex h-16 w-full max-w-2xl items-center justify-between px-6">
-          <Link
-            href="/inscripcion"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeftIcon data-icon="inline-start" />
-            {t("backToLanding")}
-          </Link>
-          <LocaleSwitcher />
-        </div>
-      </header>
+      <PublicHeader variant="back" maxWidth="2xl" backHref="/inscripcion" backLabel={t("backToLanding")} />
 
       <div className="mx-auto w-full max-w-2xl px-6 py-10">
         {teamRegistrationOpen ? (
