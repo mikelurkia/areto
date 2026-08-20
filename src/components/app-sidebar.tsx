@@ -136,6 +136,10 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
   };
 
   const canManageClub = user.role === "admin" || user.role === "staff";
+  // El calendario es de gestión interna (peticiones de horario), no algo que
+  // un socio/jugador consulte: mismo criterio que canManageClub, pero
+  // incluyendo también a los entrenadores.
+  const canViewCalendario = user.role !== "member";
 
   const nav = [
     { title: tNav("dashboard"), href: "/dashboard", icon: LayoutDashboard },
@@ -148,9 +152,9 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
       : []),
     { title: tNav("temporada"), href: "/temporadas", icon: ClipboardList },
     { title: tNav("equipos"), href: "/equipos", icon: Shirt },
-    // Sin página propia todavía (la ruta ni siquiera existe): deshabilitados
-    // en vez de enlazar a un 404.
-    { title: tNav("calendario"), href: "/calendario", icon: CalendarDays, disabled: true },
+    ...(canViewCalendario
+      ? [{ title: tNav("calendario"), href: "/calendario", icon: CalendarDays }]
+      : []),
     { title: tNav("patrocinadores"), href: "/patrocinadores", icon: HandshakeIcon },
     { title: tNav("cuotas"), href: "/cuotas", icon: Wallet, disabled: true },
     { title: tNav("avisos"), href: "/avisos", icon: Megaphone, disabled: true },

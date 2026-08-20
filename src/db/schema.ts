@@ -2,6 +2,7 @@ import {
   type AnyPgColumn,
   boolean,
   date,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -75,6 +76,16 @@ export const attendanceStatus = pgEnum("attendance_status", [
   "absent", // no asistió
 ]);
 
+/**
+ * Tipo de petición de cancha. Hoy solo "match" (partido); pensado para poder
+ * añadir en el futuro otros eventos que también necesiten reservar pista
+ * (torneos, eventos especiales) sin cambiar la forma de la tabla.
+ */
+export const courtEventKind = pgEnum("court_event_kind", ["match"]);
+
+/** Día de fin de semana preferido para disputar un partido en casa. */
+export const preferredDay = pgEnum("preferred_day", ["saturday", "sunday", "either"]);
+
 export const feePeriod = pgEnum("fee_period", [
   "monthly",
   "season",
@@ -139,7 +150,7 @@ export const seasons = pgTable(
     uniqueIndex("seasons_name_idx").on(t.name),
     uniqueIndex("seasons_current_idx").on(t.isCurrent).where(sql`${t.isCurrent}`),
   ],
-);
+).enableRLS();
 
 // ---------------------------------------------------------------------------
 // Equipos
@@ -176,7 +187,7 @@ export const teams = pgTable("teams", {
     onDelete: "set null",
   }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Documento genérico de un equipo (convocatoria, normativa interna,
@@ -193,7 +204,7 @@ export const teamDocuments = pgTable("team_documents", {
   fileName: text("file_name"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Bitácora de seguimiento de un equipo (incidencias, decisiones, avisos de
@@ -207,7 +218,7 @@ export const teamNotes = pgTable("team_notes", {
   body: text("body").notNull(),
   authorName: text("author_name"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 // ---------------------------------------------------------------------------
 // Personas (jugadores, entrenadores, socios, tutores...)
@@ -257,7 +268,7 @@ export const persons = pgTable(
     uniqueIndex("persons_email_idx").on(t.email),
     uniqueIndex("persons_national_id_idx").on(t.nationalId),
   ],
-);
+).enableRLS();
 
 /**
  * Etiqueta libre de segmentación ("veterano", "beca"...), en minúsculas para
@@ -276,7 +287,7 @@ export const personTags = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("person_tags_person_tag_idx").on(t.personId, t.tag)],
-);
+).enableRLS();
 
 /**
  * Titulación/certificación de una persona (entrenador, árbitro, primeros
@@ -295,7 +306,7 @@ export const personQualifications = pgTable("person_qualifications", {
   filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-qualifications)
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Reconocimiento médico realizado a una persona. `medical_cert_until` en
@@ -314,7 +325,7 @@ export const personMedicalCheckups = pgTable("person_medical_checkups", {
   filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-medical-checkups)
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Parte de lesión de un jugador/a: fecha, descripción y documento adjunto
@@ -330,7 +341,7 @@ export const personInjuryReports = pgTable("person_injury_reports", {
   filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-injury-reports)
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Documento genérico de una persona (DNI escaneado, ficha firmada, autorización
@@ -348,7 +359,7 @@ export const personDocuments = pgTable("person_documents", {
   fileName: text("file_name"), // nombre de archivo original (referencia)
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Bitácora de seguimiento de una persona: entradas fechadas de secretaría
@@ -363,7 +374,7 @@ export const personNotes = pgTable("person_notes", {
   body: text("body").notNull(),
   authorName: text("author_name"), // nombre/email de quien la escribió, en el momento de escribirla
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Tutor/a legal de una persona (para menores). Relación N:M en vez de un campo
@@ -385,7 +396,7 @@ export const personGuardians = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("person_guardians_pair_idx").on(t.personId, t.guardianId)],
-);
+).enableRLS();
 
 /**
  * Condición de socio de una persona. Concepto aparte de jugar/entrenar (una
@@ -411,7 +422,7 @@ export const clubMembers = pgTable(
     uniqueIndex("club_members_person_idx").on(t.personId),
     uniqueIndex("club_members_member_number_idx").on(t.memberNumber),
   ],
-);
+).enableRLS();
 
 /** Vínculo persona ↔ equipo con su rol (una persona puede estar en varios equipos). */
 export const memberships = pgTable(
@@ -438,7 +449,7 @@ export const memberships = pgTable(
     joinedAt: date("joined_at"),
   },
   (t) => [uniqueIndex("memberships_person_team_idx").on(t.personId, t.teamId)],
-);
+).enableRLS();
 
 // ---------------------------------------------------------------------------
 // Usuarios de la aplicación (perfil ligado a Supabase Auth)
@@ -460,7 +471,7 @@ export const users = pgTable("users", {
   role: userRole("role").notNull().default("member"),
   locale: userLocale("locale").notNull().default("eu"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 // ---------------------------------------------------------------------------
 // Calendario: eventos (entrenamientos / partidos) y asistencia
@@ -479,7 +490,7 @@ export const events = pgTable("events", {
   endsAt: timestamp("ends_at", { withTimezone: true }),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 export const attendances = pgTable(
   "attendances",
@@ -494,7 +505,41 @@ export const attendances = pgTable(
     status: attendanceStatus("status").notNull().default("called"),
   },
   (t) => [uniqueIndex("attendances_event_person_idx").on(t.eventId, t.personId)],
-);
+).enableRLS();
+
+/**
+ * Petición de horario de cancha, para organizar cuándo se juega cada partido
+ * (no lleva resultados ni asistencia, a diferencia de `events`: solo sirve
+ * para acordar día/hora con quien organiza los horarios del polideportivo).
+ * Se agrupa por fin de semana (`weekendOf`, cualquier fecha de ese fin de
+ * semana) y no por fecha/hora exacta, porque esa es precisamente la parte que
+ * está por decidir. `teamId` y `title` son nullable pensando en futuros
+ * `kind` que no sean un partido de un único equipo (torneos, eventos
+ * especiales que también necesiten la cancha).
+ */
+export const courtEvents = pgTable(
+  "court_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: courtEventKind("kind").notNull().default("match"),
+    teamId: uuid("team_id").references(() => teams.id, { onDelete: "cascade" }),
+    title: text("title"), // solo para kinds futuros distintos de "match"
+    weekendOf: date("weekend_of").notNull(),
+    opponent: text("opponent"), // rival, solo partidos
+    isHome: boolean("is_home"), // true = casa, false = fuera; solo partidos
+    preferredDay: preferredDay("preferred_day"),
+    notes: text("notes"),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("court_events_weekend_idx").on(t.weekendOf),
+    index("court_events_team_idx").on(t.teamId),
+  ],
+).enableRLS();
 
 // ---------------------------------------------------------------------------
 // Económico: cuotas y pagos
@@ -510,7 +555,7 @@ export const fees = pgTable("fees", {
   currency: text("currency").notNull().default("EUR"),
   period: feePeriod("period").notNull().default("season"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 export const payments = pgTable("payments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -527,7 +572,7 @@ export const payments = pgTable("payments", {
   method: text("method"), // "cash", "transfer", "stripe"...
   stripePaymentId: text("stripe_payment_id"), // integración futura
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Patrocinador: identidad durable (empresa o particular). No es
@@ -552,7 +597,7 @@ export const sponsors = pgTable("sponsors", {
   fiscalAddress: text("fiscal_address"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Acuerdo de patrocinio: el contrato con un patrocinador para una o varias
@@ -582,7 +627,7 @@ export const sponsorshipTerms = pgTable("sponsorship_terms", {
   contractPath: text("contract_path"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Anualidad de un acuerdo: una fila por temporada del acuerdo (`year` = año de
@@ -606,7 +651,7 @@ export const sponsorPayments = pgTable("sponsor_payments", {
   invoicedOn: date("invoiced_on"), // fecha de emisión de la factura
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Bitácora de seguimiento de un patrocinador (llamadas, reuniones,
@@ -621,7 +666,7 @@ export const sponsorNotes = pgTable("sponsor_notes", {
   body: text("body").notNull(),
   authorName: text("author_name"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Contacto adicional de un patrocinador (además del contacto principal que
@@ -639,7 +684,7 @@ export const sponsorContacts = pgTable("sponsor_contacts", {
   phone: text("phone"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Documento genérico de un patrocinador (dossier, ficha fiscal, autorización
@@ -657,7 +702,7 @@ export const sponsorDocuments = pgTable("sponsor_documents", {
   fileName: text("file_name"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Datos del club como emisor de facturas (razón social, CIF, dirección,
@@ -687,7 +732,7 @@ export const clubSettings = pgTable("club_settings", {
   // volver a tocar el formulario público el día que se haga editable.
   memberAnnualFeeCents: integer("member_annual_fee_cents").notNull().default(2000),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Credenciales del club en las aplicaciones (intranets) de las federaciones.
@@ -708,7 +753,7 @@ export const federationAccounts = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex("federation_accounts_name_idx").on(table.name)],
-);
+).enableRLS();
 
 /**
  * Contador de facturas por año, para numeración correlativa sin huecos
@@ -719,7 +764,7 @@ export const federationAccounts = pgTable(
 export const invoiceCounters = pgTable("invoice_counters", {
   year: integer("year").primaryKey(),
   lastNumber: integer("last_number").notNull().default(0),
-});
+}).enableRLS();
 
 // ---------------------------------------------------------------------------
 // Comunicación / portal público: avisos
@@ -732,7 +777,7 @@ export const announcements = pgTable("announcements", {
   published: boolean("published").notNull().default(false),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 // ---------------------------------------------------------------------------
 // Inscripciones: formulario público de alta de equipo (jugador o cuerpo
@@ -792,7 +837,7 @@ export const registrations = pgTable("registrations", {
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 /**
  * Tutor/a indicado en una solicitud de jugador menor. Puede haber varios; no
@@ -820,7 +865,7 @@ export const registrationGuardians = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
   },
   (t) => [uniqueIndex("registration_guardians_sort_idx").on(t.registrationId, t.sortOrder)],
-);
+).enableRLS();
 
 // ---------------------------------------------------------------------------
 // Relaciones (para consultas relacionales de Drizzle)
@@ -888,6 +933,7 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
   renewedAsTeams: many(teams, { relationName: "teamRenewal" }),
   memberships: many(memberships),
   events: many(events),
+  courtEvents: many(courtEvents),
   documents: many(teamDocuments),
   noteEntries: many(teamNotes),
 }));
@@ -995,6 +1041,11 @@ export const membershipsRelations = relations(memberships, ({ one }) => ({
 export const eventsRelations = relations(events, ({ one, many }) => ({
   team: one(teams, { fields: [events.teamId], references: [teams.id] }),
   attendances: many(attendances),
+}));
+
+export const courtEventsRelations = relations(courtEvents, ({ one }) => ({
+  team: one(teams, { fields: [courtEvents.teamId], references: [teams.id] }),
+  createdBy: one(users, { fields: [courtEvents.createdByUserId], references: [users.id] }),
 }));
 
 export const feesRelations = relations(fees, ({ one, many }) => ({

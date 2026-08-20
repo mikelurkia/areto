@@ -54,6 +54,19 @@ export async function mergePersons(
   }
 
   await db.transaction(async (tx) => {
+    // `email` y `nationalId` son únicos: si el duplicado tiene un valor que el
+    // principal no tiene, hay que liberarlo del duplicado ANTES de copiarlo al
+    // principal, porque el índice único se comprueba al ejecutar cada UPDATE,
+    // no al final de la transacción — con las dos filas vivas a la vez, copiar
+    // el valor al principal mientras el duplicado todavía lo tiene rompe el
+    // índice aunque el duplicado se vaya a borrar dos pasos después.
+    if (duplicate.email && !primary.email) {
+      await tx.update(persons).set({ email: null }).where(eq(persons.id, duplicateId));
+    }
+    if (duplicate.nationalId && !primary.nationalId) {
+      await tx.update(persons).set({ nationalId: null }).where(eq(persons.id, duplicateId));
+    }
+
     await tx
       .update(persons)
       .set({
