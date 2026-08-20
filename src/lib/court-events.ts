@@ -46,6 +46,46 @@ export function getWeekendKey(dateStr: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Agrupa eventos por la clave de fin de semana (sábado), reutilizable tanto
+ * por la vista de lista como por la de mes. */
+export function groupCourtEventsByWeekend<T extends { weekendOf: string }>(
+  events: T[],
+): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+  for (const event of events) {
+    const key = getWeekendKey(event.weekendOf);
+    const group = groups.get(key);
+    if (group) group.push(event);
+    else groups.set(key, [event]);
+  }
+  return groups;
+}
+
+/** ¿Puede el usuario gestionar (editar/borrar) una petición del equipo
+ * `teamId`? Versión sin acceso a BD de `assertCourtEventAccess`, para usar en
+ * el render una vez resueltos `canManage`/`coachTeamIds`. */
+export function canManageCourtEvent(
+  teamId: string | null,
+  opts: { canManage: boolean; coachTeamIds: Set<string> | null },
+): boolean {
+  if (opts.canManage) return true;
+  if (!teamId || !opts.coachTeamIds) return false;
+  return opts.coachTeamIds.has(teamId);
+}
+
+/**
+ * ¿Debe mostrarse un partido como interactivo (editable/borrable)? Un
+ * partido fuera de casa nunca lo es, para ningún rol: el club no gestiona el
+ * horario de un campo ajeno.
+ */
+export function canEditCourtEventBadge(
+  event: { teamId: string | null; isHome: boolean | null },
+  opts: { canManage: boolean; coachTeamIds: Set<string> | null },
+): boolean {
+  if (event.isHome !== true) return false;
+  return canManageCourtEvent(event.teamId, opts);
+}
+
 export async function loadCourtEvents({
   from,
   to,

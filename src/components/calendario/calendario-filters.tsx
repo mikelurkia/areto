@@ -19,11 +19,15 @@ export function CalendarioFilters({
   selectedTeamId,
   from,
   to,
+  view,
+  showAway,
 }: {
   teams: TeamOption[];
   selectedTeamId: string;
   from: string;
   to: string;
+  view: "list" | "month";
+  showAway: boolean;
 }) {
   const t = useTranslations("Calendario");
   const router = useRouter();
@@ -72,34 +76,62 @@ export function CalendarioFilters({
       </div>
       <div className="flex flex-col gap-1">
         <label
-          htmlFor="calendario-filter-from"
+          htmlFor="calendario-filter-away"
           className="text-xs text-muted-foreground"
         >
-          {t("filterFromLabel")}
+          {t("filterAwayLabel")}
         </label>
-        <Input
-          id="calendario-filter-from"
-          type="date"
-          className="w-40"
-          defaultValue={from}
-          onChange={(e) => updateParam("from", e.target.value)}
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor="calendario-filter-to"
-          className="text-xs text-muted-foreground"
+        <Select
+          value={showAway ? "all" : "homeOnly"}
+          onValueChange={(value) => updateParam("away", value === "all" ? "show" : "")}
         >
-          {t("filterToLabel")}
-        </label>
-        <Input
-          id="calendario-filter-to"
-          type="date"
-          className="w-40"
-          defaultValue={to}
-          onChange={(e) => updateParam("to", e.target.value)}
-        />
+          <SelectTrigger id="calendario-filter-away" className="w-40">
+            <SelectValue>
+              {(value: string) =>
+                value === "homeOnly" ? t("filterAwayHomeOnly") : t("filterAwayAll")
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filterAwayAll")}</SelectItem>
+            <SelectItem value="homeOnly">{t("filterAwayHomeOnly")}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
+      {view === "list" ? (
+        <>
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="calendario-filter-from"
+              className="text-xs text-muted-foreground"
+            >
+              {t("filterFromLabel")}
+            </label>
+            <Input
+              id="calendario-filter-from"
+              type="date"
+              className="w-40"
+              defaultValue={from}
+              onChange={(e) => updateParam("from", e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="calendario-filter-to"
+              className="text-xs text-muted-foreground"
+            >
+              {t("filterToLabel")}
+            </label>
+            <Input
+              id="calendario-filter-to"
+              type="date"
+              className="w-40"
+              defaultValue={to}
+              onChange={(e) => updateParam("to", e.target.value)}
+            />
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

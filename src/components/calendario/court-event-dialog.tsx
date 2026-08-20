@@ -45,13 +45,37 @@ type CourtEventEditable = {
 };
 
 type CourtEventDialogProps =
-  | { mode: "create"; teams: TeamOption[] }
-  | { mode: "edit"; teams: TeamOption[]; event: CourtEventEditable };
+  | {
+      mode: "create";
+      teams: TeamOption[];
+      /** Prefija la fecha del formulario (p. ej. al crear desde una celda del
+       * calendario de mes). */
+      defaultWeekendOf?: string;
+      /** Clave única del diálogo en la URL (`?dialogo=`). Necesaria cuando hay
+       * varias instancias en modo "create" a la vez (una por celda vacía del
+       * calendario de mes): sin ella, todas compartirían la clave fija
+       * "partido-nuevo" y se abrirían simultáneamente. La tabla de lista, que
+       * solo tiene una instancia, no necesita pasarla. */
+      dialogKey?: string;
+      /** Elemento que actúa de disparador del diálogo, sustituyendo al botón
+       * por defecto (p. ej. un badge de partido en el calendario de mes). */
+      triggerRender?: React.ReactElement;
+      triggerChildren?: React.ReactNode;
+    }
+  | {
+      mode: "edit";
+      teams: TeamOption[];
+      event: CourtEventEditable;
+      triggerRender?: React.ReactElement;
+      triggerChildren?: React.ReactNode;
+    };
 
 export function CourtEventDialog(props: CourtEventDialogProps) {
   const t = useTranslations("Calendario");
   const [open, setOpen] = useDialogParam(
-    props.mode === "create" ? "partido-nuevo" : `partido:${props.event.id}`,
+    props.mode === "create"
+      ? (props.dialogKey ?? "partido-nuevo")
+      : `partido:${props.event.id}`,
   );
   const [state, formAction] = useActionState(
     props.mode === "create" ? createCourtEvent : updateCourtEvent,
@@ -63,16 +87,30 @@ export function CourtEventDialog(props: CourtEventDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {props.mode === "create" ? (
-        <DialogTrigger render={<Button />}>
-          <PlusIcon data-icon="inline-start" />
-          {t("action")}
+        <DialogTrigger
+          render={props.triggerRender ?? <Button />}
+          nativeButton={props.triggerRender == null}
+        >
+          {props.triggerChildren ?? (
+            <>
+              <PlusIcon data-icon="inline-start" />
+              {t("action")}
+            </>
+          )}
         </DialogTrigger>
       ) : (
-        <DialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-          <PencilIcon />
-          <span className="sr-only">
-            {t("editMatchSr", { team: props.event.teamName })}
-          </span>
+        <DialogTrigger
+          render={props.triggerRender ?? <Button variant="ghost" size="icon-sm" />}
+          nativeButton={props.triggerRender == null}
+        >
+          {props.triggerChildren ?? (
+            <>
+              <PencilIcon />
+              <span className="sr-only">
+                {t("editMatchSr", { team: props.event.teamName })}
+              </span>
+            </>
+          )}
         </DialogTrigger>
       )}
       <DialogContent>
@@ -114,7 +152,9 @@ export function CourtEventDialog(props: CourtEventDialogProps) {
                   id="court-event-weekend"
                   name="weekendOf"
                   type="date"
-                  defaultValue={props.mode === "edit" ? props.event.weekendOf : ""}
+                  defaultValue={
+                    props.mode === "edit" ? props.event.weekendOf : (props.defaultWeekendOf ?? "")
+                  }
                   required
                 />
               </Field>
