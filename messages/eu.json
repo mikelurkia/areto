@@ -1,6 +1,6 @@
 {
   "Metadata": {
-    "home": "Areto · Kirol kluben kudeaketa",
+    "home": "Aloña Mendi · Futbol Sala",
     "dashboard": "Panela · Areto",
     "personas": "Pertsonak · Areto",
     "equipos": "Taldeak · Areto",
@@ -20,26 +20,25 @@
     "brand": "Aloña Mendi",
     "brandSubtitle": "Areto Futbola",
     "enter": "Sartu",
-    "heroTitle": "Kudeatu zure kirol kluba, kalkulu-orririk gabe.",
-    "heroDescription": "Areto-k pertsonak, taldeak, egutegia, kuotak eta komunikazioa tresna bakar batean biltzen ditu, futbol saleko klubentzat pentsatuta.",
+    "heroTitle": "Futbol saleko kluba, harrobitik lehen taldera.",
+    "heroDescription": "Talde bat maila guztietan, partidak asteburu bakoitzean, eta hori guztia posible egiten duten jokalari, entrenatzaile eta bazkideen komunitatea.",
     "openPanel": "Ireki panela",
     "registerAction": "Izena eman",
     "becomeMemberAction": "Egin zaitez bazkide",
     "features": {
       "people": {
-        "title": "Pertsonak eta taldeak",
-        "description": "Jokalari, entrenatzaile eta bazkideen fitxak, taldeka eta mailaka antolatuta."
+        "title": "Taldeak eta mailak",
+        "description": "Oinarritik lehen taldera, federatutako maila guztietan asteburu bakoitzean lehian."
       },
       "calendar": {
         "title": "Egutegia",
-        "description": "Entrenamenduak, partidak eta deialdiak leku bakarrean."
+        "description": "Ikusi klubeko talde guztien hurrengo partidak eta entrenamenduak."
       },
       "fees": {
-        "title": "Kuotak",
-        "description": "Klubeko bazkideen kuoten, ordainketen eta zorren kontrola."
+        "title": "Bazkideak",
+        "description": "Kluba posible egiten dutenak, denboraldiz denboraldi."
       }
     },
-    "featureFooter": "Laster, klubeko emaitzak eta oharrak hemen.",
     "carousel": {
       "firstTeam": {
         "title": "Lehen taldea",

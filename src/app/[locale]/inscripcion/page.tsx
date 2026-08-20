@@ -71,7 +71,7 @@ export default async function InscripcionLandingPage({
           href="/inscripcion/socio"
           className="group flex flex-col gap-3 rounded-xl border p-6 transition-all hover:-translate-y-0.5 hover:border-gold/50 hover:shadow-md"
         >
-          <div className="flex size-10 items-center justify-center rounded-full bg-gold/15 text-gold-foreground">
+          <div className="flex size-10 items-center justify-center rounded-full bg-gold/15 text-foreground">
             <HeartHandshakeIcon className="size-5" />
           </div>
           <div>

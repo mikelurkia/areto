@@ -21,7 +21,7 @@ const SLIDES = [
 
 const TONE_CLASSES = {
   primary: "bg-gradient-to-br from-primary/20 via-primary/5 to-transparent text-primary",
-  gold: "bg-gradient-to-br from-gold/25 via-gold/5 to-transparent text-gold-foreground",
+  gold: "bg-gradient-to-br from-gold/25 via-gold/5 to-transparent text-foreground",
 } as const;
 
 /**

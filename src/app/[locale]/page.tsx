@@ -1,11 +1,10 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { CalendarDays, Users, Wallet } from "lucide-react";
+import { CalendarDays, HeartHandshake, Users } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -37,7 +36,7 @@ export default async function Home({
   const features = [
     { icon: Users, key: "people" },
     { icon: CalendarDays, key: "calendar" },
-    { icon: Wallet, key: "fees" },
+    { icon: HeartHandshake, key: "fees" },
   ] as const;
 
   return (
@@ -68,8 +67,7 @@ export default async function Home({
                 render={<Link href="/inscripcion/socio" />}
                 nativeButton={false}
                 size="lg"
-                className="border-gold/50 bg-gold/15 text-gold-foreground hover:bg-gold/25"
-                variant="outline"
+                className="bg-gold text-gold-foreground shadow-sm shadow-gold/30 hover:bg-gold/80"
               >
                 {t("becomeMemberAction")}
               </Button>
@@ -99,9 +97,6 @@ export default async function Home({
                 {t(`features.${feature.key}.description`)}
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              {t("featureFooter")}
-            </CardContent>
           </Card>
         ))}
       </section>

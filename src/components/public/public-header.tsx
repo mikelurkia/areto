@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +58,7 @@ export async function PublicHeader(props: PublicHeaderProps) {
         )}
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <LocaleSwitcher />
           {props.variant === "brand" ? (
             <Button render={<Link href="/dashboard" />} nativeButton={false} variant="ghost" size="sm">

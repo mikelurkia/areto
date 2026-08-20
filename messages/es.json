@@ -1,6 +1,6 @@
 {
   "Metadata": {
-    "home": "Areto · Gestión de club deportivo",
+    "home": "Aloña Mendi · Fútbol Sala",
     "dashboard": "Panel · Areto",
     "personas": "Personas · Areto",
     "equipos": "Equipos · Areto",
@@ -20,26 +20,25 @@
     "brand": "Aloña Mendi",
     "brandSubtitle": "Sección de Fútbol Sala",
     "enter": "Entrar",
-    "heroTitle": "Gestiona tu club deportivo, sin hojas de cálculo.",
-    "heroDescription": "Areto reúne personas, equipos, calendario, cuotas y comunicación en una sola herramienta, pensada para clubes de fútbol sala.",
+    "heroTitle": "Un club de fútbol sala, de la cantera al primer equipo.",
+    "heroDescription": "Equipos en todas las categorías, partidos cada fin de semana y una comunidad de jugadoras, jugadores, socias y socios que hacen grande al club.",
     "openPanel": "Abrir el panel",
     "registerAction": "Inscríbete",
     "becomeMemberAction": "Hazte socio/a",
     "features": {
       "people": {
-        "title": "Personas y equipos",
-        "description": "Fichas de jugadores, entrenadores y socios, organizados por equipos y categorías."
+        "title": "Equipos y categorías",
+        "description": "De la base al primer equipo, compitiendo cada fin de semana en las categorías federadas."
       },
       "calendar": {
         "title": "Calendario",
-        "description": "Entrenamientos, partidos y convocatorias en un único lugar."
+        "description": "Consulta los próximos partidos y entrenamientos de todos los equipos del club."
       },
       "fees": {
-        "title": "Cuotas",
-        "description": "Control de cuotas de socios, pagos y morosidad del club."
+        "title": "Socios y socias",
+        "description": "Quienes hacen posible el club, temporada tras temporada."
       }
     },
-    "featureFooter": "Próximamente resultados y avisos del club aquí.",
     "carousel": {
       "firstTeam": {
         "title": "Primer equipo",

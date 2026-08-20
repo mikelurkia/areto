@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { LoginForm } from "@/components/auth/login-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { CourtLines } from "@/components/public/court-lines";
 
 export async function generateMetadata({
@@ -61,6 +62,7 @@ export default async function LoginPage({
   return (
     <div className="relative flex flex-1 items-center justify-center overflow-hidden p-6">
       <CourtLines />
+      <ThemeToggle className="absolute top-6 right-6" />
       <div className="relative flex w-full max-w-sm flex-col gap-8">
         <Link href="/" className="flex items-center gap-2 self-center">
           <Image src="/logo.png" alt="" width={32} height={32} className="size-8 object-contain" />
