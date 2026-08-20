@@ -508,6 +508,97 @@ export async function updatePerson(
   return { message: t("personUpdated") };
 }
 
+/** Cambia solo la foto, sin reenviar el resto de la ficha (botón junto al avatar). */
+export async function updatePersonPhoto(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requireRole([...MANAGE_ROLES]);
+
+  const id = String(formData.get("id") ?? "");
+  const photo = readPhoto(formData);
+  const removePhoto = formData.get("removePhoto") === "on";
+  if (photo && !ALLOWED_PHOTO_TYPES.includes(photo.type)) {
+    return { error: t("photoInvalidType") };
+  }
+  if (photo && photo.size > MAX_PHOTO_BYTES) {
+    return { error: t("photoTooLarge") };
+  }
+
+  const existing = await db.query.persons.findFirst({
+    where: eq(persons.id, id),
+    columns: { photoPath: true },
+  });
+
+  if (photo) {
+    if (existing?.photoPath) await removePersonPhotoObject(existing.photoPath);
+    const path = await uploadPersonPhoto(id, photo);
+    await db.update(persons).set({ photoPath: path }).where(eq(persons.id, id));
+  } else if (removePhoto && existing?.photoPath) {
+    await removePersonPhotoObject(existing.photoPath);
+    await db.update(persons).set({ photoPath: null }).where(eq(persons.id, id));
+  }
+
+  revalidatePath("/", "layout");
+  return { message: t("photoUpdated") };
+}
+
+const ID_SCAN_BUCKET = "person-documents";
+const MAX_ID_SCAN_BYTES = 10 * 1024 * 1024; // 10MB
+const ALLOWED_ID_SCAN_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+
+/** Sube o quita el escaneo del DNI/NIE (frontal o trasera) de una persona,
+ * sin pasar por una inscripción. Misma ruta de Storage que la copia al
+ * aprobar una inscripción (ver `inscripciones/actions.ts`), así que sustituye
+ * limpiamente cualquier archivo que ya existiera por esa vía. */
+export async function updatePersonIdScan(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requireRole([...MANAGE_ROLES]);
+
+  const id = String(formData.get("id") ?? "");
+  const side = formData.get("side") === "back" ? "back" : "front";
+  const fileField = formData.get("file");
+  const file = fileField instanceof File && fileField.size > 0 ? fileField : null;
+  const shouldRemove = formData.get("removeFile") === "on";
+  if (file && !ALLOWED_ID_SCAN_TYPES.includes(file.type)) {
+    return { error: t("documentFileInvalidType") };
+  }
+  if (file && file.size > MAX_ID_SCAN_BYTES) {
+    return { error: t("documentFileTooLarge") };
+  }
+
+  const existing = await db.query.persons.findFirst({
+    where: eq(persons.id, id),
+    columns: { idFrontPath: true, idBackPath: true },
+  });
+  const existingPath = side === "front" ? existing?.idFrontPath : existing?.idBackPath;
+
+  if (file) {
+    if (existingPath) await removeFile(ID_SCAN_BUCKET, existingPath);
+    const path = `${id}/id-${side}.${extensionFromMimeType(file.type)}`;
+    await uploadFile(ID_SCAN_BUCKET, path, file);
+    if (side === "front") {
+      await db.update(persons).set({ idFrontPath: path }).where(eq(persons.id, id));
+    } else {
+      await db.update(persons).set({ idBackPath: path }).where(eq(persons.id, id));
+    }
+  } else if (shouldRemove && existingPath) {
+    await removeFile(ID_SCAN_BUCKET, existingPath);
+    if (side === "front") {
+      await db.update(persons).set({ idFrontPath: null }).where(eq(persons.id, id));
+    } else {
+      await db.update(persons).set({ idBackPath: null }).where(eq(persons.id, id));
+    }
+  }
+
+  revalidatePath("/", "layout");
+  return { message: t("idScanUpdated") };
+}
+
 export async function deletePerson(
   _prev: PersonState,
   formData: FormData,

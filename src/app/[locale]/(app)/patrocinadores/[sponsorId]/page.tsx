@@ -43,6 +43,7 @@ import { SponsorContactDialog } from "@/components/patrocinadores/sponsor-contac
 import { SponsorDialog } from "@/components/patrocinadores/sponsor-dialog";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { DocumentDialog } from "@/components/document-dialog";
+import { InfoRow } from "@/components/info-row";
 import { NotesLog } from "@/components/notes-log";
 import { SponsorPaymentDialog } from "@/components/patrocinadores/sponsor-payment-dialog";
 import { SponsorshipTermDialog } from "@/components/patrocinadores/sponsorship-term-dialog";
@@ -68,15 +69,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const LOGO_BUCKET = "sponsorship-logos";
 const CONTRACT_BUCKET = "sponsorship-contracts";
 const DOCUMENTS_BUCKET = "sponsor-documents";
-
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm font-medium">{value ?? "—"}</dd>
-    </div>
-  );
-}
 
 /**
  * Ficha del patrocinador con sus acuerdos, contactos y documentos. En `cache()`

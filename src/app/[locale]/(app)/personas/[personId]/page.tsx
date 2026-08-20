@@ -24,6 +24,7 @@ import {
 import { requireRole } from "@/lib/auth";
 import { resolveBackHref } from "@/lib/back-href";
 import { calculateAge, isMinor } from "@/lib/age";
+import { getBankName } from "@/lib/bank";
 import { fileTypeLabel } from "@/lib/file-type";
 import { formatDateTime } from "@/lib/format-date";
 import { STATUS_VARIANT } from "@/lib/registration-status";
@@ -41,9 +42,12 @@ import { DeleteMedicalCheckupDialog } from "@/components/personas/delete-medical
 import { DeleteQualificationDialog } from "@/components/personas/delete-qualification-dialog";
 import { DocumentDialog } from "@/components/document-dialog";
 import { FamilyPanel, type FamilyMember } from "@/components/personas/family-panel";
+import { InfoRow } from "@/components/info-row";
 import { InjuryReportDialog } from "@/components/personas/injury-report-dialog";
 import { MedicalCheckupDialog } from "@/components/personas/medical-checkup-dialog";
 import { PersonDialog } from "@/components/personas/person-dialog";
+import { PersonIdScanDialog } from "@/components/personas/person-id-scan-dialog";
+import { PersonPhotoDialog } from "@/components/personas/person-photo-dialog";
 import { NotesLog } from "@/components/notes-log";
 import { PersonTagsEditor } from "@/components/personas/person-tags-editor";
 import { QualificationDialog } from "@/components/personas/qualification-dialog";
@@ -67,15 +71,6 @@ const QUALIFICATIONS_BUCKET = "person-qualifications";
 const DOCUMENTS_BUCKET = "person-documents";
 const MEDICAL_CHECKUPS_BUCKET = "person-medical-checkups";
 const INJURY_REPORTS_BUCKET = "person-injury-reports";
-
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm font-medium">{value ?? "—"}</dd>
-    </div>
-  );
-}
 
 /**
  * Ficha completa de la persona. En `cache()` para que `generateMetadata` y la
@@ -328,12 +323,19 @@ export default async function PersonDetailPage({
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Avatar size="lg">
-            {photoUrl ? <AvatarImage src={photoUrl} alt="" /> : null}
-            <AvatarFallback>
-              <UserRoundIcon className="size-5" />
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar size="lg">
+              {photoUrl ? <AvatarImage src={photoUrl} alt="" /> : null}
+              <AvatarFallback>
+                <UserRoundIcon className="size-5" />
+              </AvatarFallback>
+            </Avatar>
+            {canManage ? (
+              <span className="absolute -bottom-1 -right-1 print:hidden">
+                <PersonPhotoDialog personId={person.id} photoUrl={photoUrl} />
+              </span>
+            ) : null}
+          </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{fullName}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -503,22 +505,14 @@ export default async function PersonDetailPage({
               <dl className="grid grid-cols-2 gap-3">
                 <InfoRow label={t("birthDateLabel")} value={person.birthDate} />
                 <InfoRow label={t("nationalIdLabel")} value={person.nationalId} />
-                <InfoRow
-                  label={t("ibanLabel")}
-                  value={
-                    person.payerPerson
-                      ? t("ibanHandledByGuardian", {
-                          name: `${person.payerPerson.firstName} ${person.payerPerson.lastName}`,
-                        })
-                      : person.iban
-                        ? <MaskedIbanText value={person.iban} />
-                        : null
-                  }
-                />
-                <InfoRow
-                  label={t("medicalCertLabel")}
-                  value={person.medicalCertUntil}
-                />
+              </dl>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("memberSection")}
+              </h2>
+              <dl className="grid grid-cols-2 gap-3">
                 <InfoRow
                   label={t("memberNumberLabel")}
                   value={
@@ -531,33 +525,85 @@ export default async function PersonDetailPage({
                   }
                 />
                 <InfoRow
-                  label={t("idFrontLabel")}
+                  label={person.payerPerson ? t("paidByLabel") : t("ibanLabel")}
                   value={
-                    idFrontUrl ? (
-                      <a
-                        href={idFrontUrl}
-                        target="_blank"
-                        rel="noreferrer"
+                    person.payerPerson ? (
+                      <Link
+                        href={`/personas/${person.payerPerson.id}`}
                         className="text-primary hover:underline"
                       >
-                        {t("documentViewFile")}
-                      </a>
+                        {person.payerPerson.firstName} {person.payerPerson.lastName}
+                      </Link>
+                    ) : person.iban ? (
+                      <MaskedIbanText value={person.iban} />
                     ) : null
+                  }
+                />
+                {!person.payerPerson && getBankName(person.iban) ? (
+                  <InfoRow label={t("bankLabel")} value={getBankName(person.iban)} />
+                ) : null}
+              </dl>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("idDocumentsSection")}
+              </h2>
+              <dl className="grid grid-cols-2 gap-3">
+                <InfoRow
+                  label={t("idFrontLabel")}
+                  value={
+                    <div className="flex items-center gap-2">
+                      {idFrontUrl ? (
+                        <a
+                          href={idFrontUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          {t("documentViewFile")}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                      {canManage ? (
+                        <span className="print:hidden">
+                          <PersonIdScanDialog
+                            personId={person.id}
+                            side="front"
+                            fileUrl={idFrontUrl}
+                          />
+                        </span>
+                      ) : null}
+                    </div>
                   }
                 />
                 <InfoRow
                   label={t("idBackLabel")}
                   value={
-                    idBackUrl ? (
-                      <a
-                        href={idBackUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        {t("documentViewFile")}
-                      </a>
-                    ) : null
+                    <div className="flex items-center gap-2">
+                      {idBackUrl ? (
+                        <a
+                          href={idBackUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          {t("documentViewFile")}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                      {canManage ? (
+                        <span className="print:hidden">
+                          <PersonIdScanDialog
+                            personId={person.id}
+                            side="back"
+                            fileUrl={idBackUrl}
+                          />
+                        </span>
+                      ) : null}
+                    </div>
                   }
                 />
               </dl>
