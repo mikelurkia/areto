@@ -121,6 +121,90 @@ export function isNicknameFirstNameMatch(
   return firstA.startsWith(firstB) || firstB.startsWith(firstA);
 }
 
+export type DuplicateMatchReason = "dni" | "name" | "fuzzyName" | "sharedContact";
+
+export type DuplicatePersonGroup<T> = { persons: T[]; reasons: Set<DuplicateMatchReason> };
+
+type DuplicateCandidate = PersonForMatching & { phone: string | null; iban: string | null };
+
+/** Compara IBANes ignorando espacios/mayúsculas, igual que `isValidIban`. */
+function normalizeIban(iban: string): string {
+  return iban.replace(/\s+/g, "").toUpperCase();
+}
+
+/**
+ * Agrupa `allPersons` en posibles duplicados por DNI exacto, nombre
+ * normalizado exacto, nombre "fuzzy" (erratas ortográficas) o
+ * teléfono/IBAN compartido + apellido parecido. Usado tanto por la página de
+ * revisión de duplicados (`/personas/duplicados`) como por el panel de
+ * incoherencias del dashboard, que solo necesita el recuento de grupos.
+ */
+export function findDuplicatePersonGroups<T extends DuplicateCandidate>(
+  allPersons: T[],
+): DuplicatePersonGroup<T>[] {
+  const byDni = new Map<string, T[]>();
+  const byName = new Map<string, T[]>();
+  for (const person of allPersons) {
+    if (person.nationalId) {
+      const key = person.nationalId.trim().toUpperCase();
+      byDni.set(key, [...(byDni.get(key) ?? []), person]);
+    }
+    const nameKey = normalizeName(`${person.firstName} ${person.lastName}`);
+    byName.set(nameKey, [...(byName.get(nameKey) ?? []), person]);
+  }
+
+  const groupsByKey = new Map<string, DuplicatePersonGroup<T>>();
+  function addGroup(group: T[], reasons: DuplicateMatchReason[]) {
+    if (group.length < 2) return;
+    const key = [...group.map((p) => p.id)].sort().join(",");
+    const existing = groupsByKey.get(key);
+    if (existing) for (const r of reasons) existing.reasons.add(r);
+    else groupsByKey.set(key, { persons: group, reasons: new Set(reasons) });
+  }
+  for (const group of byDni.values()) addGroup(group, ["dni"]);
+  for (const group of byName.values()) addGroup(group, ["name"]);
+
+  // Coincidencias por parecido ortográfico ("Urkia Kortabarria" / "Urquia
+  // Cortabarria"): a diferencia de `byDni`/`byName`, no hay una clave exacta
+  // por la que agrupar, así que se comparan todos los pares. Con el tamaño
+  // de plantilla de un club (unos pocos cientos de personas como mucho) el
+  // coste O(n²) es insignificante.
+  for (let i = 0; i < allPersons.length; i++) {
+    for (let j = i + 1; j < allPersons.length; j++) {
+      const a = allPersons[i];
+      const b = allPersons[j];
+      const samePhone = Boolean(a.phone && b.phone && a.phone === b.phone);
+      const sameIban = Boolean(
+        a.iban && b.iban && normalizeIban(a.iban) === normalizeIban(b.iban),
+      );
+      const sharedContact = samePhone || sameIban;
+
+      if (isFuzzyNameMatch(a, b)) {
+        addGroup([a, b], sharedContact ? ["fuzzyName", "sharedContact"] : ["fuzzyName"]);
+        continue;
+      }
+
+      if (!sharedContact) continue;
+
+      // El apellido coincide (exacto o parecido) y comparten teléfono/IBAN,
+      // pero el nombre es demasiado distinto en longitud para que
+      // `isFuzzyNameMatch` lo trate como una errata (p. ej. "Eli" /
+      // "Elisabeth"). Solo lo tratamos como posible duplicado si además hay
+      // relación de diminutivo entre los nombres: sin ese requisito, dos
+      // hermanos menores que comparten el teléfono de su tutor y el mismo
+      // apellido de familia saltarían como "duplicados" entre ellos.
+      const lastA = normalizeName(a.lastName);
+      const lastB = normalizeName(b.lastName);
+      const lastNameMatches = lastA === lastB || isFuzzyLastNameMatch(a, b);
+      if (lastNameMatches && isNicknameFirstNameMatch(a, b)) {
+        addGroup([a, b], ["fuzzyName", "sharedContact"]);
+      }
+    }
+  }
+
+  return [...groupsByKey.values()];
+}
+
 /**
  * Busca en `pool` quién podría ser la misma persona que `target`. DNI y email
  * identifican de forma fuerte a un individuo: si alguno coincide, no hace

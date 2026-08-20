@@ -1,6 +1,6 @@
 {
   "Metadata": {
-    "home": "Aloña Mendi · Futbol Sala",
+    "home": "Aloña Mendi · Areto Futbol Saila",
     "dashboard": "Panela · Areto",
     "personas": "Pertsonak · Areto",
     "equipos": "Taldeak · Areto",
@@ -20,7 +20,7 @@
     "brand": "Aloña Mendi",
     "brandSubtitle": "Areto Futbola",
     "enter": "Sartu",
-    "heroTitle": "Futbol saleko kluba, harrobitik lehen taldera.",
+    "heroTitle": "Areto futboleko kluba, harrobitik lehen taldera.",
     "heroDescription": "Talde bat maila guztietan, partidak asteburu bakoitzean, eta hori guztia posible egiten duten jokalari, entrenatzaile eta bazkideen komunitatea.",
     "openPanel": "Ireki panela",
     "registerAction": "Izena eman",
@@ -97,23 +97,23 @@
   },
   "Dashboard": {
     "title": "Panela",
-    "subtitle": "Klubaren laburpena. Konektatu datu-basea datu errealak ikusteko.",
+    "subtitle": "Klubaren eta uneko denboraldiaren laburpena.",
     "stats": {
       "people": {
-        "label": "Pertsonak",
-        "hint": "bazkideak eta jokalariak"
+        "label": "Pertsona aktiboak",
+        "hint": "uneko denboraldia"
       },
       "teams": {
         "label": "Taldeak",
-        "hint": "aktibo"
+        "hint": "uneko denboraldia"
       },
-      "events": {
-        "label": "Hurrengo ekitaldiak",
-        "hint": "7 egun"
+      "members": {
+        "label": "Bazkide aktiboak",
+        "hint": "alta indarrean"
       },
-      "fees": {
-        "label": "Kuota pendienteak",
-        "hint": "kobratzeko"
+      "registrations": {
+        "label": "Izen-emate zain daudenak",
+        "hint": "berrikusteko"
       }
     },
     "sponsorshipSection": "Babesletza",
@@ -127,7 +127,19 @@
     "expiringMedicalCertLabel": "Ziurtagiri medikoa",
     "expiringSponsorshipLabel": "Babesletza",
     "expiredBadge": "Iraungita: {date}",
-    "expiresBadge": "Iraungitzea: {date}"
+    "expiresBadge": "Iraungitzea: {date}",
+    "integritySection": "Datuen desadostasunak",
+    "integritySectionHint": "Eskuz berrikusi beharreko kasuak.",
+    "noIntegrityIssuesDescription": "Ez da desadostasunik antzeman.",
+    "integrity": {
+      "orphanPlayers": "Taldea esleitu gabeko onartutako jokalariak",
+      "missingNationalId": "NAN/AIZ gabeko fitxa aktiboak",
+      "medicalCertMismatch": "Sinkronizatu gabeko ziurtagiri medikoa",
+      "duplicateCaptains": "Kapitain bat baino gehiago duten taldeak",
+      "sponsorshipMismatch": "Babesletza-urtekotasun bikoiztu edo koadratu gabeak",
+      "duplicatePersons": "Bikoiztuta egon daitezkeen pertsonak",
+      "pendingRenewals": "Denboraldi-berritze zain edo baztertutakoak"
+    }
   },
   "Personas": {
     "title": "Pertsonak",

@@ -9,3 +9,17 @@ type SeasonScopedMembership = { team: { season: { isCurrent: boolean } } };
 export function isPastMember(memberships: SeasonScopedMembership[]): boolean {
   return memberships.length > 0 && !memberships.some((m) => m.team.season.isCurrent);
 }
+
+type PlayerSeasonScopedMembership = SeasonScopedMembership & { role: string };
+
+/**
+ * Jugador con ficha en un equipo de la temporada activa. Más estricto que
+ * `isPastMember`: además de exigir equipo en la temporada actual, exige que
+ * el rol sea "player" (excluye entrenadores, staff y a quien no tiene ningún
+ * equipo). Mismo criterio que `countMedicalCertMismatches` en
+ * `data-integrity.ts`, para que el aviso de certificado médico del dashboard
+ * y el de vencimientos próximos coincidan.
+ */
+export function isActivePlayer(memberships: PlayerSeasonScopedMembership[]): boolean {
+  return memberships.some((m) => m.role === "player" && m.team.season.isCurrent);
+}

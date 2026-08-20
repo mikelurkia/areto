@@ -97,23 +97,23 @@
   },
   "Dashboard": {
     "title": "Panel",
-    "subtitle": "Resumen del club. Conecta la base de datos para ver datos reales.",
+    "subtitle": "Resumen del club y de la temporada en curso.",
     "stats": {
       "people": {
-        "label": "Personas",
-        "hint": "socios y jugadores"
+        "label": "Personas activas",
+        "hint": "temporada actual"
       },
       "teams": {
         "label": "Equipos",
-        "hint": "en activo"
+        "hint": "temporada actual"
       },
-      "events": {
-        "label": "Próximos eventos",
-        "hint": "7 días"
+      "members": {
+        "label": "Socios activos",
+        "hint": "alta vigente"
       },
-      "fees": {
-        "label": "Cuotas pendientes",
-        "hint": "por cobrar"
+      "registrations": {
+        "label": "Inscripciones pendientes",
+        "hint": "por revisar"
       }
     },
     "sponsorshipSection": "Patrocinio",
@@ -127,7 +127,19 @@
     "expiringMedicalCertLabel": "Certificado médico",
     "expiringSponsorshipLabel": "Patrocinio",
     "expiredBadge": "Caducó el {date}",
-    "expiresBadge": "Caduca el {date}"
+    "expiresBadge": "Caduca el {date}",
+    "integritySection": "Incoherencias de datos",
+    "integritySectionHint": "Casos que conviene revisar a mano.",
+    "noIntegrityIssuesDescription": "No se ha detectado ninguna incoherencia.",
+    "integrity": {
+      "orphanPlayers": "Jugadores aprobados sin equipo asignado",
+      "missingNationalId": "Fichas activas sin DNI/NIE",
+      "medicalCertMismatch": "Certificado médico desincronizado",
+      "duplicateCaptains": "Equipos con más de un capitán",
+      "sponsorshipMismatch": "Anualidades de patrocinio duplicadas o descuadradas",
+      "duplicatePersons": "Posibles personas duplicadas",
+      "pendingRenewals": "Renovaciones de temporada pendientes o rechazadas"
+    }
   },
   "Personas": {
     "title": "Personas",

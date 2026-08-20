@@ -1,21 +1,36 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { and, eq, isNotNull, lte, ne } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lte, ne } from "drizzle-orm";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
-import { CalendarDays, HandshakeIcon, ShieldHalf, TriangleAlertIcon, Users, Wallet } from "lucide-react";
+import {
+  HandshakeIcon,
+  Inbox,
+  ShieldAlertIcon,
+  ShieldHalf,
+  TriangleAlertIcon,
+  UserCheck,
+  Users,
+} from "lucide-react";
 
 import { db } from "@/db";
 import {
+  clubMembers,
+  memberships,
   personQualifications,
   persons,
+  registrations,
   seasons,
   sponsorshipTerms,
+  teams,
 } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
-import { isPastMember } from "@/lib/membership";
+import { loadDataIntegrityIssues, type IntegrityIssue } from "@/lib/data-integrity";
+import { isActivePlayer, isPastMember } from "@/lib/membership";
+import { findDuplicatePersonGroups } from "@/lib/person-matching";
+import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { seasonYearOf } from "@/lib/sponsorship";
 import { Link } from "@/i18n/navigation";
-import { CardSkeleton } from "@/components/skeletons";
+import { CardSkeleton, StatCardsSkeleton } from "@/components/skeletons";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -43,12 +58,17 @@ const membershipSeasonInclude = {
   with: { team: { columns: {}, with: { season: { columns: { isCurrent: true } } } } },
 } as const;
 
+const playerMembershipSeasonInclude = {
+  columns: { role: true },
+  with: { team: { columns: {}, with: { season: { columns: { isCurrent: true } } } } },
+} as const;
+
 async function getExpiringItems(today: string, cutoff: string): Promise<ExpiringItem[]> {
   const [medicalCerts, qualifications, expiringSponsorships] = await Promise.all([
     db.query.persons.findMany({
       where: and(isNotNull(persons.medicalCertUntil), lte(persons.medicalCertUntil, cutoff)),
       columns: { id: true, firstName: true, lastName: true, medicalCertUntil: true },
-      with: { memberships: membershipSeasonInclude },
+      with: { memberships: playerMembershipSeasonInclude },
     }),
     db.query.personQualifications.findMany({
       where: and(
@@ -72,7 +92,7 @@ async function getExpiringItems(today: string, cutoff: string): Promise<Expiring
 
   const items: ExpiringItem[] = [
     ...medicalCerts
-      .filter((p) => !isPastMember(p.memberships))
+      .filter((p) => isActivePlayer(p.memberships))
       .map((p) => ({
         key: `medical-${p.id}`,
         href: `/personas/${p.id}`,
@@ -103,6 +123,60 @@ async function getExpiringItems(today: string, cutoff: string): Promise<Expiring
   ];
 
   return items.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * KPIs de la temporada actual: personas activas (con membership en un equipo
+ * de la temporada o alta de socio vigente, sin duplicar a quien es ambas
+ * cosas), equipos, socios activos e inscripciones pendientes de revisar.
+ */
+async function getOverviewStats() {
+  // Sin esto, el prerender estático (`cacheComponents`) congelaría estos
+  // recuentos en la caché en vez de calcularlos en cada petición (ver
+  // `expiryWindow` más abajo).
+  await connection();
+  const currentSeason = await db.query.seasons.findFirst({
+    where: eq(seasons.isCurrent, true),
+    columns: { id: true },
+  });
+
+  const [currentSeasonTeams, activeClubMembers, pendingRegistrations] = await Promise.all([
+    currentSeason
+      ? db.query.teams.findMany({
+          where: eq(teams.seasonId, currentSeason.id),
+          columns: { id: true },
+        })
+      : Promise.resolve([]),
+    db.query.clubMembers.findMany({
+      where: eq(clubMembers.status, "active"),
+      columns: { personId: true },
+    }),
+    db.query.registrations.findMany({
+      where: eq(registrations.status, "pending"),
+      columns: { id: true },
+    }),
+  ]);
+
+  const teamIds = currentSeasonTeams.map((t) => t.id);
+  const rosterMemberships =
+    teamIds.length > 0
+      ? await db.query.memberships.findMany({
+          where: inArray(memberships.teamId, teamIds),
+          columns: { personId: true },
+        })
+      : [];
+
+  const activePeopleCount = new Set([
+    ...rosterMemberships.map((m) => m.personId),
+    ...activeClubMembers.map((m) => m.personId),
+  ]).size;
+
+  return {
+    peopleCount: activePeopleCount,
+    teamsCount: teamIds.length,
+    membersCount: activeClubMembers.length,
+    pendingRegistrationsCount: pendingRegistrations.length,
+  };
 }
 
 /**
@@ -254,6 +328,139 @@ async function ExpiringCard() {
   );
 }
 
+/**
+ * Recuento de grupos de posibles personas duplicadas (mismo cálculo que
+ * `/personas/duplicados`, aquí solo hace falta el número de grupos).
+ */
+async function countDuplicatePersonGroups(): Promise<number> {
+  const allPersons = await db.query.persons.findMany({
+    columns: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      nationalId: true,
+      email: true,
+      phone: true,
+      iban: true,
+    },
+  });
+  return findDuplicatePersonGroups(allPersons).length;
+}
+
+type IntegrityRow =
+  | IntegrityIssue
+  | { key: "duplicatePersons" | "pendingRenewals"; count: number; severity: "soft"; href: string };
+
+/**
+ * Tarjeta de incoherencias de datos: reglas de negocio no forzadas en base de
+ * datos (`src/lib/data-integrity.ts`), más dos casos que reutilizan
+ * herramientas ya existentes en la app (duplicados de personas, renovaciones
+ * de temporada) en vez de reimplementar su lógica.
+ */
+async function IntegrityCard() {
+  // Mismo motivo que en `getOverviewStats`: sin marcar el componente como de
+  // tiempo de petición, `cacheComponents` intentaría congelar estas
+  // incoherencias en el prerender estático en vez de recalcularlas.
+  await connection();
+  const [t, currentSeason] = await Promise.all([
+    getTranslations("Dashboard"),
+    db.query.seasons.findFirst({ where: eq(seasons.isCurrent, true), columns: { id: true } }),
+  ]);
+
+  const [issues, duplicatePersonsCount, renewals] = await Promise.all([
+    loadDataIntegrityIssues(currentSeason?.id ?? null),
+    countDuplicatePersonGroups(),
+    currentSeason ? loadSeasonRenewals(currentSeason.id) : Promise.resolve(null),
+  ]);
+
+  const rows: IntegrityRow[] = [
+    ...issues,
+    ...(duplicatePersonsCount > 0
+      ? [
+          {
+            key: "duplicatePersons" as const,
+            count: duplicatePersonsCount,
+            severity: "soft" as const,
+            href: "/personas/duplicados",
+          },
+        ]
+      : []),
+    ...(renewals && renewals.missingCount > 0
+      ? [
+          {
+            key: "pendingRenewals" as const,
+            count: renewals.missingCount,
+            severity: "soft" as const,
+            href: `/temporadas/${currentSeason!.id}/pendientes`,
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ShieldAlertIcon className="size-4" />
+          {t("integritySection")}
+        </CardTitle>
+        <CardDescription>{t("integritySectionHint")}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("noIntegrityIssuesDescription")}</p>
+        ) : (
+          rows.map((row) => (
+            <div key={row.key} className="flex flex-wrap items-center gap-2 text-sm">
+              <Link href={row.href} className="font-medium hover:underline">
+                {t(`integrity.${row.key}`)}
+              </Link>
+              <Badge
+                variant={row.severity === "hard" ? "destructive" : "warning"}
+                className="ml-auto"
+              >
+                {row.count}
+              </Badge>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Rejilla de KPIs. Componente propio para poder darle su `<Suspense>`: sus
+ * consultas no deben retrasar el resto del panel.
+ */
+async function StatsRow() {
+  const [stats, t] = await Promise.all([getOverviewStats(), getTranslations("Dashboard")]);
+
+  const items = [
+    { key: "people", value: stats.peopleCount, icon: Users },
+    { key: "teams", value: stats.teamsCount, icon: ShieldHalf },
+    { key: "members", value: stats.membersCount, icon: UserCheck },
+    { key: "registrations", value: stats.pendingRegistrationsCount, icon: Inbox },
+  ] as const;
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {items.map((stat) => (
+        <Card key={stat.key}>
+          <CardHeader>
+            <CardDescription className="flex items-center gap-2">
+              <stat.icon className="size-4" />
+              {t(`stats.${stat.key}.label`)}
+            </CardDescription>
+            <CardTitle className="text-3xl">{stat.value}</CardTitle>
+            <p className="text-xs text-muted-foreground">{t(`stats.${stat.key}.hint`)}</p>
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -265,8 +472,9 @@ export async function generateMetadata({
 }
 
 /**
- * El armazón (título y KPIs) solo necesita el rol, así que aparece de inmediato
- * y las dos tarjetas con consultas fluyen después, cada una a su ritmo.
+ * El armazón (título) solo necesita el rol, así que aparece de inmediato y
+ * cada sección con consultas propias (KPIs, patrocinio, vencimientos,
+ * incoherencias) fluye después, a su ritmo.
  */
 export default async function DashboardPage({
   params,
@@ -281,16 +489,9 @@ export default async function DashboardPage({
     getTranslations("Dashboard"),
     getCurrentUser(),
   ]);
-  const canSeeExpirations = user
+  const canManage = user
     ? (MANAGE_ROLES as readonly string[]).includes(user.role)
     : false;
-
-  const stats = [
-    { key: "people", value: "—", icon: Users },
-    { key: "teams", value: "—", icon: ShieldHalf },
-    { key: "events", value: "—", icon: CalendarDays },
-    { key: "fees", value: "—", icon: Wallet },
-  ] as const;
 
   return (
     <div className="flex flex-col gap-6">
@@ -299,30 +500,19 @@ export default async function DashboardPage({
         <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.key}>
-            <CardHeader>
-              <CardDescription className="flex items-center gap-2">
-                <stat.icon className="size-4" />
-                {t(`stats.${stat.key}.label`)}
-              </CardDescription>
-              <CardTitle className="text-3xl">{stat.value}</CardTitle>
-              <p className="text-xs text-muted-foreground">
-                {t(`stats.${stat.key}.hint`)}
-              </p>
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
-
-      {canSeeExpirations ? (
+      {canManage ? (
         <>
+          <Suspense fallback={<StatCardsSkeleton count={4} />}>
+            <StatsRow />
+          </Suspense>
           <Suspense fallback={<CardSkeleton lines={2} />}>
             <SponsorshipCard />
           </Suspense>
           <Suspense fallback={<CardSkeleton lines={8} />}>
             <ExpiringCard />
+          </Suspense>
+          <Suspense fallback={<CardSkeleton lines={5} />}>
+            <IntegrityCard />
           </Suspense>
         </>
       ) : null}

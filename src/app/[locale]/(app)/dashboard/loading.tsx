@@ -9,9 +9,10 @@ export default function Loading() {
     <div className="flex flex-col gap-6">
       <PageHeaderSkeleton />
       <StatCardsSkeleton count={4} />
-      {/* Patrocinio (3 importes) y vencimientos próximos. */}
+      {/* Patrocinio (3 importes), vencimientos próximos e incoherencias de datos. */}
       <CardSkeleton lines={2} />
       <CardSkeleton lines={8} />
+      <CardSkeleton lines={5} />
     </div>
   );
 }
