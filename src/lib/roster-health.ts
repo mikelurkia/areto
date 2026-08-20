@@ -1,4 +1,8 @@
 import { calculateAge } from "@/lib/age";
+import {
+  categoryRequiresMedicalCheckup,
+  type TeamCategoryValue,
+} from "@/components/equipos/team-categories";
 
 /**
  * Cálculo de "salud de plantilla" compartido entre el detalle del equipo y el
@@ -55,8 +59,13 @@ export function isBirthYearOutOfRange(
 
 export function computeRosterHealth(
   memberships: HealthMembership[],
-  team: { minBirthYear: number | null; maxBirthYear: number | null },
+  team: {
+    minBirthYear: number | null;
+    maxBirthYear: number | null;
+    category: TeamCategoryValue | null;
+  },
 ): RosterHealth {
+  const requiresMedicalCheckup = categoryRequiresMedicalCheckup(team.category);
   const players = memberships.filter((m) => m.role === "player");
 
   const today = new Date().toISOString().slice(0, 10);
@@ -90,15 +99,21 @@ export function computeRosterHealth(
         }).length
       : 0;
 
-  const medicalExpired = memberships.filter(
-    (m) => m.person.medicalCertUntil !== null && m.person.medicalCertUntil < today,
-  ).length;
-  const medicalExpiring = memberships.filter(
-    (m) =>
-      m.person.medicalCertUntil !== null &&
-      m.person.medicalCertUntil >= today &&
-      m.person.medicalCertUntil <= soonStr,
-  ).length;
+  // Por debajo de cadete no se exige certificado médico (ver
+  // `categoryRequiresMedicalCheckup`), así que su caducidad no genera aviso.
+  const medicalExpired = requiresMedicalCheckup
+    ? memberships.filter(
+        (m) => m.person.medicalCertUntil !== null && m.person.medicalCertUntil < today,
+      ).length
+    : 0;
+  const medicalExpiring = requiresMedicalCheckup
+    ? memberships.filter(
+        (m) =>
+          m.person.medicalCertUntil !== null &&
+          m.person.medicalCertUntil >= today &&
+          m.person.medicalCertUntil <= soonStr,
+      ).length
+    : 0;
   const noJersey = players.filter((m) => m.jerseyNumber === null).length;
 
   const stats: RosterHealthStats = {

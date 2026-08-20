@@ -1,36 +1,26 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { and, eq, inArray, isNotNull, lte, ne } from "drizzle-orm";
+import { and, eq, isNotNull, lte, ne } from "drizzle-orm";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import {
   HandshakeIcon,
-  Inbox,
+  ListChecks,
   ShieldAlertIcon,
-  ShieldHalf,
   TriangleAlertIcon,
-  UserCheck,
-  Users,
 } from "lucide-react";
 
 import { db } from "@/db";
-import {
-  clubMembers,
-  memberships,
-  personQualifications,
-  persons,
-  registrations,
-  seasons,
-  sponsorshipTerms,
-  teams,
-} from "@/db/schema";
+import { personQualifications, persons, registrations, seasons, sponsorshipTerms } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { groupCourtEventsByWeekend, loadCourtEvents } from "@/lib/court-events";
 import { loadDataIntegrityIssues, type IntegrityIssue } from "@/lib/data-integrity";
 import { isActivePlayer, isPastMember } from "@/lib/membership";
 import { findDuplicatePersonGroups } from "@/lib/person-matching";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { seasonYearOf } from "@/lib/sponsorship";
+import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
 import { Link } from "@/i18n/navigation";
-import { CardSkeleton, StatCardsSkeleton } from "@/components/skeletons";
+import { CardSkeleton } from "@/components/skeletons";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -60,7 +50,12 @@ const membershipSeasonInclude = {
 
 const playerMembershipSeasonInclude = {
   columns: { role: true },
-  with: { team: { columns: {}, with: { season: { columns: { isCurrent: true } } } } },
+  with: {
+    team: {
+      columns: { category: true },
+      with: { season: { columns: { isCurrent: true } } },
+    },
+  },
 } as const;
 
 async function getExpiringItems(today: string, cutoff: string): Promise<ExpiringItem[]> {
@@ -92,7 +87,14 @@ async function getExpiringItems(today: string, cutoff: string): Promise<Expiring
 
   const items: ExpiringItem[] = [
     ...medicalCerts
-      .filter((p) => isActivePlayer(p.memberships))
+      .filter(
+        (p) =>
+          isActivePlayer(p.memberships) &&
+          // Por debajo de cadete no se exige certificado médico, no avisa.
+          p.memberships.some(
+            (m) => m.team.season.isCurrent && categoryRequiresMedicalCheckup(m.team.category),
+          ),
+      )
       .map((p) => ({
         key: `medical-${p.id}`,
         href: `/personas/${p.id}`,
@@ -126,57 +128,52 @@ async function getExpiringItems(today: string, cutoff: string): Promise<Expiring
 }
 
 /**
- * KPIs de la temporada actual: personas activas (con membership en un equipo
- * de la temporada o alta de socio vigente, sin duplicar a quien es ambas
- * cosas), equipos, socios activos e inscripciones pendientes de revisar.
+ * Inscripciones pendientes de validar, jugador y socio por separado: se
+ * revisan en pantallas distintas (`/inscripciones` y `/socios`).
  */
-async function getOverviewStats() {
-  // Sin esto, el prerender estático (`cacheComponents`) congelaría estos
-  // recuentos en la caché en vez de calcularlos en cada petición (ver
-  // `expiryWindow` más abajo).
-  await connection();
-  const currentSeason = await db.query.seasons.findFirst({
-    where: eq(seasons.isCurrent, true),
-    columns: { id: true },
-  });
-
-  const [currentSeasonTeams, activeClubMembers, pendingRegistrations] = await Promise.all([
-    currentSeason
-      ? db.query.teams.findMany({
-          where: eq(teams.seasonId, currentSeason.id),
-          columns: { id: true },
-        })
-      : Promise.resolve([]),
-    db.query.clubMembers.findMany({
-      where: eq(clubMembers.status, "active"),
-      columns: { personId: true },
+async function getPendingRegistrationCounts() {
+  const [pendingPlayerRegistrations, pendingMemberRegistrations] = await Promise.all([
+    db.query.registrations.findMany({
+      where: and(eq(registrations.kind, "player"), eq(registrations.status, "pending")),
+      columns: { id: true },
     }),
     db.query.registrations.findMany({
-      where: eq(registrations.status, "pending"),
+      where: and(eq(registrations.kind, "member"), eq(registrations.status, "pending")),
       columns: { id: true },
     }),
   ]);
-
-  const teamIds = currentSeasonTeams.map((t) => t.id);
-  const rosterMemberships =
-    teamIds.length > 0
-      ? await db.query.memberships.findMany({
-          where: inArray(memberships.teamId, teamIds),
-          columns: { personId: true },
-        })
-      : [];
-
-  const activePeopleCount = new Set([
-    ...rosterMemberships.map((m) => m.personId),
-    ...activeClubMembers.map((m) => m.personId),
-  ]).size;
-
   return {
-    peopleCount: activePeopleCount,
-    teamsCount: teamIds.length,
-    membersCount: activeClubMembers.length,
-    pendingRegistrationsCount: pendingRegistrations.length,
+    pendingPlayerRegistrationsCount: pendingPlayerRegistrations.length,
+    pendingMemberRegistrationsCount: pendingMemberRegistrations.length,
   };
+}
+
+const WEEKEND_LOOKAHEAD_DAYS = 90;
+
+/**
+ * Partidos en casa de la próxima jornada (el fin de semana más próximo con
+ * partidos, dentro de los próximos `WEEKEND_LOOKAHEAD_DAYS` días) que
+ * todavía no tienen `preferredDay` marcado: hay que avisar con antelación al
+ * polideportivo, así que conviene que no pasen desapercibidos. `null` si no
+ * hay ningún partido en casa próximo en ese horizonte.
+ */
+async function getNextWeekendPreferredDayGap(today: string) {
+  const lookaheadDate = new Date(`${today}T00:00:00`);
+  lookaheadDate.setDate(lookaheadDate.getDate() + WEEKEND_LOOKAHEAD_DAYS);
+
+  const upcoming = await loadCourtEvents({
+    from: today,
+    to: lookaheadDate.toISOString().slice(0, 10),
+  });
+  const homeMatches = upcoming.filter((e) => e.isHome === true);
+  if (homeMatches.length === 0) return null;
+
+  const groups = groupCourtEventsByWeekend(homeMatches);
+  const nextWeekendKey = [...groups.keys()].sort()[0];
+  const nextWeekendMatches = groups.get(nextWeekendKey)!;
+  const missingCount = nextWeekendMatches.filter((m) => m.preferredDay === null).length;
+
+  return { weekendOf: nextWeekendKey, missingCount };
 }
 
 /**
@@ -358,7 +355,7 @@ type IntegrityRow =
  * de temporada) en vez de reimplementar su lógica.
  */
 async function IntegrityCard() {
-  // Mismo motivo que en `getOverviewStats`: sin marcar el componente como de
+  // Mismo motivo que en `expiryWindow`: sin marcar el componente como de
   // tiempo de petición, `cacheComponents` intentaría congelar estas
   // incoherencias en el prerender estático en vez de recalcularlas.
   await connection();
@@ -429,35 +426,93 @@ async function IntegrityCard() {
   );
 }
 
-/**
- * Rejilla de KPIs. Componente propio para poder darle su `<Suspense>`: sus
- * consultas no deben retrasar el resto del panel.
- */
-async function StatsRow() {
-  const [stats, t] = await Promise.all([getOverviewStats(), getTranslations("Dashboard")]);
+type ActionKey = "playerRegistrations" | "memberRegistrations" | "weekendPreferredDay";
 
-  const items = [
-    { key: "people", value: stats.peopleCount, icon: Users },
-    { key: "teams", value: stats.teamsCount, icon: ShieldHalf },
-    { key: "members", value: stats.membersCount, icon: UserCheck },
-    { key: "registrations", value: stats.pendingRegistrationsCount, icon: Inbox },
-  ] as const;
+type ActionRow = {
+  key: ActionKey;
+  count: number;
+  href: string;
+  params?: Record<string, string>;
+};
+
+/**
+ * Tarjeta de "por hacer": tareas concretas con una acción clara, a diferencia
+ * de un resumen de KPIs que no dice qué hacer con esos números. Combina
+ * inscripciones/solicitudes por validar con el aviso de que la próxima
+ * jornada no tiene fecha preferente confirmada con el polideportivo.
+ */
+async function ActionsCard() {
+  // Mismo motivo que en `IntegrityCard`: sin esto, `cacheComponents`
+  // intentaría congelar estas tareas en el prerender estático.
+  await connection();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [t, locale, registrationCounts, weekendGap] = await Promise.all([
+    getTranslations("Dashboard"),
+    getLocale(),
+    getPendingRegistrationCounts(),
+    getNextWeekendPreferredDayGap(today),
+  ]);
+
+  const dateFmt = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" });
+
+  const rows: ActionRow[] = [
+    ...(registrationCounts.pendingPlayerRegistrationsCount > 0
+      ? [
+          {
+            key: "playerRegistrations" as const,
+            count: registrationCounts.pendingPlayerRegistrationsCount,
+            href: "/inscripciones",
+          },
+        ]
+      : []),
+    ...(registrationCounts.pendingMemberRegistrationsCount > 0
+      ? [
+          {
+            key: "memberRegistrations" as const,
+            count: registrationCounts.pendingMemberRegistrationsCount,
+            href: "/socios",
+          },
+        ]
+      : []),
+    ...(weekendGap && weekendGap.missingCount > 0
+      ? [
+          {
+            key: "weekendPreferredDay" as const,
+            count: weekendGap.missingCount,
+            href: "/calendario",
+            params: { date: dateFmt.format(new Date(`${weekendGap.weekendOf}T00:00:00`)) },
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {items.map((stat) => (
-        <Card key={stat.key}>
-          <CardHeader>
-            <CardDescription className="flex items-center gap-2">
-              <stat.icon className="size-4" />
-              {t(`stats.${stat.key}.label`)}
-            </CardDescription>
-            <CardTitle className="text-3xl">{stat.value}</CardTitle>
-            <p className="text-xs text-muted-foreground">{t(`stats.${stat.key}.hint`)}</p>
-          </CardHeader>
-        </Card>
-      ))}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ListChecks className="size-4" />
+          {t("actionsSection")}
+        </CardTitle>
+        <CardDescription>{t("actionsSectionHint")}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("noActionsDescription")}</p>
+        ) : (
+          rows.map((row) => (
+            <div key={row.key} className="flex flex-wrap items-center gap-2 text-sm">
+              <Link href={row.href} className="font-medium hover:underline">
+                {t(`actions.${row.key}`, row.params)}
+              </Link>
+              <Badge variant="warning" className="ml-auto">
+                {row.count}
+              </Badge>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -473,8 +528,10 @@ export async function generateMetadata({
 
 /**
  * El armazón (título) solo necesita el rol, así que aparece de inmediato y
- * cada sección con consultas propias (KPIs, patrocinio, vencimientos,
- * incoherencias) fluye después, a su ritmo.
+ * cada sección con consultas propias (por hacer, incoherencias, vencimientos,
+ * patrocinio) fluye después, a su ritmo. Orden pensado para actuar rápido:
+ * primero lo accionable (tareas concretas, luego datos a corregir), al final
+ * lo informativo (resumen de patrocinio).
  */
 export default async function DashboardPage({
   params,
@@ -502,17 +559,17 @@ export default async function DashboardPage({
 
       {canManage ? (
         <>
-          <Suspense fallback={<StatCardsSkeleton count={4} />}>
-            <StatsRow />
+          <Suspense fallback={<CardSkeleton lines={3} />}>
+            <ActionsCard />
           </Suspense>
-          <Suspense fallback={<CardSkeleton lines={2} />}>
-            <SponsorshipCard />
+          <Suspense fallback={<CardSkeleton lines={5} />}>
+            <IntegrityCard />
           </Suspense>
           <Suspense fallback={<CardSkeleton lines={8} />}>
             <ExpiringCard />
           </Suspense>
-          <Suspense fallback={<CardSkeleton lines={5} />}>
-            <IntegrityCard />
+          <Suspense fallback={<CardSkeleton lines={2} />}>
+            <SponsorshipCard />
           </Suspense>
         </>
       ) : null}

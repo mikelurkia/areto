@@ -14,7 +14,8 @@
     "temporada": "Denboraldiak · Areto",
     "club": "Kluba · Areto",
     "inscripciones": "Izen-emateak · Areto",
-    "socios": "Bazkideak · Areto"
+    "socios": "Bazkideak · Areto",
+    "medico": "Panel medikoa · Areto"
   },
   "Landing": {
     "brand": "Aloña Mendi",
@@ -72,6 +73,7 @@
     "club": "Kluba",
     "inscripciones": "Izen-emateak",
     "socios": "Bazkideak",
+    "medico": "Panel medikoa",
     "publicSite": "Webgune publikoa",
     "federations": "Federazio-aplikazioak",
     "federationGipuzkoana": "Gipuzkoako Federazioa",
@@ -98,23 +100,13 @@
   "Dashboard": {
     "title": "Panela",
     "subtitle": "Klubaren eta uneko denboraldiaren laburpena.",
-    "stats": {
-      "people": {
-        "label": "Pertsona aktiboak",
-        "hint": "uneko denboraldia"
-      },
-      "teams": {
-        "label": "Taldeak",
-        "hint": "uneko denboraldia"
-      },
-      "members": {
-        "label": "Bazkide aktiboak",
-        "hint": "alta indarrean"
-      },
-      "registrations": {
-        "label": "Izen-emate zain daudenak",
-        "hint": "berrikusteko"
-      }
+    "actionsSection": "Egiteko",
+    "actionsSectionHint": "Orain konpondu beharreko eginkizun zehatzak.",
+    "noActionsDescription": "Ez dago eginkizun zain daudenik.",
+    "actions": {
+      "playerRegistrations": "Balioztatzeko dauden jokalari izen-emateak",
+      "memberRegistrations": "Balioztatzeko dauden bazkide eskaerak",
+      "weekendPreferredDay": "{date}(e)ko partidek ez dute lehentasunezko egunik baieztatuta"
     },
     "sponsorshipSection": "Babesletza",
     "sponsorshipSectionHint": "Uneko denboraldiaren laburpena.",
@@ -140,6 +132,45 @@
       "duplicatePersons": "Bikoiztuta egon daitezkeen pertsonak",
       "pendingRenewals": "Denboraldi-berritze zain edo baztertutakoak"
     }
+  },
+  "Medico": {
+    "title": "Panel medikoa",
+    "subtitle": "Denboraldi aktiboko entrenatzaile, langile eta jokalarien azterketa medikoak eta lesio-parteak.",
+    "emptyTitle": "Oraindik datu mediko gabe",
+    "emptyDescription": "Ez dago inor denboraldi aktiboko talderen batean fitxarik duenik.",
+    "statTotal": "Fitxa aktiboarekin",
+    "statExpired": "{count} azterketa iraungita",
+    "statExpiring": "{count} iraungitzear",
+    "statMissing": "{count} azterketa gabe",
+    "allGood": "Dena ondo.",
+    "searchPlaceholder": "Bilatu izenez…",
+    "filterTeamLabel": "Taldea",
+    "filterTeamAll": "Talde guztiak",
+    "filterStatusLabel": "Egoera",
+    "filterStatusAll": "Egoera guztiak",
+    "filterStatus": {
+      "needsUpdate": "Eguneratzea behar dute",
+      "expired": "Iraungita",
+      "expiring": "Iraungitzear",
+      "missing": "Azterketa gabe",
+      "ok": "Indarrean",
+      "exempt": "Ez da eskatzen"
+    },
+    "checkupsSection": "Azterketa medikoen egoera",
+    "colName": "Izena",
+    "colTeams": "Taldeak",
+    "colStatus": "Egoera",
+    "statusExpiredBadge": "Iraungita: {date}",
+    "statusExpiringBadge": "Iraungitzea: {date}",
+    "statusOkBadge": "Indarrean {date} arte",
+    "statusMissingBadge": "Azterketa gabe",
+    "statusExemptBadge": "Ez da eskatzen",
+    "noResultsDescription": "Ez dago emaitzarik iragazki hauekin.",
+    "injuryReportsSection": "Lesio-parteak",
+    "colInjuryDate": "Data",
+    "colInjuryPerson": "Pertsona",
+    "colInjuryDescription": "Deskribapena",
+    "noInjuryReportsDescription": "Ez dago lesio-parterik erregistratuta."
   },
   "Personas": {
     "title": "Pertsonak",
@@ -779,6 +810,7 @@
     "federationCodeLabel": "Federazio kodea",
     "federationCodePlaceholder": "Adib. 12345",
     "federationCodeShort": "Kod. {code}",
+    "noMedicalCheckupRequired": "Ez du azterketa medikorik eskatzen",
     "rosterSheetAction": "Federazio-akta",
     "rosterSheetTitle": "Taldearen akta",
     "rosterSheetColName": "Abizenak, izena",

@@ -29,6 +29,7 @@ import { getSignedUrls } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
 import { BackLink } from "@/components/back-link";
 import { RosterHealth } from "@/components/equipos/roster-health";
+import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
 import { RenewTeamDialog } from "@/components/equipos/renew-team-dialog";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
@@ -179,6 +180,9 @@ export default async function TeamDetailPage({
                 team.federationGroup,
                 team.federationCode
                   ? t("federationCodeShort", { code: team.federationCode })
+                  : null,
+                !categoryRequiresMedicalCheckup(team.category)
+                  ? t("noMedicalCheckupRequired")
                   : null,
               ]
                 .filter(Boolean)

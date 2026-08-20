@@ -14,7 +14,8 @@
     "temporada": "Temporadas · Areto",
     "club": "Club · Areto",
     "inscripciones": "Inscripciones · Areto",
-    "socios": "Socios · Areto"
+    "socios": "Socios · Areto",
+    "medico": "Panel médico · Areto"
   },
   "Landing": {
     "brand": "Aloña Mendi",
@@ -72,6 +73,7 @@
     "club": "Club",
     "inscripciones": "Inscripciones",
     "socios": "Socios",
+    "medico": "Panel médico",
     "publicSite": "Sitio público",
     "federations": "Aplicaciones federativas",
     "federationGipuzkoana": "Federación Gipuzcoana",
@@ -98,23 +100,13 @@
   "Dashboard": {
     "title": "Panel",
     "subtitle": "Resumen del club y de la temporada en curso.",
-    "stats": {
-      "people": {
-        "label": "Personas activas",
-        "hint": "temporada actual"
-      },
-      "teams": {
-        "label": "Equipos",
-        "hint": "temporada actual"
-      },
-      "members": {
-        "label": "Socios activos",
-        "hint": "alta vigente"
-      },
-      "registrations": {
-        "label": "Inscripciones pendientes",
-        "hint": "por revisar"
-      }
+    "actionsSection": "Por hacer",
+    "actionsSectionHint": "Tareas concretas que conviene resolver ahora.",
+    "noActionsDescription": "No hay ninguna tarea pendiente.",
+    "actions": {
+      "playerRegistrations": "Inscripciones de jugador por validar",
+      "memberRegistrations": "Solicitudes de socio por validar",
+      "weekendPreferredDay": "Partidos del {date} sin fecha preferente confirmada"
     },
     "sponsorshipSection": "Patrocinio",
     "sponsorshipSectionHint": "Resumen de la temporada actual.",
@@ -140,6 +132,45 @@
       "duplicatePersons": "Posibles personas duplicadas",
       "pendingRenewals": "Renovaciones de temporada pendientes o rechazadas"
     }
+  },
+  "Medico": {
+    "title": "Panel médico",
+    "subtitle": "Reconocimientos médicos y partes de lesión de entrenadores, staff y jugadores de la temporada activa.",
+    "emptyTitle": "Sin datos médicos todavía",
+    "emptyDescription": "No hay nadie con ficha en un equipo de la temporada activa.",
+    "statTotal": "Con ficha activa",
+    "statExpired": "{count} certificado(s) caducado(s)",
+    "statExpiring": "{count} por caducar",
+    "statMissing": "{count} sin reconocimiento",
+    "allGood": "Todo en orden.",
+    "searchPlaceholder": "Buscar por nombre…",
+    "filterTeamLabel": "Equipo",
+    "filterTeamAll": "Todos los equipos",
+    "filterStatusLabel": "Estado",
+    "filterStatusAll": "Todos los estados",
+    "filterStatus": {
+      "needsUpdate": "Necesitan actualización",
+      "expired": "Caducados",
+      "expiring": "Por caducar",
+      "missing": "Sin reconocimiento",
+      "ok": "Vigentes",
+      "exempt": "No exigido"
+    },
+    "checkupsSection": "Estado de los certificados médicos",
+    "colName": "Nombre",
+    "colTeams": "Equipos",
+    "colStatus": "Estado",
+    "statusExpiredBadge": "Caducó el {date}",
+    "statusExpiringBadge": "Caduca el {date}",
+    "statusOkBadge": "Vigente hasta el {date}",
+    "statusMissingBadge": "Sin reconocimiento",
+    "statusExemptBadge": "No exigido",
+    "noResultsDescription": "Ningún resultado con estos filtros.",
+    "injuryReportsSection": "Partes de lesión",
+    "colInjuryDate": "Fecha",
+    "colInjuryPerson": "Persona",
+    "colInjuryDescription": "Descripción",
+    "noInjuryReportsDescription": "No hay partes de lesión registrados."
   },
   "Personas": {
     "title": "Personas",
@@ -779,6 +810,7 @@
     "federationCodeLabel": "Código federación",
     "federationCodePlaceholder": "Ej. 12345",
     "federationCodeShort": "Cód. {code}",
+    "noMedicalCheckupRequired": "No exige reconocimiento médico",
     "rosterSheetAction": "Acta federativa",
     "rosterSheetTitle": "Acta de equipo",
     "rosterSheetColName": "Apellidos, nombre",

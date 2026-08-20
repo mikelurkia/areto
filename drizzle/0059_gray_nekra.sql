@@ -1,0 +1,1 @@
+ALTER TABLE "teams" ADD COLUMN "requires_medical_checkup" boolean DEFAULT true NOT NULL;

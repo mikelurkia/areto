@@ -16,6 +16,7 @@ import {
   Megaphone,
   Settings,
   Shirt,
+  Stethoscope,
   Users,
   Wallet,
 } from "lucide-react";
@@ -148,6 +149,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
       ? [
           { title: tNav("socios"), href: "/socios", icon: IdCard },
           { title: tNav("inscripciones"), href: "/inscripciones", icon: ClipboardCheckIcon },
+          { title: tNav("medico"), href: "/medico", icon: Stethoscope },
         ]
       : []),
     { title: tNav("temporada"), href: "/temporadas", icon: ClipboardList },

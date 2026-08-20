@@ -215,16 +215,28 @@ export async function generateMetadata({
   };
 }
 
+const PERSON_TABS = [
+  "general",
+  "familia",
+  "equipos",
+  "titulaciones",
+  "medico",
+  "documentos",
+  "inscripciones",
+  "bitacora",
+] as const;
+
 export default async function PersonDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string; personId: string }>;
-  searchParams: Promise<{ from?: string; fromLabel?: string }>;
+  searchParams: Promise<{ from?: string; fromLabel?: string; tab?: string }>;
 }) {
   const { locale, personId } = await params;
-  const { from, fromLabel } = await searchParams;
+  const { from, fromLabel, tab } = await searchParams;
   const backHref = resolveBackHref(from, "/personas");
+  const initialTab = PERSON_TABS.find((value) => value === tab) ?? "general";
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
   await requireRole(["admin", "staff"]);
@@ -415,7 +427,7 @@ export default async function PersonDetailPage({
         </div>
       </div>
 
-      <Tabs defaultValue="general">
+      <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="general">{t("tabGeneral")}</TabsTrigger>
           <TabsTrigger value="familia">{t("tabFamily")}</TabsTrigger>
