@@ -104,6 +104,9 @@ export function TeamDialog(props: TeamDialogProps) {
                   {t("categoryLabel")}
                 </FieldLabel>
                 <Select
+                  key={
+                    props.mode === "edit" ? (props.team.category ?? "none") : "none"
+                  }
                   name="category"
                   defaultValue={
                     props.mode === "edit" ? (props.team.category ?? "none") : "none"
@@ -129,6 +132,9 @@ export function TeamDialog(props: TeamDialogProps) {
               <Field>
                 <FieldLabel htmlFor="team-gender">{t("genderLabel")}</FieldLabel>
                 <Select
+                  key={
+                    props.mode === "edit" ? (props.team.gender ?? "none") : "none"
+                  }
                   name="gender"
                   defaultValue={
                     props.mode === "edit" ? (props.team.gender ?? "none") : "none"
