@@ -1,0 +1,32 @@
+name: Backup producción
+
+# Mitigación provisional y de coste ~cero mientras el proyecto Supabase de
+# producción se queda en el plan Free (sin backups diarios/PITR gestionados).
+# No sustituye a un backup gestionado — solo cubre el escenario de borrado
+# accidental. Revisar si el proyecto sube a Supabase Pro.
+on:
+  schedule:
+    - cron: "17 3 * * *" # diario, hora de baja carga
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # pg_dump necesita la conexión DIRECTA (puerto 5432), no el pooler de
+      # transacciones (6543/pgbouncer) que usa la app — el pooler no soporta
+      # bien el patrón de sesión larga que usa pg_dump. Por eso este secret
+      # es distinto de PROD_DATABASE_URL.
+      - name: Dump de la base de datos
+        env:
+          PROD_DATABASE_URL_DIRECT: ${{ secrets.PROD_DATABASE_URL_DIRECT }}
+        run: |
+          pg_dump "$PROD_DATABASE_URL_DIRECT" --no-owner --no-privileges \
+            | gzip > areto-prod-backup.sql.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: areto-prod-backup-${{ github.run_id }}
+          path: areto-prod-backup.sql.gz
+          retention-days: 30

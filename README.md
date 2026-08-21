@@ -10,15 +10,32 @@ calendario, cuotas y comunicación en una sola herramienta.
 - **PostgreSQL** + **Drizzle ORM**
 - **Supabase Auth** (email+contraseña + Google OAuth) con roles
 
+## Entornos
+
+El proyecto usa **dos proyectos Supabase separados**:
+
+- **producción**: datos reales de socios y jugadores. Solo lo usa el entorno
+  "Production" de Vercel.
+- **areto-dev**: usado en local (`.env.local`) y por los entornos "Preview" y
+  "Development" de Vercel (incluidos los Preview Deployments de cada PR).
+
+Nunca apuntes `.env.local` al proyecto de producción. Ver [Puesta en
+marcha](#puesta-en-marcha) para crear `areto-dev`.
+
+Los PRs a `main` corren CI (`.github/workflows/ci.yml`): lint, typecheck,
+`db:migrate` contra `areto-dev` y `next build`. Las migraciones a producción
+se disparan a mano con el workflow `migrate-prod.yml` tras mergear.
+
 ## Puesta en marcha
 
 1. Instala dependencias:
    ```bash
    npm install
    ```
-2. Crea un proyecto en [Supabase](https://supabase.com) y configura el entorno.
-   Copia el ejemplo y rellena `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` y la
-   clave pública:
+2. Crea un proyecto en [Supabase](https://supabase.com) llamado, por ejemplo,
+   `areto-dev` (nunca reutilices el de producción para desarrollo local) y
+   configura el entorno. Copia el ejemplo y rellena `DATABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_URL` y la clave pública:
    ```bash
    cp .env.example .env.local
    ```

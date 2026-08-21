@@ -1,0 +1,26 @@
+name: Migrar producción
+
+# Disparo manual y explícito — nunca automático en el push a main. Lánzalo
+# justo después de que el PR mergeado haya desplegado en Vercel, para
+# minimizar la ventana entre "código nuevo desplegado" y "migración aplicada"
+# (mitigada además por disciplina expand/contract en el propio esquema).
+on:
+  workflow_dispatch: {}
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run db:migrate
