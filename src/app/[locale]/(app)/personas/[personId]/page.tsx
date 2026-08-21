@@ -43,6 +43,7 @@ import { DeleteInjuryReportDialog } from "@/components/personas/delete-injury-re
 import { DeleteMedicalCheckupDialog } from "@/components/personas/delete-medical-checkup-dialog";
 import { DeleteQualificationDialog } from "@/components/personas/delete-qualification-dialog";
 import { DocumentDialog } from "@/components/document-dialog";
+import { EntityFileTable } from "@/components/entity-file-table";
 import { FamilyPanel, type FamilyMember } from "@/components/personas/family-panel";
 import { InfoRow } from "@/components/info-row";
 import { InjuryReportDialog } from "@/components/personas/injury-report-dialog";
@@ -833,75 +834,48 @@ export default async function PersonDetailPage({
               {t("noQualificationsDescription")}
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("qualificationTitleLabel")}</TableHead>
-                  <TableHead>{t("qualificationIssuerLabel")}</TableHead>
-                  <TableHead>{t("qualificationExpiresOnLabel")}</TableHead>
-                  <TableHead>{t("qualificationViewFile")}</TableHead>
-                  {canManage ? (
-                    <TableHead className="text-right print:hidden">
-                      {t("colActions")}
-                    </TableHead>
-                  ) : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {person.qualifications.map((q) => {
-                  const isExpired = q.expiresOn ? q.expiresOn < today : false;
-                  const fileUrl = qualificationFileUrls.get(q.id) ?? null;
-                  return (
-                    <TableRow key={q.id}>
-                      <TableCell className="font-medium">{q.title}</TableCell>
-                      <TableCell>{q.issuer ?? "—"}</TableCell>
-                      <TableCell>
-                        {q.expiresOn ? (
-                          <Badge variant={isExpired ? "destructive" : "secondary"}>
-                            {isExpired
-                              ? t("qualificationExpiredBadge", { date: q.expiresOn })
-                              : t("qualificationExpiresBadge", { date: q.expiresOn })}
-                          </Badge>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {fileUrl ? (
-                          <a
-                            href={fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-primary hover:underline"
-                          >
-                            {t("qualificationViewFile")}
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      {canManage ? (
-                        <TableCell className="flex justify-end gap-1 print:hidden">
-                          <QualificationDialog
-                            mode="edit"
-                            qualification={{
-                              id: q.id,
-                              title: q.title,
-                              issuer: q.issuer,
-                              issuedOn: q.issuedOn,
-                              expiresOn: q.expiresOn,
-                              notes: q.notes,
-                            }}
-                            fileUrl={fileUrl}
-                          />
-                          <DeleteQualificationDialog id={q.id} title={q.title} />
-                        </TableCell>
-                      ) : null}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <EntityFileTable
+              items={person.qualifications}
+              canManage={canManage}
+              actionsLabel={t("colActions")}
+              viewFileLabel={t("qualificationViewFile")}
+              fileUrl={(q) => qualificationFileUrls.get(q.id) ?? null}
+              columns={[
+                { header: t("qualificationTitleLabel"), cell: (q) => q.title, className: "font-medium" },
+                { header: t("qualificationIssuerLabel"), cell: (q) => q.issuer ?? "—" },
+                {
+                  header: t("qualificationExpiresOnLabel"),
+                  cell: (q) => {
+                    if (!q.expiresOn) return "—";
+                    const isExpired = q.expiresOn < today;
+                    return (
+                      <Badge variant={isExpired ? "destructive" : "secondary"}>
+                        {isExpired
+                          ? t("qualificationExpiredBadge", { date: q.expiresOn })
+                          : t("qualificationExpiresBadge", { date: q.expiresOn })}
+                      </Badge>
+                    );
+                  },
+                },
+              ]}
+              renderActions={(q) => (
+                <>
+                  <QualificationDialog
+                    mode="edit"
+                    qualification={{
+                      id: q.id,
+                      title: q.title,
+                      issuer: q.issuer,
+                      issuedOn: q.issuedOn,
+                      expiresOn: q.expiresOn,
+                      notes: q.notes,
+                    }}
+                    fileUrl={qualificationFileUrls.get(q.id) ?? null}
+                  />
+                  <DeleteQualificationDialog id={q.id} title={q.title} />
+                </>
+              )}
+            />
           )}
         </TabsContent>
 
@@ -937,74 +911,51 @@ export default async function PersonDetailPage({
                     </Badge>
                   ) : null;
                 })()}
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("medicalCheckupOccurredOnLabel")}</TableHead>
-                      <TableHead>{t("medicalCheckupIssuerLabel")}</TableHead>
-                      <TableHead>{t("medicalCheckupExpiresOnLabel")}</TableHead>
-                      <TableHead>{t("medicalCheckupViewFile")}</TableHead>
-                      {canManage ? (
-                        <TableHead className="text-right print:hidden">
-                          {t("colActions")}
-                        </TableHead>
-                      ) : null}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {person.medicalCheckups.map((m) => {
-                      const isExpired = m.expiresOn ? m.expiresOn < today : false;
-                      const fileUrl = medicalCheckupFileUrls.get(m.id) ?? null;
-                      return (
-                        <TableRow key={m.id}>
-                          <TableCell className="font-medium">{m.occurredOn}</TableCell>
-                          <TableCell>{m.issuer ?? "—"}</TableCell>
-                          <TableCell>
-                            {m.expiresOn ? (
-                              <Badge variant={isExpired ? "destructive" : "secondary"}>
-                                {isExpired
-                                  ? t("medicalCheckupExpiredBadge", { date: m.expiresOn })
-                                  : t("medicalCheckupExpiresBadge", { date: m.expiresOn })}
-                              </Badge>
-                            ) : (
-                              "—"
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {fileUrl ? (
-                              <a
-                                href={fileUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-primary hover:underline"
-                              >
-                                {t("medicalCheckupViewFile")}
-                              </a>
-                            ) : (
-                              "—"
-                            )}
-                          </TableCell>
-                          {canManage ? (
-                            <TableCell className="flex justify-end gap-1 print:hidden">
-                              <MedicalCheckupDialog
-                                mode="edit"
-                                checkup={{
-                                  id: m.id,
-                                  occurredOn: m.occurredOn,
-                                  expiresOn: m.expiresOn,
-                                  issuer: m.issuer,
-                                  notes: m.notes,
-                                }}
-                                fileUrl={fileUrl}
-                              />
-                              <DeleteMedicalCheckupDialog id={m.id} date={m.occurredOn} />
-                            </TableCell>
-                          ) : null}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <EntityFileTable
+                  items={person.medicalCheckups}
+                  canManage={canManage}
+                  actionsLabel={t("colActions")}
+                  viewFileLabel={t("medicalCheckupViewFile")}
+                  fileUrl={(m) => medicalCheckupFileUrls.get(m.id) ?? null}
+                  columns={[
+                    {
+                      header: t("medicalCheckupOccurredOnLabel"),
+                      cell: (m) => m.occurredOn,
+                      className: "font-medium",
+                    },
+                    { header: t("medicalCheckupIssuerLabel"), cell: (m) => m.issuer ?? "—" },
+                    {
+                      header: t("medicalCheckupExpiresOnLabel"),
+                      cell: (m) => {
+                        if (!m.expiresOn) return "—";
+                        const isExpired = m.expiresOn < today;
+                        return (
+                          <Badge variant={isExpired ? "destructive" : "secondary"}>
+                            {isExpired
+                              ? t("medicalCheckupExpiredBadge", { date: m.expiresOn })
+                              : t("medicalCheckupExpiresBadge", { date: m.expiresOn })}
+                          </Badge>
+                        );
+                      },
+                    },
+                  ]}
+                  renderActions={(m) => (
+                    <>
+                      <MedicalCheckupDialog
+                        mode="edit"
+                        checkup={{
+                          id: m.id,
+                          occurredOn: m.occurredOn,
+                          expiresOn: m.expiresOn,
+                          issuer: m.issuer,
+                          notes: m.notes,
+                        }}
+                        fileUrl={medicalCheckupFileUrls.get(m.id) ?? null}
+                      />
+                      <DeleteMedicalCheckupDialog id={m.id} date={m.occurredOn} />
+                    </>
+                  )}
+                />
               </>
             )}
           </div>
@@ -1025,60 +976,36 @@ export default async function PersonDetailPage({
                 {t("noInjuryReportsDescription")}
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("injuryReportOccurredOnLabel")}</TableHead>
-                    <TableHead>{t("injuryReportDescriptionLabel")}</TableHead>
-                    <TableHead>{t("injuryReportViewFile")}</TableHead>
-                    {canManage ? (
-                      <TableHead className="text-right print:hidden">
-                        {t("colActions")}
-                      </TableHead>
-                    ) : null}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {person.injuryReports.map((r) => {
-                    const fileUrl = injuryReportFileUrls.get(r.id) ?? null;
-                    return (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-medium">{r.occurredOn}</TableCell>
-                        <TableCell>{r.description}</TableCell>
-                        <TableCell>
-                          {fileUrl ? (
-                            <a
-                              href={fileUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              {t("injuryReportViewFile")}
-                            </a>
-                          ) : (
-                            "—"
-                          )}
-                        </TableCell>
-                        {canManage ? (
-                          <TableCell className="flex justify-end gap-1 print:hidden">
-                            <InjuryReportDialog
-                              mode="edit"
-                              report={{
-                                id: r.id,
-                                occurredOn: r.occurredOn,
-                                description: r.description,
-                                notes: r.notes,
-                              }}
-                              fileUrl={fileUrl}
-                            />
-                            <DeleteInjuryReportDialog id={r.id} date={r.occurredOn} />
-                          </TableCell>
-                        ) : null}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <EntityFileTable
+                items={person.injuryReports}
+                canManage={canManage}
+                actionsLabel={t("colActions")}
+                viewFileLabel={t("injuryReportViewFile")}
+                fileUrl={(r) => injuryReportFileUrls.get(r.id) ?? null}
+                columns={[
+                  {
+                    header: t("injuryReportOccurredOnLabel"),
+                    cell: (r) => r.occurredOn,
+                    className: "font-medium",
+                  },
+                  { header: t("injuryReportDescriptionLabel"), cell: (r) => r.description },
+                ]}
+                renderActions={(r) => (
+                  <>
+                    <InjuryReportDialog
+                      mode="edit"
+                      report={{
+                        id: r.id,
+                        occurredOn: r.occurredOn,
+                        description: r.description,
+                        notes: r.notes,
+                      }}
+                      fileUrl={injuryReportFileUrls.get(r.id) ?? null}
+                    />
+                    <DeleteInjuryReportDialog id={r.id} date={r.occurredOn} />
+                  </>
+                )}
+              />
             )}
           </div>
         </TabsContent>
@@ -1105,75 +1032,47 @@ export default async function PersonDetailPage({
           {person.documents.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("noDocumentsDescription")}</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("documentLabelLabel")}</TableHead>
-                  <TableHead>{t("documentTypeColumn")}</TableHead>
-                  <TableHead>{t("documentNotesColumn")}</TableHead>
-                  <TableHead>{t("documentViewFile")}</TableHead>
-                  {canManage ? (
-                    <TableHead className="text-right print:hidden">
-                      {t("colActions")}
-                    </TableHead>
-                  ) : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {person.documents.map((d) => {
-                  const fileUrl = documentFileUrls.get(d.id) ?? null;
-                  const typeLabel = fileTypeLabel(d.fileName ?? d.filePath);
-                  return (
-                    <TableRow key={d.id}>
-                      <TableCell className="font-medium">{d.label}</TableCell>
-                      <TableCell>
-                        {typeLabel ? (
-                          <Badge variant="outline">{typeLabel}</Badge>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {d.notes ?? "—"}
-                      </TableCell>
-                      <TableCell>
-                        {fileUrl ? (
-                          <a
-                            href={fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-primary hover:underline"
-                          >
-                            {t("documentViewFile")}
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      {canManage ? (
-                        <TableCell className="flex justify-end gap-1 print:hidden">
-                          <DocumentDialog
-                            mode="edit"
-                            namespace="Personas"
-                            htmlIdPrefix="person-document"
-                            addAction={addPersonDocument}
-                            updateAction={updatePersonDocument}
-                            document={{ id: d.id, label: d.label, notes: d.notes }}
-                            fileUrl={fileUrl}
-                          />
-                          <DeleteDocumentDialog
-                            id={d.id}
-                            label={d.label}
-                            namespace="Personas"
-                            deleteAction={deletePersonDocument}
-                          />
-                        </TableCell>
-                      ) : null}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <EntityFileTable
+              items={person.documents}
+              canManage={canManage}
+              actionsLabel={t("colActions")}
+              viewFileLabel={t("documentViewFile")}
+              fileUrl={(d) => documentFileUrls.get(d.id) ?? null}
+              columns={[
+                { header: t("documentLabelLabel"), cell: (d) => d.label, className: "font-medium" },
+                {
+                  header: t("documentTypeColumn"),
+                  cell: (d) => {
+                    const typeLabel = fileTypeLabel(d.fileName ?? d.filePath);
+                    return typeLabel ? <Badge variant="outline">{typeLabel}</Badge> : "—";
+                  },
+                },
+                {
+                  header: t("documentNotesColumn"),
+                  cell: (d) => d.notes ?? "—",
+                  className: "text-muted-foreground",
+                },
+              ]}
+              renderActions={(d) => (
+                <>
+                  <DocumentDialog
+                    mode="edit"
+                    namespace="Personas"
+                    htmlIdPrefix="person-document"
+                    addAction={addPersonDocument}
+                    updateAction={updatePersonDocument}
+                    document={{ id: d.id, label: d.label, notes: d.notes }}
+                    fileUrl={documentFileUrls.get(d.id) ?? null}
+                  />
+                  <DeleteDocumentDialog
+                    id={d.id}
+                    label={d.label}
+                    namespace="Personas"
+                    deleteAction={deletePersonDocument}
+                  />
+                </>
+              )}
+            />
           )}
         </TabsContent>
 
