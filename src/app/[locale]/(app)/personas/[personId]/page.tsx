@@ -248,11 +248,17 @@ export default async function PersonDetailPage({
   const tInscripciones = await getTranslations("Inscripciones");
   const canManage = true;
 
-  // Primera tanda: todo lo que no depende de la propia ficha. Los equipos se
+  // `getPerson` va aparte del resto: es, con diferencia, la consulta más
+  // pesada de toda la app (una docena de relaciones, varias anidadas dos
+  // niveles), y sumarla al mismo `Promise.all` que consultas triviales es el
+  // patrón de concurrencia que ya coló el dashboard (ver `src/db/index.ts`).
+  const person = await getPerson(personId);
+  if (!person) notFound();
+
+  // Segunda tanda: todo lo que no depende de la propia ficha. Los equipos se
   // traen completos y se filtran en memoria (son pocas filas), así esta consulta
   // deja de esperar a que lleguen las membresías de la persona.
-  const [person, existingTagRows, allPersons, allTeams] = await Promise.all([
-    getPerson(personId),
+  const [existingTagRows, allPersons, allTeams] = await Promise.all([
     db.selectDistinct({ tag: personTags.tag }).from(personTags).orderBy(personTags.tag),
     db.query.persons.findMany({
       columns: { id: true, firstName: true, lastName: true, birthDate: true },
@@ -262,7 +268,6 @@ export default async function PersonDetailPage({
       orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
     }),
   ]);
-  if (!person) notFound();
 
   const existingTags = existingTagRows.map((r) => r.tag);
 
