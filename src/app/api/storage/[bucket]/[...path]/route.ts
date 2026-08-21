@@ -40,7 +40,7 @@ const SAFE_INLINE_TYPES = new Set([
 ]);
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ bucket: string; path: string[] }> },
 ) {
   const { bucket, path } = await params;
@@ -75,8 +75,13 @@ export async function GET(
   const rawType = data.type || "application/octet-stream";
   const contentType = SAFE_INLINE_TYPES.has(rawType) ? rawType : "application/octet-stream";
   const disposition = SAFE_INLINE_TYPES.has(rawType) ? "inline" : "attachment";
-  const filename = (path[path.length - 1] ? decodeURIComponent(path[path.length - 1]) : "file")
-    .replace(/["\r\n]/g, "");
+  // El propio call site conoce el objeto (p. ej. el nombre de la persona) y
+  // puede pedir un nombre más útil que el interno de Storage (`photo.jpg`)
+  // vía `?filename=`; si no lo pide, se cae al último segmento de la ruta.
+  const requestedFilename = new URL(request.url).searchParams.get("filename");
+  const filename = (
+    requestedFilename ?? (path[path.length - 1] ? decodeURIComponent(path[path.length - 1]) : "file")
+  ).replace(/["\r\n]/g, "");
 
   return new NextResponse(data, {
     headers: {

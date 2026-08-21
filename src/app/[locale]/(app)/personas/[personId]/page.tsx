@@ -28,7 +28,7 @@ import { calculateAge, isMinor } from "@/lib/age";
 import { getBankName } from "@/lib/bank";
 import { fileTypeLabel } from "@/lib/file-type";
 import { formatDateTime } from "@/lib/format-date";
-import { personPhotoThumbPath } from "@/lib/person-photo";
+import { personPhotoDownloadName, personPhotoThumbPath } from "@/lib/person-photo";
 import { STATUS_VARIANT } from "@/lib/registration-status";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { teamSeasonLabel } from "@/lib/team-label";
@@ -301,6 +301,13 @@ export default async function PersonDetailPage({
 
   const today = new Date().toISOString().slice(0, 10);
   const fullName = `${person.firstName} ${person.lastName}`;
+  const photoDownloadName = person.photoPath
+    ? personPhotoDownloadName(fullName, person.photoPath)
+    : null;
+  const photoDownloadUrl =
+    photoUrl && photoDownloadName
+      ? `${photoUrl}?filename=${encodeURIComponent(photoDownloadName)}`
+      : photoUrl;
   const consentDateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
   const fmtConsentDate = (d: Date | string | null) => (d ? consentDateFmt.format(new Date(d)) : null);
   const photoConsentDate = fmtConsentDate(person.photoConsentAt);
@@ -346,7 +353,7 @@ export default async function PersonDetailPage({
           <div className="relative">
             {photoUrl ? (
               <a
-                href={photoUrl}
+                href={photoDownloadUrl!}
                 target="_blank"
                 rel="noreferrer"
                 aria-label={t("viewOriginalPhotoAction")}
@@ -434,7 +441,7 @@ export default async function PersonDetailPage({
             <Button
               variant="outline"
               size="sm"
-              render={<a href={photoUrl} download />}
+              render={<a href={photoDownloadUrl!} download={photoDownloadName ?? undefined} />}
               nativeButton={false}
             >
               <DownloadIcon data-icon="inline-start" />
