@@ -7,6 +7,9 @@ name: Migrar producción
 on:
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+
 jobs:
   migrate:
     runs-on: ubuntu-latest
