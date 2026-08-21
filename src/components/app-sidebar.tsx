@@ -67,6 +67,7 @@ type AppSidebarBodyProps = {
  * Lo que necesita la sesión va en `children`, envuelto en su propio <Suspense>.
  */
 export function AppSidebar({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("Landing");
   return (
     <Sidebar>
       <SidebarHeader>
@@ -80,7 +81,12 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             className="size-8 shrink-0 object-contain"
             priority
           />
-          <span className="font-semibold">Areto</span>
+          <div className="leading-tight">
+            <span className="block font-semibold">{t("brand")}</span>
+            <span className="block text-xs text-muted-foreground">
+              {t("brandSubtitle")}
+            </span>
+          </div>
         </div>
       </SidebarHeader>
       {children}
