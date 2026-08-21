@@ -348,11 +348,11 @@ async function IntegrityCard() {
     db.query.seasons.findFirst({ where: eq(seasons.isCurrent, true), columns: { id: true } }),
   ]);
 
-  const [issues, duplicatePersonsCount, renewals] = await Promise.all([
+  const [issues, duplicatePersonsCount] = await Promise.all([
     loadDataIntegrityIssues(currentSeason?.id ?? null),
     countDuplicatePersonGroups(),
-    currentSeason ? loadSeasonRenewals(currentSeason.id) : Promise.resolve(null),
   ]);
+  const renewals = currentSeason ? await loadSeasonRenewals(currentSeason.id) : null;
 
   const rows: IntegrityRow[] = [
     ...issues,
