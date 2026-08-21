@@ -1,5 +1,7 @@
 # Areto
 
+![CI](https://github.com/mikelurkia/areto/actions/workflows/ci.yml/badge.svg)
+
 Aplicación web para la **gestión de un club de fútbol sala**: personas, equipos,
 calendario, cuotas y comunicación en una sola herramienta.
 
