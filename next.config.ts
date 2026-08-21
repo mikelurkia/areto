@@ -12,6 +12,22 @@ const nextConfig: NextConfig = {
    * como error en desarrollo y en build.
    */
   cacheComponents: true,
+  // El binario nativo de `sharp` para Linux vive en paquetes aparte
+  // (`@img/sharp-linux-x64`, `@img/sharp-libvips-linux-x64`) que el file
+  // tracing de Next no detecta solo (sharp lo carga con dlopen, no con un
+  // require estático). Sin esto, cualquier función serverless que importe
+  // (aunque sea transitivamente, vía una server action) `resizeImageToWebp`
+  // se despliega sin el .so y revienta en runtime con
+  // ERR_DLOPEN_FAILED — visto en producción como "Connection closed" en
+  // páginas que ni usan la foto (p. ej. la ficha de persona, que solo
+  // importa acciones del mismo módulo que sí redimensiona imágenes).
+  outputFileTracingIncludes: {
+    "/*": [
+      "node_modules/sharp/**/*",
+      "node_modules/@img/sharp-linux-x64/**/*",
+      "node_modules/@img/sharp-libvips-linux-x64/**/*",
+    ],
+  },
   experimental: {
     // El formulario de inscripción envía hasta 3 ficheros (foto + DNI ambas
     // caras) de hasta 5MB cada uno (ver MAX_PHOTO_BYTES en inscripcion/actions.ts).
