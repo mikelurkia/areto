@@ -1,12 +1,13 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { memberships, playerPosition, teamDocuments, teamNotes } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
 
@@ -132,6 +133,7 @@ export async function updateTeamCaptain(
     });
   }
 
+  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("captainUpdated") };
 }

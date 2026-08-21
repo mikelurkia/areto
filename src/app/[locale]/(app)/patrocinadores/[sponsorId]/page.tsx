@@ -21,9 +21,10 @@ import {
 import { requireRole } from "@/lib/auth";
 import { resolveBackHref } from "@/lib/back-href";
 import { fileTypeLabel } from "@/lib/file-type";
-import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
+import { getPublicUrl, getSignedUrls } from "@/lib/supabase/storage";
 import {
   annualEquivalentCents,
+  logoThumbPath,
   seasonLabel,
   seasonYearOf,
   sponsorshipStatus,
@@ -130,8 +131,14 @@ export default async function SponsorDetailPage({
   ]);
   if (!sponsor) notFound();
 
-  const [logoUrl, contractUrls, documentFileUrls] = await Promise.all([
-    getSignedUrl(LOGO_BUCKET, sponsor.logoPath),
+  // Miniatura para el avatar de la cabecera; el original a tamaño completo
+  // solo se pide si el visitante hace clic en "ver logo original".
+  const logoThumbUrl = getPublicUrl(
+    LOGO_BUCKET,
+    sponsor.logoPath ? logoThumbPath(sponsor.logoPath) : null,
+  );
+  const logoUrl = getPublicUrl(LOGO_BUCKET, sponsor.logoPath);
+  const [contractUrls, documentFileUrls] = await Promise.all([
     getSignedUrls(CONTRACT_BUCKET, sponsor.terms, (term) => term.contractPath, (term) => term.id),
     getSignedUrls(DOCUMENTS_BUCKET, sponsor.documents, (d) => d.filePath, (d) => d.id),
   ]);
@@ -206,13 +213,30 @@ export default async function SponsorDetailPage({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="flex size-14 items-center justify-center rounded border bg-muted/30 p-1.5">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logoUrl}
-                alt=""
-                className="max-h-full max-w-full object-contain"
-              />
+            {logoThumbUrl ? (
+              logoUrl ? (
+                <a
+                  href={logoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={t("viewOriginalLogoAction")}
+                  title={t("viewOriginalLogoAction")}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={logoThumbUrl}
+                    alt=""
+                    className="max-h-full max-w-full object-contain"
+                  />
+                </a>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoThumbUrl}
+                  alt=""
+                  className="max-h-full max-w-full object-contain"
+                />
+              )
             ) : (
               <HandshakeIcon className="size-5 text-muted-foreground" />
             )}
@@ -231,7 +255,7 @@ export default async function SponsorDetailPage({
           <SponsorDialog
             mode="edit"
             sponsor={sponsor}
-            logoUrl={logoUrl}
+            logoUrl={logoThumbUrl}
             personOptions={allPersons}
           />
           <DeleteSponsorDialog id={sponsor.id} name={sponsor.name} />

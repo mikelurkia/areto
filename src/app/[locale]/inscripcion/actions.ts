@@ -10,6 +10,8 @@ import { stampConsent } from "@/lib/consent";
 import { isValidIban } from "@/lib/iban";
 import { isValidNationalId } from "@/lib/national-id";
 import { readGuardians } from "@/lib/registration-guardians";
+import { resizeImageToWebp } from "@/lib/image-resize";
+import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getRegistrationAvailability } from "@/lib/registration-settings";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { extensionFromMimeType, uploadFileAsAdmin } from "@/lib/supabase/storage";
@@ -61,6 +63,12 @@ const PHOTO_BUCKET = "registration-documents";
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
 const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+// Solo para la foto del jugador (no el DNI): miniatura para la comparación en
+// la revisión de la inscripción. El original se conserva tal cual, porque si
+// se aprueba pasa a ser la foto de la persona (ver `inscripciones/actions.ts`),
+// y de ahí se puede descargar a tamaño completo para trámites federativos.
+const PHOTO_THUMB_MAX_DIMENSION = 256;
+
 function readFile(formData: FormData, key: string): File | null {
   const file = formData.get(key);
   if (!(file instanceof File) || file.size === 0) return null;
@@ -88,8 +96,14 @@ async function uploadRegistrationPhoto(
   slot: "photo" | "id-front" | "id-back",
   file: File,
 ): Promise<string> {
+  // El DNI (id-front/id-back) se sube tal cual: es un documento que debe
+  // seguir siendo legible, no una foto ilustrativa.
   const path = `${registrationId}/${slot}.${extensionFromMimeType(file.type)}`;
   await uploadFileAsAdmin(PHOTO_BUCKET, path, file);
+  if (slot === "photo") {
+    const thumb = await resizeImageToWebp(file, PHOTO_THUMB_MAX_DIMENSION);
+    await uploadFileAsAdmin(PHOTO_BUCKET, personPhotoThumbPath(path), thumb);
+  }
   return path;
 }
 

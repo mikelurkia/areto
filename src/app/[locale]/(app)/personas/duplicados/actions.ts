@@ -1,7 +1,7 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -19,6 +19,8 @@ import {
   users,
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { DUPLICATE_PERSONS_TAG, INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
+import { personPhotoThumbPath } from "@/lib/person-photo";
 import { createClient } from "@/lib/supabase/server";
 
 export type MergeState = {
@@ -246,9 +248,13 @@ export async function mergePersons(
 
   if (orphanedPhotoPath) {
     const supabase = await createClient();
-    await supabase.storage.from(PHOTO_BUCKET).remove([orphanedPhotoPath]);
+    await supabase.storage
+      .from(PHOTO_BUCKET)
+      .remove([orphanedPhotoPath, personPhotoThumbPath(orphanedPhotoPath)]);
   }
 
+  updateTag(DUPLICATE_PERSONS_TAG);
+  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("mergeSuccess") };
 }

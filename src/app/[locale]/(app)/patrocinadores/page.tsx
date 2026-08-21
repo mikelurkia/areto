@@ -3,9 +3,10 @@ import { ExternalLinkIcon, ReceiptTextIcon, TriangleAlertIcon } from "lucide-rea
 
 import { db } from "@/db";
 import { requireRole } from "@/lib/auth";
-import { getSignedUrls } from "@/lib/supabase/storage";
+import { getPublicUrls, getSignedUrls } from "@/lib/supabase/storage";
 import {
   annualEquivalentCents,
+  logoThumbPath,
   pickCurrentTerm,
   seasonLabel,
   seasonYearOf,
@@ -164,10 +165,19 @@ export default async function PatrocinadoresPage({
     (term) => term?.contractPath,
   );
 
-  const [logoUrls, contractUrls] = await Promise.all([
-    getSignedUrls(LOGO_BUCKET, withLogo, (s) => s.logoPath, (s) => s.id),
-    getSignedUrls(CONTRACT_BUCKET, withContract, (term) => term?.contractPath, (term) => term!.id),
-  ]);
+  // Listado: solo hace falta el avatar en miniatura, no el logo a tamaño completo.
+  const logoUrls = getPublicUrls(
+    LOGO_BUCKET,
+    withLogo,
+    (s) => (s.logoPath ? logoThumbPath(s.logoPath) : null),
+    (s) => s.id,
+  );
+  const contractUrls = await getSignedUrls(
+    CONTRACT_BUCKET,
+    withContract,
+    (term) => term?.contractPath,
+    (term) => term!.id,
+  );
 
   const sponsorRows = allSponsors.map((s) => {
     const currentTerm = currentTermBySponsor.get(s.id) ?? null;

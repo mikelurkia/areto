@@ -60,9 +60,13 @@ export default async function TemporadaDetailPage({
   const tEquipos = await getTranslations("Equipos");
   const canManage = user.role === "admin" || user.role === "staff";
 
-  // Las cuatro consultas se resuelven con el `seasonId` de la URL, así que van en
-  // paralelo; la temporada actual se descarta después del listado completo.
-  const [season, seasonTeams, allSeasons, renewals] = await Promise.all([
+  // Las tres consultas de la temporada se resuelven con el `seasonId` de la
+  // URL, así que van en paralelo. `loadSeasonRenewals` va aparte: por debajo
+  // dispara sus propias queries (cruza plantilla e inscripciones), y sumarlas
+  // al mismo `Promise.all` es justo el patrón de concurrencia que causó el
+  // cuelgue del dashboard — como ya está cacheada (`"use cache"`), el coste
+  // real de secuenciarla solo se paga en cache-miss.
+  const [season, seasonTeams, allSeasons] = await Promise.all([
     getSeason(seasonId),
     db.query.teams.findMany({
       where: eq(teams.seasonId, seasonId),
@@ -79,9 +83,9 @@ export default async function TemporadaDetailPage({
           },
         })
       : [],
-    loadSeasonRenewals(seasonId),
   ]);
   if (!season) notFound();
+  const renewals = await loadSeasonRenewals(seasonId);
 
   // Temporadas de origen para "traer equipos en lote": las demás temporadas con
   // al menos un equipo. Marcamos los que ya se trajeron a esta (previousTeamId).

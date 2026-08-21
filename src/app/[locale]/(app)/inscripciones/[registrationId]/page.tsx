@@ -8,6 +8,7 @@ import { registrations, teams } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format-date";
 import { findCandidates } from "@/lib/person-matching";
+import { personPhotoThumbPath } from "@/lib/person-photo";
 import { STATUS_VARIANT } from "@/lib/registration-status";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
@@ -71,17 +72,27 @@ export default async function RegistrationDetailPage({
       with: { season: true },
       orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
     }),
-    getSignedUrl(PHOTO_BUCKET, registration.photoPath),
+    // Solo se usa como miniatura de comparación/revisión (64-128px), nunca a
+    // tamaño completo, así que basta con la miniatura.
+    getSignedUrl(
+      PHOTO_BUCKET,
+      registration.photoPath ? personPhotoThumbPath(registration.photoPath) : null,
+    ),
     getSignedUrl(PHOTO_BUCKET, registration.idFrontPath),
     getSignedUrl(PHOTO_BUCKET, registration.idBackPath),
   ]);
 
   // Solo la persona principal tiene foto/DNI nuevos que comparar (los tutores
-  // no llevan ficheros en el formulario), así que solo firmamos sus propias
-  // coincidencias — un conjunto pequeño, no toda la tabla de personas.
+  // no llevan ficheros en el formulario), así que solo resolvemos las URLs de
+  // sus propias coincidencias — un conjunto pequeño, no toda la tabla de personas.
   const mainCandidates = findCandidates(registration, allPersons);
   const [candidatePhotoUrls, candidateIdFrontUrls, candidateIdBackUrls] = await Promise.all([
-    getSignedUrls(PERSON_PHOTO_BUCKET, mainCandidates, (p) => p.photoPath, (p) => p.id),
+    getSignedUrls(
+      PERSON_PHOTO_BUCKET,
+      mainCandidates,
+      (p) => (p.photoPath ? personPhotoThumbPath(p.photoPath) : null),
+      (p) => p.id,
+    ),
     getSignedUrls(PERSON_DOCUMENTS_BUCKET, mainCandidates, (p) => p.idFrontPath, (p) => p.id),
     getSignedUrls(PERSON_DOCUMENTS_BUCKET, mainCandidates, (p) => p.idBackPath, (p) => p.id),
   ]);

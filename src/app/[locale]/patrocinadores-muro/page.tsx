@@ -9,12 +9,13 @@ import { PublicFooter } from "@/components/public/public-footer";
 
 import { db } from "@/db";
 import { getClubSettings } from "@/lib/club";
-import { pickCurrentTerm, sponsorshipStatus, SPONSORSHIP_EXPIRY_WINDOW_DAYS } from "@/lib/sponsorship";
 import {
-  createAdminClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
-import { getSignedUrls } from "@/lib/supabase/storage";
+  logoThumbPath,
+  pickCurrentTerm,
+  sponsorshipStatus,
+  SPONSORSHIP_EXPIRY_WINDOW_DAYS,
+} from "@/lib/sponsorship";
+import { getPublicUrls } from "@/lib/supabase/storage";
 
 const LOGO_BUCKET = "sponsorship-logos";
 
@@ -37,9 +38,11 @@ type WallSponsor = {
 };
 
 /**
- * Rejilla de patrocinadores vigentes. Se queda sin cachear a propósito: las URL
- * firmadas de los logos caducan en una hora, así que se calculan por petición y
- * fluyen tras el armazón (cabecera y titular, que sí son estáticos).
+ * Rejilla de patrocinadores vigentes. Se queda sin cachear a propósito: la
+ * vigencia del patrocinio se recalcula por petición y fluye tras el armazón
+ * (cabecera y titular, que sí son estáticos). Los logos en sí sí son
+ * cacheables por el navegador: `sponsorship-logos` es un bucket público y
+ * `getPublicUrls` devuelve una URL estable, sin token que cambie en cada render.
  */
 async function SponsorWall() {
   const t = await getTranslations("Patrocinadores");
@@ -69,17 +72,14 @@ async function SponsorWall() {
       (x) => x.status === "active" || x.status === "expiringSoon",
     );
 
-  // Firma de logos (bucket privado) con la clave de servicio, para poder
-  // mostrarlos en una página pública sin sesión.
-  const logoUrls = isSupabaseAdminConfigured
-    ? await getSignedUrls(
-        LOGO_BUCKET,
-        active,
-        (x) => x.sponsor.logoPath,
-        (x) => x.sponsor.id,
-        { client: createAdminClient() },
-      )
-    : new Map<string, string>();
+  // El muro solo muestra el avatar en miniatura; el original a tamaño
+  // completo se ve desde la ficha del patrocinador (fuera de esta página).
+  const logoUrls = getPublicUrls(
+    LOGO_BUCKET,
+    active,
+    (x) => (x.sponsor.logoPath ? logoThumbPath(x.sponsor.logoPath) : null),
+    (x) => x.sponsor.id,
+  );
 
   const sponsors: WallSponsor[] = active.map((x) => ({
     id: x.sponsor.id,

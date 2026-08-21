@@ -1,11 +1,7 @@
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-
-type SignedUrlOptions = { client?: SupabaseClient; expiresIn?: number };
 
 /** Extensión de archivo a partir de su MIME type, para nombrar objetos en Storage. */
 export function extensionFromMimeType(type: string): string {
@@ -70,42 +66,79 @@ export async function removeFile(bucket: string, path: string): Promise<void> {
   await supabase.storage.from(bucket).remove([path]);
 }
 
-/** URL firmada temporal (1h por defecto) de un objeto de Storage, o null si no hay ruta. */
-export async function getSignedUrl(
-  bucket: string,
-  path: string | null | undefined,
-  options?: SignedUrlOptions,
-): Promise<string | null> {
-  if (!path) return null;
-  const supabase = options?.client ?? (await createClient());
-  const { data } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(path, options?.expiresIn ?? 3600);
-  return data?.signedUrl ?? null;
+/** Descarga un objeto de Storage. Para regenerar una miniatura a partir del original ya subido. */
+export async function downloadFile(bucket: string, path: string): Promise<Blob> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from(bucket).download(path);
+  if (error || !data) throw error ?? new Error(`No se pudo descargar ${bucket}/${path}`);
+  return data;
 }
 
 /**
- * Firma en lote las rutas de una colección de items, devolviendo un Map
- * clave → URL. `getPath`/`getKey` extraen la ruta de storage y la clave del
- * item (normalmente su id); los items sin ruta se omiten. Usa la API de lote
- * de Supabase (una sola petición por bucket).
+ * Ruta estable (no firmada) a un objeto de un bucket privado, servida por el
+ * proxy `/api/storage/[bucket]/[...path]` (ver ese route handler). Antes esta
+ * función devolvía una URL firmada distinta en cada render, lo que impedía al
+ * navegador cachear la imagen entre visitas: cada carga de página volvía a
+ * descargar el fichero entero desde Supabase (coste de egress repetido). El
+ * proxy comprueba la sesión en cada petición igual que antes, pero al ser una
+ * URL estable el navegador sí puede cachear la respuesta (ver `Cache-Control`
+ * en el route handler).
+ */
+function storageProxyPath(bucket: string, path: string): string {
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  return `/api/storage/${bucket}/${encodedPath}`;
+}
+
+/** Async por compatibilidad con los call sites existentes (`await`/`Promise.all`); no hace ninguna llamada de red. */
+export async function getSignedUrl(
+  bucket: string,
+  path: string | null | undefined,
+): Promise<string | null> {
+  if (!path) return null;
+  return storageProxyPath(bucket, path);
+}
+
+/**
+ * Variante en lote de `getSignedUrl`, devolviendo un Map clave → URL.
+ * `getPath`/`getKey` extraen la ruta de storage y la clave del item
+ * (normalmente su id); los items sin ruta se omiten.
  */
 export async function getSignedUrls<T>(
   bucket: string,
   items: readonly T[],
   getPath: (item: T) => string | null | undefined,
   getKey: (item: T) => string,
-  options?: SignedUrlOptions,
 ): Promise<Map<string, string>> {
   const urls = new Map<string, string>();
-  const withPath = items.filter((item) => !!getPath(item));
-  if (withPath.length === 0) return urls;
-  const supabase = options?.client ?? (await createClient());
-  const { data } = await supabase.storage
-    .from(bucket)
-    .createSignedUrls(withPath.map((item) => getPath(item) as string), options?.expiresIn ?? 3600);
-  data?.forEach((entry, i) => {
-    if (entry.signedUrl) urls.set(getKey(withPath[i]), entry.signedUrl);
-  });
+  for (const item of items) {
+    const path = getPath(item);
+    if (path) urls.set(getKey(item), storageProxyPath(bucket, path));
+  }
+  return urls;
+}
+
+/**
+ * URL pública y estable de un objeto en un bucket público (p.ej. logos de
+ * patrocinador, en `sponsorship-logos`). No expira y el navegador la cachea
+ * entre visitas sin pasar por nuestro servidor.
+ */
+export function getPublicUrl(bucket: string, path: string | null | undefined): string | null {
+  if (!path) return null;
+  const supabase = createAdminClient();
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
+/** Variante en lote de `getPublicUrl`, devolviendo un Map clave → URL. */
+export function getPublicUrls<T>(
+  bucket: string,
+  items: readonly T[],
+  getPath: (item: T) => string | null | undefined,
+  getKey: (item: T) => string,
+): Map<string, string> {
+  const urls = new Map<string, string>();
+  for (const item of items) {
+    const url = getPublicUrl(bucket, getPath(item));
+    if (url) urls.set(getKey(item), url);
+  }
   return urls;
 }

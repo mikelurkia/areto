@@ -2,6 +2,7 @@ import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import {
   CreditCardIcon,
+  DownloadIcon,
   MailIcon,
   MessageCircleIcon,
   PhoneIcon,
@@ -27,6 +28,7 @@ import { calculateAge, isMinor } from "@/lib/age";
 import { getBankName } from "@/lib/bank";
 import { fileTypeLabel } from "@/lib/file-type";
 import { formatDateTime } from "@/lib/format-date";
+import { personPhotoThumbPath } from "@/lib/person-photo";
 import { STATUS_VARIANT } from "@/lib/registration-status";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { teamSeasonLabel } from "@/lib/team-label";
@@ -152,11 +154,12 @@ async function FamilySection({
     (a.birthDate ?? "").localeCompare(b.birthDate ?? ""),
   );
 
-  // Fotos de todos los familiares en una sola tanda de URLs firmadas.
+  // Fotos de todos los familiares, en una sola tanda. Solo miniatura: aquí
+  // solo se identifica a cada familiar, el original se ve desde su propia ficha.
   const familyPhotoUrls = await getSignedUrls(
     PHOTO_BUCKET,
     [...guardians, ...siblings, ...dependents],
-    (p) => p.photoPath,
+    (p) => (p.photoPath ? personPhotoThumbPath(p.photoPath) : null),
     (p) => p.id,
   );
 
@@ -271,10 +274,10 @@ export default async function PersonDetailPage({
       label: teamSeasonLabel(team, team.season),
     }));
 
-  // Segunda tanda: las firmas de Storage que necesita la ficha ya cargada. Lo de
+  // Segunda tanda: las URLs de Storage que necesita la ficha ya cargada. Lo de
   // la familia va por su cuenta, en <FamilySection>.
   const [
-    photoUrl,
+    photoThumbUrl,
     idFrontUrl,
     idBackUrl,
     qualificationFileUrls,
@@ -282,7 +285,9 @@ export default async function PersonDetailPage({
     medicalCheckupFileUrls,
     injuryReportFileUrls,
   ] = await Promise.all([
-    getSignedUrl(PHOTO_BUCKET, person.photoPath),
+    // Avatar de cabecera: solo miniatura. El original (para descargar y usar
+    // en trámites federativos) se pide aparte, más abajo.
+    getSignedUrl(PHOTO_BUCKET, person.photoPath ? personPhotoThumbPath(person.photoPath) : null),
     getSignedUrl(DOCUMENTS_BUCKET, person.idFrontPath),
     getSignedUrl(DOCUMENTS_BUCKET, person.idBackPath),
     getSignedUrls(QUALIFICATIONS_BUCKET, person.qualifications, (q) => q.filePath, (q) => q.id),
@@ -290,6 +295,9 @@ export default async function PersonDetailPage({
     getSignedUrls(MEDICAL_CHECKUPS_BUCKET, person.medicalCheckups, (m) => m.filePath, (m) => m.id),
     getSignedUrls(INJURY_REPORTS_BUCKET, person.injuryReports, (r) => r.filePath, (r) => r.id),
   ]);
+  // Foto a tamaño completo: solo se pide para el enlace de "ver/descargar
+  // original" (no se muestra inline en ningún sitio).
+  const photoUrl = await getSignedUrl(PHOTO_BUCKET, person.photoPath);
 
   const today = new Date().toISOString().slice(0, 10);
   const fullName = `${person.firstName} ${person.lastName}`;
@@ -336,15 +344,31 @@ export default async function PersonDetailPage({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <Avatar size="lg">
-              {photoUrl ? <AvatarImage src={photoUrl} alt="" /> : null}
-              <AvatarFallback>
-                <UserRoundIcon className="size-5" />
-              </AvatarFallback>
-            </Avatar>
+            {photoUrl ? (
+              <a
+                href={photoUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={t("viewOriginalPhotoAction")}
+                title={t("viewOriginalPhotoAction")}
+              >
+                <Avatar size="lg">
+                  {photoThumbUrl ? <AvatarImage src={photoThumbUrl} alt="" /> : null}
+                  <AvatarFallback>
+                    <UserRoundIcon className="size-5" />
+                  </AvatarFallback>
+                </Avatar>
+              </a>
+            ) : (
+              <Avatar size="lg">
+                <AvatarFallback>
+                  <UserRoundIcon className="size-5" />
+                </AvatarFallback>
+              </Avatar>
+            )}
             {canManage ? (
               <span className="absolute -bottom-1 -right-1 print:hidden">
-                <PersonPhotoDialog personId={person.id} photoUrl={photoUrl} />
+                <PersonPhotoDialog personId={person.id} photoUrl={photoThumbUrl} />
               </span>
             ) : null}
           </div>
@@ -406,6 +430,17 @@ export default async function PersonDetailPage({
             <ShieldCheckIcon data-icon="inline-start" />
             {t("rgpdExportAction")}
           </Button>
+          {photoUrl ? (
+            <Button
+              variant="outline"
+              size="sm"
+              render={<a href={photoUrl} download />}
+              nativeButton={false}
+            >
+              <DownloadIcon data-icon="inline-start" />
+              {t("downloadOriginalPhotoAction")}
+            </Button>
+          ) : null}
           <PrintButton label={t("printAction")} />
           {canManage ? (
             <PersonDialog
@@ -420,7 +455,7 @@ export default async function PersonDetailPage({
                   lastName: r.guardian.lastName,
                 })),
               }}
-              photoUrl={photoUrl}
+              photoUrl={photoThumbUrl}
               guardianOptions={allPersons}
             />
           ) : null}

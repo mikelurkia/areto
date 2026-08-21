@@ -41,7 +41,7 @@ export function HeroCarousel() {
       className="w-full max-w-md"
     >
       <CarouselContent className="-ml-0">
-        {SLIDES.map((slide) => {
+        {SLIDES.map((slide, index) => {
           const title = t(`${slide.key}.title`);
           const hasPhoto = !failed[slide.key];
 
@@ -60,6 +60,7 @@ export function HeroCarousel() {
                     fill
                     sizes="(min-width: 768px) 28rem, 90vw"
                     className="object-cover"
+                    priority={index === 0}
                     onError={() => setFailed((prev) => ({ ...prev, [slide.key]: true }))}
                   />
                 ) : (

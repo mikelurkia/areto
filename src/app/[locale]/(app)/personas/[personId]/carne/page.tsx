@@ -10,6 +10,7 @@ import { db } from "@/db";
 import { persons } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
+import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getSignedUrl } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
 import { AssignMemberNumberButton } from "@/components/personas/assign-member-number-button";
@@ -60,7 +61,10 @@ export default async function MemberCardPage({
   const isMember = person.clubMember?.status === "active";
   const memberNumber = person.clubMember?.memberNumber ?? null;
 
-  const photoUrl = await getSignedUrl(PHOTO_BUCKET, person.photoPath);
+  const photoUrl = await getSignedUrl(
+    PHOTO_BUCKET,
+    person.photoPath ? personPhotoThumbPath(person.photoPath) : null,
+  );
 
   // QR con enlace absoluto a la ficha de la persona.
   const h = await headers();

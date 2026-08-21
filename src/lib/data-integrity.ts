@@ -1,9 +1,15 @@
 import "server-only";
 
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 
 import { db } from "@/db";
 import { memberships, persons, registrations, sponsorshipTerms } from "@/db/schema";
+import { findDuplicatePersonGroups } from "@/lib/person-matching";
+
+/** Etiquetas de caché de las tarjetas de incoherencias del dashboard. */
+export const INTEGRITY_ISSUES_TAG = "data-integrity-issues";
+export const DUPLICATE_PERSONS_TAG = "duplicate-persons";
 
 export type IntegritySeverity = "hard" | "soft";
 
@@ -175,6 +181,10 @@ async function countSponsorshipMismatches(): Promise<number> {
 export async function loadDataIntegrityIssues(
   currentSeasonId: string | null,
 ): Promise<IntegrityIssue[]> {
+  "use cache";
+  cacheTag(INTEGRITY_ISSUES_TAG);
+  cacheLife("minutes");
+
   const [orphanPlayers, missingNationalId, medicalCertMismatch, duplicateCaptains, sponsorshipMismatch] =
     await Promise.all([
       countOrphanPlayers(),
@@ -208,4 +218,28 @@ export async function loadDataIntegrityIssues(
   ];
 
   return issues.filter((issue) => issue.count > 0);
+}
+
+/**
+ * Recuento de posibles duplicados de personas para la tarjeta de
+ * incoherencias del dashboard (el detalle completo, con las herramientas de
+ * fusión, vive en `/personas/duplicados`).
+ */
+export async function countDuplicatePersonGroups(): Promise<number> {
+  "use cache";
+  cacheTag(DUPLICATE_PERSONS_TAG);
+  cacheLife("minutes");
+
+  const allPersons = await db.query.persons.findMany({
+    columns: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      nationalId: true,
+      email: true,
+      phone: true,
+      iban: true,
+    },
+  });
+  return findDuplicatePersonGroups(allPersons).length;
 }

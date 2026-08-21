@@ -1,11 +1,16 @@
 import "server-only";
 
 import { and, eq, inArray } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 
 import { db } from "@/db";
 import { memberships, registrations, teams } from "@/db/schema";
 import { isMinor } from "@/lib/age";
 import { findCandidates, type PersonForMatching } from "@/lib/person-matching";
+
+/** Etiqueta de caché de las renovaciones de temporada; la invalidan las
+ * acciones que aprueban/rechazan inscripciones o tocan la plantilla. */
+export const SEASON_RENEWALS_TAG = "season-renewals";
 
 export type RenewalStatus = "approved" | "pending" | "rejected" | "missing";
 
@@ -70,6 +75,10 @@ export function resolveRenewalStatus(
  * quién avisar.
  */
 export async function loadSeasonRenewals(seasonId: string): Promise<SeasonRenewals> {
+  "use cache";
+  cacheTag(SEASON_RENEWALS_TAG);
+  cacheLife("minutes");
+
   const seasonTeams = await db.query.teams.findMany({
     where: eq(teams.seasonId, seasonId),
     columns: { id: true, name: true },

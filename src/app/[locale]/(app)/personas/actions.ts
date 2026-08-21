@@ -1,7 +1,7 @@
 "use server";
 
 import { eq, inArray, sql } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -19,11 +19,14 @@ import {
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { nextConsentAt, stampConsent } from "@/lib/consent";
+import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
 import { isValidIban } from "@/lib/iban";
 import { isValidNationalId } from "@/lib/national-id";
+import { resizeImageToWebp } from "@/lib/image-resize";
 import { findCandidates } from "@/lib/person-matching";
+import { personPhotoThumbPath } from "@/lib/person-photo";
 import { resolvePayerFields } from "@/lib/payer";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 import type { PersonCandidate } from "@/components/match-select";
@@ -43,14 +46,27 @@ const PHOTO_BUCKET = "person-photos";
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
 const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+// La foto se ve casi siempre como avatar pequeño (plantilla, panel de
+// familia, carné, listados); solo la ficha de la persona enlaza al original a
+// tamaño completo, para poder descargarlo y usarlo en trámites federativos.
+// Por eso se sube dos veces: el original tal cual, y esta miniatura ligera.
+const PHOTO_THUMB_MAX_DIMENSION = 256;
+
 async function uploadPersonPhoto(personId: string, file: File): Promise<string> {
   const path = `${personId}/photo.${extensionFromMimeType(file.type)}`;
-  await uploadFile(PHOTO_BUCKET, path, file);
+  const thumb = await resizeImageToWebp(file, PHOTO_THUMB_MAX_DIMENSION);
+  await Promise.all([
+    uploadFile(PHOTO_BUCKET, path, file),
+    uploadFile(PHOTO_BUCKET, personPhotoThumbPath(path), thumb),
+  ]);
   return path;
 }
 
 async function removePersonPhotoObject(path: string) {
-  await removeFile(PHOTO_BUCKET, path);
+  await Promise.all([
+    removeFile(PHOTO_BUCKET, path),
+    removeFile(PHOTO_BUCKET, personPhotoThumbPath(path)),
+  ]);
 }
 
 const QUALIFICATIONS_BUCKET = "person-qualifications";
@@ -808,6 +824,7 @@ export async function addMedicalCheckup(
   }
 
   await recomputeMedicalCertUntil(personId);
+  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("medicalCheckupAdded") };
 }
@@ -862,6 +879,7 @@ export async function updateMedicalCheckup(
   }
 
   await recomputeMedicalCertUntil(existing.personId);
+  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("medicalCheckupUpdated") };
 }
@@ -884,6 +902,7 @@ export async function deleteMedicalCheckup(
   if (existing?.filePath) await removeMedicalCheckupFileObject(existing.filePath);
   if (existing) await recomputeMedicalCertUntil(existing.personId);
 
+  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("medicalCheckupDeleted") };
 }

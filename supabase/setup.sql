@@ -68,11 +68,24 @@ insert into storage.buckets (id, name, public)
 values ('person-photos', 'person-photos', false)
 on conflict (id) do nothing;
 
+-- Solo admin/staff pueden leer: hoy no existe autoservicio (el rol `member`
+-- no tiene ninguna página que filtre "solo lo mío"), así que sin esta
+-- condición cualquier usuario autenticado podía descargar la foto de
+-- cualquier persona conociendo/adivinando su ruta. Si en el futuro se
+-- implementa autoservicio para `member`, revisar esta política para permitir
+-- también `auth.uid()` sobre su propio `personId`.
 drop policy if exists "person_photos_select_authenticated" on storage.objects;
-create policy "person_photos_select_authenticated"
+drop policy if exists "person_photos_select_staff" on storage.objects;
+create policy "person_photos_select_staff"
   on storage.objects for select
   to authenticated
-  using (bucket_id = 'person-photos');
+  using (
+    bucket_id = 'person-photos'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
 
 drop policy if exists "person_photos_write_staff" on storage.objects;
 create policy "person_photos_write_staff"
@@ -117,11 +130,19 @@ insert into storage.buckets (id, name, public)
 values ('person-qualifications', 'person-qualifications', false)
 on conflict (id) do nothing;
 
+-- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
 drop policy if exists "person_qualifications_select_authenticated" on storage.objects;
-create policy "person_qualifications_select_authenticated"
+drop policy if exists "person_qualifications_select_staff" on storage.objects;
+create policy "person_qualifications_select_staff"
   on storage.objects for select
   to authenticated
-  using (bucket_id = 'person-qualifications');
+  using (
+    bucket_id = 'person-qualifications'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
 
 drop policy if exists "person_qualifications_write_staff" on storage.objects;
 create policy "person_qualifications_write_staff"
@@ -166,11 +187,19 @@ insert into storage.buckets (id, name, public)
 values ('person-documents', 'person-documents', false)
 on conflict (id) do nothing;
 
+-- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
 drop policy if exists "person_documents_select_authenticated" on storage.objects;
-create policy "person_documents_select_authenticated"
+drop policy if exists "person_documents_select_staff" on storage.objects;
+create policy "person_documents_select_staff"
   on storage.objects for select
   to authenticated
-  using (bucket_id = 'person-documents');
+  using (
+    bucket_id = 'person-documents'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
 
 drop policy if exists "person_documents_write_staff" on storage.objects;
 create policy "person_documents_write_staff"
@@ -209,17 +238,18 @@ create policy "person_documents_delete_staff"
   );
 
 -- 5) Storage: logos de patrocinadores -----------------------------------------
--- Mismo patrón que person-photos: bucket privado, URLs firmadas de corta
--- duración generadas por el servidor.
+-- Bucket PÚBLICO (a diferencia del resto): los logos no son datos sensibles y
+-- se muestran en el muro público de patrocinadores sin sesión. Al ser público,
+-- Supabase los sirve por una URL estable y cacheable por el navegador entre
+-- visitas (con bucket privado + URL firmada, el token cambia en cada render y
+-- cada visita se vuelve a descargar el logo completo — ver `getPublicUrl` en
+-- `src/lib/supabase/storage.ts`). Solo lectura pública; la escritura sigue
+-- restringida a admin/staff.
 insert into storage.buckets (id, name, public)
-values ('sponsorship-logos', 'sponsorship-logos', false)
-on conflict (id) do nothing;
+values ('sponsorship-logos', 'sponsorship-logos', true)
+on conflict (id) do update set public = true;
 
 drop policy if exists "sponsorship_logos_select_authenticated" on storage.objects;
-create policy "sponsorship_logos_select_authenticated"
-  on storage.objects for select
-  to authenticated
-  using (bucket_id = 'sponsorship-logos');
 
 drop policy if exists "sponsorship_logos_write_staff" on storage.objects;
 create policy "sponsorship_logos_write_staff"
@@ -264,11 +294,19 @@ insert into storage.buckets (id, name, public)
 values ('sponsorship-contracts', 'sponsorship-contracts', false)
 on conflict (id) do nothing;
 
+-- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
 drop policy if exists "sponsorship_contracts_select_authenticated" on storage.objects;
-create policy "sponsorship_contracts_select_authenticated"
+drop policy if exists "sponsorship_contracts_select_staff" on storage.objects;
+create policy "sponsorship_contracts_select_staff"
   on storage.objects for select
   to authenticated
-  using (bucket_id = 'sponsorship-contracts');
+  using (
+    bucket_id = 'sponsorship-contracts'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
 
 drop policy if exists "sponsorship_contracts_write_staff" on storage.objects;
 create policy "sponsorship_contracts_write_staff"
@@ -313,11 +351,19 @@ insert into storage.buckets (id, name, public)
 values ('team-documents', 'team-documents', false)
 on conflict (id) do nothing;
 
+-- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
 drop policy if exists "team_documents_select_authenticated" on storage.objects;
-create policy "team_documents_select_authenticated"
+drop policy if exists "team_documents_select_staff" on storage.objects;
+create policy "team_documents_select_staff"
   on storage.objects for select
   to authenticated
-  using (bucket_id = 'team-documents');
+  using (
+    bucket_id = 'team-documents'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
 
 drop policy if exists "team_documents_write_staff" on storage.objects;
 create policy "team_documents_write_staff"
@@ -362,11 +408,19 @@ insert into storage.buckets (id, name, public)
 values ('sponsor-documents', 'sponsor-documents', false)
 on conflict (id) do nothing;
 
+-- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
 drop policy if exists "sponsor_documents_select_authenticated" on storage.objects;
-create policy "sponsor_documents_select_authenticated"
+drop policy if exists "sponsor_documents_select_staff" on storage.objects;
+create policy "sponsor_documents_select_staff"
   on storage.objects for select
   to authenticated
-  using (bucket_id = 'sponsor-documents');
+  using (
+    bucket_id = 'sponsor-documents'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
 
 drop policy if exists "sponsor_documents_write_staff" on storage.objects;
 create policy "sponsor_documents_write_staff"
@@ -447,11 +501,19 @@ insert into storage.buckets (id, name, public)
 values ('person-medical-checkups', 'person-medical-checkups', false)
 on conflict (id) do nothing;
 
+-- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
 drop policy if exists "person_medical_checkups_select_authenticated" on storage.objects;
-create policy "person_medical_checkups_select_authenticated"
+drop policy if exists "person_medical_checkups_select_staff" on storage.objects;
+create policy "person_medical_checkups_select_staff"
   on storage.objects for select
   to authenticated
-  using (bucket_id = 'person-medical-checkups');
+  using (
+    bucket_id = 'person-medical-checkups'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
 
 drop policy if exists "person_medical_checkups_write_staff" on storage.objects;
 create policy "person_medical_checkups_write_staff"
@@ -496,11 +558,19 @@ insert into storage.buckets (id, name, public)
 values ('person-injury-reports', 'person-injury-reports', false)
 on conflict (id) do nothing;
 
+-- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
 drop policy if exists "person_injury_reports_select_authenticated" on storage.objects;
-create policy "person_injury_reports_select_authenticated"
+drop policy if exists "person_injury_reports_select_staff" on storage.objects;
+create policy "person_injury_reports_select_staff"
   on storage.objects for select
   to authenticated
-  using (bucket_id = 'person-injury-reports');
+  using (
+    bucket_id = 'person-injury-reports'
+    and exists (
+      select 1 from public.users
+      where id = auth.uid() and role in ('admin', 'staff')
+    )
+  );
 
 drop policy if exists "person_injury_reports_write_staff" on storage.objects;
 create policy "person_injury_reports_write_staff"

@@ -22,6 +22,7 @@ import {
 import { requireUser } from "@/lib/auth";
 import { resolveBackHref } from "@/lib/back-href";
 import { fileTypeLabel } from "@/lib/file-type";
+import { personPhotoThumbPath } from "@/lib/person-photo";
 import { computeRosterHealth } from "@/lib/roster-health";
 import { sortRoster } from "@/lib/roster-order";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
@@ -126,11 +127,23 @@ export default async function TeamDetailPage({
   const memberIds = new Set(teamMemberships.map((m) => m.personId));
   const availablePersons = allPersons.filter((person) => !memberIds.has(person.id));
 
-  const [photoUrls, documentFileUrls, seasonRenewals] = await Promise.all([
-    getSignedUrls(PHOTO_BUCKET, teamMemberships, (m) => m.person.photoPath, (m) => m.personId),
+  // `loadSeasonRenewals` va aparte de las firmas de URLs: por debajo dispara
+  // sus propias queries (cruza plantilla e inscripciones), y sumarlas al
+  // mismo `Promise.all` es justo el patrón de concurrencia que causó el
+  // cuelgue del dashboard — como ya está cacheada (`"use cache"`), el coste
+  // real de secuenciarla solo se paga en cache-miss.
+  const [photoUrls, documentFileUrls] = await Promise.all([
+    // Solo hace falta el avatar en miniatura aquí; el original se ve/descarga
+    // desde la ficha de cada persona.
+    getSignedUrls(
+      PHOTO_BUCKET,
+      teamMemberships,
+      (m) => (m.person.photoPath ? personPhotoThumbPath(m.person.photoPath) : null),
+      (m) => m.personId,
+    ),
     getSignedUrls(TEAM_DOCUMENTS_BUCKET, team.documents, (d) => d.filePath, (d) => d.id),
-    loadSeasonRenewals(team.seasonId),
   ]);
+  const seasonRenewals = await loadSeasonRenewals(team.seasonId);
   const teamWebRegistration = seasonRenewals.rows.filter((r) => r.teamId === team.id);
   const teamWebRegistrationMissing = teamWebRegistration.filter(
     (r) => r.status === "missing" || r.status === "rejected",

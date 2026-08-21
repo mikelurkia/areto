@@ -18,6 +18,13 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "20mb",
     },
+    // Por defecto Next usa (núcleos de CPU - 1) workers para generar páginas
+    // en `next build`; cada worker es un proceso Node aparte con su propio
+    // pool de hasta 10 conexiones (`src/db/index.ts`), así que con muchos
+    // núcleos el build satura el pooler de Supabase (visto como
+    // "statement timeout" en queries triviales). El proyecto no tiene tantas
+    // páginas dinámicas como para necesitar tanto paralelismo.
+    cpus: 4,
   },
 };
 

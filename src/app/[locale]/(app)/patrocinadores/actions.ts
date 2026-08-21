@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -19,8 +19,11 @@ import {
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { nextInvoiceNumber } from "@/lib/club";
+import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
+import { resizeImageToWebp } from "@/lib/image-resize";
+import { logoThumbPath } from "@/lib/sponsorship";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 
 export type SponsorState = {
@@ -38,14 +41,27 @@ const CONTRACT_BUCKET = "sponsorship-contracts";
 const MAX_CONTRACT_BYTES = 10 * 1024 * 1024; // 10MB
 const ALLOWED_CONTRACT_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
+// El logo se ve casi siempre como avatar pequeño (listados, muro público,
+// vista previa al editar); solo la ficha del patrocinador enlaza al original
+// a tamaño completo. Por eso se suben dos versiones: la original tal cual la
+// sube el usuario, y esta miniatura ligera para todo lo demás.
+const LOGO_THUMB_MAX_DIMENSION = 256;
+
 async function uploadSponsorLogo(sponsorId: string, file: File): Promise<string> {
   const path = `${sponsorId}/logo.${extensionFromMimeType(file.type)}`;
-  await uploadFile(LOGO_BUCKET, path, file);
+  const thumb = await resizeImageToWebp(file, LOGO_THUMB_MAX_DIMENSION);
+  await Promise.all([
+    uploadFile(LOGO_BUCKET, path, file),
+    uploadFile(LOGO_BUCKET, logoThumbPath(path), thumb),
+  ]);
   return path;
 }
 
 async function removeSponsorLogoObject(path: string) {
-  await removeFile(LOGO_BUCKET, path);
+  await Promise.all([
+    removeFile(LOGO_BUCKET, path),
+    removeFile(LOGO_BUCKET, logoThumbPath(path)),
+  ]);
 }
 
 async function uploadTermContract(
@@ -512,6 +528,7 @@ export async function addSponsorPayment(
     notes: fields.notes,
   });
 
+  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("paymentCreated") };
 }
@@ -548,6 +565,7 @@ export async function updateSponsorPayment(
     })
     .where(eq(sponsorPayments.id, id));
 
+  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("paymentUpdated") };
 }
@@ -562,6 +580,7 @@ export async function deleteSponsorPayment(
   const id = String(formData.get("id") ?? "");
   await db.delete(sponsorPayments).where(eq(sponsorPayments.id, id));
 
+  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("paymentDeleted") };
 }
@@ -581,6 +600,7 @@ export async function markSponsorPaymentPaid(
     .set({ status: "paid", paidOn: today })
     .where(eq(sponsorPayments.id, id));
 
+  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("paymentMarkedPaid") };
 }

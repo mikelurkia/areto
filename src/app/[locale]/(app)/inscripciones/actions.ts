@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -14,11 +14,15 @@ import {
   registrations,
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { isValidIban } from "@/lib/iban";
+import { resizeImageToWebp } from "@/lib/image-resize";
 import { isValidNationalId } from "@/lib/national-id";
+import { personPhotoThumbPath } from "@/lib/person-photo";
 import { resolvePayerFields } from "@/lib/payer";
 import { readGuardians } from "@/lib/registration-guardians";
-import { copyFileBetweenBuckets } from "@/lib/supabase/storage";
+import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
+import { copyFileBetweenBuckets, downloadFile, uploadFile } from "@/lib/supabase/storage";
 
 export type RegistrationReviewState = {
   error?: string;
@@ -34,6 +38,23 @@ const PERSON_DOCUMENTS_BUCKET = "person-documents";
 
 function extFromPath(path: string): string {
   return path.split(".").pop() ?? "jpg";
+}
+
+const PHOTO_THUMB_MAX_DIMENSION = 256;
+
+/**
+ * Genera la miniatura de la foto ya copiada a `person-photos`, a partir de
+ * ese mismo original recién copiado — no de la miniatura de la inscripción
+ * (que puede no existir para solicitudes enviadas antes de que empezara a
+ * generarse), así que no depende de que exista.
+ */
+async function regeneratePersonPhotoThumb(personPhotoPath: string): Promise<void> {
+  const original = await downloadFile(PERSON_PHOTO_BUCKET, personPhotoPath);
+  const thumb = await resizeImageToWebp(
+    new File([original], "photo", { type: original.type }),
+    PHOTO_THUMB_MAX_DIMENSION,
+  );
+  await uploadFile(PERSON_PHOTO_BUCKET, personPhotoThumbPath(personPhotoPath), thumb);
 }
 
 /** Detecta una violación de restricción única de Postgres (código 23505),
@@ -478,6 +499,7 @@ export async function approveRegistration(
       PERSON_PHOTO_BUCKET,
       targetPath,
     );
+    await regeneratePersonPhotoThumb(targetPath);
     await db.update(persons).set({ photoPath: targetPath }).where(eq(persons.id, personId));
   }
 
@@ -493,6 +515,8 @@ export async function approveRegistration(
     await db.update(persons).set({ idBackPath: targetPath }).where(eq(persons.id, personId));
   }
 
+  updateTag(INTEGRITY_ISSUES_TAG);
+  updateTag(SEASON_RENEWALS_TAG);
   revalidatePath("/", "layout");
   return { message: t("registrationApproved") };
 }
@@ -517,6 +541,7 @@ export async function rejectRegistration(
     .set({ status: "rejected", reviewedBy: reviewer.id, reviewedAt: new Date(), rejectionReason })
     .where(eq(registrations.id, id));
 
+  updateTag(SEASON_RENEWALS_TAG);
   revalidatePath("/", "layout");
   return { message: t("registrationRejected") };
 }
@@ -545,6 +570,7 @@ export async function reopenRegistration(
     .set({ status: "pending", reviewedBy: null, reviewedAt: null, rejectionReason: null })
     .where(eq(registrations.id, id));
 
+  updateTag(SEASON_RENEWALS_TAG);
   revalidatePath("/", "layout");
   return { message: t("registrationReopened") };
 }

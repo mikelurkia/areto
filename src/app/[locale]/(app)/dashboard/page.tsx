@@ -13,9 +13,12 @@ import { db } from "@/db";
 import { personQualifications, persons, registrations, seasons, sponsorshipTerms } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { groupCourtEventsByWeekend, loadCourtEvents } from "@/lib/court-events";
-import { loadDataIntegrityIssues, type IntegrityIssue } from "@/lib/data-integrity";
+import {
+  countDuplicatePersonGroups,
+  loadDataIntegrityIssues,
+  type IntegrityIssue,
+} from "@/lib/data-integrity";
 import { isActivePlayer, isPastMember } from "@/lib/membership";
-import { findDuplicatePersonGroups } from "@/lib/person-matching";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { seasonYearOf } from "@/lib/sponsorship";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
@@ -323,25 +326,6 @@ async function ExpiringCard() {
       </CardContent>
     </Card>
   );
-}
-
-/**
- * Recuento de grupos de posibles personas duplicadas (mismo cálculo que
- * `/personas/duplicados`, aquí solo hace falta el número de grupos).
- */
-async function countDuplicatePersonGroups(): Promise<number> {
-  const allPersons = await db.query.persons.findMany({
-    columns: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      nationalId: true,
-      email: true,
-      phone: true,
-      iban: true,
-    },
-  });
-  return findDuplicatePersonGroups(allPersons).length;
 }
 
 type IntegrityRow =

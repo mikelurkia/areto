@@ -1,5 +1,16 @@
 export const SPONSORSHIP_EXPIRY_WINDOW_DAYS = 60;
 
+/**
+ * Ruta de la miniatura de un logo, junto al original en el mismo bucket
+ * (`sponsorship-logos`). El logo se sube dos veces: `logo.<ext>` con la
+ * calidad original (para verlo a tamaño real desde la ficha) y esta
+ * miniatura, mucho más ligera, para el resto de sitios donde solo se muestra
+ * como avatar pequeño (listados, muro público, vista previa al editar).
+ */
+export function logoThumbPath(logoPath: string): string {
+  return logoPath.replace(/\/logo\.[^/]+$/, "/logo-thumb.webp");
+}
+
 /** Etiqueta de temporada a partir del año de inicio: 2026 → "2026/27". */
 export function seasonLabel(year: number): string {
   return `${year}/${String((year + 1) % 100).padStart(2, "0")}`;
