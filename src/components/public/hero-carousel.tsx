@@ -4,7 +4,7 @@ import Autoplay from "embla-carousel-autoplay";
 import Image from "next/image";
 import { History, Trophy, UsersRound } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import {
   Carousel,
@@ -31,13 +31,18 @@ const TONE_CLASSES = {
  */
 export function HeroCarousel() {
   const t = useTranslations("Landing.carousel");
-  const autoplay = useRef(Autoplay({ delay: 4500, stopOnInteraction: false, stopOnMouseEnter: true }));
+  // Instancia única y estable del plugin. `useState` con inicializador lazy la
+  // crea una sola vez (como haría un ref) pero la expone como valor normal, sin
+  // leer `.current` en el render (lo prohíbe react-hooks/refs).
+  const [autoplay] = useState(() =>
+    Autoplay({ delay: 4500, stopOnInteraction: false, stopOnMouseEnter: true }),
+  );
   const [failed, setFailed] = useState<Record<string, boolean>>({});
 
   return (
     <Carousel
       opts={{ loop: true }}
-      plugins={[autoplay.current]}
+      plugins={[autoplay]}
       className="w-full max-w-md"
     >
       <CarouselContent className="-ml-0">
