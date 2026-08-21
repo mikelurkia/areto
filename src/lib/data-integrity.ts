@@ -4,7 +4,7 @@ import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { db } from "@/db";
-import { memberships, persons, registrations, sponsorshipTerms } from "@/db/schema";
+import { memberships, persons, registrations } from "@/db/schema";
 import { findDuplicatePersonGroups } from "@/lib/person-matching";
 
 /** Etiquetas de caché de las tarjetas de incoherencias del dashboard. */

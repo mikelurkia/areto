@@ -95,6 +95,12 @@ function Carousel({
 
   React.useEffect(() => {
     if (!api) return
+    // Sincronización inicial del estado de los botones con embla (sistema
+    // externo) en el montaje; los cambios posteriores llegan por los eventos de
+    // abajo. Es el uso de effect que la regla contempla como válido, pero al ser
+    // un setState síncrono lo marca igual: quitarlo dejaría los botones con el
+    // estado por defecto hasta el primer scroll.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     onSelect(api)
     api.on("reInit", onSelect)
     api.on("select", onSelect)
