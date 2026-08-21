@@ -251,6 +251,23 @@ export async function importTeamsFromSeason(
   if (toImport.length === 0) return { error: t("importAllExist") };
 
   await db.transaction(async (tx) => {
+    // Una sola query para las membresías de todos los equipos a importar, en
+    // vez de una por equipo dentro del bucle (N+1).
+    const allSourceMemberships = copyRoster
+      ? await tx.query.memberships.findMany({
+          where: inArray(
+            memberships.teamId,
+            toImport.map((s) => s.id),
+          ),
+        })
+      : [];
+    const membershipsByTeamId = new Map<string, (typeof allSourceMemberships)[number][]>();
+    for (const m of allSourceMemberships) {
+      const group = membershipsByTeamId.get(m.teamId);
+      if (group) group.push(m);
+      else membershipsByTeamId.set(m.teamId, [m]);
+    }
+
     for (const source of toImport) {
       const [newTeam] = await tx
         .insert(teams)
@@ -269,9 +286,7 @@ export async function importTeamsFromSeason(
 
       if (!copyRoster) continue;
 
-      const sourceMemberships = await tx.query.memberships.findMany({
-        where: eq(memberships.teamId, source.id),
-      });
+      const sourceMemberships = membershipsByTeamId.get(source.id) ?? [];
       if (sourceMemberships.length > 0) {
         await tx.insert(memberships).values(
           sourceMemberships.map((m) => ({
