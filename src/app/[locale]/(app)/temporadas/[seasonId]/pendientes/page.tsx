@@ -65,11 +65,12 @@ export default async function SeasonRenewalsPage({
   await requireUser();
   const t = await getTranslations("Temporadas");
 
-  const [season, renewals] = await Promise.all([
-    db.query.seasons.findFirst({ where: eq(seasons.id, seasonId) }),
-    loadSeasonRenewals(seasonId),
-  ]);
+  // `loadSeasonRenewals` va en un await aparte: es una agregación con su
+  // propio Promise.all interno, y sumarla al de esta página sería el mismo
+  // patrón que colgó el dashboard (ver CLAUDE.md).
+  const season = await db.query.seasons.findFirst({ where: eq(seasons.id, seasonId) });
   if (!season) notFound();
+  const renewals = await loadSeasonRenewals(seasonId);
 
   const filteredRows = teamFilter
     ? renewals.rows.filter((r) => r.teamId === teamFilter)

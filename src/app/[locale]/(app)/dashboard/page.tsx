@@ -431,12 +431,12 @@ async function ActionsCard() {
   await connection();
   const today = new Date().toISOString().slice(0, 10);
 
-  const [t, locale, registrationCounts, weekendGap] = await Promise.all([
-    getTranslations("Dashboard"),
-    getLocale(),
-    getPendingRegistrationCounts(),
-    getNextWeekendPreferredDayGap(today),
-  ]);
+  const [t, locale] = await Promise.all([getTranslations("Dashboard"), getLocale()]);
+  // Aparte del Promise.all anterior: ambas son agregaciones con sus propias
+  // queries internas, y sumarlas ahí sería el mismo patrón que colgó el
+  // dashboard (ver CLAUDE.md).
+  const registrationCounts = await getPendingRegistrationCounts();
+  const weekendGap = await getNextWeekendPreferredDayGap(today);
 
   const dateFmt = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" });
 
