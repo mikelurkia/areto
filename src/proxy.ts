@@ -101,5 +101,13 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|trpc|_next|_vercel|.*\\..*).*)"],
+  // `auth/` queda fuera, igual que `api`: los route handlers de `src/app/auth/*`
+  // (el callback de OAuth y el `confirm` de los enlaces de correo) no son
+  // páginas y no llevan prefijo de idioma. Sin excluirlos, next-intl redirigía
+  // `/auth/confirm` a `/es/auth/confirm`, que no existe → 404, y ningún enlace
+  // de invitación ni de recuperación llegaba a su destino.
+  //
+  // La barra final importa: `auth` a secas dejaría fuera también
+  // `/auth-code-error`, que sí es una página localizada.
+  matcher: ["/((?!api|trpc|auth/|_next|_vercel|.*\\..*).*)"],
 };
