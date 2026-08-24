@@ -20,13 +20,18 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      # pg_dump necesita la conexión DIRECTA (puerto 5432), no el pooler de
-      # transacciones (6543/pgbouncer) que usa la app — el pooler no soporta
-      # bien el patrón de sesión larga que usa pg_dump. Por eso este secret
-      # es distinto de PROD_DATABASE_URL.
+      # pg_dump necesita el SESSION POOLER (puerto 5432), no el de
+      # transacciones (6543/pgbouncer) que usa la app: pgbouncer en modo
+      # transacción no aguanta la sesión larga de pg_dump. Por eso este secret
+      # es distinto de PROD_DATABASE_URL_TRANSACTION.
+      #
+      # Y no la "Direct connection" del dashboard (db.<ref>.supabase.co): esa
+      # solo resuelve por IPv6 en el plan Free y los runners de GitHub son
+      # IPv4. El secret se llamaba antes ..._DIRECT y eso costó un despliegue
+      # a medias, porque invita a copiar justo la pestaña que no sirve.
       - name: Dump de la base de datos
         env:
-          PROD_DATABASE_URL_DIRECT: ${{ secrets.PROD_DATABASE_URL_DIRECT }}
+          PROD_DATABASE_URL_SESSION: ${{ secrets.PROD_DATABASE_URL_SESSION }}
           # pg_dump se niega a volcar una base de datos de una major posterior
           # a la suya ("aborting because of server version mismatch"), y el
           # runner trae la 16 mientras Supabase corre la 17.
@@ -47,30 +52,38 @@ jobs:
           # dump vacío/corrupto (backup verde pero inservible).
           set -euo pipefail
 
-          if [ -z "${PROD_DATABASE_URL_DIRECT:-}" ]; then
-            echo "::error::El secret PROD_DATABASE_URL_DIRECT no está configurado en el environment 'production'." >&2
+          if [ -z "${PROD_DATABASE_URL_SESSION:-}" ]; then
+            echo "::error::El secret PROD_DATABASE_URL_SESSION no está configurado en el environment 'production'." >&2
             exit 1
           fi
 
           # OJO con el usuario de la cadena de conexión: si el host es el
           # *session pooler* de Supabase (aws-0-<region>.pooler.supabase.com,
           # puerto 5432) el usuario DEBE ser 'postgres.<project-ref>', no
-          # 'postgres' a secas, o la autenticación falla. La conexión directa
-          # real (db.<ref>.supabase.co) es IPv6-only en Free y no funciona
-          # desde los runners de GitHub (solo IPv4).
+          # 'postgres' a secas, o la autenticación falla. La "Direct
+          # connection" (db.<ref>.supabase.co) es IPv6-only en Free y tampoco
+          # funciona desde los runners de GitHub (solo IPv4).
           #
           # Ese error llegó a costar un rato de diagnóstico, porque Postgres
           # solo responde "password authentication failed" y parece un problema
           # de contraseña. Se comprueba antes para decirlo en claro.
-          if printf '%s' "$PROD_DATABASE_URL_DIRECT" | grep -q '://postgres:' \
-             && printf '%s' "$PROD_DATABASE_URL_DIRECT" | grep -q 'pooler\.supabase\.com'; then
-            echo "::error::PROD_DATABASE_URL_DIRECT apunta al pooler con el usuario 'postgres'. Contra el pooler el usuario debe ser 'postgres.<project-ref>'. Cópialo del dashboard: Settings → Database → Connection string → Session pooler." >&2
+          if printf '%s' "$PROD_DATABASE_URL_SESSION" | grep -q '://postgres:' \
+             && printf '%s' "$PROD_DATABASE_URL_SESSION" | grep -q 'pooler\.supabase\.com'; then
+            echo "::error::PROD_DATABASE_URL_SESSION apunta al pooler con el usuario 'postgres'. Contra el pooler el usuario debe ser 'postgres.<project-ref>'. Cópialo del dashboard: Settings → Database → Connection string → Session pooler." >&2
+            exit 1
+          fi
+
+          # La "Direct connection" del dashboard tarda nueve segundos en morir
+          # con un "Network unreachable" que no dice nada de IPv6. Mejor
+          # rechazarla de entrada y explicar por qué.
+          if printf '%s' "$PROD_DATABASE_URL_SESSION" | grep -qE '@db\.[a-z0-9]+\.supabase\.co'; then
+            echo "::error::PROD_DATABASE_URL_SESSION apunta a la Direct connection (db.<ref>.supabase.co), que en el plan Free solo resuelve por IPv6 y es inalcanzable desde los runners de GitHub. Usa la pestaña 'Session pooler': aws-N-<region>.pooler.supabase.com:5432." >&2
             exit 1
           fi
 
           # La cadena entra por entorno, no como argumento: así no aparece en
           # la línea de comandos del contenedor.
-          docker run --rm -e PGURL="$PROD_DATABASE_URL_DIRECT" "$PG_IMAGE" \
+          docker run --rm -e PGURL="$PROD_DATABASE_URL_SESSION" "$PG_IMAGE" \
             sh -c 'pg_dump "$PGURL" --no-owner --no-privileges' \
             | gzip > areto-prod-backup.sql.gz
 
