@@ -32,14 +32,17 @@ dispare varias queries a la vez.
 
 ## Flujo de trabajo con git
 
-`main` está protegida: nunca commitees ni empujes directamente a ella. Antes de
-empezar a tocar código, crea una rama (`git switch -c feat/…`, `fix/…`,
-`chore/…`) y al terminar abre un PR a `main`. Si al arrancar una tarea ves que
-la rama actual es `main`, crea la rama antes del primer commit.
+Invariantes, sin excepciones:
 
-Un cambio en `src/db/schema.ts` va **siempre** con su migración generada
-(`npm run db:generate`) en el mismo PR: el CI falla si detecta el desfase, y al
-mergear las migraciones se aplican solas a producción (`migrate-prod.yml`).
-Mientras un PR con migraciones esté abierto, no abras otro que toque el
-esquema: las dos ramas generarían el mismo número de migración y colisionarían
-en `drizzle/meta/_journal.json` (`npm run db:check` lo detecta).
+- `main` está protegida: nunca commitees ni empujes directamente a ella.
+- Crea la rama (`feat/…`, `fix/…`, `chore/…`) **antes del primer commit**; si al
+  arrancar una tarea la rama actual es `main`, eso es lo primero que haces.
+- Un cambio en `src/db/schema.ts` va siempre con su migración generada
+  (`npm run db:generate`) en el mismo PR: al mergear se aplica sola a
+  producción.
+- Solo una rama abierta a la vez toca el esquema (dos generarían el mismo
+  número de migración).
+
+El procedimiento completo —comandos, decisión expand/contract y qué hacer
+cuando algo falla— está en la skill `desarrollar-funcionalidad`
+(`.claude/skills/desarrollar-funcionalidad/`).

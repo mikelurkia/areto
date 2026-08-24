@@ -51,6 +51,10 @@ Abre el PR contra `main` en GitHub, espera a que pase el CI y mergéalo. El PR
 genera además un Preview Deployment en Vercel (contra `areto-dev`) para probar
 los cambios antes de mergear.
 
+El procedimiento detallado (comandos, decisión expand/contract al tocar el
+esquema y recetas para cuando algo falla) vive en
+`.claude/skills/desarrollar-funcionalidad/`, como skill de Claude Code.
+
 ## Puesta en marcha
 
 1. Instala dependencias:
