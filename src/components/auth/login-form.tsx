@@ -6,10 +6,8 @@ import { useTranslations } from "next-intl";
 import {
   login,
   requestPasswordReset,
-  signInWithGoogle,
   type AuthState,
 } from "@/app/[locale]/(auth)/actions";
-import { GoogleIcon } from "@/components/icons/google";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +30,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 
 const initialState: AuthState = {};
 
@@ -49,33 +46,9 @@ export function LoginForm({ next }: { next: string }) {
     login,
     initialState,
   );
-  const [googleState, googleAction] = useActionState(
-    signInWithGoogle,
-    initialState,
-  );
 
   return (
     <div className="flex w-full flex-col gap-4">
-      {/* Acceso con Google */}
-      <form action={googleAction}>
-        <input type="hidden" name="next" value={next} />
-        <SubmitButton variant="outline" className="w-full">
-          <GoogleIcon data-icon="inline-start" />
-          {t("continueWithGoogle")}
-        </SubmitButton>
-      </form>
-      {googleState.error ? (
-        <p className="text-sm text-destructive">{googleState.error}</p>
-      ) : null}
-
-      <div className="flex items-center gap-3">
-        <Separator className="flex-1" />
-        <span className="text-xs text-muted-foreground">
-          {t("orWithEmail")}
-        </span>
-        <Separator className="flex-1" />
-      </div>
-
       <form action={loginAction}>
         <input type="hidden" name="next" value={next} />
         <FieldGroup>

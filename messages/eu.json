@@ -31,20 +31,6 @@
     "openPanel": "Ireki panela",
     "registerAction": "Izena eman",
     "becomeMemberAction": "Egin zaitez bazkide",
-    "features": {
-      "people": {
-        "title": "Taldeak eta mailak",
-        "description": "Txikienetatik lehen taldera, maila federatu bakoitzak bere taldea eta bere egutegia du."
-      },
-      "calendar": {
-        "title": "Egutegia",
-        "description": "Talde bakoitzak noiz eta non jokatzen eta entrenatzen duen, WhatsApp taldean galdetu beharrik gabe."
-      },
-      "fees": {
-        "title": "Bazkideak",
-        "description": "Kluba posible egiten dutenak, denboraldiz denboraldi."
-      }
-    },
     "carousel": {
       "firstTeam": {
         "title": "Lehen taldea",
@@ -1467,8 +1453,6 @@
   "Login": {
     "title": "Sartu zure klubera",
     "subtitle": "Sartu kluba kudeatzeko.",
-    "continueWithGoogle": "Jarraitu Google-rekin",
-    "orWithEmail": "edo zure emailarekin",
     "email": "Emaila",
     "password": "Pasahitza",
     "signIn": "Sartu",
@@ -1495,7 +1479,6 @@
     "notConfigured": "Supabase oraindik ez dago konfiguratuta. Gehitu ingurune-aldagaiak (ikusi .env.example).",
     "invalidCredentials": "Emaila edo pasahitza okerra da.",
     "passwordTooShort": "Pasahitzak gutxienez 8 karaktere izan behar ditu.",
-    "googleFailed": "Ezin izan da Google-rekin saioa hasi.",
     "signupDisabled": "Alta publikoa itxita dago. Klubera gonbidapenez sartzen da: hitz egin idazkaritzarekin.",
     "accessRevokedTitle": "Zure sarbidea desaktibatuta dago",
     "accessRevokedDescription": "Zure kontua badago, baina orain ez du Aretorako sarbiderik. Hitz egin klubeko idazkaritzarekin akatsa dela uste baduzu.",

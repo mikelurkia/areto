@@ -8,7 +8,7 @@ calendario, cuotas y comunicación en una sola herramienta.
 - **Next.js 16** (App Router) + **React 19** + **TypeScript**
 - **Tailwind CSS v4** + **shadcn/ui** (base-ui, estilo `nova`)
 - **PostgreSQL** + **Drizzle ORM**
-- **Supabase Auth** (email+contraseña + Google OAuth) con roles
+- **Supabase Auth** (email+contraseña) con roles
 
 ## Entornos
 
@@ -74,7 +74,7 @@ esquema y recetas para cuando algo falla) vive en
    npm run db:seed
    ```
 4. Configura la autenticación (ver [Autenticación](#autenticación) más abajo):
-   ejecuta `supabase/setup.sql` en el SQL Editor de Supabase y activa Google.
+   ejecuta `supabase/setup.sql` en el SQL Editor de Supabase.
 5. Arranca el servidor de desarrollo:
    ```bash
    npm run dev
@@ -134,7 +134,7 @@ Sistemas, por si la política interna no permite el *dual-homing*.
 
 ## Autenticación y acceso
 
-Auth con **Supabase** (email+contraseña y Google OAuth). El acceso a la
+Auth con **Supabase** (email+contraseña). El acceso a la
 aplicación es **por invitación**: no hay alta pública. Un administrador invita
 desde `/administracion/usuarios` y la persona recibe un correo con un enlace
 para poner su contraseña.
@@ -172,10 +172,7 @@ comprueba `requireUser` en cada petición.
    `/auth/confirm` en la lista de *Redirect URLs*, "Allow new users to sign up"
    apagado y un SMTP propio. Están detallados en la cabecera de
    `supabase/setup.sql`.
-4. **Google OAuth**: en Supabase → Authentication → Providers → Google, añade las
-   credenciales de Google Cloud y la URL de callback
-   `https://[ref].supabase.co/auth/v1/callback`.
-5. **Primer administrador**: regístrate una vez en `/login` y promociónate a
+4. **Primer administrador**: regístrate una vez en `/login` y promociónate a
    mano (es la última operación en SQL que queda; a partir de ahí, el alta del
    resto se hace desde la aplicación):
    ```sql
