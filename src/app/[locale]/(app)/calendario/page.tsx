@@ -2,7 +2,7 @@ import { CalendarDays } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { requireRole } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import {
   addMonths,
   formatMonthKey,
@@ -73,9 +73,9 @@ export default async function CalendarioPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  const user = await requireRole(["admin", "staff", "coach"]);
+  const user = await requirePermission("calendario.view");
   const t = await getTranslations("Calendario");
-  const canManage = user.role === "admin" || user.role === "staff";
+  const canManage = hasPermission(user, "calendario.manage.all");
 
   const {
     team: teamParam,
@@ -110,7 +110,11 @@ export default async function CalendarioPage({
       with: { season: true },
       orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
     }),
-    user.role === "coach" ? getCoachTeamIds(user.personId) : Promise.resolve(null),
+    // Solo hace falta para acotar a quien gestiona su(s) equipo(s): quien
+    // gestiona todos no necesita la lista, y quien no gestiona nada tampoco.
+    !canManage && hasPermission(user, "calendario.manage")
+      ? getCoachTeamIds(user.personId)
+      : Promise.resolve(null),
     loadCourtEvents({ from, to, teamId: teamParam || undefined }),
   ]);
   // Los partidos fuera de casa nunca son gestionables por el club (ver

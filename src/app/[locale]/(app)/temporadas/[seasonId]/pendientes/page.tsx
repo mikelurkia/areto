@@ -5,7 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { loadSeasonRenewals, type RenewalStatus } from "@/lib/season-renewals";
 import { mailtoLink, whatsappLink } from "@/lib/contact-links";
 import { Link } from "@/i18n/navigation";
@@ -62,7 +62,7 @@ export default async function SeasonRenewalsPage({
   const { team: teamFilter } = await searchParams;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireUser();
+  await requirePermission("temporadas.view");
   const t = await getTranslations("Temporadas");
 
   // `loadSeasonRenewals` va en un await aparte: es una agregación con su

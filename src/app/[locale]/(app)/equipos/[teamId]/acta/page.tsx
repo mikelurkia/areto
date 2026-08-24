@@ -6,7 +6,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { memberships, teams } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { Link } from "@/i18n/navigation";
 import { PrintButton } from "@/components/print-button";
@@ -49,7 +49,7 @@ export default async function TeamRosterSheetPage({
   const { locale, teamId } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff", "coach"]);
+  await requirePermission("equipos.acta");
   const t = await getTranslations("Equipos");
 
   const [team, teamMemberships, club] = await Promise.all([

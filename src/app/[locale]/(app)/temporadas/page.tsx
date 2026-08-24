@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { Link } from "@/i18n/navigation";
 import {
   DeleteSeasonDialog,
@@ -39,9 +39,9 @@ export default async function TemporadasPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  const user = await requireUser();
+  const user = await requirePermission("temporadas.view");
   const t = await getTranslations("Temporadas");
-  const canManage = user.role === "admin" || user.role === "staff";
+  const canManage = hasPermission(user, "temporadas.manage");
 
   const allSeasons = await db.query.seasons.findMany({
     orderBy: desc(seasons.name),

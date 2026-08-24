@@ -6,7 +6,7 @@ import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { courtEvents } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { assertCourtEventAccess } from "@/lib/court-events";
 import { PREFERRED_DAYS, type PreferredDayValue } from "@/components/calendario/preferred-days";
 
@@ -14,8 +14,6 @@ export type CourtEventState = {
   error?: string;
   message?: string;
 };
-
-const ACCESS_ROLES = ["admin", "staff", "coach"] as const;
 
 function readPreferredDay(formData: FormData): PreferredDayValue | null {
   const value = String(formData.get("preferredDay") ?? "");
@@ -47,7 +45,7 @@ export async function createCourtEvent(
   formData: FormData,
 ): Promise<CourtEventState> {
   const t = await getTranslations("Calendario");
-  const user = await requireRole([...ACCESS_ROLES]);
+  const user = await requirePermission("calendario.manage");
 
   const fields = readCourtEventFields(formData);
   if (!fields.teamId) return { error: t("teamRequired") };
@@ -75,7 +73,7 @@ export async function updateCourtEvent(
   formData: FormData,
 ): Promise<CourtEventState> {
   const t = await getTranslations("Calendario");
-  const user = await requireRole([...ACCESS_ROLES]);
+  const user = await requirePermission("calendario.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readCourtEventFields(formData);
@@ -115,7 +113,7 @@ export async function deleteCourtEvent(
   formData: FormData,
 ): Promise<CourtEventState> {
   const t = await getTranslations("Calendario");
-  const user = await requireRole([...ACCESS_ROLES]);
+  const user = await requirePermission("calendario.manage");
 
   const id = String(formData.get("id") ?? "");
   const existing = await db.query.courtEvents.findFirst({

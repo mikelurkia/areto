@@ -6,7 +6,7 @@ import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { memberships, seasons, teams } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { TEAM_CATEGORIES, type TeamCategoryValue } from "@/components/equipos/team-categories";
 import { TEAM_GENDERS, type TeamGenderValue } from "@/components/equipos/team-genders";
 
@@ -14,8 +14,6 @@ export type TeamState = {
   error?: string;
   message?: string;
 };
-
-const MANAGE_ROLES = ["admin", "staff"] as const;
 
 function readCategory(formData: FormData): TeamCategoryValue | null {
   const value = String(formData.get("category") ?? "");
@@ -43,7 +41,7 @@ export async function createTeam(
   formData: FormData,
 ): Promise<TeamState> {
   const t = await getTranslations("Equipos");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("equipos.manage");
 
   const name = String(formData.get("name") ?? "").trim();
   const category = readCategory(formData);
@@ -79,7 +77,7 @@ export async function updateTeam(
   formData: FormData,
 ): Promise<TeamState> {
   const t = await getTranslations("Equipos");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("equipos.manage");
 
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -117,7 +115,7 @@ export async function deleteTeam(
   formData: FormData,
 ): Promise<TeamState> {
   const t = await getTranslations("Equipos");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("equipos.manage");
 
   const id = String(formData.get("id") ?? "");
 
@@ -139,7 +137,7 @@ export async function renewTeam(
   formData: FormData,
 ): Promise<TeamState> {
   const t = await getTranslations("Equipos");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("equipos.manage");
 
   const teamId = String(formData.get("teamId") ?? "");
   const targetSeasonId = String(formData.get("targetSeasonId") ?? "");
@@ -212,7 +210,7 @@ export async function importTeamsFromSeason(
   formData: FormData,
 ): Promise<TeamState> {
   const t = await getTranslations("Temporadas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("equipos.manage");
 
   const targetSeasonId = String(formData.get("targetSeasonId") ?? "");
   const sourceSeasonId = String(formData.get("sourceSeasonId") ?? "");

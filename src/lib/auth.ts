@@ -10,8 +10,6 @@ import { isPermission, type Permission } from "@/lib/permissions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
-/** @deprecated Enum viejo de roles. Se elimina al retirar `users.role`. */
-export type UserRole = (typeof users.$inferSelect)["role"];
 export type UserLocale = (typeof users.$inferSelect)["locale"];
 export type UserStatus = (typeof users.$inferSelect)["status"];
 
@@ -27,8 +25,6 @@ export type CurrentUser = {
   id: string;
   email: string;
   fullName: string | null;
-  /** @deprecated Usa `permissions` / `hasPermission`. */
-  role: UserRole;
   personId: string | null;
   locale: UserLocale;
   status: UserStatus;
@@ -93,7 +89,6 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
     id: user.id,
     email: user.email ?? profile?.email ?? "",
     fullName: profile?.fullName ?? null,
-    role: profile?.role ?? "member",
     personId: profile?.personId ?? null,
     locale: profile?.locale ?? routing.defaultLocale,
     status: profile?.status ?? "pending",
@@ -126,27 +121,10 @@ export async function requireUser(): Promise<CurrentUser> {
 }
 
 /**
- * Exige que el usuario tenga uno de los roles indicados.
- *
- * @deprecated En retirada: sustituir por `requirePermission`. Un rol creado por
- * el club nunca estará en una lista escrita a mano, así que esta comprobación
- * deja de ser correcta en cuanto existen roles personalizados.
- */
-export async function requireRole(
-  roles: UserRole[],
-): Promise<CurrentUser> {
-  const user = await requireUser();
-  if (!roles.includes(user.role)) {
-    redirect({ href: "/dashboard", locale: await getLocale() });
-  }
-  return user;
-}
-
-/**
  * Exige uno de los permisos indicados (basta con tener uno).
  *
- * Redirige al panel si no cumple, igual que hacía `requireRole`: es defensa en
- * profundidad, no un camino que el usuario deba recorrer —la interfaz ya no
+ * Redirige al panel si no cumple, como hacía la comprobación por roles a la que
+ * sustituye: es defensa en profundidad, no un camino que el usuario deba recorrer —la interfaz ya no
  * pinta lo que no puede hacer—. Donde un mensaje de error sí aporta (fallos de
  * ámbito que ocurren de verdad, como un entrenador tocando el partido de otro
  * equipo), el patrón es devolver `{ error: t("notAllowed") }` desde la acción.

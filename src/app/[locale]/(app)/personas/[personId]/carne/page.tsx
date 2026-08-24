@@ -8,7 +8,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { persons } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getSignedUrl } from "@/lib/supabase/storage";
@@ -48,7 +48,7 @@ export default async function MemberCardPage({
   const { locale, personId } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("personas.view");
   const t = await getTranslations("Personas");
 
   const [person, club] = await Promise.all([

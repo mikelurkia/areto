@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getClubSettings, getFederationAccounts } from "@/lib/club";
 
 export async function generateMetadata({
@@ -31,7 +31,7 @@ export default async function ClubPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("club.view");
   const t = await getTranslations("Club");
   const [clubSettings, federationAccounts] = await Promise.all([
     getClubSettings(),

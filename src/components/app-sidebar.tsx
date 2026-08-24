@@ -17,13 +17,14 @@ import {
   Settings,
   Shirt,
   Stethoscope,
+  ShieldUser,
   Users,
   Wallet,
 } from "lucide-react";
 
 import { logout } from "@/app/[locale]/(auth)/actions";
 import { Link, usePathname } from "@/i18n/navigation";
-import type { UserRole } from "@/lib/auth";
+import { isSystemRoleKey, type Permission } from "@/lib/permissions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -49,8 +50,18 @@ import {
 
 type Federation = { id: string; name: string; url: string };
 
+type SidebarUser = {
+  email: string;
+  /** Nombre del rol tal y como está guardado (para los roles creados por el club). */
+  roleName: string | null;
+  /** Clave del rol: si es de sistema, la etiqueta se traduce; si no, se usa `roleName`. */
+  roleKey: string | null;
+  /** Array y no `Set`: cruza el límite servidor→cliente sin sorpresas. */
+  permissions: Permission[];
+};
+
 type AppSidebarBodyProps = {
-  user: { email: string; role: UserRole };
+  user: SidebarUser;
   federations?: Federation[];
 };
 
@@ -135,39 +146,64 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
   const pathname = usePathname();
   const initials = user.email.slice(0, 2).toUpperCase();
 
-  const roleLabels: Record<UserRole, string> = {
-    admin: t("roles.admin"),
-    staff: t("roles.staff"),
-    coach: t("roles.coach"),
-    member: t("roles.member"),
-  };
+  // Los roles de fábrica se traducen por su clave; los que crea el club se
+  // muestran con el nombre que le hayan puesto. No se traducen, y es
+  // deliberado: son datos del club, no cadenas de la aplicación.
+  const roleLabel =
+    user.roleKey && isSystemRoleKey(user.roleKey)
+      ? t(`roles.${user.roleKey}` as "roles.admin")
+      : (user.roleName ?? "");
 
-  const canManageClub = user.role === "admin" || user.role === "staff";
-  // El calendario es de gestión interna (peticiones de horario), no algo que
-  // un socio/jugador consulte: mismo criterio que canManageClub, pero
-  // incluyendo también a los entrenadores.
-  const canViewCalendario = user.role !== "member";
+  const can = (permission: Permission) => user.permissions.includes(permission);
 
-  const nav = [
+  // `match` para las secciones cuyo enlace no es el prefijo de la sección
+  // (Administración apunta a su primera subpágina).
+  const nav: {
+    title: string;
+    href: string;
+    icon: typeof LayoutDashboard;
+    match?: string;
+    disabled?: boolean;
+  }[] = [
     { title: tNav("dashboard"), href: "/dashboard", icon: LayoutDashboard },
-    { title: tNav("personas"), href: "/personas", icon: Users },
-    ...(canManageClub
-      ? [
-          { title: tNav("socios"), href: "/socios", icon: IdCard },
-          { title: tNav("inscripciones"), href: "/inscripciones", icon: ClipboardCheckIcon },
-          { title: tNav("medico"), href: "/medico", icon: Stethoscope },
-        ]
+    ...(can("personas.view")
+      ? [{ title: tNav("personas"), href: "/personas", icon: Users }]
       : []),
-    { title: tNav("temporada"), href: "/temporadas", icon: ClipboardList },
-    { title: tNav("equipos"), href: "/equipos", icon: Shirt },
-    ...(canViewCalendario
+    ...(can("socios.view")
+      ? [{ title: tNav("socios"), href: "/socios", icon: IdCard }]
+      : []),
+    ...(can("inscripciones.view")
+      ? [{ title: tNav("inscripciones"), href: "/inscripciones", icon: ClipboardCheckIcon }]
+      : []),
+    ...(can("personas.medical.view")
+      ? [{ title: tNav("medico"), href: "/medico", icon: Stethoscope }]
+      : []),
+    ...(can("temporadas.view")
+      ? [{ title: tNav("temporada"), href: "/temporadas", icon: ClipboardList }]
+      : []),
+    ...(can("equipos.view")
+      ? [{ title: tNav("equipos"), href: "/equipos", icon: Shirt }]
+      : []),
+    ...(can("calendario.view")
       ? [{ title: tNav("calendario"), href: "/calendario", icon: CalendarDays }]
       : []),
-    { title: tNav("patrocinadores"), href: "/patrocinadores", icon: HandshakeIcon },
+    ...(can("patrocinadores.view")
+      ? [{ title: tNav("patrocinadores"), href: "/patrocinadores", icon: HandshakeIcon }]
+      : []),
     { title: tNav("cuotas"), href: "/cuotas", icon: Wallet, disabled: true },
     { title: tNav("avisos"), href: "/avisos", icon: Megaphone, disabled: true },
-    ...(canManageClub
+    ...(can("club.view")
       ? [{ title: tNav("club"), href: "/club", icon: Building2 }]
+      : []),
+    ...(can("usuarios.manage") || can("roles.manage")
+      ? [
+          {
+            title: tNav("administracion"),
+            href: "/administracion/usuarios",
+            match: "/administracion",
+            icon: ShieldUser,
+          },
+        ]
       : []),
   ];
 
@@ -178,8 +214,8 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
           <SidebarGroupLabel>{t("groupLabel")}</SidebarGroupLabel>
           <SidebarMenu>
             {nav.map((item) => {
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const base = item.match ?? item.href;
+              const active = pathname === base || pathname.startsWith(`${base}/`);
               return (
                 <SidebarMenuItem key={item.href}>
                   {item.disabled ? (
@@ -266,7 +302,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.email}</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {roleLabels[user.role]}
+                    {roleLabel}
                   </span>
                 </div>
                 <ChevronsUpDown className="ml-auto size-4" />
@@ -281,7 +317,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                     <div className="grid text-sm">
                       <span className="truncate font-medium">{user.email}</span>
                       <span className="truncate text-xs text-muted-foreground">
-                        {roleLabels[user.role]}
+                        {roleLabel}
                       </span>
                     </div>
                   </DropdownMenuLabel>

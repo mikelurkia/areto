@@ -5,7 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { sponsorPayments } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { seasonLabel } from "@/lib/sponsorship";
 import { Link } from "@/i18n/navigation";
@@ -30,7 +30,7 @@ export default async function SponsorInvoicePage({
   const { locale, sponsorId, paymentId } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("patrocinadores.view");
   const t = await getTranslations("Patrocinadores");
 
   const [payment, club] = await Promise.all([

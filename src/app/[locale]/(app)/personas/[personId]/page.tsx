@@ -22,7 +22,7 @@ import {
   deletePersonNote,
   updatePersonDocument,
 } from "@/app/[locale]/(app)/personas/actions";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { resolveBackHref } from "@/lib/back-href";
 import { calculateAge, isMinor } from "@/lib/age";
 import { getBankName } from "@/lib/bank";
@@ -243,7 +243,7 @@ export default async function PersonDetailPage({
   const initialTab = PERSON_TABS.find((value) => value === tab) ?? "general";
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("personas.view");
   const t = await getTranslations("Personas");
   const tEquipos = await getTranslations("Equipos");
   const tInscripciones = await getTranslations("Inscripciones");

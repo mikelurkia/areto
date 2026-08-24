@@ -8,22 +8,27 @@ import { isSupabaseConfigured, SUPABASE_KEY, SUPABASE_URL } from "@/lib/supabase
 const handleI18nRouting = createMiddleware(routing);
 
 /**
- * Rutas internas que requieren sesión iniciada (sin el prefijo de idioma).
- * Debe cubrir todo el grupo `(app)`: el layout ya no bloquea el render con la
- * comprobación de sesión (la resuelve dentro de un <Suspense>), así que este
- * corte es la primera barrera para las peticiones anónimas.
+ * Rutas accesibles SIN sesión (sin el prefijo de idioma). Todo lo demás la
+ * exige.
+ *
+ * La lista está invertida a propósito. Antes se enumeraban las rutas
+ * protegidas, y se quedó corta más de una vez: `/socios`, `/inscripciones` y
+ * `/medico` llevaban tiempo fuera y dependían solo de la comprobación de su
+ * página. Con una lista blanca de lo público —que es cerrada y cambia poco—,
+ * cualquier ruta nueva del grupo `(app)` nace protegida.
+ *
+ * Este corte es la primera barrera para las peticiones anónimas: el layout ya
+ * no bloquea el render con la comprobación de sesión (la resuelve dentro de un
+ * <Suspense>). No comprueba permisos: eso exigiría una consulta a Postgres en
+ * cada petición, y el JWT no lleva ni rol ni estado.
  */
-const PROTECTED_PREFIXES = [
-  "/dashboard",
-  "/personas",
-  "/equipos",
-  "/temporadas",
-  "/calendario",
-  "/patrocinadores",
-  "/cuotas",
-  "/avisos",
-  "/club",
-  "/ajustes",
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/inscripcion",
+  "/patrocinadores-muro",
+  "/auth-code-error",
+  "/acceso-revocado",
+  "/acceso-no-autorizado",
 ];
 
 const localePattern = new RegExp(`^/(${routing.locales.join("|")})(?=/|$)`);
@@ -37,7 +42,8 @@ function splitLocale(pathname: string) {
 }
 
 function isProtected(pathname: string) {
-  return PROTECTED_PREFIXES.some(
+  if (pathname === "/") return false;
+  return !PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
 }

@@ -18,7 +18,7 @@ import {
   persons,
   users,
 } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { DUPLICATE_PERSONS_TAG, INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { createClient } from "@/lib/supabase/server";
@@ -28,7 +28,6 @@ export type MergeState = {
   message?: string;
 };
 
-const MANAGE_ROLES = ["admin", "staff"] as const;
 const PHOTO_BUCKET = "person-photos";
 
 export async function mergePersons(
@@ -36,7 +35,7 @@ export async function mergePersons(
   formData: FormData,
 ): Promise<MergeState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   const primaryId = String(formData.get("primaryId") ?? "");
   const duplicateId = String(formData.get("duplicateId") ?? "");

@@ -19,7 +19,7 @@ import {
   deleteTeamNote,
   updateTeamDocument,
 } from "@/app/[locale]/(app)/equipos/[teamId]/actions";
-import { requireUser } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { resolveBackHref } from "@/lib/back-href";
 import { fileTypeLabel } from "@/lib/file-type";
 import { personPhotoThumbPath } from "@/lib/person-photo";
@@ -92,9 +92,9 @@ export default async function TeamDetailPage({
   const backHref = resolveBackHref(from, "/equipos");
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  const user = await requireUser();
+  const user = await requirePermission("equipos.view");
   const t = await getTranslations("Equipos");
-  const canManage = user.role === "admin" || user.role === "staff";
+  const canManage = hasPermission(user, "equipos.manage");
 
   // Primera tanda, en paralelo: nada de esto depende del resto. Temporadas y
   // personas se traen completas y se filtran en memoria (pocas filas) para no
@@ -204,7 +204,7 @@ export default async function TeamDetailPage({
           </div>
         </div>
         <div className="flex gap-2 print:hidden">
-          {user.role !== "member" ? (
+          {hasPermission(user, "equipos.acta") ? (
             <Button
               variant="outline"
               size="sm"

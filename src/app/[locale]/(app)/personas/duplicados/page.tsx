@@ -2,7 +2,7 @@ import { ArrowLeftIcon, UsersRound } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { findDuplicatePersonGroups } from "@/lib/person-matching";
 import { Link } from "@/i18n/navigation";
 import { MergeDuplicatesDialog } from "@/components/personas/merge-duplicates-dialog";
@@ -29,7 +29,7 @@ export default async function PersonDuplicatesPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("personas.view");
   const t = await getTranslations("Personas");
 
   const allPersons = await db.query.persons.findMany({

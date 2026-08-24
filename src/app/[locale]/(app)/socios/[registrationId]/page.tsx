@@ -5,7 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { registrations } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format-date";
 import { findCandidates } from "@/lib/person-matching";
 import { STATUS_VARIANT } from "@/lib/registration-status";
@@ -26,7 +26,7 @@ export default async function SocioRegistrationDetailPage({
   const { locale, registrationId } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("socios.view");
   const t = await getTranslations("Inscripciones");
 
   const registration = await db.query.registrations.findFirst({

@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { registrations } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { RegistrationsBrowser } from "@/components/inscripciones/registrations-browser";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 
@@ -26,7 +26,7 @@ export default async function InscripcionesPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("inscripciones.view");
   const t = await getTranslations("Inscripciones");
 
   // Esta lista es solo de inscripciones de equipo (jugador/entrenador/staff);

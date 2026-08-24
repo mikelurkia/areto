@@ -2,7 +2,7 @@ import { Stethoscope } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
 import { MedicalPanelBrowser } from "@/components/medico/medical-panel-browser";
@@ -30,7 +30,7 @@ export default async function MedicoPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("personas.medical.view");
   const t = await getTranslations("Medico");
 
   const [allPersons, allTeams] = await Promise.all([

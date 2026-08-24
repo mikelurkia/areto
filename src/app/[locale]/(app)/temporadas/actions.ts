@@ -6,15 +6,13 @@ import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { REGISTRATION_AVAILABILITY_TAG } from "@/lib/registration-settings";
 
 export type SeasonState = {
   error?: string;
   message?: string;
 };
-
-const MANAGE_ROLES = ["admin", "staff"] as const;
 
 // --- CRUD de temporadas ------------------------------------------------------
 
@@ -29,7 +27,7 @@ export async function createSeason(
   formData: FormData,
 ): Promise<SeasonState> {
   const t = await getTranslations("Temporadas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("temporadas.manage");
 
   const name = String(formData.get("name") ?? "").trim();
   const makeCurrent = formData.get("makeCurrent") === "on";
@@ -66,7 +64,7 @@ export async function updateSeason(
   formData: FormData,
 ): Promise<SeasonState> {
   const t = await getTranslations("Temporadas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("temporadas.manage");
 
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -102,7 +100,7 @@ export async function deleteSeason(
   formData: FormData,
 ): Promise<SeasonState> {
   const t = await getTranslations("Temporadas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("temporadas.manage");
 
   const id = String(formData.get("id") ?? "");
 
