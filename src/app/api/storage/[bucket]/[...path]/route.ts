@@ -42,10 +42,12 @@ export async function GET(
   { params }: { params: Promise<{ bucket: string; path: string[] }> },
 ) {
   const { bucket, path } = await params;
-  const requiredPermission = BUCKET_READ_PERMISSION[bucket];
-  if (!requiredPermission) {
+  // `Object.hasOwn` y no un acceso directo: `bucket` viene de la URL, y algo
+  // como "toString" devolvería una función heredada del prototipo.
+  if (!Object.hasOwn(BUCKET_READ_PERMISSION, bucket)) {
     return new NextResponse("Not found", { status: 404 });
   }
+  const requiredPermission = BUCKET_READ_PERMISSION[bucket];
 
   const user = await getCurrentUser();
   if (!user) {

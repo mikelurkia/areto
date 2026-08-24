@@ -343,7 +343,8 @@
       "club.manage": "Klubaren datuak eta konfigurazioa editatzea.",
       "usuarios.manage": "Kontuak gonbidatu, editatu, desaktibatu eta ezabatzea, eta rola esleitzea.",
       "roles.manage": "Rolak sortu eta bakoitzak zein baimen duen erabakitzea."
-    }
+    },
+    "defaultRoleRequired": "Markatu lehenago beste rol bat lehenetsi gisa: kontu berriek bat behar dute."
   },
   "Medico": {
     "title": "Panel medikoa",

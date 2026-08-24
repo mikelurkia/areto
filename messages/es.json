@@ -343,7 +343,8 @@
       "club.manage": "Editar los datos del club y su configuración.",
       "usuarios.manage": "Invitar, editar, desactivar y eliminar cuentas, y asignarles rol.",
       "roles.manage": "Crear roles y decidir qué permisos tiene cada uno."
-    }
+    },
+    "defaultRoleRequired": "Marca antes otro rol como predeterminado: las cuentas nuevas necesitan uno."
   },
   "Medico": {
     "title": "Panel médico",

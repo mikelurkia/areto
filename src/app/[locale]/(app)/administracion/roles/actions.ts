@@ -117,6 +117,10 @@ export async function updateRole(
   if (!role.isSystem && !name) return { error: t("roleNameRequired") };
   if (name.length > 60) return { error: t("roleNameTooLong") };
 
+  // Desmarcar el rol por defecto sin poner otro dejaría a las cuentas nuevas
+  // sin rol —y por tanto sin ningún permiso— en cuanto alguien se registrara.
+  if (role.isDefault && !makeDefault) return { error: t("defaultRoleRequired") };
+
   try {
     await db.transaction(async (tx) => {
       if (makeDefault) await clearDefault(tx);

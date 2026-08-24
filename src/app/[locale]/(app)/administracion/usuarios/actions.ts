@@ -73,6 +73,16 @@ export async function inviteUser(
     return { error: t("cannotAssignAdminRole") };
   }
 
+  // Se comprueba ANTES de invitar: si fallara después, la cuenta de Supabase ya
+  // existiría y el correo ya habría salido, y habría que deshacer las dos cosas.
+  if (personId) {
+    const taken = await db.query.users.findFirst({
+      where: eq(users.personId, personId),
+      columns: { id: true },
+    });
+    if (taken) return { error: t("personAlreadyLinked") };
+  }
+
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     redirectTo: confirmUrl("invitacion"),
