@@ -1,17 +1,50 @@
 name: Migrar producción
 
-# Disparo manual y explícito — nunca automático en el push a main. Lánzalo
-# justo después de que el PR mergeado haya desplegado en Vercel, para
-# minimizar la ventana entre "código nuevo desplegado" y "migración aplicada"
-# (mitigada además por disciplina expand/contract en el propio esquema).
+# Se dispara solo al mergear a main un PR que traiga ficheros en `drizzle/`, y
+# hace un backup cifrado inmediatamente antes de migrar. El disparo manual se
+# mantiene para relanzarlo tras un fallo (o para migrar sin cambios nuevos en
+# `drizzle/`, p. ej. si una ejecución anterior quedó a medias).
+#
+# ORDEN — importa, y es el motivo de que el disparo sea el push a main y no el
+# final del despliegue: con `cacheComponents: true`, `next build` ejecuta
+# consultas reales contra la base de datos (ver ci.yml), así que un build de
+# Production contra el esquema viejo revienta al prerenderizar cualquier página
+# que use lo nuevo. Al mergear, Vercel y este workflow arrancan a la vez; la
+# migración termina en ~1 min y el build tarda varios, así que en la práctica
+# llega primero. Si alguna vez pierde la carrera, el build de Vercel falla,
+# producción sigue sirviendo el despliegue anterior (no hay caída) y basta con
+# pulsar Redeploy cuando la migración haya acabado.
+#
+# Las migraciones aditivas (expand) son compatibles con el código viejo que
+# sigue corriendo durante esos minutos. Las destructivas (contract) van en un
+# PR posterior, cuando ya no queda código usando lo que se borra.
 on:
+  push:
+    branches: [main]
+    paths:
+      - "drizzle/**"
   workflow_dispatch: {}
+
+# Dos merges seguidos no deben migrar en paralelo: drizzle-kit aplica las
+# migraciones pendientes en orden y dos procesos a la vez sobre la misma base
+# de datos se pisan. La que esté en curso no se cancela nunca a mitad.
+concurrency:
+  group: migrate-prod
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
+  # Red de seguridad inmediata: el backup programado es de las 03:17, así que
+  # sin esto una migración destructiva de media tarde solo se podría deshacer
+  # hasta esta madrugada. Si el dump falla, `migrate` no llega a ejecutarse.
+  backup:
+    uses: ./.github/workflows/backup-prod.yml
+    secrets: inherit
+
   migrate:
+    needs: [backup]
     runs-on: ubuntu-latest
     environment: production
     env:

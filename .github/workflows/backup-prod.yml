@@ -8,6 +8,9 @@ on:
   schedule:
     - cron: "17 3 * * *" # diario, hora de baja carga
   workflow_dispatch: {}
+  # `migrate-prod.yml` lo invoca como job previo: una migración automática
+  # necesita un backup de hace segundos, no el de las 03:17.
+  workflow_call: {}
 
 permissions:
   contents: read
