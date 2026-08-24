@@ -75,7 +75,7 @@ jobs:
             areto-prod-backup.sql.gz
           rm areto-prod-backup.sql.gz
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: areto-prod-backup-${{ github.run_id }}
           path: areto-prod-backup.sql.gz.gpg
