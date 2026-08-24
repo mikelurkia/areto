@@ -31,20 +31,6 @@
     "openPanel": "Abrir el panel",
     "registerAction": "Inscríbete",
     "becomeMemberAction": "Hazte socio/a",
-    "features": {
-      "people": {
-        "title": "Equipos y categorías",
-        "description": "Desde los más pequeños hasta el primer equipo, cada categoría federada tiene su propio grupo y su propio calendario."
-      },
-      "calendar": {
-        "title": "Calendario",
-        "description": "Cuándo y dónde juega y entrena cada equipo, sin tener que preguntar en el grupo de WhatsApp."
-      },
-      "fees": {
-        "title": "Socios y socias",
-        "description": "Quienes hacen posible el club, temporada tras temporada."
-      }
-    },
     "carousel": {
       "firstTeam": {
         "title": "Primer equipo",
@@ -1467,8 +1453,6 @@
   "Login": {
     "title": "Accede a tu club",
     "subtitle": "Entra para gestionar el club.",
-    "continueWithGoogle": "Continuar con Google",
-    "orWithEmail": "o con tu email",
     "email": "Email",
     "password": "Contraseña",
     "signIn": "Entrar",
@@ -1495,7 +1479,6 @@
     "notConfigured": "Supabase aún no está configurado. Añade las variables de entorno (ver .env.example).",
     "invalidCredentials": "Email o contraseña incorrectos.",
     "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
-    "googleFailed": "No se pudo iniciar sesión con Google.",
     "signupDisabled": "El alta pública está cerrada. Al club se entra por invitación: habla con la secretaría.",
     "accessRevokedTitle": "Tu acceso está desactivado",
     "accessRevokedDescription": "Tu cuenta existe, pero ahora mismo no tiene acceso a Areto. Habla con la secretaría del club si crees que es un error.",

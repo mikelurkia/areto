@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getLocale, getTranslations } from "next-intl/server";
 
@@ -120,30 +119,6 @@ export async function setPassword(
   return localizedRedirect({ href: "/dashboard", locale });
 }
 
-export async function signInWithGoogle(
-  _prev: AuthState,
-  formData: FormData,
-): Promise<AuthState> {
-  const t = await getTranslations("AuthErrors");
-  if (!isSupabaseConfigured) return { error: t("notConfigured") };
-
-  const next = safeNext(formData.get("next"));
-  const origin = getSiteUrl();
-
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
-    },
-  });
-
-  if (error) return { error: error.message };
-  // URL externa (accounts.google.com): redirect "plano", no el localizado.
-  if (data.url) redirect(data.url);
-  return { error: t("googleFailed") };
-}
-
 /**
  * Cierra la sesión y devuelve a dónde ir. No redirige por su cuenta a propósito:
  * quien la llama hace una navegación completa del navegador.
@@ -153,10 +128,13 @@ export async function signInWithGoogle(
  * usuario anterior —borradores en diálogos, filtros de tablas—. Una recarga
  * completa lo descarta todo, que es lo que se espera al salir de una cuenta en un
  * ordenador compartido del club.
+ *
+ * Va a la web pública (`/`), no a `/login`: quien cierra sesión no está
+ * necesariamente a punto de volver a entrar.
  */
 export async function logout(): Promise<{ redirectTo: string }> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
-  return { redirectTo: `/${await getLocale()}/login` };
+  return { redirectTo: `/${await getLocale()}` };
 }

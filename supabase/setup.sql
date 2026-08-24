@@ -63,8 +63,8 @@
 --
 --   c) Authentication → Sign In / Providers → Email → "Allow new users to sign
 --      up" = OFF. Es la barrera de verdad del alta cerrada: con eso, el alta
---      por email o por Google de alguien a quien nadie ha invitado falla en el
---      propio Supabase. El estado `pending` del trigger es la red por debajo.
+--      por email de alguien a quien nadie ha invitado falla en el propio
+--      Supabase. El estado `pending` del trigger es la red por debajo.
 --
 --   d) Authentication → Emails → SMTP Settings: configura un SMTP propio
 --      (Resend, Brevo, SendGrid…) antes de dar de alta al club entero. El SMTP

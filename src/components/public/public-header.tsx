@@ -38,31 +38,37 @@ export async function PublicHeader(props: PublicHeaderProps) {
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
-      <div className={cn("mx-auto flex h-16 w-full items-center justify-between px-6", maxWidth)}>
+      <div className={cn("mx-auto flex h-16 w-full items-center justify-between gap-2 px-4 sm:px-6", maxWidth)}>
         {props.variant === "brand" ? (
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="" width={32} height={32} className="size-8 object-contain" />
-            <div className="leading-tight">
-              <span className="block font-heading font-semibold">{t("brand")}</span>
-              <span className="block text-xs text-muted-foreground">{t("brandSubtitle")}</span>
+          <Link href="/" className="flex min-w-0 items-center gap-2">
+            <Image src="/logo.png" alt="" width={32} height={32} className="size-8 shrink-0 object-contain" />
+            <div className="min-w-0 leading-tight">
+              <span className="block truncate font-heading font-semibold">{t("brand")}</span>
+              <span className="block truncate text-xs text-muted-foreground">{t("brandSubtitle")}</span>
             </div>
           </Link>
         ) : (
           <Link
             href={props.backHref}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeftIcon data-icon="inline-start" />
-            {props.backLabel}
+            <ArrowLeftIcon data-icon="inline-start" className="shrink-0" />
+            <span className="truncate">{props.backLabel}</span>
           </Link>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <ThemeToggle />
           <LocaleSwitcher />
           {props.variant === "brand" ? (
-            <Button render={<Link href="/dashboard" />} nativeButton={false} variant="ghost" size="sm">
-              {t("openPanel")}
+            <Button
+              render={<Link href="/dashboard" />}
+              nativeButton={false}
+              variant="ghost"
+              size="sm"
+              aria-label={t("openPanel")}
+            >
+              <span className="hidden sm:inline">{t("openPanel")}</span>
               <ArrowRightIcon data-icon="inline-end" />
             </Button>
           ) : null}

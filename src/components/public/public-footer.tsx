@@ -37,15 +37,15 @@ export async function PublicFooter() {
 
   return (
     <footer className="border-t">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Image src="/federations/gipuzkoana.png" alt="" width={28} height={28} className="size-7 object-contain opacity-70" />
-          <Image src="/federations/vasca.png" alt="" width={28} height={28} className="size-7 object-contain opacity-70" />
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6 sm:py-10">
+        <div className="flex flex-wrap items-center gap-3">
+          <Image src="/federations/gipuzkoana.png" alt="" width={28} height={28} className="size-7 shrink-0 object-contain opacity-70" />
+          <Image src="/federations/vasca.png" alt="" width={28} height={28} className="size-7 shrink-0 object-contain opacity-70" />
           <p className="text-sm text-muted-foreground">
             {club?.legalName ?? t("brand")} · © {year}
           </p>
         </div>
-        <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+        <nav className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground sm:gap-x-5">
           {links.map((link) => (
             <Link key={link.href} href={link.href} className="hover:text-foreground">
               {link.label}

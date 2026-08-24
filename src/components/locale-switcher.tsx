@@ -20,6 +20,12 @@ const localeNames: Record<Locale, string> = {
   es: "Castellano",
 };
 
+/** En pantallas estrechas no cabe el nombre completo junto al resto de la cabecera. */
+const localeShortNames: Record<Locale, string> = {
+  eu: "EU",
+  es: "ES",
+};
+
 type LocaleSwitcherProps = {
   className?: string;
   /** Si hay usuario autenticado, guarda el idioma elegido como su preferencia. */
@@ -44,7 +50,8 @@ export function LocaleSwitcher({ className, persist }: LocaleSwitcherProps) {
         }
       >
         <Globe className="size-4" />
-        {localeNames[locale as Locale]}
+        <span className="hidden sm:inline">{localeNames[locale as Locale]}</span>
+        <span className="sm:hidden">{localeShortNames[locale as Locale]}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {routing.locales.map((l) => (
