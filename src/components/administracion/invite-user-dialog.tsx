@@ -1,0 +1,135 @@
+"use client";
+
+import { useActionState, useState } from "react";
+import { UserPlusIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
+
+import { inviteUser } from "@/app/[locale]/(app)/administracion/usuarios/actions";
+import type { RoleOption } from "@/components/administracion/role-dialog";
+import {
+  UserPersonCombobox,
+  type PersonOption,
+} from "@/components/administracion/user-person-combobox";
+import { SubmitButton } from "@/components/submit-button";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useActionToast } from "@/hooks/use-action-toast";
+import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
+import { useDialogParam } from "@/hooks/use-dialog-param";
+
+/** Alta de un usuario: se le manda un correo con un enlace para entrar. */
+export function InviteUserDialog({
+  roles,
+  defaultRoleId,
+  personOptions,
+  available,
+}: {
+  roles: RoleOption[];
+  defaultRoleId: string | null;
+  personOptions: PersonOption[];
+  /** Falso si no hay clave de servicio: sin ella no se pueden enviar correos. */
+  available: boolean;
+}) {
+  const t = useTranslations("Administracion");
+  const [open, setOpen] = useDialogParam("usuario-nuevo");
+  const [state, action] = useActionState(inviteUser, {});
+  const [email, setEmail] = useState("");
+  useActionToast(state);
+  useCloseOnActionSuccess(state, setOpen);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button disabled={!available} />}>
+        <UserPlusIcon data-icon="inline-start" />
+        {t("inviteUser")}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("inviteTitle")}</DialogTitle>
+          <DialogDescription>{t("inviteDescription")}</DialogDescription>
+        </DialogHeader>
+        <form action={action} className="flex flex-col gap-4">
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="invite-email">{t("emailLabel")}</FieldLabel>
+              <Input
+                id="invite-email"
+                name="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t("emailPlaceholder")}
+                required
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="invite-name">{t("fullNameLabel")}</FieldLabel>
+              <Input id="invite-name" name="fullName" />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="invite-role">{t("roleLabel")}</FieldLabel>
+              <Select name="roleId" defaultValue={defaultRoleId ?? ""}>
+                <SelectTrigger id="invite-role" className="w-full">
+                  <SelectValue>
+                    {(value: string) =>
+                      roles.find((r) => r.id === value)?.name ?? ""
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
+              <FieldLabel>{t("personLabel")}</FieldLabel>
+              <UserPersonCombobox
+                personOptions={personOptions}
+                defaultPersonId={null}
+                emailHint={email}
+              />
+              <FieldDescription>{t("personHint")}</FieldDescription>
+            </Field>
+          </FieldGroup>
+          <FieldDescription>{t("emailRateLimitHint")}</FieldDescription>
+          {state.error ? (
+            <p className="text-sm text-destructive">{state.error}</p>
+          ) : null}
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>
+              {t("cancel")}
+            </DialogClose>
+            <SubmitButton>{t("inviteSubmit")}</SubmitButton>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

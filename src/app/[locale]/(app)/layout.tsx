@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/app-header";
 import { AppSidebar, AppSidebarBody } from "@/components/app-sidebar";
 import { AppSidebarBodySkeleton } from "@/components/app-sidebar-skeleton";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { requireUser } from "@/lib/auth";
+import { hasPermission, requireUser } from "@/lib/auth";
 import { getFederationAccounts } from "@/lib/club";
 
 /**
@@ -18,13 +18,12 @@ import { getFederationAccounts } from "@/lib/club";
  * página se renderiza en paralelo con la comprobación de sesión.
  *
  * Esto no relaja la autorización: cada página protegida llama a
- * `requireRole`/`requireUser` por su cuenta antes de consultar datos, y
+ * `requirePermission`/`requireUser` por su cuenta antes de consultar datos, y
  * `src/proxy.ts` corta las rutas privadas antes de llegar al layout.
  */
 async function AppSidebarBodyWithSession() {
   const user = await requireUser();
-  const canManageClub = user.role === "admin" || user.role === "staff";
-  const federations = canManageClub
+  const federations = hasPermission(user, "club.view")
     ? (await getFederationAccounts()).map((f) => ({
         id: f.id,
         name: f.name,
@@ -34,7 +33,12 @@ async function AppSidebarBodyWithSession() {
 
   return (
     <AppSidebarBody
-      user={{ email: user.email, role: user.role }}
+      user={{
+        email: user.email,
+        roleName: user.assignedRole?.name ?? null,
+        roleKey: user.assignedRole?.key ?? null,
+        permissions: [...user.permissions],
+      }}
       federations={federations}
     />
   );

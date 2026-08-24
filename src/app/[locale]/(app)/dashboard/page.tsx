@@ -11,7 +11,7 @@ import {
 
 import { db } from "@/db";
 import { personQualifications, persons, registrations, seasons, sponsorshipTerms } from "@/db/schema";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, hasPermission } from "@/lib/auth";
 import { groupCourtEventsByWeekend, loadCourtEvents } from "@/lib/court-events";
 import {
   countDuplicatePersonGroups,
@@ -33,7 +33,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const MANAGE_ROLES = ["admin", "staff"] as const;
 const EXPIRY_WINDOW_DAYS = 60;
 
 type ExpiringItem = {
@@ -530,9 +529,11 @@ export default async function DashboardPage({
     getTranslations("Dashboard"),
     getCurrentUser(),
   ]);
-  const canManage = user
-    ? (MANAGE_ROLES as readonly string[]).includes(user.role)
-    : false;
+  // Cada tarjeta se recorta con su propio permiso: con roles a medida ya no
+  // hay un único "puede gestionar" que valga para todas.
+  const canSeePersonas = hasPermission(user, "personas.view");
+  const canSeeMedical = hasPermission(user, "personas.medical.view");
+  const canSeeSponsors = hasPermission(user, "patrocinadores.view");
 
   return (
     <div className="flex flex-col gap-6">
@@ -541,7 +542,7 @@ export default async function DashboardPage({
         <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
-      {canManage ? (
+      {canSeePersonas ? (
         <>
           <Suspense fallback={<CardSkeleton lines={3} />}>
             <ActionsCard />
@@ -549,13 +550,17 @@ export default async function DashboardPage({
           <Suspense fallback={<CardSkeleton lines={5} />}>
             <IntegrityCard />
           </Suspense>
-          <Suspense fallback={<CardSkeleton lines={8} />}>
-            <ExpiringCard />
-          </Suspense>
-          <Suspense fallback={<CardSkeleton lines={2} />}>
-            <SponsorshipCard />
-          </Suspense>
         </>
+      ) : null}
+      {canSeeMedical ? (
+        <Suspense fallback={<CardSkeleton lines={8} />}>
+          <ExpiringCard />
+        </Suspense>
+      ) : null}
+      {canSeeSponsors ? (
+        <Suspense fallback={<CardSkeleton lines={2} />}>
+          <SponsorshipCard />
+        </Suspense>
       ) : null}
     </div>
   );

@@ -6,6 +6,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -55,13 +56,31 @@ export const playerPosition = pgEnum("player_position", [
   "portero",
 ]);
 
-/** Rol de acceso a la aplicación (para auth, fase posterior). */
+/**
+ * Rol de acceso a la aplicación. OBSOLETO: sustituido por la tabla `roles` y
+ * `users.roleId`. Se mantiene durante la fase expand para que las políticas RLS
+ * de `storage.objects` (que hoy leen esta columna) sigan funcionando hasta que
+ * se aplique `supabase/setup.sql` v2; se elimina en un PR posterior.
+ */
 export const userRole = pgEnum("user_role", [
   "admin", // gestión total del club
   "staff", // secretaría / tesorería
   "coach", // entrenador: su(s) equipo(s)
   "member", // jugador/socio: solo lectura de lo suyo
 ]);
+
+/**
+ * Estado de acceso de una cuenta.
+ *
+ * - `pending`: la cuenta existe en `auth.users` (auto-registro o alta por
+ *   Google) pero nadie le ha dado acceso todavía. No puede entrar.
+ * - `active`: acceso concedido.
+ * - `disabled`: acceso revocado sin borrar la cuenta ni su historial.
+ *
+ * El default de la columna es `pending` a propósito: es la red que impide que
+ * un alta que no venga de una invitación entre en la aplicación.
+ */
+export const userStatus = pgEnum("user_status", ["pending", "active", "disabled"]);
 
 /** Idioma de interfaz preferido del usuario (debe coincidir con src/i18n/routing.ts). */
 export const userLocale = pgEnum("user_locale", ["eu", "es"]);
@@ -456,22 +475,93 @@ export const memberships = pgTable(
 // ---------------------------------------------------------------------------
 
 /**
+ * Rol de acceso a la aplicación. Los cuatro de fábrica (`admin`, `staff`,
+ * `coach`, `member`) se siembran con `isSystem = true`: no se pueden borrar y su
+ * `key` y su nombre son inmutables (la UI los traduce por `key`), pero su matriz
+ * de permisos sí se edita. El club puede crear los suyos propios.
+ *
+ * Los permisos NO viven aquí: el catálogo está en `src/lib/permissions.ts`. Un
+ * permiso solo significa algo si hay un `requirePermission()` que lo comprueba,
+ * así que la fuente de verdad es el código y la base de datos solo guarda qué
+ * rol tiene cuál (`role_permissions`).
+ */
+export const roles = pgTable(
+  "roles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Slug estable, usado por el bootstrap y por las traducciones de la UI. */
+    key: text("key").notNull().unique(),
+    name: text("name").notNull(),
+    description: text("description"),
+    isSystem: boolean("is_system").notNull().default(false),
+    /** Rol que asigna el trigger de Supabase a las cuentas nuevas. Solo uno. */
+    isDefault: boolean("is_default").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Índice único parcial: misma mecánica que `seasons.isCurrent`.
+    uniqueIndex("roles_single_default_idx")
+      .on(t.isDefault)
+      .where(sql`${t.isDefault}`),
+  ],
+).enableRLS();
+
+/**
+ * Asignaciones rol → permiso. `permission` es `text` y no un enum a propósito:
+ * el catálogo vive en `src/lib/permissions.ts`, así que añadir un permiso nuevo
+ * es tocar un array de TypeScript y no una migración. Las claves que ya no
+ * existan en el catálogo se descartan al leerlas (ver `getCurrentUser`).
+ */
+export const rolePermissions = pgTable(
+  "role_permissions",
+  {
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    permission: text("permission").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.roleId, t.permission] })],
+).enableRLS();
+
+/**
  * Perfil de aplicación. Su `id` es EXACTAMENTE el id de `auth.users` de Supabase
  * (no se genera aquí): lo crea un trigger `handle_new_user` al registrarse.
- * Ver `supabase/setup.sql`. `role` arranca en "member"; un admin lo asciende
- * a mano cuando corresponda.
+ * Ver `supabase/setup.sql`.
  */
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey(), // = auth.users.id
-  personId: uuid("person_id").references(() => persons.id, {
-    onDelete: "set null",
-  }),
-  email: text("email").notNull().unique(),
-  fullName: text("full_name"),
-  role: userRole("role").notNull().default("member"),
-  locale: userLocale("locale").notNull().default("eu"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey(), // = auth.users.id
+    personId: uuid("person_id").references(() => persons.id, {
+      onDelete: "set null",
+    }),
+    email: text("email").notNull().unique(),
+    fullName: text("full_name"),
+    /** OBSOLETO: sustituido por `roleId`. Ver el comentario de `userRole`. */
+    role: userRole("role").notNull().default("member"),
+    /**
+     * Nullable a propósito: sin rol = sin ningún permiso (fail-closed). El
+     * `restrict` hace que borrar un rol que alguien tiene asignado falle con
+     * 23503 en vez de dejar cuentas desamparadas en silencio.
+     */
+    roleId: uuid("role_id").references(() => roles.id, { onDelete: "restrict" }),
+    status: userStatus("status").notNull().default("pending"),
+    locale: userLocale("locale").notNull().default("eu"),
+    invitedAt: timestamp("invited_at", { withTimezone: true }),
+    invitedBy: uuid("invited_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Una persona del club, como mucho una cuenta.
+    uniqueIndex("users_person_idx")
+      .on(t.personId)
+      .where(sql`${t.personId} is not null`),
+  ],
+).enableRLS();
 
 // ---------------------------------------------------------------------------
 // Calendario: eventos (entrenamientos / partidos) y asistencia
@@ -874,6 +964,36 @@ export const registrationGuardians = pgTable(
 export const seasonsRelations = relations(seasons, ({ many }) => ({
   teams: many(teams),
   fees: many(fees),
+}));
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+  permissions: many(rolePermissions),
+  users: many(users),
+}));
+
+export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
+  role: one(roles, {
+    fields: [rolePermissions.roleId],
+    references: [roles.id],
+  }),
+}));
+
+/**
+ * Permite resolver usuario + rol + permisos en UNA sola sentencia SQL desde
+ * `getCurrentUser`, que se ejecuta en cada petición.
+ */
+export const usersRelations = relations(users, ({ one }) => ({
+  // `accessRole` y no `role`: mientras siga existiendo la columna heredada
+  // `users.role` (enum), una relación llamada igual haría que Drizzle mezclara
+  // ambas en el tipo inferido. Al retirar la columna se puede renombrar.
+  accessRole: one(roles, {
+    fields: [users.roleId],
+    references: [roles.id],
+  }),
+  person: one(persons, {
+    fields: [users.personId],
+    references: [persons.id],
+  }),
 }));
 
 export const sponsorsRelations = relations(sponsors, ({ one, many }) => ({

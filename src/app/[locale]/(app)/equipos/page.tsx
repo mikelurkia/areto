@@ -11,7 +11,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { seasons, teams } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { computeRosterHealth, type RosterHealthAlerts } from "@/lib/roster-health";
 import { Link } from "@/i18n/navigation";
 import { SeasonSelect } from "@/components/equipos/season-select";
@@ -48,9 +48,9 @@ export default async function EquiposPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  const user = await requireUser();
+  const user = await requirePermission("equipos.view");
   const t = await getTranslations("Equipos");
-  const canManage = user.role === "admin" || user.role === "staff";
+  const canManage = hasPermission(user, "equipos.manage");
 
   // Los equipos sí dependen de la temporada elegida, pero el parámetro de la URL
   // y el listado de temporadas se pueden resolver a la vez.

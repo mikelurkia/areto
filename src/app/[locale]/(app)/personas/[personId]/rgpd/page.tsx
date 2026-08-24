@@ -6,7 +6,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { persons } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { calculateAge } from "@/lib/age";
 import { teamSeasonLabel } from "@/lib/team-label";
@@ -82,7 +82,7 @@ export default async function PersonRgpdPage({
   const { locale, personId } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("personas.manage");
   const t = await getTranslations("Personas");
   const tEquipos = await getTranslations("Equipos");
 

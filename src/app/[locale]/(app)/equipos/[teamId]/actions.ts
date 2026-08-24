@@ -6,7 +6,7 @@ import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { memberships, playerPosition, teamDocuments, teamNotes } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
@@ -16,7 +16,6 @@ export type MembershipState = {
   message?: string;
 };
 
-const MANAGE_ROLES = ["admin", "staff"] as const;
 const MEMBERSHIP_ROLES = ["player", "coach", "staff"] as const;
 const PLAYER_POSITIONS = playerPosition.enumValues;
 
@@ -48,7 +47,7 @@ export async function addMembership(
   formData: FormData,
 ): Promise<MembershipState> {
   const t = await getTranslations("Equipos");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("equipos.manage");
 
   const teamId = String(formData.get("teamId") ?? "");
   const personId = String(formData.get("personId") ?? "");
@@ -79,7 +78,7 @@ export async function updateMembership(
   formData: FormData,
 ): Promise<MembershipState> {
   const t = await getTranslations("Equipos");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("equipos.manage");
 
   const id = String(formData.get("id") ?? "");
 
@@ -109,7 +108,7 @@ export async function updateTeamCaptain(
   formData: FormData,
 ): Promise<MembershipState> {
   const t = await getTranslations("Equipos");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("equipos.manage");
 
   const teamId = String(formData.get("teamId") ?? "");
   const selectedId = String(formData.get("captainMembershipId") ?? "");
@@ -143,7 +142,7 @@ export async function removeMembership(
   formData: FormData,
 ): Promise<MembershipState> {
   const t = await getTranslations("Equipos");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("equipos.manage");
 
   const id = String(formData.get("id") ?? "");
 
@@ -163,6 +162,7 @@ const teamDocumentActions = makeDocumentActions({
   parentIdColumn: "teamId",
   formKey: "teamId",
   namespace: "Equipos",
+  permission: "equipos.manage",
 });
 export const addTeamDocument = teamDocumentActions.add;
 export const updateTeamDocument = teamDocumentActions.update;
@@ -177,6 +177,7 @@ const teamNoteActions = makeNoteActions({
   parentIdColumn: "teamId",
   formKey: "teamId",
   namespace: "Equipos",
+  permission: "equipos.manage",
 });
 export const addTeamNote = teamNoteActions.add;
 export const deleteTeamNote = teamNoteActions.delete;

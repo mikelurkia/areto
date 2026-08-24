@@ -13,7 +13,7 @@ import {
   registrationGuardians,
   registrations,
 } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { isValidIban } from "@/lib/iban";
 import { resizeImageToWebp } from "@/lib/image-resize";
@@ -29,7 +29,6 @@ export type RegistrationReviewState = {
   message?: string;
 };
 
-const MANAGE_ROLES = ["admin", "staff"] as const;
 const MEMBERSHIP_ROLES = ["player", "coach", "staff"] as const;
 type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
 const REGISTRATION_BUCKET = "registration-documents";
@@ -157,7 +156,7 @@ export async function updateRegistration(
   formData: FormData,
 ): Promise<RegistrationReviewState> {
   const t = await getTranslations("Inscripciones");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("inscripciones.manage");
 
   const id = String(formData.get("id") ?? "");
   const existing = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });
@@ -228,7 +227,7 @@ export async function approveRegistration(
   formData: FormData,
 ): Promise<RegistrationReviewState> {
   const t = await getTranslations("Inscripciones");
-  const reviewer = await requireRole([...MANAGE_ROLES]);
+  const reviewer = await requirePermission("inscripciones.manage");
 
   const id = String(formData.get("id") ?? "");
   const teamId = String(formData.get("teamId") ?? "").trim() || null;
@@ -526,7 +525,7 @@ export async function rejectRegistration(
   formData: FormData,
 ): Promise<RegistrationReviewState> {
   const t = await getTranslations("Inscripciones");
-  const reviewer = await requireRole([...MANAGE_ROLES]);
+  const reviewer = await requirePermission("inscripciones.manage");
 
   const id = String(formData.get("id") ?? "");
   const rejectionReason = String(formData.get("rejectionReason") ?? "").trim();
@@ -558,7 +557,7 @@ export async function reopenRegistration(
   formData: FormData,
 ): Promise<RegistrationReviewState> {
   const t = await getTranslations("Inscripciones");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("inscripciones.manage");
 
   const id = String(formData.get("id") ?? "");
   const registration = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });

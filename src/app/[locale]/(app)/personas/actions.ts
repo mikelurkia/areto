@@ -17,7 +17,7 @@ import {
   personTags,
   persons,
 } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { nextConsentAt, stampConsent } from "@/lib/consent";
 import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { makeDocumentActions } from "@/lib/entity-documents";
@@ -39,8 +39,6 @@ export type PersonState = {
   candidates?: PersonCandidate[];
   submittedFields?: Record<string, string | null>;
 };
-
-const MANAGE_ROLES = ["admin", "staff"] as const;
 
 const PHOTO_BUCKET = "person-photos";
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
@@ -303,7 +301,7 @@ export async function createPerson(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   // El usuario ya vio los candidatos (ver más abajo) y decidió vincular con
   // uno existente: a partir de aquí es una edición normal, mismo camino que
@@ -427,7 +425,7 @@ export async function updatePerson(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readPersonFields(formData);
@@ -530,7 +528,7 @@ export async function updatePersonPhoto(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   const id = String(formData.get("id") ?? "");
   const photo = readPhoto(formData);
@@ -573,7 +571,7 @@ export async function updatePersonIdScan(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   const id = String(formData.get("id") ?? "");
   const side = formData.get("side") === "back" ? "back" : "front";
@@ -620,7 +618,7 @@ export async function deletePerson(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   const id = String(formData.get("id") ?? "");
 
@@ -658,7 +656,7 @@ export async function addQualification(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   const personId = String(formData.get("personId") ?? "");
   const fields = readQualificationFields(formData);
@@ -700,7 +698,7 @@ export async function updateQualification(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readQualificationFields(formData);
@@ -754,7 +752,7 @@ export async function deleteQualification(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   const id = String(formData.get("id") ?? "");
 
@@ -791,7 +789,7 @@ export async function addMedicalCheckup(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.medical.manage");
 
   const personId = String(formData.get("personId") ?? "");
   const fields = readMedicalCheckupFields(formData);
@@ -834,7 +832,7 @@ export async function updateMedicalCheckup(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.medical.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readMedicalCheckupFields(formData);
@@ -889,7 +887,7 @@ export async function deleteMedicalCheckup(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.medical.manage");
 
   const id = String(formData.get("id") ?? "");
 
@@ -921,7 +919,7 @@ export async function addInjuryReport(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.medical.manage");
 
   const personId = String(formData.get("personId") ?? "");
   const fields = readInjuryReportFields(formData);
@@ -962,7 +960,7 @@ export async function updateInjuryReport(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.medical.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readInjuryReportFields(formData);
@@ -1015,7 +1013,7 @@ export async function deleteInjuryReport(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.medical.manage");
 
   const id = String(formData.get("id") ?? "");
 
@@ -1037,6 +1035,7 @@ const personDocumentActions = makeDocumentActions({
   parentIdColumn: "personId",
   formKey: "personId",
   namespace: "Personas",
+  permission: "personas.manage",
 });
 export const addPersonDocument = personDocumentActions.add;
 export const updatePersonDocument = personDocumentActions.update;
@@ -1052,7 +1051,7 @@ export async function assignNextMemberNumber(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   const id = String(formData.get("id") ?? "");
   const existing = await db.query.clubMembers.findFirst({
@@ -1082,7 +1081,7 @@ export async function assignNextMemberNumber(
 }
 
 export async function bulkSetMember(personIds: string[], isMember: boolean): Promise<void> {
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
   if (personIds.length === 0) return;
 
   const existingRows = await db.query.clubMembers.findMany({
@@ -1125,7 +1124,7 @@ export async function bulkAddToTeam(
   teamId: string,
   role: BulkMembershipRole,
 ): Promise<void> {
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
   if (personIds.length === 0 || !teamId) return;
   const safeRole = (BULK_MEMBERSHIP_ROLES as readonly string[]).includes(role)
     ? role
@@ -1144,6 +1143,7 @@ const personNoteActions = makeNoteActions({
   parentIdColumn: "personId",
   formKey: "personId",
   namespace: "Personas",
+  permission: "personas.manage",
 });
 export const addPersonNote = personNoteActions.add;
 export const deletePersonNote = personNoteActions.delete;
@@ -1157,7 +1157,7 @@ export async function addPersonTag(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   const personId = String(formData.get("personId") ?? "");
   const tag = normalizeTag(String(formData.get("tag") ?? ""));
@@ -1174,7 +1174,7 @@ export async function deletePersonTag(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("personas.manage");
 
   const id = String(formData.get("id") ?? "");
   await db.delete(personTags).where(eq(personTags.id, id));

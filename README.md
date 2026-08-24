@@ -132,29 +132,58 @@ el cable. Detalles a tener en cuenta:
 Conectar el portátil corporativo a una red ajena conviene contrastarlo antes con
 Sistemas, por si la política interna no permite el *dual-homing*.
 
-## Autenticación
+## Autenticación y acceso
 
-Auth con **Supabase** (email+contraseña y Google OAuth). Los roles
-(`admin` · `staff` · `coach` · `member`) viven en la tabla de perfil `users`,
-enlazada por `id` con `auth.users`.
+Auth con **Supabase** (email+contraseña y Google OAuth). El acceso a la
+aplicación es **por invitación**: no hay alta pública. Un administrador invita
+desde `/administracion/usuarios` y la persona recibe un correo con un enlace
+para poner su contraseña.
 
-Pasos tras crear el proyecto Supabase:
+### Roles y permisos
 
-1. **Esquema de auth**: ejecuta `supabase/setup.sql` en el SQL Editor. Crea el
-   trigger que genera el perfil al registrarse (rol `member`) y activa RLS.
-2. **Google OAuth**: en Supabase → Authentication → Providers → Google, añade las
-   credenciales de Google Cloud y la URL de callback
-   `https://[ref].supabase.co/auth/v1/callback`.
-3. **Primer admin**: regístrate en `/login` y promociona tu usuario:
-   ```sql
-   update public.users
-   set role = 'admin'
-   where email = 'tu-email@ejemplo.com';
-   ```
+Los roles viven en la tabla `roles` y se crean y editan desde
+`/administracion/roles`. El club arranca con cuatro de fábrica —Administrador,
+Secretaría, Entrenador y Socio—, que no se pueden borrar pero cuyos permisos sí
+se ajustan.
+
+El **catálogo de permisos** está en el código (`src/lib/permissions.ts`), no en
+la base de datos: un permiso solo significa algo si hay un
+`requirePermission()` que lo comprueba. La base de datos guarda únicamente qué
+rol tiene cuál (`role_permissions`). Añadir un permiso nuevo es tocar ese array
+y sus traducciones; no hace falta migración.
 
 La autorización en servidor se hace con los helpers de `src/lib/auth.ts`
-(`getCurrentUser`, `requireUser`, `requireRole`). El refresco de sesión y la
-protección de rutas está en `src/proxy.ts`.
+(`getCurrentUser`, `requireUser`, `requirePermission`, `hasPermission`). El
+refresco de sesión y el corte de las rutas privadas está en `src/proxy.ts`, que
+solo comprueba que haya sesión: los permisos se miran en cada página y en cada
+Server Action, y el estado de la cuenta (activa, pendiente o desactivada) lo
+comprueba `requireUser` en cada petición.
+
+### Puesta en marcha del proyecto Supabase
+
+1. **Migraciones primero**: `npm run db:migrate` (crea `roles`,
+   `role_permissions` y siembra los cuatro roles de fábrica).
+2. **Esquema de auth**: ejecuta `supabase/setup.sql` en el SQL Editor. Crea el
+   trigger que genera el perfil al registrarse, publica
+   `public.user_has_permission()` y escribe con ella las políticas de Storage.
+   El propio fichero falla en claro si lo lanzas antes que las migraciones.
+3. **Ajustes del dashboard** que el SQL no puede hacer, y sin los cuales las
+   invitaciones no llegan: plantillas de correo apuntando a `/auth/confirm`,
+   `/auth/confirm` en la lista de *Redirect URLs*, "Allow new users to sign up"
+   apagado y un SMTP propio. Están detallados en la cabecera de
+   `supabase/setup.sql`.
+4. **Google OAuth**: en Supabase → Authentication → Providers → Google, añade las
+   credenciales de Google Cloud y la URL de callback
+   `https://[ref].supabase.co/auth/v1/callback`.
+5. **Primer administrador**: regístrate una vez en `/login` y promociónate a
+   mano (es la última operación en SQL que queda; a partir de ahí, el alta del
+   resto se hace desde la aplicación):
+   ```sql
+   update public.users
+   set role_id = (select id from public.roles where key = 'admin'),
+       status  = 'active'
+   where email = 'tu-email@ejemplo.com';
+   ```
 
 ## Scripts
 
@@ -198,9 +227,9 @@ src/
 ## Modelo de datos
 
 Aplicación de club único: `seasons`, `teams`, `persons`, `memberships`,
-`events`, `attendances`, `fees`, `payments`, `announcements`, `users`. Sin capa
-de multi-club ni catálogo de deportes — todo el modelo es específico de fútbol
-sala.
+`events`, `attendances`, `fees`, `payments`, `announcements`, `users`, `roles`
+y `role_permissions`. Sin capa de multi-club ni catálogo de deportes — todo el
+modelo es específico de fútbol sala.
 
 **Temporadas:** la gestión es multi-temporada. `seasons` es el ancla de la que
 cuelgan `teams.seasonId` y `fees.seasonId` — cada temporada tiene sus propios
@@ -211,7 +240,7 @@ por ella por defecto y permite consultar temporadas pasadas.
 ## Roadmap
 
 1. ✅ Cimientos: proyecto, UI, esquema de datos.
-2. ✅ Autenticación con roles (admin / staff / coach / member).
+2. ✅ Autenticación, roles editables y gestión de usuarios.
 3. CRUD de personas y equipos.
 4. Calendario y convocatorias.
 5. Económico + integración con Stripe.

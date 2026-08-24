@@ -1,15 +1,18 @@
 -- ============================================================================
 -- Areto · Configuración de Supabase Auth ↔ tabla de perfil `public.users`
 -- ============================================================================
--- Ejecuta este script en el SQL Editor de Supabase UNA VEZ, DESPUÉS de haber
--- aplicado el esquema de Drizzle (`npm run db:push`).
+-- Ejecuta este script en el SQL Editor de Supabase, DESPUÉS de haber aplicado
+-- las migraciones de Drizzle (`npm run db:migrate`). Es idempotente: se puede
+-- reejecutar entero tantas veces como haga falta.
 --
 -- Qué hace:
---   1. Crea un trigger que, al registrarse un usuario en Supabase Auth,
---      inserta automáticamente su fila de perfil en `public.users`
---      (rol por defecto: 'member'; un admin lo asciende cuando corresponda).
+--   1. Crea el trigger que, al aparecer un usuario en Supabase Auth, inserta su
+--      fila de perfil en `public.users` con el rol por defecto y el estado
+--      `pending` (sin acceso hasta que alguien lo active).
 --   2. Activa RLS en `public.users` y permite a cada usuario leer su propio
 --      perfil (las escrituras de la app van por el servidor con Drizzle).
+--   3. Publica `public.user_has_permission(text)` y escribe con ella todas las
+--      políticas de Storage.
 --
 -- Nota sobre RLS en el resto de tablas: todas las tablas de `public` tienen
 -- RLS activado sin ninguna política propia (lo hace automáticamente una
@@ -17,27 +20,92 @@
 -- Supabase, fuera de este repo, como red de seguridad ante cualquier tabla
 -- nueva). Esto es intencionado, no un olvido: la aplicación accede a Postgres
 -- vía `DATABASE_URL` con un rol que bypassa RLS (`src/db/index.ts`), y toda la
--- autorización real ocurre en las Server Actions vía `requireRole()`
+-- autorización real ocurre en las Server Actions vía `requirePermission()`
 -- (`src/lib/auth.ts`). Si en el futuro se empieza a consultar Supabase
 -- directamente desde el navegador (cliente `anon`/`authenticated`) contra
 -- estas tablas, hará falta escribir políticas explícitas en ese momento —
 -- hasta entonces, PostgREST devolverá cero filas, que es lo deseado.
+--
+-- ---------------------------------------------------------------------------
+-- CONFIGURACIÓN MANUAL DEL DASHBOARD
+-- Esto no lo hace el SQL, y sin ello las invitaciones no funcionan:
+--
+--   a) Authentication → Email Templates. Hay que tocar TRES plantillas, y en
+--      las tres se sustituye el `href` de {{ .ConfirmationURL }} por:
+--
+--        Invite user     → {{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=invite
+--        Magic Link      → {{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=magiclink
+--        Reset Password  → {{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery
+--
+--      Motivo: `inviteUserByEmail` no soporta PKCE (el navegador que invita no
+--      es el que acepta la invitación), así que el enlace tiene que llegar a
+--      `/auth/confirm`, que verifica el token con `verifyOtp`, y no al
+--      `/auth/callback` de OAuth, que hace `exchangeCodeForSession`.
+--
+--      La de "Magic Link" es fácil de pasar por alto: reenviar una invitación
+--      a alguien que ya existe usa `signInWithOtp`, porque `inviteUserByEmail`
+--      falla con `email_exists` en cuanto la cuenta está creada. Sin esa
+--      plantilla, el reenvío manda a un enlace que no funciona.
+--
+--      Se usa {{ .RedirectTo }} y no {{ .SiteURL }} a propósito: lleva el
+--      `redirectTo` que ha calculado la aplicación a partir de `SITE_URL`, y ya
+--      trae el `?next=…` puesto (de ahí que se encadene con `&`). Así el mismo
+--      proyecto de Supabase sirve para local y para los Preview Deployments,
+--      que tienen dominios distintos; con {{ .SiteURL }} todos los enlaces
+--      irían al dominio fijo configurado en el dashboard.
+--
+--   b) Authentication → URL Configuration → Redirect URLs: añade
+--      `http://localhost:3000/**` y el equivalente de preview y producción.
+--      Con comodín porque el `redirectTo` que envía la aplicación lleva query
+--      (`/auth/confirm?next=…`). Si el destino no está en la lista, Supabase lo
+--      ignora, {{ .RedirectTo }} se queda con el Site URL y el enlace no lleva
+--      a ninguna parte útil.
+--
+--   c) Authentication → Sign In / Providers → Email → "Allow new users to sign
+--      up" = OFF. Es la barrera de verdad del alta cerrada: con eso, el alta
+--      por email o por Google de alguien a quien nadie ha invitado falla en el
+--      propio Supabase. El estado `pending` del trigger es la red por debajo.
+--
+--   d) Authentication → Emails → SMTP Settings: configura un SMTP propio
+--      (Resend, Brevo, SendGrid…) antes de dar de alta al club entero. El SMTP
+--      por defecto de Supabase está limitado a unos pocos correos por hora, así
+--      que invitar a veinte personas seguidas no va a funcionar sin esto.
 -- ============================================================================
 
--- 1) Trigger: crear perfil al registrarse -----------------------------------
+-- 0) Guarda de orden ---------------------------------------------------------
+-- Este script da por hecho el esquema de roles y permisos. Si se ejecuta antes
+-- que las migraciones, falla aquí y en claro en vez de a mitad.
+do $guard$
+begin
+  if to_regclass('public.role_permissions') is null then
+    raise exception
+      'Falta la tabla public.role_permissions: aplica antes las migraciones de Drizzle (npm run db:migrate).';
+  end if;
+end $guard$;
+
+-- 1) Trigger: crear perfil al registrarse -------------------------------------
+-- La cuenta nace SIN acceso (`pending`) y con el rol marcado como
+-- predeterminado. Quien invita desde /administracion/usuarios la pasa a
+-- `active` con el rol que corresponda; un alta que no venga de una invitación
+-- se queda esperando aprobación.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
-as $$
+set search_path = ''
+as $fn$
 begin
-  insert into public.users (id, email, role)
-  values (new.id, new.email, 'member')
+  insert into public.users (id, email, role_id, status)
+  values (
+    new.id,
+    new.email,
+    (select id from public.roles where is_default limit 1),
+    'pending'
+  )
   on conflict (id) do nothing;
   return new;
 end;
-$$;
+$fn$;
 
 -- Cierra el aviso "SECURITY DEFINER ejecutable por anon/authenticated" del
 -- linter de seguridad de Supabase: al ser una función de trigger (`returns
@@ -59,559 +127,197 @@ drop policy if exists "users_select_own" on public.users;
 create policy "users_select_own"
   on public.users for select
   to authenticated
-  using (auth.uid() = id);
+  using ((select auth.uid()) = id);
 
--- 3) Storage: fotos de personas ----------------------------------------------
--- Bucket privado (no público): las fotos se sirven con URLs firmadas y de
--- corta duración, generadas por el servidor tras comprobar la sesión.
-insert into storage.buckets (id, name, public)
-values ('person-photos', 'person-photos', false)
+-- 3) Permisos del usuario de la sesión ---------------------------------------
+-- Una sola función, usada por todas las políticas de Storage. Cuatro detalles
+-- que no son opcionales:
+--
+--   · `security definer`: `public.role_permissions` tiene RLS activado y
+--     ninguna política, así que una función `invoker` devolvería siempre falso
+--     para todo el mundo. La alternativa sería abrir una política de lectura
+--     sobre esa tabla para `authenticated`, pero eso expondría la matriz de
+--     permisos entera a través de PostgREST.
+--   · `stable`: la política se evalúa por fila de `storage.objects`; sin esto
+--     el planificador no puede reutilizar el resultado.
+--   · `set search_path = ''` con todos los nombres cualificados: requisito
+--     estándar de `security definer`, para que nadie pueda secuestrar la
+--     función colocando objetos con el mismo nombre en otro esquema.
+--   · `(select auth.uid())`: hace que se evalúe una vez por sentencia en lugar
+--     de una vez por fila.
+create or replace function public.user_has_permission(perm text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $fn$
+  select exists (
+    select 1
+    from public.users u
+    join public.role_permissions rp on rp.role_id = u.role_id
+    where u.id = (select auth.uid())
+      and u.status = 'active'
+      and rp.permission = perm
+  );
+$fn$;
+
+revoke execute on function public.user_has_permission(text) from public, anon;
+grant execute on function public.user_has_permission(text) to authenticated;
+
+-- 4) Storage: buckets ---------------------------------------------------------
+-- Todos privados salvo `sponsorship-logos`: los ficheros privados se sirven con
+-- URLs firmadas de corta duración generadas por el servidor tras comprobar la
+-- sesión (ver `src/app/api/storage/[bucket]/[...path]/route.ts`).
+insert into storage.buckets (id, name, public) values
+  ('person-photos',            'person-photos',            false),
+  ('person-documents',         'person-documents',         false),
+  ('person-qualifications',    'person-qualifications',    false),
+  ('person-medical-checkups',  'person-medical-checkups',  false),
+  ('person-injury-reports',    'person-injury-reports',    false),
+  ('team-documents',           'team-documents',           false),
+  ('sponsor-documents',        'sponsor-documents',        false),
+  ('sponsorship-contracts',    'sponsorship-contracts',    false),
+  ('registration-documents',   'registration-documents',   false)
 on conflict (id) do nothing;
 
--- Solo admin/staff pueden leer: hoy no existe autoservicio (el rol `member`
--- no tiene ninguna página que filtre "solo lo mío"), así que sin esta
--- condición cualquier usuario autenticado podía descargar la foto de
--- cualquier persona conociendo/adivinando su ruta. Si en el futuro se
--- implementa autoservicio para `member`, revisar esta política para permitir
--- también `auth.uid()` sobre su propio `personId`.
-drop policy if exists "person_photos_select_authenticated" on storage.objects;
-drop policy if exists "person_photos_select_staff" on storage.objects;
-create policy "person_photos_select_staff"
-  on storage.objects for select
-  to authenticated
-  using (
-    bucket_id = 'person-photos'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_photos_write_staff" on storage.objects;
-create policy "person_photos_write_staff"
-  on storage.objects for insert
-  to authenticated
-  with check (
-    bucket_id = 'person-photos'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_photos_update_staff" on storage.objects;
-create policy "person_photos_update_staff"
-  on storage.objects for update
-  to authenticated
-  using (
-    bucket_id = 'person-photos'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_photos_delete_staff" on storage.objects;
-create policy "person_photos_delete_staff"
-  on storage.objects for delete
-  to authenticated
-  using (
-    bucket_id = 'person-photos'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
--- 4) Storage: titulaciones/certificaciones de personas -----------------------
--- Mismo patrón que person-photos: bucket privado, URLs firmadas de corta
--- duración generadas por el servidor.
-insert into storage.buckets (id, name, public)
-values ('person-qualifications', 'person-qualifications', false)
-on conflict (id) do nothing;
-
--- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
-drop policy if exists "person_qualifications_select_authenticated" on storage.objects;
-drop policy if exists "person_qualifications_select_staff" on storage.objects;
-create policy "person_qualifications_select_staff"
-  on storage.objects for select
-  to authenticated
-  using (
-    bucket_id = 'person-qualifications'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_qualifications_write_staff" on storage.objects;
-create policy "person_qualifications_write_staff"
-  on storage.objects for insert
-  to authenticated
-  with check (
-    bucket_id = 'person-qualifications'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_qualifications_update_staff" on storage.objects;
-create policy "person_qualifications_update_staff"
-  on storage.objects for update
-  to authenticated
-  using (
-    bucket_id = 'person-qualifications'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_qualifications_delete_staff" on storage.objects;
-create policy "person_qualifications_delete_staff"
-  on storage.objects for delete
-  to authenticated
-  using (
-    bucket_id = 'person-qualifications'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
--- 4b) Storage: documentos genéricos de personas -------------------------------
--- Mismo patrón que person-qualifications: bucket privado, URLs firmadas de corta
--- duración generadas por el servidor.
-insert into storage.buckets (id, name, public)
-values ('person-documents', 'person-documents', false)
-on conflict (id) do nothing;
-
--- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
-drop policy if exists "person_documents_select_authenticated" on storage.objects;
-drop policy if exists "person_documents_select_staff" on storage.objects;
-create policy "person_documents_select_staff"
-  on storage.objects for select
-  to authenticated
-  using (
-    bucket_id = 'person-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_documents_write_staff" on storage.objects;
-create policy "person_documents_write_staff"
-  on storage.objects for insert
-  to authenticated
-  with check (
-    bucket_id = 'person-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_documents_update_staff" on storage.objects;
-create policy "person_documents_update_staff"
-  on storage.objects for update
-  to authenticated
-  using (
-    bucket_id = 'person-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_documents_delete_staff" on storage.objects;
-create policy "person_documents_delete_staff"
-  on storage.objects for delete
-  to authenticated
-  using (
-    bucket_id = 'person-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
--- 5) Storage: logos de patrocinadores -----------------------------------------
--- Bucket PÚBLICO (a diferencia del resto): los logos no son datos sensibles y
--- se muestran en el muro público de patrocinadores sin sesión. Al ser público,
--- Supabase los sirve por una URL estable y cacheable por el navegador entre
--- visitas (con bucket privado + URL firmada, el token cambia en cada render y
--- cada visita se vuelve a descargar el logo completo — ver `getPublicUrl` en
--- `src/lib/supabase/storage.ts`). Solo lectura pública; la escritura sigue
--- restringida a admin/staff.
+-- `sponsorship-logos` es PÚBLICO a diferencia del resto: los logos no son datos
+-- sensibles y se muestran en el muro público de patrocinadores sin sesión. Al
+-- ser público, Supabase los sirve por una URL estable y cacheable por el
+-- navegador entre visitas (con bucket privado + URL firmada, el token cambia en
+-- cada render y cada visita se vuelve a descargar el logo completo — ver
+-- `getPublicUrl` en `src/lib/supabase/storage.ts`).
 insert into storage.buckets (id, name, public)
 values ('sponsorship-logos', 'sponsorship-logos', true)
 on conflict (id) do update set public = true;
 
-drop policy if exists "sponsorship_logos_select_authenticated" on storage.objects;
+-- 5) Storage: políticas --------------------------------------------------------
+-- Antes había cuatro bloques `create policy` casi idénticos por bucket, todos
+-- repitiendo `role in ('admin','staff')`. Ahora el criterio es un permiso, así
+-- que la tabla de abajo es la única fuente de verdad y el bucle escribe las
+-- políticas. Debe coincidir con `BUCKET_READ_PERMISSION` en
+-- `src/app/api/storage/[bucket]/[...path]/route.ts`.
+do $policies$
+declare
+  b record;
+  prefix text;
+begin
+  -- Políticas de la versión anterior (criterio por rol), que ya no se recrean.
+  for b in
+    select unnest(array[
+      'person_photos', 'person_documents', 'person_qualifications',
+      'person_medical_checkups', 'person_injury_reports', 'team_documents',
+      'sponsor_documents', 'sponsorship_contracts', 'sponsorship_logos',
+      'registration_documents'
+    ]) as name
+  loop
+    execute format('drop policy if exists %I on storage.objects', b.name || '_select_authenticated');
+    execute format('drop policy if exists %I on storage.objects', b.name || '_select_staff');
+    execute format('drop policy if exists %I on storage.objects', b.name || '_write_staff');
+    execute format('drop policy if exists %I on storage.objects', b.name || '_update_staff');
+    execute format('drop policy if exists %I on storage.objects', b.name || '_delete_staff');
+  end loop;
 
-drop policy if exists "sponsorship_logos_write_staff" on storage.objects;
-create policy "sponsorship_logos_write_staff"
-  on storage.objects for insert
-  to authenticated
-  with check (
-    bucket_id = 'sponsorship-logos'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
+  for b in
+    select * from (values
+      ('person-photos',           'personas.view',         'personas.manage'),
+      ('person-documents',        'personas.view',         'personas.manage'),
+      ('person-qualifications',   'personas.view',         'personas.manage'),
+      ('person-medical-checkups', 'personas.medical.view', 'personas.medical.manage'),
+      ('person-injury-reports',   'personas.medical.view', 'personas.medical.manage'),
+      ('team-documents',          'equipos.view',          'equipos.manage'),
+      ('sponsor-documents',       'patrocinadores.view',   'patrocinadores.manage'),
+      ('sponsorship-contracts',   'patrocinadores.view',   'patrocinadores.manage')
+    ) as t(bucket, read_perm, write_perm)
+  loop
+    prefix := replace(b.bucket, '-', '_');
 
-drop policy if exists "sponsorship_logos_update_staff" on storage.objects;
-create policy "sponsorship_logos_update_staff"
-  on storage.objects for update
-  to authenticated
-  using (
-    bucket_id = 'sponsorship-logos'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
+    execute format('drop policy if exists %I on storage.objects', prefix || '_read');
+    execute format(
+      'create policy %I on storage.objects for select to authenticated
+         using (bucket_id = %L and public.user_has_permission(%L))',
+      prefix || '_read', b.bucket, b.read_perm);
 
-drop policy if exists "sponsorship_logos_delete_staff" on storage.objects;
-create policy "sponsorship_logos_delete_staff"
-  on storage.objects for delete
-  to authenticated
-  using (
-    bucket_id = 'sponsorship-logos'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
+    execute format('drop policy if exists %I on storage.objects', prefix || '_insert');
+    execute format(
+      'create policy %I on storage.objects for insert to authenticated
+         with check (bucket_id = %L and public.user_has_permission(%L))',
+      prefix || '_insert', b.bucket, b.write_perm);
 
--- 6) Storage: contratos de patrocinio -----------------------------------------
--- Mismo patrón que person-qualifications: bucket privado, URLs firmadas de
--- corta duración generadas por el servidor.
-insert into storage.buckets (id, name, public)
-values ('sponsorship-contracts', 'sponsorship-contracts', false)
-on conflict (id) do nothing;
+    execute format('drop policy if exists %I on storage.objects', prefix || '_update');
+    execute format(
+      'create policy %I on storage.objects for update to authenticated
+         using (bucket_id = %L and public.user_has_permission(%L))',
+      prefix || '_update', b.bucket, b.write_perm);
 
--- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
-drop policy if exists "sponsorship_contracts_select_authenticated" on storage.objects;
-drop policy if exists "sponsorship_contracts_select_staff" on storage.objects;
-create policy "sponsorship_contracts_select_staff"
-  on storage.objects for select
-  to authenticated
-  using (
-    bucket_id = 'sponsorship-contracts'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
+    execute format('drop policy if exists %I on storage.objects', prefix || '_delete');
+    execute format(
+      'create policy %I on storage.objects for delete to authenticated
+         using (bucket_id = %L and public.user_has_permission(%L))',
+      prefix || '_delete', b.bucket, b.write_perm);
+  end loop;
+end $policies$;
 
-drop policy if exists "sponsorship_contracts_write_staff" on storage.objects;
-create policy "sponsorship_contracts_write_staff"
-  on storage.objects for insert
-  to authenticated
-  with check (
-    bucket_id = 'sponsorship-contracts'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "sponsorship_contracts_update_staff" on storage.objects;
-create policy "sponsorship_contracts_update_staff"
-  on storage.objects for update
-  to authenticated
-  using (
-    bucket_id = 'sponsorship-contracts'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "sponsorship_contracts_delete_staff" on storage.objects;
-create policy "sponsorship_contracts_delete_staff"
-  on storage.objects for delete
-  to authenticated
-  using (
-    bucket_id = 'sponsorship-contracts'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
--- 7) Storage: documentos de equipo ---------------------------------------------
--- Mismo patrón que person-documents: bucket privado, URLs firmadas de corta
--- duración generadas por el servidor.
-insert into storage.buckets (id, name, public)
-values ('team-documents', 'team-documents', false)
-on conflict (id) do nothing;
-
--- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
-drop policy if exists "team_documents_select_authenticated" on storage.objects;
-drop policy if exists "team_documents_select_staff" on storage.objects;
-create policy "team_documents_select_staff"
-  on storage.objects for select
-  to authenticated
-  using (
-    bucket_id = 'team-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "team_documents_write_staff" on storage.objects;
-create policy "team_documents_write_staff"
-  on storage.objects for insert
-  to authenticated
-  with check (
-    bucket_id = 'team-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "team_documents_update_staff" on storage.objects;
-create policy "team_documents_update_staff"
-  on storage.objects for update
-  to authenticated
-  using (
-    bucket_id = 'team-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "team_documents_delete_staff" on storage.objects;
-create policy "team_documents_delete_staff"
-  on storage.objects for delete
-  to authenticated
-  using (
-    bucket_id = 'team-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
--- 8) Storage: documentos de patrocinador -----------------------------------
--- Mismo patrón que team-documents: bucket privado, URLs firmadas de corta
--- duración generadas por el servidor.
-insert into storage.buckets (id, name, public)
-values ('sponsor-documents', 'sponsor-documents', false)
-on conflict (id) do nothing;
-
--- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
-drop policy if exists "sponsor_documents_select_authenticated" on storage.objects;
-drop policy if exists "sponsor_documents_select_staff" on storage.objects;
-create policy "sponsor_documents_select_staff"
-  on storage.objects for select
-  to authenticated
-  using (
-    bucket_id = 'sponsor-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "sponsor_documents_write_staff" on storage.objects;
-create policy "sponsor_documents_write_staff"
-  on storage.objects for insert
-  to authenticated
-  with check (
-    bucket_id = 'sponsor-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "sponsor_documents_update_staff" on storage.objects;
-create policy "sponsor_documents_update_staff"
-  on storage.objects for update
-  to authenticated
-  using (
-    bucket_id = 'sponsor-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "sponsor_documents_delete_staff" on storage.objects;
-create policy "sponsor_documents_delete_staff"
-  on storage.objects for delete
-  to authenticated
-  using (
-    bucket_id = 'sponsor-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
--- 9) Storage: documentos de solicitudes de inscripción ------------------------
--- Bucket privado. A diferencia de los anteriores, NO tiene política de
--- `insert`: el formulario público (sin sesión) sube fotos con la clave de
--- servicio desde el servidor (ver `uploadFileAsAdmin`), que bypassa RLS por
--- diseño. Abrir aquí una política de `insert` para `anon` permitiría a
--- cualquiera escribir en el bucket sin pasar por la Server Action. Solo
--- lectura para `admin`/`staff` (contienen fotos de DNI/NIE, más sensibles que
--- una foto de carné).
-insert into storage.buckets (id, name, public)
-values ('registration-documents', 'registration-documents', false)
-on conflict (id) do nothing;
-
-drop policy if exists "registration_documents_select_staff" on storage.objects;
-create policy "registration_documents_select_staff"
+-- 5b) `registration-documents`: la excepción de escritura ----------------------
+-- NO tiene política de `insert` a propósito: el formulario público de
+-- inscripción (sin sesión) sube fotos de DNI/NIE con la clave de servicio desde
+-- el servidor (`uploadFileAsAdmin`), que bypassa RLS por diseño. Abrir aquí una
+-- política de `insert` para `anon` permitiría a cualquiera escribir en el bucket
+-- sin pasar por la Server Action.
+drop policy if exists "registration_documents_read" on storage.objects;
+create policy "registration_documents_read"
   on storage.objects for select
   to authenticated
   using (
     bucket_id = 'registration-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
+    and public.user_has_permission('inscripciones.view')
   );
 
-drop policy if exists "registration_documents_delete_staff" on storage.objects;
-create policy "registration_documents_delete_staff"
+drop policy if exists "registration_documents_delete" on storage.objects;
+create policy "registration_documents_delete"
   on storage.objects for delete
   to authenticated
   using (
     bucket_id = 'registration-documents'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
+    and public.user_has_permission('inscripciones.manage')
   );
 
--- 10) Storage: reconocimientos médicos de personas ----------------------------
--- Mismo patrón que person-qualifications: bucket privado, URLs firmadas de
--- corta duración generadas por el servidor.
-insert into storage.buckets (id, name, public)
-values ('person-medical-checkups', 'person-medical-checkups', false)
-on conflict (id) do nothing;
-
--- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
-drop policy if exists "person_medical_checkups_select_authenticated" on storage.objects;
-drop policy if exists "person_medical_checkups_select_staff" on storage.objects;
-create policy "person_medical_checkups_select_staff"
-  on storage.objects for select
-  to authenticated
-  using (
-    bucket_id = 'person-medical-checkups'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_medical_checkups_write_staff" on storage.objects;
-create policy "person_medical_checkups_write_staff"
+-- 5c) `sponsorship-logos`: la excepción de lectura -----------------------------
+-- Lectura pública (el bucket lo es); solo se restringe la escritura.
+drop policy if exists "sponsorship_logos_insert" on storage.objects;
+create policy "sponsorship_logos_insert"
   on storage.objects for insert
   to authenticated
   with check (
-    bucket_id = 'person-medical-checkups'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
+    bucket_id = 'sponsorship-logos'
+    and public.user_has_permission('patrocinadores.manage')
   );
 
-drop policy if exists "person_medical_checkups_update_staff" on storage.objects;
-create policy "person_medical_checkups_update_staff"
+drop policy if exists "sponsorship_logos_update" on storage.objects;
+create policy "sponsorship_logos_update"
   on storage.objects for update
   to authenticated
   using (
-    bucket_id = 'person-medical-checkups'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
+    bucket_id = 'sponsorship-logos'
+    and public.user_has_permission('patrocinadores.manage')
   );
 
-drop policy if exists "person_medical_checkups_delete_staff" on storage.objects;
-create policy "person_medical_checkups_delete_staff"
+drop policy if exists "sponsorship_logos_delete" on storage.objects;
+create policy "sponsorship_logos_delete"
   on storage.objects for delete
   to authenticated
   using (
-    bucket_id = 'person-medical-checkups'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
--- 11) Storage: partes de lesión de personas ------------------------------------
--- Mismo patrón que person-qualifications: bucket privado, URLs firmadas de
--- corta duración generadas por el servidor.
-insert into storage.buckets (id, name, public)
-values ('person-injury-reports', 'person-injury-reports', false)
-on conflict (id) do nothing;
-
--- Solo admin/staff pueden leer (ver nota de "person-photos" más arriba).
-drop policy if exists "person_injury_reports_select_authenticated" on storage.objects;
-drop policy if exists "person_injury_reports_select_staff" on storage.objects;
-create policy "person_injury_reports_select_staff"
-  on storage.objects for select
-  to authenticated
-  using (
-    bucket_id = 'person-injury-reports'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_injury_reports_write_staff" on storage.objects;
-create policy "person_injury_reports_write_staff"
-  on storage.objects for insert
-  to authenticated
-  with check (
-    bucket_id = 'person-injury-reports'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_injury_reports_update_staff" on storage.objects;
-create policy "person_injury_reports_update_staff"
-  on storage.objects for update
-  to authenticated
-  using (
-    bucket_id = 'person-injury-reports'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
-  );
-
-drop policy if exists "person_injury_reports_delete_staff" on storage.objects;
-create policy "person_injury_reports_delete_staff"
-  on storage.objects for delete
-  to authenticated
-  using (
-    bucket_id = 'person-injury-reports'
-    and exists (
-      select 1 from public.users
-      where id = auth.uid() and role in ('admin', 'staff')
-    )
+    bucket_id = 'sponsorship-logos'
+    and public.user_has_permission('patrocinadores.manage')
   );
 
 -- ============================================================================
 -- Bootstrap del primer administrador (ejecútalo tras registrarte por primera vez):
 --
 --   update public.users
---   set role = 'admin'
+--   set role_id = (select id from public.roles where key = 'admin'),
+--       status  = 'active'
 --   where email = 'TU_EMAIL_AQUI';
+--
+-- A partir de ahí, el alta del resto se hace desde /administracion/usuarios.
 -- ============================================================================

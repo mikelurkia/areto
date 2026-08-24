@@ -1,34 +1,32 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, hasPermission } from "@/lib/auth";
+import type { Permission } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Buckets privados que este proxy sabe servir. `sponsorship-logos` no está
- * porque es público y se sirve directo desde Supabase (`getPublicUrl`), sin
- * pasar por aquí.
- */
-const PRIVATE_BUCKETS = new Set([
-  "person-photos",
-  "person-documents",
-  "person-qualifications",
-  "person-medical-checkups",
-  "person-injury-reports",
-  "team-documents",
-  "sponsor-documents",
-  "sponsorship-contracts",
-  "registration-documents",
-]);
-
-/**
- * Mismo criterio que las políticas RLS de `storage.objects` en
- * `supabase/setup.sql`: solo un atajo para devolver un 403 claro sin gastar
- * una llamada a Storage. La autorización real la hace RLS más abajo: la
- * descarga va con el cliente de sesión del usuario (no la clave de servicio),
- * así que aunque este set se quede desactualizado, Supabase seguirá
+ * Buckets privados que este proxy sabe servir, y el permiso de lectura que
+ * exige cada uno. `sponsorship-logos` no está porque es público y se sirve
+ * directo desde Supabase (`getPublicUrl`), sin pasar por aquí.
+ *
+ * Debe coincidir con las políticas RLS de `storage.objects` en
+ * `supabase/setup.sql`: esto es solo un atajo para devolver un 403 claro sin
+ * gastar una llamada a Storage. La autorización real la hace RLS más abajo (la
+ * descarga va con el cliente de sesión del usuario, no con la clave de
+ * servicio), así que aunque este mapa se quede desactualizado, Supabase seguirá
  * rechazando lo que sus políticas no permitan.
  */
-const STAFF_ONLY_BUCKETS = new Set(["registration-documents"]);
+const BUCKET_READ_PERMISSION: Record<string, Permission> = {
+  "person-photos": "personas.view",
+  "person-documents": "personas.view",
+  "person-qualifications": "personas.view",
+  "person-medical-checkups": "personas.medical.view",
+  "person-injury-reports": "personas.medical.view",
+  "team-documents": "equipos.view",
+  "sponsor-documents": "patrocinadores.view",
+  "sponsorship-contracts": "patrocinadores.view",
+  "registration-documents": "inscripciones.view",
+};
 
 /** Tipos que el navegador puede mostrar inline sin riesgo; cualquier otro se fuerza a descarga. */
 const SAFE_INLINE_TYPES = new Set([
@@ -44,15 +42,18 @@ export async function GET(
   { params }: { params: Promise<{ bucket: string; path: string[] }> },
 ) {
   const { bucket, path } = await params;
-  if (!PRIVATE_BUCKETS.has(bucket)) {
+  // `Object.hasOwn` y no un acceso directo: `bucket` viene de la URL, y algo
+  // como "toString" devolvería una función heredada del prototipo.
+  if (!Object.hasOwn(BUCKET_READ_PERMISSION, bucket)) {
     return new NextResponse("Not found", { status: 404 });
   }
+  const requiredPermission = BUCKET_READ_PERMISSION[bucket];
 
   const user = await getCurrentUser();
   if (!user) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
-  if (STAFF_ONLY_BUCKETS.has(bucket) && !["admin", "staff"].includes(user.role)) {
+  if (!hasPermission(user, requiredPermission)) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 

@@ -6,7 +6,7 @@ import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { clubSettings } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { CLUB_SETTINGS_TAG } from "@/lib/club";
 import { isValidIban } from "@/lib/iban";
 import { REGISTRATION_AVAILABILITY_TAG } from "@/lib/registration-settings";
@@ -26,7 +26,7 @@ export async function updateClubSettings(
   formData: FormData,
 ): Promise<ClubState> {
   const t = await getTranslations("Club");
-  await requireRole(["admin", "staff"]);
+  await requirePermission("club.manage");
 
   const iban = String(formData.get("iban") ?? "").trim() || null;
   if (iban && !isValidIban(iban)) {
@@ -70,7 +70,7 @@ export async function updateRegistrationAvailability(
   formData: FormData,
 ): Promise<ClubState> {
   const t = await getTranslations("Club");
-  await requireRole(["admin", "staff"]);
+  await requirePermission("club.manage");
 
   const values = {
     playerRegistrationOpen: formData.get("playerRegistrationOpen") === "on",

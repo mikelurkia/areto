@@ -18,7 +18,7 @@ import {
   deleteSponsorNote,
   updateSponsorDocument,
 } from "@/app/[locale]/(app)/patrocinadores/actions";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { resolveBackHref } from "@/lib/back-href";
 import { fileTypeLabel } from "@/lib/file-type";
 import { getPublicUrl, getSignedUrls } from "@/lib/supabase/storage";
@@ -115,7 +115,7 @@ export default async function SponsorDetailPage({
   const backHref = resolveBackHref(from, "/patrocinadores");
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("patrocinadores.view");
   const t = await getTranslations("Patrocinadores");
 
   // La ficha y el listado de personas (selector de contacto) son independientes.

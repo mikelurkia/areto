@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
+import type { Permission } from "@/lib/permissions";
 
 export type NoteActionState = {
   error?: string;
@@ -32,15 +33,17 @@ export function makeNoteActions(config: {
   /** Nombre del campo del formulario que lleva el id del padre (normalmente igual a `parentIdColumn`). */
   formKey: string;
   namespace: "Personas" | "Equipos" | "Patrocinadores";
+  /** Permiso necesario para escribir en la bitácora. Lo decide cada módulo. */
+  permission: Permission;
 }) {
-  const { table, parentIdColumn, formKey, namespace } = config;
+  const { table, parentIdColumn, formKey, namespace, permission } = config;
 
   async function add(
     _prev: NoteActionState,
     formData: FormData,
   ): Promise<NoteActionState> {
     const t = await getTranslations(namespace);
-    const user = await requireRole(["admin", "staff"]);
+    const user = await requirePermission(permission);
 
     const parentId = String(formData.get(formKey) ?? "");
     const body = String(formData.get("body") ?? "").trim();
@@ -62,7 +65,7 @@ export function makeNoteActions(config: {
     formData: FormData,
   ): Promise<NoteActionState> {
     const t = await getTranslations(namespace);
-    await requireRole(["admin", "staff"]);
+    await requirePermission(permission);
 
     const id = String(formData.get("id") ?? "");
     await db.delete(table).where(eq(table.id, id));

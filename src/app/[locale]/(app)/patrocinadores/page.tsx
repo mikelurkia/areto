@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ExternalLinkIcon, ReceiptTextIcon, TriangleAlertIcon } from "lucide-react";
 
 import { db } from "@/db";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { getPublicUrls, getSignedUrls } from "@/lib/supabase/storage";
 import {
   annualEquivalentCents,
@@ -48,7 +48,7 @@ export default async function PatrocinadoresPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("patrocinadores.view");
   const t = await getTranslations("Patrocinadores");
 
   // Patrocinadores y personas (para el selector de contacto) no dependen entre

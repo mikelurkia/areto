@@ -4,7 +4,7 @@ import { and, eq, gte, lte } from "drizzle-orm";
 
 import { db } from "@/db";
 import { courtEvents, memberships } from "@/db/schema";
-import type { CurrentUser } from "@/lib/auth";
+import { hasPermission, type CurrentUser } from "@/lib/auth";
 
 /** Equipos donde una persona consta como entrenador (en cualquier temporada
  * que tenga equipos con membership; en la práctica, la temporada activa). */
@@ -19,16 +19,20 @@ export async function getCoachTeamIds(personId: string | null): Promise<Set<stri
 
 /**
  * Puede el usuario dar de alta/editar/borrar una petición de horario del
- * equipo `teamId`. Admin/staff, cualquier equipo; un entrenador, solo el
- * suyo (o los suyos). `teamId` puede ser `null` (fila sin equipo, pensada
- * para futuros kinds distintos de "match"): ahí solo admin/staff pueden.
+ * equipo `teamId`. Con `calendario.manage.all`, cualquier equipo; con
+ * `calendario.manage` a secas, solo aquellos en los que consta como
+ * entrenador. `teamId` puede ser `null` (fila sin equipo, pensada para futuros
+ * kinds distintos de "match"): ahí hace falta `calendario.manage.all`.
+ *
+ * El ámbito (qué equipos son "los suyos") no es un permiso: es una relación con
+ * los datos, vía `memberships`. Por eso sigue viviendo aquí y no en la matriz.
  */
 export async function assertCourtEventAccess(
   user: CurrentUser,
   teamId: string | null,
 ): Promise<boolean> {
-  if (user.role === "admin" || user.role === "staff") return true;
-  if (user.role !== "coach" || !teamId) return false;
+  if (hasPermission(user, "calendario.manage.all")) return true;
+  if (!hasPermission(user, "calendario.manage") || !teamId) return false;
   const coachTeamIds = await getCoachTeamIds(user.personId);
   return coachTeamIds.has(teamId);
 }

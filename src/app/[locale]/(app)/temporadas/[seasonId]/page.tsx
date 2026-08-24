@@ -13,7 +13,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { seasons, teams } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { Link } from "@/i18n/navigation";
 import { DeleteSeasonDialog, SeasonDialog } from "@/components/temporada/season-dialog";
@@ -55,10 +55,10 @@ export default async function TemporadaDetailPage({
   const { locale, seasonId } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  const user = await requireUser();
+  const user = await requirePermission("temporadas.view");
   const t = await getTranslations("Temporadas");
   const tEquipos = await getTranslations("Equipos");
-  const canManage = user.role === "admin" || user.role === "staff";
+  const canManage = hasPermission(user, "temporadas.manage");
 
   // Las tres consultas de la temporada se resuelven con el `seasonId` de la
   // URL, así que van en paralelo. `loadSeasonRenewals` va aparte: por debajo

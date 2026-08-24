@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { registrations } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { MemberRequestsBrowser } from "@/components/socios/member-requests-browser";
 import { SociosBrowser } from "@/components/socios/socios-browser";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -28,7 +28,7 @@ export default async function SociosPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requireRole(["admin", "staff"]);
+  await requirePermission("socios.view");
   const t = await getTranslations("Socios");
   const tInscripciones = await getTranslations("Inscripciones");
 

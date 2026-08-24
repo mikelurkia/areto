@@ -17,7 +17,7 @@ import {
   sponsorshipTerms,
   sponsorshipTier,
 } from "@/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { nextInvoiceNumber } from "@/lib/club";
 import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { makeDocumentActions } from "@/lib/entity-documents";
@@ -30,8 +30,6 @@ export type SponsorState = {
   error?: string;
   message?: string;
 };
-
-const MANAGE_ROLES = ["admin", "staff"] as const;
 
 const LOGO_BUCKET = "sponsorship-logos";
 const MAX_LOGO_BYTES = 5 * 1024 * 1024; // 5MB
@@ -115,7 +113,7 @@ export async function createSponsor(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const fields = readSponsorFields(formData);
   const logo = readLogo(formData);
@@ -156,7 +154,7 @@ export async function updateSponsor(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readSponsorFields(formData);
@@ -217,7 +215,7 @@ export async function quickCreateContactPerson(
   fullName: string,
 ): Promise<QuickPersonState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return { error: t("contactPersonNameRequired") };
@@ -243,7 +241,7 @@ export async function deleteSponsor(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
 
@@ -314,7 +312,7 @@ export async function addSponsorshipTerm(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const sponsorId = String(formData.get("sponsorId") ?? "");
   const fields = readTermFields(formData);
@@ -360,7 +358,7 @@ export async function updateSponsorshipTerm(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readTermFields(formData);
@@ -418,7 +416,7 @@ export async function deleteSponsorshipTerm(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
 
@@ -450,7 +448,7 @@ export async function renewSponsorshipTerm(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
   const source = await db.query.sponsorshipTerms.findFirst({
@@ -508,7 +506,7 @@ export async function addSponsorPayment(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const termId = String(formData.get("termId") ?? "");
   const fields = readPaymentFields(formData);
@@ -538,7 +536,7 @@ export async function updateSponsorPayment(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readPaymentFields(formData);
@@ -575,7 +573,7 @@ export async function deleteSponsorPayment(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
   await db.delete(sponsorPayments).where(eq(sponsorPayments.id, id));
@@ -591,7 +589,7 @@ export async function markSponsorPaymentPaid(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
   const today = new Date().toISOString().slice(0, 10);
@@ -616,7 +614,7 @@ export async function issueSponsorInvoice(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
   const payment = await db.query.sponsorPayments.findFirst({
@@ -651,7 +649,7 @@ export async function generateAnnualities(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const termId = String(formData.get("termId") ?? "");
   const firstYear = Number(String(formData.get("firstYear") ?? "").trim());
@@ -706,6 +704,7 @@ const sponsorNoteActions = makeNoteActions({
   parentIdColumn: "sponsorId",
   formKey: "sponsorId",
   namespace: "Patrocinadores",
+  permission: "patrocinadores.manage",
 });
 export const addSponsorNote = sponsorNoteActions.add;
 export const deleteSponsorNote = sponsorNoteActions.delete;
@@ -716,6 +715,7 @@ const sponsorDocumentActions = makeDocumentActions({
   parentIdColumn: "sponsorId",
   formKey: "sponsorId",
   namespace: "Patrocinadores",
+  permission: "patrocinadores.manage",
 });
 export const addSponsorDocument = sponsorDocumentActions.add;
 export const updateSponsorDocument = sponsorDocumentActions.update;
@@ -740,7 +740,7 @@ export async function addSponsorContact(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const sponsorId = String(formData.get("sponsorId") ?? "");
   const fields = readContactFields(formData);
@@ -757,7 +757,7 @@ export async function updateSponsorContact(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readContactFields(formData);
@@ -774,7 +774,7 @@ export async function deleteSponsorContact(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
   await db.delete(sponsorContacts).where(eq(sponsorContacts.id, id));
@@ -798,7 +798,7 @@ export async function importSponsors(
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requireRole([...MANAGE_ROLES]);
+  await requirePermission("patrocinadores.manage");
 
   const raw = String(formData.get("data") ?? "");
   const lines = raw

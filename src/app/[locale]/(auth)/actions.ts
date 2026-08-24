@@ -44,34 +44,75 @@ export async function login(
   return localizedRedirect({ href: next, locale });
 }
 
-export async function signup(
+/**
+ * El alta pública está cerrada: al club se entra por invitación, desde
+ * /administracion/usuarios.
+ *
+ * La acción no se borra, se convierte en un cortafuegos. La barrera de verdad
+ * está en Supabase ("Allow new users to sign up" apagado, ver
+ * `supabase/setup.sql`); esto solo evita que una petición reconstruida a mano
+ * llegue a intentarlo, y deja escrito por qué el formulario ya no la ofrece.
+ */
+export async function signup(): Promise<AuthState> {
+  const t = await getTranslations("AuthErrors");
+  return { error: t("signupDisabled") };
+}
+
+/**
+ * "He olvidado mi contraseña", pedido por el propio usuario.
+ *
+ * Aquí sí va el cliente de sesión: quien rellena el formulario es quien va a
+ * abrir el correo. (Cuando lo lanza un administrador desde la pantalla de
+ * usuarios se usa el cliente de administración, para no dejar el verificador
+ * PKCE en el navegador equivocado.)
+ *
+ * Responde lo mismo exista o no la cuenta: si no, esta pantalla se convertiría
+ * en una forma cómoda de averiguar quién tiene cuenta en el club.
+ */
+export async function requestPasswordReset(
   _prev: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
-  const t = await getTranslations("AuthErrors");
-  if (!isSupabaseConfigured) return { error: t("notConfigured") };
+  const t = await getTranslations("Login");
+  const tErrors = await getTranslations("AuthErrors");
+  if (!isSupabaseConfigured) return { error: tErrors("notConfigured") };
 
-  const email = String(formData.get("email") ?? "");
-  const password = String(formData.get("password") ?? "");
-
-  if (password.length < 8) {
-    return { error: t("passwordTooShort") };
-  }
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: t("emailRequired") };
 
   const origin = getSiteUrl();
+  const next = encodeURIComponent("/contrasena?motivo=recuperacion");
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { emailRedirectTo: `${origin}/auth/callback` },
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/confirm?next=${next}`,
   });
 
-  if (error) return { error: error.message };
+  return { message: t("resetEmailSent") };
+}
 
-  // Si la confirmación por email está activada, no hay sesión todavía.
-  if (!data.session) {
-    return { message: t("accountCreated") };
-  }
+/**
+ * Fija la contraseña tras aceptar una invitación o pedir una recuperación.
+ *
+ * Llega aquí con sesión ya iniciada: `/auth/confirm` la ha abierto al canjear
+ * el token del correo.
+ */
+export async function setPassword(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const t = await getTranslations("Login");
+  const tErrors = await getTranslations("AuthErrors");
+  if (!isSupabaseConfigured) return { error: tErrors("notConfigured") };
+
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (password.length < 8) return { error: tErrors("passwordTooShort") };
+  if (password !== confirmPassword) return { error: t("passwordMismatch") };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
 
   revalidatePath("/", "layout");
   const current = await getCurrentUser();

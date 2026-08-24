@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
-import { requireRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
+import type { Permission } from "@/lib/permissions";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 
 export type DocumentActionState = {
@@ -59,8 +60,10 @@ export function makeDocumentActions(config: {
   /** Nombre del campo del formulario que lleva el id del padre (normalmente igual a `parentIdColumn`). */
   formKey: string;
   namespace: "Personas" | "Equipos" | "Patrocinadores";
+  /** Permiso necesario para subir, renombrar o borrar. Lo decide cada módulo. */
+  permission: Permission;
 }) {
-  const { table, bucket, parentIdColumn, formKey, namespace } = config;
+  const { table, bucket, parentIdColumn, formKey, namespace, permission } = config;
 
   async function uploadDocumentFile(
     parentId: string,
@@ -77,7 +80,7 @@ export function makeDocumentActions(config: {
     formData: FormData,
   ): Promise<DocumentActionState> {
     const t = await getTranslations(namespace);
-    await requireRole(["admin", "staff"]);
+    await requirePermission(permission);
 
     const parentId = String(formData.get(formKey) ?? "");
     const fields = readDocumentFields(formData);
@@ -115,7 +118,7 @@ export function makeDocumentActions(config: {
     formData: FormData,
   ): Promise<DocumentActionState> {
     const t = await getTranslations(namespace);
-    await requireRole(["admin", "staff"]);
+    await requirePermission(permission);
 
     const id = String(formData.get("id") ?? "");
     const fields = readDocumentFields(formData);
@@ -158,7 +161,7 @@ export function makeDocumentActions(config: {
     _prev: DocumentActionState,
     formData: FormData,
   ): Promise<DocumentActionState> {
-    await requireRole(["admin", "staff"]);
+    await requirePermission(permission);
     const t = await getTranslations(namespace);
 
     const id = String(formData.get("id") ?? "");
