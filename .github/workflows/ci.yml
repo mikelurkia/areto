@@ -21,7 +21,11 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEV_SUPABASE_SERVICE_ROLE_KEY }}
       SITE_URL: http://localhost:3000
     steps:
+      # fetch-depth: 0 — el aviso de SQL destructivo compara contra la rama
+      # base, así que necesita el historial completo, no el clon superficial.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -33,6 +37,73 @@ jobs:
       - run: npm run lint
 
       - run: npm run typecheck
+
+      # Historial de migraciones coherente: detecta sobre todo dos ramas que
+      # generaron su migración en paralelo y colisionan en el mismo índice de
+      # `drizzle/meta/_journal.json`.
+      - run: npm run db:check
+
+      # Sin esto, olvidar `db:generate` tras tocar `src/db/schema.ts` no lo
+      # detecta nada: typecheck y build corren contra areto-dev, que puede
+      # tener ya el esquema aplicado a mano con `db:push`, y producción no
+      # recibiría nunca el cambio. `db:generate` no toca ninguna base de
+      # datos: solo compara el esquema con el historial de `drizzle/`.
+      - name: Comprobar que el esquema y las migraciones están sincronizados
+        run: |
+          set -euo pipefail
+
+          # `< /dev/null`: drizzle-kit pregunta de forma interactiva cuando
+          # cree detectar un renombrado de columna. Sin stdin cerrado, el paso
+          # se quedaría colgado hasta agotar el tiempo del job.
+          timeout 120 npm run db:generate < /dev/null
+
+          if [ -n "$(git status --porcelain drizzle/)" ]; then
+            echo "::error::Hay cambios en src/db/schema.ts sin migración generada. Ejecuta 'npm run db:generate' en local, revisa el .sql y commitéalo."
+            git status --short drizzle/
+            exit 1
+          fi
+
+          echo "Esquema y migraciones sincronizados."
+
+      # Aviso, no bloqueo: un contract legítimo tiene que poder mergearse. Lo
+      # que se busca es que quede escrito en el PR, porque al mergear la
+      # migración se aplica sola a producción (ver migrate-prod.yml).
+      - name: Avisar de SQL destructivo en las migraciones nuevas
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+
+          nuevas=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}...HEAD" -- 'drizzle/*.sql' || true)
+
+          if [ -z "$nuevas" ]; then
+            echo "Este PR no añade migraciones."
+            exit 0
+          fi
+
+          echo "Migraciones nuevas en este PR:"
+          echo "$nuevas"
+
+          patron='drop table|drop column|drop constraint|drop not null|truncate|set data type|set not null|rename column|rename to'
+          hallado=$(grep -inEH "$patron" $nuevas || true)
+
+          if [ -z "$hallado" ]; then
+            echo "Sin SQL destructivo en las migraciones nuevas."
+            exit 0
+          fi
+
+          echo "::warning::Este PR incluye SQL destructivo y al mergear se aplicará solo a producción. Comprueba que ya no queda código usando lo viejo."
+          {
+            echo "### SQL destructivo en las migraciones de este PR"
+            echo
+            echo '```'
+            echo "$hallado"
+            echo '```'
+            echo
+            echo "Al mergear, esto se aplica solo a producción (con backup previo)."
+            echo "Disciplina expand/contract: primero añadir y rellenar; borrar lo viejo"
+            echo "en un PR posterior, cuando ya no queda código que lo use."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Aplica cualquier migración pendiente de esta PR contra la BD de
       # desarrollo compartida — valida que la migración aplica limpiamente
