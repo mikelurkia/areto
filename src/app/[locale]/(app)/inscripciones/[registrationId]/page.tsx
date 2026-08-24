@@ -22,6 +22,12 @@ const PHOTO_BUCKET = "registration-documents";
 const PERSON_PHOTO_BUCKET = "person-photos";
 const PERSON_DOCUMENTS_BUCKET = "person-documents";
 
+// Al aprobar (ver `approveRegistration` en actions.ts) se copian hasta 3
+// ficheros de hasta 5MB entre buckets de Storage (download+upload cada uno,
+// en serie) más un resize con sharp — mismo timeout por defecto de Vercel
+// que en la inscripción pública.
+export const maxDuration = 60;
+
 export default async function RegistrationDetailPage({
   params,
 }: {

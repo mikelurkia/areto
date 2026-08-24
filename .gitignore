@@ -43,3 +43,6 @@ next-env.d.ts
 
 # claude code (local-only settings/permissions)
 .claude/settings.local.json
+
+.vercel
+.env*

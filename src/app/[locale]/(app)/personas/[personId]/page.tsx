@@ -75,6 +75,12 @@ const DOCUMENTS_BUCKET = "person-documents";
 const MEDICAL_CHECKUPS_BUCKET = "person-medical-checkups";
 const INJURY_REPORTS_BUCKET = "person-injury-reports";
 
+// Titulaciones, reconocimientos médicos, partes de lesión y DNI escaneado
+// (actions.ts) admiten hasta 10MB, el doble que el resto de subidas del
+// repo — con el timeout por defecto de Vercel una conexión lenta puede no
+// dar tiempo a terminar.
+export const maxDuration = 60;
+
 /**
  * Ficha completa de la persona. En `cache()` para que `generateMetadata` y la
  * página compartan una única consulta por petición, en vez de lanzar dos.
