@@ -14,6 +14,14 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Los secrets de `areto-dev` viven en este environment. Sin declararlo, el
+    # job solo vería los secrets del repositorio y `DATABASE_URL` llegaría
+    # vacía: `db:migrate` y `build` fallarían sin decir por qué.
+    #
+    # Que estén en un environment y no sueltos en el repositorio es
+    # deliberado: así un workflow nuevo no accede a ninguna base de datos por
+    # el mero hecho de existir, tiene que pedirlo.
+    environment: Preview
     env:
       DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.DEV_NEXT_PUBLIC_SUPABASE_URL }}
