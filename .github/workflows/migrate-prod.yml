@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.PROD_DATABASE_URL_TRANSACTION }}
     steps:
       - uses: actions/checkout@v5
 
