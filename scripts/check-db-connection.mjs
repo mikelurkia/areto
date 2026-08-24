@@ -26,13 +26,33 @@ if (!url) {
   );
 }
 
+let partes;
+try {
+  partes = new URL(url);
+} catch {
+  fallar("DATABASE_URL no es una URL válida. Revisa que la contraseña tenga codificados los caracteres especiales (@ → %40, # → %23, / → %2F, : → %3A).");
+}
+
+// Nunca la contraseña: esto acaba en un log público.
+const usuario = decodeURIComponent(partes.username);
+const donde = `usuario '${usuario}' @ ${partes.hostname}:${partes.port || "5432"}${partes.pathname}`;
+console.log(`Cadena: ${donde}`);
+
 // Errores de forma que Postgres solo sabe contar como "password authentication
 // failed", que despista durante un buen rato.
-if (/:\/\/postgres:/.test(url) && /pooler\.supabase\.com/.test(url)) {
+if (/pooler\.supabase\.com$/.test(partes.hostname) && !usuario.includes(".")) {
   fallar(
-    "La cadena apunta al pooler de Supabase con el usuario 'postgres'. " +
+    `La cadena apunta al pooler de Supabase con el usuario '${usuario}'. ` +
       "Contra el pooler el usuario debe ser 'postgres.<project-ref>'. " +
       "Cópiala del dashboard: Settings → Database → Connection string.",
+  );
+}
+
+if (/^db\..*\.supabase\.co$/.test(partes.hostname)) {
+  fallar(
+    `La cadena apunta a la conexión directa (${partes.hostname}), que en el plan ` +
+      "Free solo resuelve por IPv6 y no funciona desde los runners de GitHub. " +
+      "Usa el pooler: aws-N-<region>.pooler.supabase.com.",
   );
 }
 
@@ -52,7 +72,10 @@ try {
   );
 } catch (error) {
   const causa = error?.code ? ` [${error.code}]` : "";
-  fallar(`No se puede conectar a la base de datos${causa}: ${error.message}`, error?.detail);
+  fallar(
+    `No se puede conectar a la base de datos${causa}: ${error.message}`,
+    `Se intentó con ${donde}`,
+  );
 } finally {
   await sql.end({ timeout: 5 });
 }
