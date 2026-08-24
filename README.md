@@ -26,6 +26,21 @@ Los PRs a `main` corren CI (`.github/workflows/ci.yml`): lint, typecheck,
 `db:migrate` contra `areto-dev` y `next build`. Las migraciones a producción
 se disparan a mano con el workflow `migrate-prod.yml` tras mergear.
 
+## Flujo de trabajo (ramas y PRs)
+
+La rama `main` está **protegida**: no se puede empujar directamente a ella.
+Todo desarrollo va en su propia rama y entra a `main` mediante un Pull Request:
+
+```bash
+git switch -c feat/nombre-corto   # o fix/…, chore/…
+# … trabajo, commits …
+git push -u origin feat/nombre-corto
+```
+
+Abre el PR contra `main` en GitHub, espera a que pase el CI y mergéalo. El PR
+genera además un Preview Deployment en Vercel (contra `areto-dev`) para probar
+los cambios antes de mergear.
+
 ## Puesta en marcha
 
 1. Instala dependencias:
