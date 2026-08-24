@@ -12,7 +12,7 @@ export function CourtLines({ className }: { className?: string }) {
       viewBox="0 0 800 400"
       preserveAspectRatio="xMidYMid slice"
       className={cn(
-        "pointer-events-none absolute inset-0 size-full text-primary/[0.06]",
+        "pointer-events-none absolute inset-0 size-full text-primary/[0.12]",
         className,
       )}
     >

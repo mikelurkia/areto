@@ -27,18 +27,18 @@
     "brandSubtitle": "Areto Futbol Saila",
     "enter": "Entrar",
     "heroTitle": "Un club de fútbol sala, de la cantera al primer equipo.",
-    "heroDescription": "Equipos en todas las categorías, partidos cada fin de semana y una comunidad de jugadoras, jugadores, socias y socios que hacen grande al club.",
+    "heroDescription": "Un equipo en cada categoría, partidos cada fin de semana y la gente que los hace posibles: jugadoras, jugadores, socias y socios.",
     "openPanel": "Abrir el panel",
     "registerAction": "Inscríbete",
     "becomeMemberAction": "Hazte socio/a",
     "features": {
       "people": {
         "title": "Equipos y categorías",
-        "description": "De la base al primer equipo, compitiendo cada fin de semana en las categorías federadas."
+        "description": "Desde los más pequeños hasta el primer equipo, cada categoría federada tiene su propio grupo y su propio calendario."
       },
       "calendar": {
         "title": "Calendario",
-        "description": "Consulta los próximos partidos y entrenamientos de todos los equipos del club."
+        "description": "Cuándo y dónde juega y entrena cada equipo, sin tener que preguntar en el grupo de WhatsApp."
       },
       "fees": {
         "title": "Socios y socias",
@@ -50,9 +50,9 @@
         "title": "Primer equipo",
         "description": "La cara visible del club cada fin de semana."
       },
-      "history": {
-        "title": "Nuestra historia",
-        "description": "Un vistazo a los orígenes del club."
+      "grassroots": {
+        "title": "Cantera",
+        "description": "Aquí empieza todo: las categorías más jóvenes, formándose partido a partido."
       },
       "wholeClub": {
         "title": "Todo el club",

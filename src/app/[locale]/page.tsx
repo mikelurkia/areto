@@ -45,7 +45,7 @@ export default async function Home({
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <CourtLines className="hidden md:block" />
+        <CourtLines />
         <div className="relative mx-auto grid w-full max-w-5xl gap-10 px-6 py-16 md:grid-cols-2 md:items-center md:py-24">
           <div className="flex flex-col items-start gap-6">
             <h1 className="max-w-xl text-4xl font-semibold tracking-tight md:text-5xl">
@@ -87,10 +87,8 @@ export default async function Home({
             className="transition-all hover:-translate-y-0.5 hover:shadow-md"
           >
             <CardHeader>
-              <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <feature.icon className="size-5" />
-              </div>
-              <CardTitle className="mt-2">
+              <CardTitle className="flex items-center gap-2">
+                <feature.icon className="size-5 text-primary" strokeWidth={1.75} />
                 {t(`features.${feature.key}.title`)}
               </CardTitle>
               <CardDescription>

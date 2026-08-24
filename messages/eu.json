@@ -27,18 +27,18 @@
     "brandSubtitle": "Areto Futbol Saila",
     "enter": "Sartu",
     "heroTitle": "Areto futboleko kluba, harrobitik lehen taldera.",
-    "heroDescription": "Talde bat maila guztietan, partidak asteburu bakoitzean, eta hori guztia posible egiten duten jokalari, entrenatzaile eta bazkideen komunitatea.",
+    "heroDescription": "Talde bat maila bakoitzean, partidak asteburu bakoitzean, eta hori posible egiten duen jendea: jokalariak eta bazkideak.",
     "openPanel": "Ireki panela",
     "registerAction": "Izena eman",
     "becomeMemberAction": "Egin zaitez bazkide",
     "features": {
       "people": {
         "title": "Taldeak eta mailak",
-        "description": "Oinarritik lehen taldera, federatutako maila guztietan asteburu bakoitzean lehian."
+        "description": "Txikienetatik lehen taldera, maila federatu bakoitzak bere taldea eta bere egutegia du."
       },
       "calendar": {
         "title": "Egutegia",
-        "description": "Ikusi klubeko talde guztien hurrengo partidak eta entrenamenduak."
+        "description": "Talde bakoitzak noiz eta non jokatzen eta entrenatzen duen, WhatsApp taldean galdetu beharrik gabe."
       },
       "fees": {
         "title": "Bazkideak",
@@ -50,9 +50,9 @@
         "title": "Lehen taldea",
         "description": "Klubaren aurpegia asteburu bakoitzean."
       },
-      "history": {
-        "title": "Gure historia",
-        "description": "Begirada bat klubaren jatorriari."
+      "grassroots": {
+        "title": "Harrobia",
+        "description": "Hemen hasten da guztia: maila gazteenak, partidaz partida eratzen."
       },
       "wholeClub": {
         "title": "Klub osoa",

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Work_Sans, Barlow_Condensed } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -9,16 +9,19 @@ import "../globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 
-// Cuerpo: Inter (legibilidad). Títulos: Space Grotesk (display, con carácter).
-const inter = Inter({
+// Cuerpo: Work Sans (humanista, cálida). Títulos: Barlow Condensed (con
+// carácter atlético — evita el combo Inter/Space Grotesk de plantilla).
+const workSans = Work_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
+  weight: "variable",
   display: "swap",
 });
 
-const spaceGrotesk = Space_Grotesk({
+const barlowCondensed = Barlow_Condensed({
   variable: "--font-heading",
   subsets: ["latin"],
+  weight: ["500", "600", "700"],
   display: "swap",
 });
 
@@ -47,7 +50,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${inter.variable} ${spaceGrotesk.variable} h-full antialiased`}
+      className={`${workSans.variable} ${barlowCondensed.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
