@@ -113,10 +113,21 @@ export function hasAnyPermission(
   return user ? permissions.some((p) => user.permissions.has(p)) : false;
 }
 
-/** Exige sesión. Redirige a /login si no la hay. */
+/**
+ * Exige sesión Y cuenta activa. Redirige a /login si no hay sesión, y a
+ * /acceso-revocado si la cuenta está desactivada o todavía sin activar.
+ *
+ * Esta comprobación es la barrera REAL contra una cuenta desactivada: el JWT
+ * que el navegador ya tiene sigue siendo válido hasta que caduque, y el proxy
+ * no consulta la base de datos (no debe abrir una conexión a Postgres en cada
+ * petición). No cuesta nada extra: `getCurrentUser` está en `cache()`.
+ */
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) return redirect({ href: "/login", locale: await getLocale() });
+  if (user.status !== "active") {
+    redirect({ href: "/acceso-revocado", locale: await getLocale() });
+  }
   return user;
 }
 

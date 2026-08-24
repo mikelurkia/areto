@@ -17,7 +17,10 @@
     "socios": "Socios · Areto",
     "medico": "Panel médico · Areto",
     "usuarios": "Usuarios · Areto",
-    "roles": "Roles · Areto"
+    "roles": "Roles · Areto",
+    "contrasena": "Contraseña · Areto",
+    "accesoRevocado": "Acceso desactivado · Areto",
+    "accesoNoAutorizado": "Acceso no autorizado · Areto"
   },
   "Landing": {
     "brand": "Aloña Mendi",
@@ -1460,25 +1463,42 @@
   },
   "Login": {
     "title": "Accede a tu club",
-    "subtitle": "Entra o crea una cuenta para gestionar el club.",
+    "subtitle": "Entra para gestionar el club.",
     "continueWithGoogle": "Continuar con Google",
     "orWithEmail": "o con tu email",
-    "loginTab": "Iniciar sesión",
-    "signupTab": "Registrarse",
     "email": "Email",
     "password": "Contraseña",
     "signIn": "Entrar",
     "signingIn": "Entrando…",
-    "createAccount": "Crear cuenta",
-    "creatingAccount": "Creando cuenta…",
-    "minChars": "Mínimo 8 caracteres."
+    "minChars": "Mínimo 8 caracteres.",
+    "cancel": "Cancelar",
+    "emailRequired": "Escribe tu correo electrónico.",
+    "forgotPassword": "¿Has olvidado tu contraseña?",
+    "forgotPasswordTitle": "Restablecer la contraseña",
+    "forgotPasswordDescription": "Te enviamos un enlace para poner una contraseña nueva.",
+    "sendResetEmail": "Enviar enlace",
+    "resetEmailSent": "Si esa dirección tiene cuenta, recibirá un correo con el enlace.",
+    "inviteOnlyHint": "El acceso a Areto es por invitación. Si necesitas una cuenta, habla con la secretaría del club.",
+    "passwordMismatch": "Las contraseñas no coinciden.",
+    "newPassword": "Contraseña nueva",
+    "confirmPassword": "Repite la contraseña",
+    "savePassword": "Guardar contraseña",
+    "welcomeTitle": "Te damos la bienvenida",
+    "welcomeSubtitle": "Pon una contraseña para entrar en Areto.",
+    "resetTitle": "Nueva contraseña",
+    "resetSubtitle": "Elige una contraseña para volver a entrar."
   },
   "AuthErrors": {
     "notConfigured": "Supabase aún no está configurado. Añade las variables de entorno (ver .env.example).",
     "invalidCredentials": "Email o contraseña incorrectos.",
     "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
-    "accountCreated": "Cuenta creada. Revisa tu email para confirmar la dirección y poder entrar.",
-    "googleFailed": "No se pudo iniciar sesión con Google."
+    "googleFailed": "No se pudo iniciar sesión con Google.",
+    "signupDisabled": "El alta pública está cerrada. Al club se entra por invitación: habla con la secretaría.",
+    "accessRevokedTitle": "Tu acceso está desactivado",
+    "accessRevokedDescription": "Tu cuenta existe, pero ahora mismo no tiene acceso a Areto. Habla con la secretaría del club si crees que es un error.",
+    "notInvitedTitle": "Esta cuenta no está invitada",
+    "notInvitedDescription": "Solo pueden entrar las cuentas invitadas desde el club. Pide una invitación a la secretaría.",
+    "backToLogin": "Volver al acceso"
   },
   "AuthCodeError": {
     "title": "No se pudo completar el acceso",

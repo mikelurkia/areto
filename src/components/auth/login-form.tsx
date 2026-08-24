@@ -5,13 +5,26 @@ import { useTranslations } from "next-intl";
 
 import {
   login,
+  requestPasswordReset,
   signInWithGoogle,
-  signup,
   type AuthState,
 } from "@/app/[locale]/(auth)/actions";
 import { GoogleIcon } from "@/components/icons/google";
 import { SubmitButton } from "@/components/submit-button";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
+import { useDialogParam } from "@/hooks/use-dialog-param";
 import {
   Field,
   FieldDescription,
@@ -20,25 +33,26 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const initialState: AuthState = {};
 
+/**
+ * Acceso a la aplicación.
+ *
+ * Ya no hay pestaña de "Registrarse": al club se entra por invitación, desde
+ * /administracion/usuarios. Lo que sí hay ahora es "he olvidado mi contraseña",
+ * que antes faltaba y dejaba a cualquiera fuera sin remedio.
+ */
 export function LoginForm({ next }: { next: string }) {
   const t = useTranslations("Login");
   const [loginState, loginAction, loginPending] = useActionState(
     login,
     initialState,
   );
-  const [signupState, signupAction, signupPending] = useActionState(
-    signup,
-    initialState,
-  );
   const [googleState, googleAction] = useActionState(
     signInWithGoogle,
     initialState,
   );
-  useActionToast(signupState);
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -62,97 +76,94 @@ export function LoginForm({ next }: { next: string }) {
         <Separator className="flex-1" />
       </div>
 
-      <Tabs defaultValue="login">
-        <TabsList variant="default" className="w-full">
-          <TabsTrigger value="login" className="flex-1">
-            {t("loginTab")}
-          </TabsTrigger>
-          <TabsTrigger value="signup" className="flex-1">
-            {t("signupTab")}
-          </TabsTrigger>
-        </TabsList>
+      <form action={loginAction}>
+        <input type="hidden" name="next" value={next} />
+        <FieldGroup>
+          <Field data-invalid={loginState.error ? true : undefined}>
+            <FieldLabel htmlFor="login-email">{t("email")}</FieldLabel>
+            <Input
+              id="login-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              aria-invalid={loginState.error ? true : undefined}
+            />
+          </Field>
+          <Field data-invalid={loginState.error ? true : undefined}>
+            <FieldLabel htmlFor="login-password">{t("password")}</FieldLabel>
+            <Input
+              id="login-password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              aria-invalid={loginState.error ? true : undefined}
+            />
+            {loginState.error ? (
+              <FieldDescription className="text-destructive">
+                {loginState.error}
+              </FieldDescription>
+            ) : null}
+          </Field>
+          <SubmitButton className="w-full">
+            {loginPending ? t("signingIn") : t("signIn")}
+          </SubmitButton>
+        </FieldGroup>
+      </form>
 
-        {/* Iniciar sesión */}
-        <TabsContent value="login">
-          <form action={loginAction}>
-            <input type="hidden" name="next" value={next} />
-            <FieldGroup>
-              <Field data-invalid={loginState.error ? true : undefined}>
-                <FieldLabel htmlFor="login-email">{t("email")}</FieldLabel>
-                <Input
-                  id="login-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  aria-invalid={loginState.error ? true : undefined}
-                />
-              </Field>
-              <Field data-invalid={loginState.error ? true : undefined}>
-                <FieldLabel htmlFor="login-password">
-                  {t("password")}
-                </FieldLabel>
-                <Input
-                  id="login-password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  aria-invalid={loginState.error ? true : undefined}
-                />
-                {loginState.error ? (
-                  <FieldDescription className="text-destructive">
-                    {loginState.error}
-                  </FieldDescription>
-                ) : null}
-              </Field>
-              <SubmitButton className="w-full">
-                {loginPending ? t("signingIn") : t("signIn")}
-              </SubmitButton>
-            </FieldGroup>
-          </form>
-        </TabsContent>
+      <ForgotPasswordDialog />
 
-        {/* Registrarse */}
-        <TabsContent value="signup">
-          <form action={signupAction}>
-            <FieldGroup>
-              <Field data-invalid={signupState.error ? true : undefined}>
-                <FieldLabel htmlFor="signup-email">{t("email")}</FieldLabel>
-                <Input
-                  id="signup-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  aria-invalid={signupState.error ? true : undefined}
-                />
-              </Field>
-              <Field data-invalid={signupState.error ? true : undefined}>
-                <FieldLabel htmlFor="signup-password">
-                  {t("password")}
-                </FieldLabel>
-                <Input
-                  id="signup-password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  aria-invalid={signupState.error ? true : undefined}
-                />
-                <FieldDescription
-                  className={signupState.error ? "text-destructive" : undefined}
-                >
-                  {signupState.error ?? t("minChars")}
-                </FieldDescription>
-              </Field>
-              <SubmitButton className="w-full">
-                {signupPending ? t("creatingAccount") : t("createAccount")}
-              </SubmitButton>
-            </FieldGroup>
-          </form>
-        </TabsContent>
-      </Tabs>
+      <p className="text-center text-xs text-muted-foreground">
+        {t("inviteOnlyHint")}
+      </p>
     </div>
+  );
+}
+
+function ForgotPasswordDialog() {
+  const t = useTranslations("Login");
+  const [open, setOpen] = useDialogParam("recuperar-contrasena");
+  const [state, action] = useActionState(requestPasswordReset, initialState);
+  useActionToast(state);
+  useCloseOnActionSuccess(state, setOpen);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={<Button variant="link" size="sm" className="self-center" />}
+      >
+        {t("forgotPassword")}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("forgotPasswordTitle")}</DialogTitle>
+          <DialogDescription>{t("forgotPasswordDescription")}</DialogDescription>
+        </DialogHeader>
+        <form action={action} className="flex flex-col gap-4">
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="reset-email">{t("email")}</FieldLabel>
+              <Input
+                id="reset-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+              />
+            </Field>
+          </FieldGroup>
+          {state.error ? (
+            <p className="text-sm text-destructive">{state.error}</p>
+          ) : null}
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>
+              {t("cancel")}
+            </DialogClose>
+            <SubmitButton>{t("sendResetEmail")}</SubmitButton>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

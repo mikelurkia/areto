@@ -17,7 +17,10 @@
     "socios": "Bazkideak · Areto",
     "medico": "Panel medikoa · Areto",
     "usuarios": "Erabiltzaileak · Areto",
-    "roles": "Rolak · Areto"
+    "roles": "Rolak · Areto",
+    "contrasena": "Pasahitza · Areto",
+    "accesoRevocado": "Sarbidea desaktibatuta · Areto",
+    "accesoNoAutorizado": "Baimenik gabeko sarbidea · Areto"
   },
   "Landing": {
     "brand": "Aloña Mendi",
@@ -1460,25 +1463,42 @@
   },
   "Login": {
     "title": "Sartu zure klubera",
-    "subtitle": "Sartu edo sortu kontu bat kluba kudeatzeko.",
+    "subtitle": "Sartu kluba kudeatzeko.",
     "continueWithGoogle": "Jarraitu Google-rekin",
     "orWithEmail": "edo zure emailarekin",
-    "loginTab": "Saioa hasi",
-    "signupTab": "Erregistratu",
     "email": "Emaila",
     "password": "Pasahitza",
     "signIn": "Sartu",
     "signingIn": "Sartzen…",
-    "createAccount": "Kontua sortu",
-    "creatingAccount": "Kontua sortzen…",
-    "minChars": "Gutxienez 8 karaktere."
+    "minChars": "Gutxienez 8 karaktere.",
+    "cancel": "Utzi",
+    "emailRequired": "Idatzi zure helbide elektronikoa.",
+    "forgotPassword": "Pasahitza ahaztu duzu?",
+    "forgotPasswordTitle": "Berrezarri pasahitza",
+    "forgotPasswordDescription": "Pasahitz berri bat jartzeko esteka bat bidaliko dizugu.",
+    "sendResetEmail": "Bidali esteka",
+    "resetEmailSent": "Helbide horrek konturik badu, esteka duen mezu bat jasoko du.",
+    "inviteOnlyHint": "Aretorako sarbidea gonbidapenez da. Konturik behar baduzu, hitz egin klubeko idazkaritzarekin.",
+    "passwordMismatch": "Pasahitzak ez datoz bat.",
+    "newPassword": "Pasahitz berria",
+    "confirmPassword": "Errepikatu pasahitza",
+    "savePassword": "Gorde pasahitza",
+    "welcomeTitle": "Ongi etorri",
+    "welcomeSubtitle": "Jarri pasahitz bat Areton sartzeko.",
+    "resetTitle": "Pasahitz berria",
+    "resetSubtitle": "Aukeratu pasahitz bat berriro sartzeko."
   },
   "AuthErrors": {
     "notConfigured": "Supabase oraindik ez dago konfiguratuta. Gehitu ingurune-aldagaiak (ikusi .env.example).",
     "invalidCredentials": "Emaila edo pasahitza okerra da.",
     "passwordTooShort": "Pasahitzak gutxienez 8 karaktere izan behar ditu.",
-    "accountCreated": "Kontua sortu da. Begiratu zure emaila helbidea baieztatzeko eta sartu ahal izateko.",
-    "googleFailed": "Ezin izan da Google-rekin saioa hasi."
+    "googleFailed": "Ezin izan da Google-rekin saioa hasi.",
+    "signupDisabled": "Alta publikoa itxita dago. Klubera gonbidapenez sartzen da: hitz egin idazkaritzarekin.",
+    "accessRevokedTitle": "Zure sarbidea desaktibatuta dago",
+    "accessRevokedDescription": "Zure kontua badago, baina orain ez du Aretorako sarbiderik. Hitz egin klubeko idazkaritzarekin akatsa dela uste baduzu.",
+    "notInvitedTitle": "Kontu hau ez dago gonbidatuta",
+    "notInvitedDescription": "Klubetik gonbidatutako kontuak baino ezin dira sartu. Eskatu gonbidapena idazkaritzan.",
+    "backToLogin": "Itzuli sarrerara"
   },
   "AuthCodeError": {
     "title": "Ezin izan da sarrera osatu",
