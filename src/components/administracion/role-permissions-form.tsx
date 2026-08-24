@@ -19,6 +19,7 @@ import { useActionToast } from "@/hooks/use-action-toast";
 import {
   ADMIN_LOCKED_PERMISSIONS,
   PERMISSION_MODULES,
+  permissionKey,
   type Permission,
 } from "@/lib/permissions";
 
@@ -120,6 +121,7 @@ export function RolePermissionsForm({
             <CardContent className="grid gap-3 sm:grid-cols-2">
               {module.permissions.map((permission) => {
                 const isLocked = locked.has(permission);
+                const key = permissionKey(permission);
                 return (
                   <Field key={permission} orientation="horizontal">
                     <Checkbox
@@ -135,13 +137,13 @@ export function RolePermissionsForm({
                         htmlFor={`perm-${permission}`}
                         className="font-normal"
                       >
-                        {t(`permissions.${permission}` as "permissions.personas.view")}
+                        {t(`permissions.${key}` as "permissions.personas_view")}
                       </FieldLabel>
                       <FieldDescription>
                         {isLocked
                           ? t("permissionLocked")
                           : t(
-                              `permissionHints.${permission}` as "permissionHints.personas.view",
+                              `permissionHints.${key}` as "permissionHints.personas_view",
                             )}
                       </FieldDescription>
                     </div>

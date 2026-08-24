@@ -63,6 +63,19 @@ export function isPermission(value: string): value is Permission {
   return PERMISSION_SET.has(value);
 }
 
+/**
+ * Clave de traducción de un permiso.
+ *
+ * next-intl usa el punto como separador de anidamiento, así que no admite
+ * claves que lo lleven dentro: `Administracion.permissions.personas.view` se
+ * leería como cuatro niveles. Y anidarlas de verdad tampoco vale, porque
+ * `calendario.manage` y `calendario.manage.all` obligarían a que `manage` fuese
+ * a la vez texto y objeto. Se aplanan con guion bajo: `personas_view`.
+ */
+export function permissionKey(permission: Permission): string {
+  return permission.split(".").join("_");
+}
+
 /** Clave de módulo, usada para agrupar la matriz y para las traducciones. */
 export type PermissionModuleKey =
   | "personas"
