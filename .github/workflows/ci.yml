@@ -23,11 +23,11 @@ jobs:
     steps:
       # fetch-depth: 0 — el aviso de SQL destructivo compara contra la rama
       # base, así que necesita el historial completo, no el clon superficial.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
