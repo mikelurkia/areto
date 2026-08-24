@@ -20,6 +20,19 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      # El runner trae pg_dump 16 y Supabase corre Postgres 17: pg_dump se
+      # niega a volcar una base de datos de una major posterior a la suya
+      # ("aborting because of server version mismatch"), así que hay que
+      # instalar el cliente 17 explícitamente. El repositorio PGDG ya viene
+      # configurado en ubuntu-latest, de ahí que baste con el install.
+      #
+      # Cuando Supabase suba de major, este número hay que subirlo con ella;
+      # el paso de comprobación de abajo lo dirá en claro si se olvida.
+      - name: Instalar pg_dump 17
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
       # pg_dump necesita la conexión DIRECTA (puerto 5432), no el pooler de
       # transacciones (6543/pgbouncer) que usa la app — el pooler no soporta
       # bien el patrón de sesión larga que usa pg_dump. Por eso este secret
@@ -27,6 +40,9 @@ jobs:
       - name: Dump de la base de datos
         env:
           PROD_DATABASE_URL_DIRECT: ${{ secrets.PROD_DATABASE_URL_DIRECT }}
+          # Ruta explícita: `apt` deja la 16 como `pg_dump` por defecto, así
+          # que llamarlo a secas seguiría fallando igual.
+          PG_DUMP: /usr/lib/postgresql/17/bin/pg_dump
         run: |
           # pipefail es imprescindible: sin él, un fallo de pg_dump queda
           # enmascarado por el éxito de gzip y el paso "pasa" generando un
@@ -44,7 +60,17 @@ jobs:
           # 'postgres' a secas, o la autenticación falla. La conexión directa
           # real (db.<ref>.supabase.co) es IPv6-only en Free y no funciona
           # desde los runners de GitHub (solo IPv4).
-          pg_dump "$PROD_DATABASE_URL_DIRECT" --no-owner --no-privileges \
+          #
+          # Ese error llegó a costar un rato de diagnóstico, porque Postgres
+          # solo responde "password authentication failed" y parece un problema
+          # de contraseña. Se comprueba antes para decirlo en claro.
+          if printf '%s' "$PROD_DATABASE_URL_DIRECT" | grep -q '://postgres:' \
+             && printf '%s' "$PROD_DATABASE_URL_DIRECT" | grep -q 'pooler\.supabase\.com'; then
+            echo "::error::PROD_DATABASE_URL_DIRECT apunta al pooler con el usuario 'postgres'. Contra el pooler el usuario debe ser 'postgres.<project-ref>'. Cópialo del dashboard: Settings → Database → Connection string → Session pooler." >&2
+            exit 1
+          fi
+
+          "$PG_DUMP" "$PROD_DATABASE_URL_DIRECT" --no-owner --no-privileges \
             | gzip > areto-prod-backup.sql.gz
 
           # Sanity check: un dump válido de esta base nunca es tan pequeño.
