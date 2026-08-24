@@ -30,21 +30,36 @@
 -- CONFIGURACIÓN MANUAL DEL DASHBOARD
 -- Esto no lo hace el SQL, y sin ello las invitaciones no funcionan:
 --
---   a) Authentication → Email Templates. En las plantillas "Invite user" y
---      "Reset password", sustituye {{ .ConfirmationURL }} por:
+--   a) Authentication → Email Templates. Hay que tocar TRES plantillas, y en
+--      las tres se sustituye el `href` de {{ .ConfirmationURL }} por:
 --
---        {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/contrasena?motivo=invitacion
---        {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/contrasena?motivo=recuperacion
+--        Invite user     → {{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=invite
+--        Magic Link      → {{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=magiclink
+--        Reset Password  → {{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery
 --
 --      Motivo: `inviteUserByEmail` no soporta PKCE (el navegador que invita no
 --      es el que acepta la invitación), así que el enlace tiene que llegar a
 --      `/auth/confirm`, que verifica el token con `verifyOtp`, y no al
 --      `/auth/callback` de OAuth, que hace `exchangeCodeForSession`.
 --
+--      La de "Magic Link" es fácil de pasar por alto: reenviar una invitación
+--      a alguien que ya existe usa `signInWithOtp`, porque `inviteUserByEmail`
+--      falla con `email_exists` en cuanto la cuenta está creada. Sin esa
+--      plantilla, el reenvío manda a un enlace que no funciona.
+--
+--      Se usa {{ .RedirectTo }} y no {{ .SiteURL }} a propósito: lleva el
+--      `redirectTo` que ha calculado la aplicación a partir de `SITE_URL`, y ya
+--      trae el `?next=…` puesto (de ahí que se encadene con `&`). Así el mismo
+--      proyecto de Supabase sirve para local y para los Preview Deployments,
+--      que tienen dominios distintos; con {{ .SiteURL }} todos los enlaces
+--      irían al dominio fijo configurado en el dashboard.
+--
 --   b) Authentication → URL Configuration → Redirect URLs: añade
---      `http://localhost:3000/auth/confirm` y el equivalente de los entornos
---      de preview y de producción. Si el destino no está en la lista, Supabase
---      lo ignora y manda al Site URL.
+--      `http://localhost:3000/**` y el equivalente de preview y producción.
+--      Con comodín porque el `redirectTo` que envía la aplicación lleva query
+--      (`/auth/confirm?next=…`). Si el destino no está en la lista, Supabase lo
+--      ignora, {{ .RedirectTo }} se queda con el Site URL y el enlace no lleva
+--      a ninguna parte útil.
 --
 --   c) Authentication → Sign In / Providers → Email → "Allow new users to sign
 --      up" = OFF. Es la barrera de verdad del alta cerrada: con eso, el alta
