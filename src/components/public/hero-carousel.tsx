@@ -2,7 +2,7 @@
 
 import Autoplay from "embla-carousel-autoplay";
 import Image from "next/image";
-import { History, Trophy, UsersRound } from "lucide-react";
+import { Sprout, Trophy, UsersRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 const SLIDES = [
   { key: "firstTeam", icon: Trophy, tone: "primary", photo: "primer-equipo.jpg" },
-  { key: "history", icon: History, tone: "gold", photo: "cantera.jpg" },
+  { key: "grassroots", icon: Sprout, tone: "gold", photo: "cantera.jpg" },
   { key: "wholeClub", icon: UsersRound, tone: "primary", photo: "cantera2.jpg" },
 ] as const;
 
