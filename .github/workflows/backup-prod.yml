@@ -20,19 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      # El runner trae pg_dump 16 y Supabase corre Postgres 17: pg_dump se
-      # niega a volcar una base de datos de una major posterior a la suya
-      # ("aborting because of server version mismatch"), así que hay que
-      # instalar el cliente 17 explícitamente. El repositorio PGDG ya viene
-      # configurado en ubuntu-latest, de ahí que baste con el install.
-      #
-      # Cuando Supabase suba de major, este número hay que subirlo con ella;
-      # el paso de comprobación de abajo lo dirá en claro si se olvida.
-      - name: Instalar pg_dump 17
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client-17
-
       # pg_dump necesita la conexión DIRECTA (puerto 5432), no el pooler de
       # transacciones (6543/pgbouncer) que usa la app — el pooler no soporta
       # bien el patrón de sesión larga que usa pg_dump. Por eso este secret
@@ -40,9 +27,20 @@ jobs:
       - name: Dump de la base de datos
         env:
           PROD_DATABASE_URL_DIRECT: ${{ secrets.PROD_DATABASE_URL_DIRECT }}
-          # Ruta explícita: `apt` deja la 16 como `pg_dump` por defecto, así
-          # que llamarlo a secas seguiría fallando igual.
-          PG_DUMP: /usr/lib/postgresql/17/bin/pg_dump
+          # pg_dump se niega a volcar una base de datos de una major posterior
+          # a la suya ("aborting because of server version mismatch"), y el
+          # runner trae la 16 mientras Supabase corre la 17.
+          #
+          # Se usa la imagen oficial de Postgres en vez de instalar el cliente
+          # por apt: `postgresql-client-17` no está en los repositorios que
+          # trae `ubuntu-latest` (el 16 que viene preinstalado es de PGDG, pero
+          # esa lista no queda configurada), y añadir el repositorio a mano son
+          # cinco líneas más que dependen de que la clave y la URL de PGDG
+          # sigan donde están. Con la imagen, la versión es explícita y no
+          # depende del estado del runner.
+          #
+          # Cuando Supabase suba de major, este tag hay que subirlo con ella.
+          PG_IMAGE: postgres:17-alpine
         run: |
           # pipefail es imprescindible: sin él, un fallo de pg_dump queda
           # enmascarado por el éxito de gzip y el paso "pasa" generando un
@@ -70,7 +68,10 @@ jobs:
             exit 1
           fi
 
-          "$PG_DUMP" "$PROD_DATABASE_URL_DIRECT" --no-owner --no-privileges \
+          # La cadena entra por entorno, no como argumento: así no aparece en
+          # la línea de comandos del contenedor.
+          docker run --rm -e PGURL="$PROD_DATABASE_URL_DIRECT" "$PG_IMAGE" \
+            sh -c 'pg_dump "$PGURL" --no-owner --no-privileges' \
             | gzip > areto-prod-backup.sql.gz
 
           # Sanity check: un dump válido de esta base nunca es tan pequeño.
