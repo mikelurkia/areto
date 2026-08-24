@@ -71,6 +71,11 @@ const LOGO_BUCKET = "sponsorship-logos";
 const CONTRACT_BUCKET = "sponsorship-contracts";
 const DOCUMENTS_BUCKET = "sponsor-documents";
 
+// `uploadTermContract` (actions.ts) admite hasta 10MB, el doble que el resto
+// de subidas del repo — con el timeout por defecto de Vercel una conexión
+// lenta puede no dar tiempo a terminar.
+export const maxDuration = 60;
+
 /**
  * Ficha del patrocinador con sus acuerdos, contactos y documentos. En `cache()`
  * para que `generateMetadata` y la página compartan una sola consulta.
