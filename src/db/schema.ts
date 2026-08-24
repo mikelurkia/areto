@@ -957,6 +957,23 @@ export const registrationGuardians = pgTable(
   (t) => [uniqueIndex("registration_guardians_sort_idx").on(t.registrationId, t.sortOrder)],
 ).enableRLS();
 
+/**
+ * Detalle de un envío del formulario público de inscripción que falló a
+ * mitad de proceso (subida a Storage, insert en BD, etc.). Los logs de
+ * Vercel de este plan solo retienen un par de minutos, así que sin esto el
+ * mensaje genérico que ve quien se inscribe (`submissionFailed`) es lo único
+ * que queda — no hay forma de diagnosticar un fallo real después de que
+ * ocurra. Solo lectura manual (Supabase) por ahora, sin UI de revisión.
+ */
+export const registrationSubmissionErrors = pgTable("registration_submission_errors", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: registrationKind("kind").notNull(),
+  email: text("email"),
+  message: text("message").notNull(),
+  detail: text("detail"), // stack trace si lo hay
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
+
 // ---------------------------------------------------------------------------
 // Relaciones (para consultas relacionales de Drizzle)
 // ---------------------------------------------------------------------------
