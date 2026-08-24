@@ -1,10 +1,11 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
-import { registrationGuardians, registrations } from "@/db/schema";
+import { registrationGuardians, registrations, registrationSubmissionErrors } from "@/db/schema";
 import { isMinor } from "@/lib/age";
 import { stampConsent } from "@/lib/consent";
 import { isValidIban } from "@/lib/iban";
@@ -107,6 +108,28 @@ async function uploadRegistrationPhoto(
   return path;
 }
 
+/** Best-effort: los logs de Vercel de este plan solo retienen un par de
+ * minutos, así que sin esto un fallo real (subida a Storage, BD) no deja
+ * ningún rastro consultable después del hecho. Si este insert también
+ * falla (p. ej. la propia BD es la que está caída) no pasa nada más: el
+ * `console.error` de al lado sigue siendo la red de seguridad. */
+async function logRegistrationFailure(
+  kind: "player" | "member",
+  email: string,
+  error: unknown,
+) {
+  try {
+    await db.insert(registrationSubmissionErrors).values({
+      kind,
+      email: email || null,
+      message: error instanceof Error ? error.message : String(error),
+      detail: error instanceof Error ? (error.stack ?? null) : null,
+    });
+  } catch (loggingError) {
+    console.error("logRegistrationFailure failed", loggingError);
+  }
+}
+
 export async function submitTeamRegistration(
   _prev: RegistrationState,
   formData: FormData,
@@ -206,10 +229,26 @@ export async function submitTeamRegistration(
   if (!seasonId) return { error: t("noActiveSeason"), submitted };
   if (!teamRegistrationOpen) return { error: t("registrationClosed"), submitted };
 
+  // Generado aquí (en vez de dejar que `registrations.id` lo genere el
+  // default de la columna) para poder subir las fotos ANTES del insert: así,
+  // si la subida falla, no queda ninguna fila en `registrations` a medias —
+  // el peor caso posible es un fichero huérfano en Storage, invisible para
+  // el resto de la app.
+  const registrationId = randomUUID();
+
   try {
-    const [registration] = await db
-      .insert(registrations)
-      .values({
+    const [photoPath, idFrontPath, idBackPath] = await Promise.all([
+      photo ? uploadRegistrationPhoto(registrationId, "photo", photo) : null,
+      idFront ? uploadRegistrationPhoto(registrationId, "id-front", idFront) : null,
+      idBack ? uploadRegistrationPhoto(registrationId, "id-back", idBack) : null,
+    ]);
+
+    // Un solo insert con las rutas ya conocidas: no hace falta un `update`
+    // posterior, y el insert de tutores va en la misma transacción para que
+    // un jugador menor nunca se quede sin ellos si algo falla a mitad.
+    await db.transaction(async (tx) => {
+      await tx.insert(registrations).values({
+        id: registrationId,
         kind: "player",
         seasonId,
         firstName: fields.firstName,
@@ -233,47 +272,35 @@ export async function submitTeamRegistration(
         photoConsentAt: stampConsent(fields.photoConsent),
         privacyConsent: fields.privacyConsent,
         privacyConsentAt: stampConsent(fields.privacyConsent),
-      })
-      .returning({ id: registrations.id });
+        photoPath,
+        idFrontPath,
+        idBackPath,
+      });
 
-    if (guardians.length > 0) {
-      await db.insert(registrationGuardians).values(
-        guardians.map((g, i) => ({
-          registrationId: registration.id,
-          firstName: g.firstName,
-          lastName: g.lastName,
-          birthDate: g.birthDate || null,
-          nationalId: g.nationalId || null,
-          address: g.address || null,
-          phone: g.phone || null,
-          email: g.email || null,
-          sortOrder: i,
-        })),
-      );
-    }
+      if (guardians.length > 0) {
+        await tx.insert(registrationGuardians).values(
+          guardians.map((g, i) => ({
+            registrationId,
+            firstName: g.firstName,
+            lastName: g.lastName,
+            birthDate: g.birthDate || null,
+            nationalId: g.nationalId || null,
+            address: g.address || null,
+            phone: g.phone || null,
+            email: g.email || null,
+            sortOrder: i,
+          })),
+        );
+      }
+    });
 
-    const [photoPath, idFrontPath, idBackPath] = await Promise.all([
-      photo ? uploadRegistrationPhoto(registration.id, "photo", photo) : null,
-      idFront ? uploadRegistrationPhoto(registration.id, "id-front", idFront) : null,
-      idBack ? uploadRegistrationPhoto(registration.id, "id-back", idBack) : null,
-    ]);
-    if (photoPath || idFrontPath || idBackPath) {
-      await db
-        .update(registrations)
-        .set({
-          photoPath: photoPath ?? undefined,
-          idFrontPath: idFrontPath ?? undefined,
-          idBackPath: idBackPath ?? undefined,
-        })
-        .where(eq(registrations.id, registration.id));
-    }
-
-    return { success: true, registrationId: registration.id };
+    return { success: true, registrationId };
   } catch (error) {
     // No relanzamos: un fallo aquí (red, Supabase Storage, BD) no debe tirar
     // el error boundary de [locale]/error.tsx, que desmontaría toda la página
     // y borraría lo que el usuario ya había rellenado.
     console.error("submitTeamRegistration failed", error);
+    await logRegistrationFailure("player", fields.email, error);
     return { error: t("submissionFailed"), submitted };
   }
 }
@@ -322,10 +349,14 @@ export async function submitMemberRegistration(
   if (!seasonId) return { error: t("noActiveSeason"), submitted };
   if (!memberOpen) return { error: t("registrationClosed"), submitted };
 
+  const registrationId = randomUUID();
+
   try {
-    const [registration] = await db
-      .insert(registrations)
-      .values({
+    // Transacción: sin fotos que subir aquí, el único riesgo de fila a
+    // medias es un jugador menor que se quede sin sus tutores.
+    await db.transaction(async (tx) => {
+      await tx.insert(registrations).values({
+        id: registrationId,
         kind: "member",
         seasonId,
         firstName: fields.firstName,
@@ -341,28 +372,29 @@ export async function submitMemberRegistration(
         sepaConsentAt: stampConsent(sepaConsent),
         privacyConsent: fields.privacyConsent,
         privacyConsentAt: stampConsent(fields.privacyConsent),
-      })
-      .returning({ id: registrations.id });
+      });
 
-    if (guardians.length > 0) {
-      await db.insert(registrationGuardians).values(
-        guardians.map((g, i) => ({
-          registrationId: registration.id,
-          firstName: g.firstName,
-          lastName: g.lastName,
-          birthDate: g.birthDate || null,
-          nationalId: g.nationalId || null,
-          address: g.address || null,
-          phone: g.phone || null,
-          email: g.email || null,
-          sortOrder: i,
-        })),
-      );
-    }
+      if (guardians.length > 0) {
+        await tx.insert(registrationGuardians).values(
+          guardians.map((g, i) => ({
+            registrationId,
+            firstName: g.firstName,
+            lastName: g.lastName,
+            birthDate: g.birthDate || null,
+            nationalId: g.nationalId || null,
+            address: g.address || null,
+            phone: g.phone || null,
+            email: g.email || null,
+            sortOrder: i,
+          })),
+        );
+      }
+    });
 
-    return { success: true, registrationId: registration.id };
+    return { success: true, registrationId };
   } catch (error) {
     console.error("submitMemberRegistration failed", error);
+    await logRegistrationFailure("member", fields.email, error);
     return { error: t("submissionFailed"), submitted };
   }
 }

@@ -7,6 +7,12 @@ import { PublicHeader } from "@/components/public/public-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { JugadorForm } from "./jugador-form";
 
+// El envío sube hasta 3 ficheros (foto + DNI ambas caras, hasta 5MB c/u) a
+// Supabase Storage desde la Server Action de esta página: con el timeout por
+// defecto de Vercel (10s en Hobby) una conexión móvil lenta puede no dar
+// tiempo a terminar. 60s es el máximo permitido en el plan Hobby.
+export const maxDuration = 60;
+
 export async function generateMetadata({
   params,
 }: {
