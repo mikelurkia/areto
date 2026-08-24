@@ -23,8 +23,18 @@ Nunca apuntes `.env.local` al proyecto de producción. Ver [Puesta en
 marcha](#puesta-en-marcha) para crear `areto-dev`.
 
 Los PRs a `main` corren CI (`.github/workflows/ci.yml`): lint, typecheck,
-`db:migrate` contra `areto-dev` y `next build`. Las migraciones a producción
-se disparan a mano con el workflow `migrate-prod.yml` tras mergear.
+`db:check`, comprobación de que `src/db/schema.ts` no tiene cambios sin
+migración generada, `db:migrate` contra `areto-dev` y `next build`.
+
+Las migraciones a producción se aplican **automáticamente al mergear** un PR
+que traiga ficheros en `drizzle/` (`migrate-prod.yml`, que hace un backup
+cifrado justo antes). El mismo workflow sigue siendo lanzable a mano desde
+Actions para relanzarlo tras un fallo. El disparo es el push a `main` y no el
+final del despliegue por una razón concreta: con `cacheComponents: true`,
+`next build` ejecuta consultas reales, así que el esquema nuevo tiene que
+estar aplicado antes de que Vercel termine de construir el código nuevo. Si
+alguna vez el build sale antes que la migración, falla, producción sigue
+sirviendo el despliegue anterior y basta con pulsar Redeploy en Vercel.
 
 ## Flujo de trabajo (ramas y PRs)
 
@@ -150,6 +160,7 @@ protección de rutas está en `src/proxy.ts`.
 | `npm run build`   | Build de producción                                    |
 | `npm run db:generate` | Genera archivos de migración SQL desde el esquema  |
 | `npm run db:migrate`  | Aplica las migraciones                             |
+| `npm run db:check`    | Valida el historial de migraciones (colisiones)    |
 | `npm run db:push`     | Empuja el esquema directamente (rápido en dev)     |
 | `npm run db:studio`   | Abre Drizzle Studio (explorador de la BD)          |
 | `npm run db:seed`     | Datos iniciales (temporada y equipos de ejemplo)   |

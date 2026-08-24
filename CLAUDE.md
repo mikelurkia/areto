@@ -36,3 +36,10 @@ dispare varias queries a la vez.
 empezar a tocar código, crea una rama (`git switch -c feat/…`, `fix/…`,
 `chore/…`) y al terminar abre un PR a `main`. Si al arrancar una tarea ves que
 la rama actual es `main`, crea la rama antes del primer commit.
+
+Un cambio en `src/db/schema.ts` va **siempre** con su migración generada
+(`npm run db:generate`) en el mismo PR: el CI falla si detecta el desfase, y al
+mergear las migraciones se aplican solas a producción (`migrate-prod.yml`).
+Mientras un PR con migraciones esté abierto, no abras otro que toque el
+esquema: las dos ramas generarían el mismo número de migración y colisionarían
+en `drizzle/meta/_journal.json` (`npm run db:check` lo detecta).
