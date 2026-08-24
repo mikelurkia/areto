@@ -344,7 +344,9 @@
       "usuarios_manage": "Kontuak gonbidatu, editatu, desaktibatu eta ezabatzea, eta rola esleitzea.",
       "roles_manage": "Rolak sortu eta bakoitzak zein baimen duen erabakitzea."
     },
-    "defaultRoleRequired": "Markatu lehenago beste rol bat lehenetsi gisa: kontu berriek bat behar dute."
+    "defaultRoleRequired": "Markatu lehenago beste rol bat lehenetsi gisa: kontu berriek bat behar dute.",
+    "emailSendFailed": "Ezin izan da mezua bidali. Litekeena da Supabasen SMTP propio bat konfiguratzea falta izatea: lehenetsitako zerbitzariak proiektuko taldeko helbideetara baino ez du bidaltzen.",
+    "userDeleteFailed": "Ezin izan da kontua Supabasen ezabatu."
   },
   "Medico": {
     "title": "Panel medikoa",

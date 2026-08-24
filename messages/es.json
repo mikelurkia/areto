@@ -344,7 +344,9 @@
       "usuarios_manage": "Invitar, editar, desactivar y eliminar cuentas, y asignarles rol.",
       "roles_manage": "Crear roles y decidir qué permisos tiene cada uno."
     },
-    "defaultRoleRequired": "Marca antes otro rol como predeterminado: las cuentas nuevas necesitan uno."
+    "defaultRoleRequired": "Marca antes otro rol como predeterminado: las cuentas nuevas necesitan uno.",
+    "emailSendFailed": "No se ha podido enviar el correo. Lo más probable es que falte configurar un SMTP propio en Supabase: el servidor por defecto solo entrega a direcciones del equipo del proyecto.",
+    "userDeleteFailed": "No se ha podido eliminar la cuenta en Supabase."
   },
   "Medico": {
     "title": "Panel médico",

@@ -31,6 +31,34 @@ function confirmUrl(reason: "invitacion" | "recuperacion") {
   return `${getSiteUrl()}/auth/confirm?next=${next}`;
 }
 
+/**
+ * Traduce un error de Supabase Auth a algo que se pueda enseñar.
+ *
+ * No se puede pintar `error.message` a secas: ante un 500, `supabase-js` pierde
+ * el cuerpo de la respuesta y devuelve un `AuthRetryableFetchError` cuyo mensaje
+ * es literalmente la cadena "{}". Eso llegó a verse en pantalla. El caso real
+ * detrás de ese 500 es casi siempre el SMTP: el servidor de correo por defecto
+ * de Supabase solo entrega a direcciones del equipo del proyecto.
+ *
+ * El error completo se vuelca por consola del servidor, que es donde sirve de
+ * algo; a quien usa la aplicación se le da un texto accionable.
+ */
+function authErrorMessage(
+  error: { message?: string; code?: string; status?: number },
+  t: (key: string) => string,
+  fallbackKey: string,
+): string {
+  console.error("[administracion] Supabase Auth:", error);
+
+  if (error.code === "email_exists") return t("emailTaken");
+  if (error.code === "over_email_send_rate_limit") return t("emailRateLimited");
+  if ((error.status ?? 0) >= 500) return t("emailSendFailed");
+
+  const message = error.message?.trim();
+  // "{}" y "" son ruido del cliente, no información para nadie.
+  return message && message !== "{}" ? message : t(fallbackKey);
+}
+
 function readPersonId(formData: FormData): string | null {
   const raw = String(formData.get("personId") ?? "").trim();
   return raw && raw !== "none" ? raw : null;
@@ -90,11 +118,11 @@ export async function inviteUser(
   });
 
   if (error || !data?.user) {
-    if (error?.code === "email_exists") return { error: t("emailTaken") };
-    if (error?.code === "over_email_send_rate_limit") {
-      return { error: t("emailRateLimited") };
-    }
-    return { error: error?.message ?? t("inviteFailed") };
+    return {
+      error: error
+        ? authErrorMessage(error, t, "inviteFailed")
+        : t("inviteFailed"),
+    };
   }
 
   // El trigger `handle_new_user` ya ha insertado el perfil (corre dentro de la
@@ -265,7 +293,7 @@ export async function deleteUser(
 
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.deleteUser(id);
-  if (error) return { error: error.message };
+  if (error) return { error: authErrorMessage(error, t, "userDeleteFailed") };
 
   revalidatePath("/", "layout");
   return { message: t("userDeleted") };
@@ -301,12 +329,7 @@ export async function resendInvitation(
     },
   });
 
-  if (error) {
-    if (error.code === "over_email_send_rate_limit") {
-      return { error: t("emailRateLimited") };
-    }
-    return { error: error.message };
-  }
+  if (error) return { error: authErrorMessage(error, t, "inviteFailed") };
 
   return { message: t("invitationResent", { email: target.email }) };
 }
@@ -329,12 +352,7 @@ export async function sendPasswordReset(
     redirectTo: confirmUrl("recuperacion"),
   });
 
-  if (error) {
-    if (error.code === "over_email_send_rate_limit") {
-      return { error: t("emailRateLimited") };
-    }
-    return { error: error.message };
-  }
+  if (error) return { error: authErrorMessage(error, t, "inviteFailed") };
 
   return { message: t("passwordResetSent", { email: target.email }) };
 }
