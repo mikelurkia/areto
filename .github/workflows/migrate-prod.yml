@@ -59,4 +59,11 @@ jobs:
 
       - run: npm ci
 
+      # `drizzle-kit migrate` se traga los errores de conexión: ante una cadena
+      # mal formada muere en un segundo con `exit code 1` y sin una sola línea
+      # que diga qué pasa. Esto abre la conexión antes, con el mismo driver, y
+      # falla en claro con el motivo real.
+      - name: Comprobar la conexión antes de migrar
+        run: node scripts/check-db-connection.mjs
+
       - run: npm run db:migrate
