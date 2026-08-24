@@ -1,0 +1,233 @@
+import { getTranslations, setRequestLocale } from "next-intl/server";
+
+import { db } from "@/db";
+import { Link } from "@/i18n/navigation";
+import { hasPermission, requirePermission } from "@/lib/auth";
+import { isSystemRoleKey } from "@/lib/permissions";
+import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import { listAuthDirectory } from "@/lib/supabase/auth-directory";
+import { AdminSectionNav } from "@/components/administracion/admin-section-nav";
+import { InviteUserDialog } from "@/components/administracion/invite-user-dialog";
+import type { RoleOption } from "@/components/administracion/role-dialog";
+import type { AdminUserRow } from "@/components/administracion/user-dialog";
+import { UserRowActions } from "@/components/administracion/user-row-actions";
+import type { PersonOption } from "@/components/administracion/user-person-combobox";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Metadata" });
+  return { title: t("usuarios") };
+}
+
+/** Activos primero, luego los pendientes de aceptar y por último los desactivados. */
+const STATUS_ORDER = { active: 0, pending: 1, disabled: 2 } as const;
+
+export default async function UsuariosPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
+  const current = await requirePermission("usuarios.manage");
+  const t = await getTranslations("Administracion");
+
+  // Tres lecturas directas de la página: el `Promise.all` es el patrón habitual
+  // del repositorio. La llamada a la Admin API va fuera a propósito — es una
+  // petición HTTP, no una consulta, y no debe sumar concurrencia al pooler.
+  const [userRows, allRoles, allPersons] = await Promise.all([
+    db.query.users.findMany({
+      with: {
+        accessRole: true,
+        person: { columns: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: (u, { asc }) => [asc(u.email)],
+    }),
+    db.query.roles.findMany({
+      orderBy: (r, { asc }) => [asc(r.sortOrder), asc(r.name)],
+    }),
+    db.query.persons.findMany({
+      columns: { id: true, firstName: true, lastName: true, email: true },
+      orderBy: (p, { asc }) => [asc(p.lastName), asc(p.firstName)],
+    }),
+  ]);
+
+  const authDirectory = await listAuthDirectory();
+
+  const roleLabel = (role: { key: string; name: string }) =>
+    isSystemRoleKey(role.key) ? t(`roles.${role.key}` as "roles.admin") : role.name;
+
+  const roleOptions: RoleOption[] = allRoles.map((r) => ({
+    id: r.id,
+    key: r.key,
+    name: roleLabel(r),
+    description: r.description,
+    isSystem: r.isSystem,
+    isDefault: r.isDefault,
+  }));
+
+  // Qué persona está ocupada por qué cuenta, para que el selector lo enseñe.
+  const personOwner = new Map(
+    userRows.filter((u) => u.personId).map((u) => [u.personId!, u.email]),
+  );
+
+  const personOptions: PersonOption[] = allPersons.map((p) => ({
+    id: p.id,
+    firstName: p.firstName,
+    lastName: p.lastName,
+    email: p.email,
+    linkedToEmail: personOwner.get(p.id) ?? null,
+  }));
+
+  const rows: AdminUserRow[] = userRows
+    .map((u) => {
+      const auth = authDirectory.get(u.id);
+      return {
+        id: u.id,
+        email: u.email,
+        fullName: u.fullName,
+        roleId: u.roleId,
+        roleLabel: u.accessRole ? roleLabel(u.accessRole) : null,
+        roleIsSystem: u.accessRole?.isSystem ?? false,
+        personId: u.personId,
+        personName: u.person
+          ? `${u.person.firstName} ${u.person.lastName}`.trim()
+          : null,
+        status: u.status,
+        // Sin clave de servicio no sabemos si ya entró; en ese caso nos
+        // quedamos con lo que dice nuestra tabla y no inventamos un estado.
+        pendingInvitation:
+          u.invitedAt !== null && auth !== undefined && auth.lastSignInAt === null,
+        lastSignInAt: auth?.lastSignInAt ?? null,
+      };
+    })
+    .sort(
+      (a, b) =>
+        STATUS_ORDER[a.status] - STATUS_ORDER[b.status] ||
+        a.email.localeCompare(b.email),
+    );
+
+  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+  const defaultRole = allRoles.find((r) => r.isDefault) ?? allRoles[0];
+
+  return (
+    <div className="flex flex-1 flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("usersSubtitle")}</p>
+        </div>
+        <InviteUserDialog
+          roles={roleOptions}
+          defaultRoleId={defaultRole?.id ?? null}
+          personOptions={personOptions}
+          available={isSupabaseAdminConfigured}
+        />
+      </div>
+
+      <AdminSectionNav
+        current="usuarios"
+        canManageRoles={hasPermission(current, "roles.manage")}
+      />
+
+      {!isSupabaseAdminConfigured ? (
+        <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+          {t("adminApiNotConfiguredHint")}
+        </p>
+      ) : null}
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("colUser")}</TableHead>
+            <TableHead>{t("colRole")}</TableHead>
+            <TableHead>{t("colPerson")}</TableHead>
+            <TableHead>{t("colStatus")}</TableHead>
+            <TableHead>{t("colLastSignIn")}</TableHead>
+            <TableHead className="w-12 text-right">{t("colActions")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.id}>
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  <Avatar className="size-8">
+                    <AvatarFallback>
+                      {row.email.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="grid">
+                    <span className="font-medium">{row.fullName ?? row.email}</span>
+                    {row.fullName ? (
+                      <span className="text-xs text-muted-foreground">
+                        {row.email}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell>
+                {row.roleLabel ? (
+                  <Badge variant="secondary">{row.roleLabel}</Badge>
+                ) : (
+                  <span className="text-muted-foreground">{t("noRole")}</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {row.personId && row.personName ? (
+                  <Link
+                    href={`/personas/${row.personId}`}
+                    className="hover:underline"
+                  >
+                    {row.personName}
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {row.status === "disabled" ? (
+                  <Badge variant="destructive">{t("statusDisabled")}</Badge>
+                ) : row.pendingInvitation || row.status === "pending" ? (
+                  <Badge variant="outline">{t("statusPending")}</Badge>
+                ) : (
+                  <Badge variant="secondary">{t("statusActive")}</Badge>
+                )}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {row.lastSignInAt
+                  ? dateFmt.format(new Date(row.lastSignInAt))
+                  : "—"}
+              </TableCell>
+              <TableCell className="text-right">
+                <UserRowActions
+                  user={row}
+                  roles={roleOptions}
+                  personOptions={personOptions}
+                  isSelf={row.id === current.id}
+                  adminApiAvailable={isSupabaseAdminConfigured}
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
