@@ -26,6 +26,21 @@ Los PRs a `main` corren CI (`.github/workflows/ci.yml`): lint, typecheck,
 `db:migrate` contra `areto-dev` y `next build`. Las migraciones a producción
 se disparan a mano con el workflow `migrate-prod.yml` tras mergear.
 
+## Flujo de trabajo (ramas y PRs)
+
+La rama `main` está **protegida**: no se puede empujar directamente a ella.
+Todo desarrollo va en su propia rama y entra a `main` mediante un Pull Request:
+
+```bash
+git switch -c feat/nombre-corto   # o fix/…, chore/…
+# … trabajo, commits …
+git push -u origin feat/nombre-corto
+```
+
+Abre el PR contra `main` en GitHub, espera a que pase el CI y mergéalo. El PR
+genera además un Preview Deployment en Vercel (contra `areto-dev`) para probar
+los cambios antes de mergear.
+
 ## Puesta en marcha
 
 1. Instala dependencias:
@@ -54,6 +69,54 @@ se disparan a mano con el workflow `migrate-prod.yml` tras mergear.
 
 > La app arranca aunque Supabase no esté configurado: la landing pública funciona
 > y las rutas internas redirigen a `/login`.
+
+### Red corporativa y puerto 6543
+
+Si al abrir cualquier página que lea datos ves un 500 con este error:
+
+```
+Failed query: select ... from "club_settings"
+[cause]: write CONNECT_TIMEOUT aws-N-[region].pooler.supabase.com:6543
+```
+
+no es un problema del proyecto ni de Supabase: hay una red que **filtra toda
+salida TCP que no sea 80/443**. Auth y Storage siguen funcionando (van por HTTPS
+al dominio `[ref].supabase.co`), pero la conexión Postgres de Drizzle
+(`src/db/index.ts`) no puede abrirse. Para comprobarlo:
+
+```powershell
+Test-NetConnection aws-1-eu-west-1.pooler.supabase.com -Port 6543   # falla
+Test-NetConnection aws-1-eu-west-1.pooler.supabase.com -Port 443    # conecta
+```
+
+**Solución definitiva:** pedir al departamento de Sistemas la apertura de los
+puertos 6543 y 5432 salientes hacia `*.pooler.supabase.com`.
+
+**Apaño mientras tanto:** conectar un hotspot móvil y enrutar por él *solo* el
+tráfico al pooler, con `scripts/dev-route-supabase.ps1`:
+
+```powershell
+# 1. Conecta el hotspot (sin desconectar el cable corporativo).
+# 2. En PowerShell COMO ADMINISTRADOR, en la raíz del repo:
+npm run dev:route
+# 3. En tu terminal habitual:
+npm run dev
+```
+
+El script crea rutas `/32` hacia las IPs actuales del pooler por el adaptador
+Wi-Fi, así que el resto del tráfico —incluida la red interna— sigue saliendo por
+el cable. Detalles a tener en cuenta:
+
+- Las IPs del pooler son de un balanceador de AWS y **rotan**. Si vuelve el
+  `CONNECT_TIMEOUT`, lo primero es re-ejecutar `npm run dev:route`.
+- Reconectar el hotspot cambia el gateway → re-ejecutar.
+- `postgres-js` reutiliza la conexión entre recargas, así que las rutas deben
+  estar puestas **antes** de arrancar `next dev`; si no, reinicia el servidor.
+- Para deshacerlo:
+  `powershell -File scripts/dev-route-supabase.ps1 -Remove`.
+
+Conectar el portátil corporativo a una red ajena conviene contrastarlo antes con
+Sistemas, por si la política interna no permite el *dual-homing*.
 
 ## Autenticación
 

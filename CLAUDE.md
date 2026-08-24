@@ -29,3 +29,10 @@ concurrentes en una sola carga de página ha colgado el dashboard una vez ya
 (el pooler transaccional de Supabase, Supavisor, no lo tolera bien) — trátalo
 como un riesgo real, no teórico, en cualquier página nueva o existente que
 dispare varias queries a la vez.
+
+## Flujo de trabajo con git
+
+`main` está protegida: nunca commitees ni empujes directamente a ella. Antes de
+empezar a tocar código, crea una rama (`git switch -c feat/…`, `fix/…`,
+`chore/…`) y al terminar abre un PR a `main`. Si al arrancar una tarea ves que
+la rama actual es `main`, crea la rama antes del primer commit.
