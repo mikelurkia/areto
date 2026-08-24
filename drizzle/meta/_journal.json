@@ -428,6 +428,13 @@
       "when": 1787264155622,
       "tag": "0060_quiet_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1787563799356,
+      "tag": "0061_regular_switch",
+      "breakpoints": true
     }
   ]
 }
