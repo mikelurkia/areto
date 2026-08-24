@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "dev": "next dev",
     "dev:route": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-route-supabase.ps1",
     "build": "next build",

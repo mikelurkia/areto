@@ -25,8 +25,32 @@ jobs:
         env:
           PROD_DATABASE_URL_DIRECT: ${{ secrets.PROD_DATABASE_URL_DIRECT }}
         run: |
+          # pipefail es imprescindible: sin él, un fallo de pg_dump queda
+          # enmascarado por el éxito de gzip y el paso "pasa" generando un
+          # dump vacío/corrupto (backup verde pero inservible).
+          set -euo pipefail
+
+          if [ -z "${PROD_DATABASE_URL_DIRECT:-}" ]; then
+            echo "::error::El secret PROD_DATABASE_URL_DIRECT no está configurado en el environment 'production'." >&2
+            exit 1
+          fi
+
+          # OJO con el usuario de la cadena de conexión: si el host es el
+          # *session pooler* de Supabase (aws-0-<region>.pooler.supabase.com,
+          # puerto 5432) el usuario DEBE ser 'postgres.<project-ref>', no
+          # 'postgres' a secas, o la autenticación falla. La conexión directa
+          # real (db.<ref>.supabase.co) es IPv6-only en Free y no funciona
+          # desde los runners de GitHub (solo IPv4).
           pg_dump "$PROD_DATABASE_URL_DIRECT" --no-owner --no-privileges \
             | gzip > areto-prod-backup.sql.gz
+
+          # Sanity check: un dump válido de esta base nunca es tan pequeño.
+          size=$(stat -c%s areto-prod-backup.sql.gz)
+          echo "Tamaño del dump comprimido: ${size} bytes"
+          if [ "$size" -lt 1024 ]; then
+            echo "::error::El dump comprimido es sospechosamente pequeño (${size} bytes); probablemente está vacío." >&2
+            exit 1
+          fi
 
       # El dump contiene datos personales reales de socios (incl. campos
       # médicos/DNI) — nunca subirlo en claro como artifact, aunque el repo
@@ -36,6 +60,13 @@ jobs:
         env:
           BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
         run: |
+          set -euo pipefail
+
+          if [ -z "${BACKUP_ENCRYPTION_KEY:-}" ]; then
+            echo "::error::El secret BACKUP_ENCRYPTION_KEY no está configurado en el environment 'production'." >&2
+            exit 1
+          fi
+
           gpg --batch --yes --symmetric --cipher-algo AES256 \
             --passphrase "$BACKUP_ENCRYPTION_KEY" \
             areto-prod-backup.sql.gz
