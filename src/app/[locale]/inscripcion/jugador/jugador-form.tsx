@@ -13,6 +13,7 @@ import {
   MAX_UPLOAD_TOTAL_BYTES,
   downscaleImage,
 } from "@/lib/image-downscale";
+import { readPlayerFields, type RegistrationState } from "@/lib/registration-form-data";
 import { Link } from "@/i18n/navigation";
 import { Req } from "@/components/inscripciones/required-asterisk";
 import { SubmitButton } from "@/components/submit-button";
@@ -179,7 +180,25 @@ function usePhotoFieldsState() {
 
 export function JugadorForm() {
   const t = useTranslations("Inscripciones");
-  const [state, formAction] = useActionState(submitTeamRegistration, {});
+  // La Server Action atrapa sus propios fallos y devuelve estado, pero solo
+  // puede hacerlo si llega a ejecutarse. Cuando la petición muere antes —la
+  // plataforma corta el cuerpo por tamaño sin invocar la función, o la red
+  // móvil se cae a mitad de la subida— lo que se recibe es un rechazo, y sin
+  // este `catch` sube al error boundary: desmonta la página y se lleva por
+  // delante todo lo que la persona llevaba rellenado. Devolviéndolo como
+  // estado, el formulario sigue en pie y solo hay que readjuntar las fotos
+  // (un `<input type="file">` no se puede repoblar).
+  const submit = async (
+    prev: RegistrationState,
+    formData: FormData,
+  ): Promise<RegistrationState> => {
+    try {
+      return await submitTeamRegistration(prev, formData);
+    } catch {
+      return { error: t("submissionNotDelivered"), submitted: readPlayerFields(formData) };
+    }
+  };
+  const [state, formAction] = useActionState(submit, {});
   const [birthDate, setBirthDate] = useState("");
   const [guardianKeys, setGuardianKeys] = useState<number[]>([0]);
   const [installments, setInstallments] = useState("1");

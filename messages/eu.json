@@ -845,6 +845,7 @@
     "seasonBadge": "{season} denboraldia",
     "formHasErrors": "Egiaztatu gorriz markatutako eremuak.",
     "submissionFailed": "Ezin izan da inskripzioa bidali konexio-arazo baten ondorioz. Saiatu berriro minutu batzuk barru.",
+    "submissionNotDelivered": "Izen-ematea ez da bidali: konexioa eten da edo argazkiek gehiegi pisatzen zuten. Bete duzuna hemen duzu oraindik; erantsi hiru argazkiak berriro eta bidali berriro.",
     "searchPlaceholder": "Bilatu izenez, NANez edo emailez...",
     "filterStatusLabel": "Egoera",
     "filterStatusAll": "Egoera guztiak",
