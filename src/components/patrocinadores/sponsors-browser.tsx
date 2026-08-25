@@ -27,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { downloadCsv } from "@/lib/csv";
 import { SPONSORSHIP_EXPIRY_WINDOW_DAYS, sponsorshipStatus } from "@/lib/sponsorship";
 
 type CurrentTerm = {
@@ -55,10 +56,6 @@ type SponsorRow = {
 };
 
 type PersonOption = { id: string; firstName: string; lastName: string };
-
-function csvEscape(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`;
-}
 
 export function SponsorsBrowser({
   sponsors,
@@ -132,16 +129,7 @@ export function SponsorsBrowser({
       s.currentTerm?.startsOn ?? "",
       s.currentTerm?.endsOn ?? "",
     ]);
-    const csv = [headers, ...rows]
-      .map((row) => row.map(csvEscape).join(","))
-      .join("\r\n");
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "patrocinadores.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadCsv("patrocinadores.csv", headers, rows);
   }
 
   return (

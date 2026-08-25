@@ -20,7 +20,8 @@
     "roles": "Rolak · Areto",
     "contrasena": "Pasahitza · Areto",
     "accesoRevocado": "Sarbidea desaktibatuta · Areto",
-    "accesoNoAutorizado": "Baimenik gabeko sarbidea · Areto"
+    "accesoNoAutorizado": "Baimenik gabeko sarbidea · Areto",
+    "medicoListado": "Azterketa medikoak · Areto"
   },
   "Landing": {
     "brand": "Aloña Mendi",
@@ -371,7 +372,19 @@
     "colInjuryDate": "Data",
     "colInjuryPerson": "Pertsona",
     "colInjuryDescription": "Deskribapena",
-    "noInjuryReportsDescription": "Ez dago lesio-parterik erregistratuta."
+    "noInjuryReportsDescription": "Ez dago lesio-parterik erregistratuta.",
+    "printListAction": "Zerrenda inprimagarria",
+    "printAction": "Inprimatu",
+    "exportCsvAction": "CSV esportatu",
+    "backToPanel": "Panel medikora itzuli",
+    "listTitle": "Azterketa medikoak",
+    "listGeneratedOn": "Sortze-data: {date}",
+    "listSearchLabel": "Bilaketa",
+    "colListName": "Abizenak, izena",
+    "colNationalId": "NAN/AIZ",
+    "colBirthDate": "Jaiotze-data",
+    "colRole": "Rola",
+    "colExpiry": "Iraungitze-data"
   },
   "Personas": {
     "title": "Pertsonak",
