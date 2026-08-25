@@ -67,7 +67,12 @@ export default async function InvoiceRegisterPage({
     .sort((a, b) => b - a);
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    /*
+      `print:p-[14mm]` porque esta página imprime sin ser una `PrintableSheet`:
+      `@page` ya no da margen (lo pone la hoja como padding), así que sin esto
+      saldría a sangre.
+    */
+    <div className="flex flex-1 flex-col gap-6 print:p-[14mm]">
       <div className="print:hidden">
         <Button
           variant="ghost"

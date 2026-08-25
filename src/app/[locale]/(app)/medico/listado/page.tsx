@@ -17,6 +17,7 @@ import { teamSeasonLabel } from "@/lib/team-label";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
 import { Link } from "@/i18n/navigation";
 import { PrintButton } from "@/components/print-button";
+import { PrintableSheet } from "@/components/printable-sheet";
 import { TableSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import {
@@ -143,14 +144,14 @@ async function MedicalListDocument({
       : t(`filterStatus.${filters.status}` as "filterStatus.expired");
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 rounded-lg border p-8">
+    <PrintableSheet>
       {/* Cabecera: qué documento es, de qué club y con qué filtros se sacó */}
-      <div className="flex items-start justify-between gap-6 border-b pb-4">
+      <div className="flex items-start justify-between gap-6 border-b pb-[9pt]">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">{t("listTitle")}</h1>
-          <p className="text-sm text-muted-foreground">{club?.legalName ?? "Areto"}</p>
+          <h1 className="text-[11pt] font-semibold tracking-tight">{t("listTitle")}</h1>
+          <p className="text-[8pt] text-muted-foreground">{club?.legalName ?? "Areto"}</p>
         </div>
-        <div className="text-right text-sm">
+        <div className="text-right text-[8pt]">
           {currentSeason ? <p className="font-medium">{currentSeason.name}</p> : null}
           <p className="text-muted-foreground">
             {t("filterTeamLabel")}: {teamLabel}
@@ -163,49 +164,54 @@ async function MedicalListDocument({
               {t("listSearchLabel")}: {filters.query.trim()}
             </p>
           ) : null}
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-[7pt] text-muted-foreground">
             {t("listGeneratedOn", { date: dateFmt.format(new Date()) })}
           </p>
         </div>
       </div>
 
       {listed.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("noResultsDescription")}</p>
+        <p className="text-[8pt] text-muted-foreground">{t("noResultsDescription")}</p>
       ) : (
-        <Table>
+        /* Tabla de documento, no de pantalla: `table-fixed` con anchos por
+           columna (con siete columnas, el reparto automático se lo comen
+           «nombre» y «equipos», que concatena varios) y sin el
+           `whitespace-nowrap` que `ui/table.tsx` pone por defecto, que es lo que
+           ensancha la tabla más allá de la hoja y saca el scroll horizontal. */
+        <Table className="table-fixed text-[8pt] [&_td]:px-[3pt] [&_td]:py-[1.5pt] [&_th]:px-[3pt] [&_th]:py-[1.5pt] [&_td]:whitespace-normal [&_th]:break-words [&_th]:whitespace-normal">
           <TableHeader>
             <TableRow>
-              <TableHead>{t("colListName")}</TableHead>
-              <TableHead>{t("colNationalId")}</TableHead>
-              <TableHead>{t("colBirthDate")}</TableHead>
-              <TableHead>{t("colTeams")}</TableHead>
-              <TableHead>{t("colRole")}</TableHead>
-              <TableHead>{t("colExpiry")}</TableHead>
-              <TableHead>{t("colStatus")}</TableHead>
+              <TableHead className="w-[25%]">{t("colListName")}</TableHead>
+              <TableHead className="w-[14%]">{t("colNationalId")}</TableHead>
+              <TableHead className="w-[12%]">{t("colBirthDate")}</TableHead>
+              <TableHead className="w-[24%]">{t("colTeams")}</TableHead>
+              <TableHead className="w-[13%]">{t("colRole")}</TableHead>
+              <TableHead className="w-[12%]">{t("colExpiry")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {listed.map((row) => (
               <TableRow key={row.id}>
-                <TableCell className="font-medium">
+                <TableCell className="align-top font-medium">
                   {row.lastName}, {row.firstName}
                 </TableCell>
-                <TableCell>{row.nationalId ?? EMPTY}</TableCell>
-                <TableCell>{fmtDate(row.birthDate)}</TableCell>
-                <TableCell>{row.teams.map((tm) => tm.name).join(" / ")}</TableCell>
-                <TableCell>
+                <TableCell className="align-top">{row.nationalId ?? EMPTY}</TableCell>
+                <TableCell className="align-top">{fmtDate(row.birthDate)}</TableCell>
+                <TableCell className="align-top">
+                  {row.teams.map((tm) => tm.name).join(" / ")}
+                </TableCell>
+                <TableCell className="align-top">
                   {medicalPanelRowRoles(row)
                     .map((role) => tEquipos(`roleOption.${role}`))
                     .join(" / ")}
                 </TableCell>
-                <TableCell>{fmtDate(row.medicalCertUntil)}</TableCell>
-                <TableCell>{t(`filterStatus.${row.status}`)}</TableCell>
+                <TableCell className="align-top">{fmtDate(row.medicalCertUntil)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       )}
-    </div>
+    </PrintableSheet>
   );
 }
 
@@ -239,9 +245,9 @@ export default async function MedicoListadoPage({
 
       <Suspense
         fallback={
-          <div className="mx-auto w-full max-w-3xl rounded-lg border p-8">
-            <TableSkeleton columns={["w-40", "w-20", "w-20", "w-24", "w-16", "w-20", "w-20"]} />
-          </div>
+          <PrintableSheet>
+            <TableSkeleton columns={["w-40", "w-20", "w-20", "w-24", "w-16", "w-20"]} />
+          </PrintableSheet>
         }
       >
         <MedicalListDocument locale={locale} searchParams={searchParams} />

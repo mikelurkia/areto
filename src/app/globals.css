@@ -157,19 +157,109 @@
 }
 
 /*
- * Ficha imprimible: oculta la navegación de la app y fuerza a que se vean
- * todos los paneles de Tabs (renderizados con keepMounted, ocultos con el
- * atributo nativo `hidden`) en vez de solo el activo.
+ * Sin margen de página a propósito: el margen del documento lo pone
+ * `PrintableSheet` como padding de la hoja (14mm). Así pantalla y papel
+ * comparten una sola caja en vez de dos, que es lo que hace que lo que se ve
+ * sea lo que se imprime. Las dos páginas que imprimen sin ser una hoja
+ * (calendario y libro de facturas) ponen el suyo con `print:p-[14mm]`.
+ */
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+/*
+ * La hoja es papel: los mismos colores con el tema claro, con el oscuro y
+ * impresa. Va fuera de `@media print` a propósito — si el forzado a claro solo
+ * existiera al imprimir, con el tema oscuro la pantalla volvería a no coincidir
+ * con el papel.
+ *
+ * `--muted-foreground` y `--border` van más oscuros que en `:root`: los grises
+ * calibrados para un monitor retroiluminado desaparecen sobre papel.
+ */
+[data-slot="printable-sheet"] {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.22 0.02 150);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.02 150);
+  --muted: oklch(0.95 0.012 125);
+  --muted-foreground: oklch(0.35 0.02 140);
+  --border: oklch(0.75 0.012 130);
+  --primary: oklch(0.38 0.07 150);
+  --accent: oklch(0.92 0.02 135);
+  --accent-foreground: oklch(0.24 0.02 150);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/*
+ * Documentos imprimibles: quita el cromo de la app, adapta la tipografía al
+ * papel y evita que las tablas anchas se corten.
  */
 @media print {
-  [data-slot="sidebar"] {
+  /*
+   * Paleta clara forzada para lo que imprime sin ser una hoja (calendario y
+   * libro de facturas): los navegadores no imprimen fondos, así que con el tema
+   * oscuro saldría texto claro sobre papel blanco. Las hojas ya la llevan
+   * siempre, en el bloque de arriba.
+   */
+  :root,
+  .dark {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.22 0.02 150);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.22 0.02 150);
+    --muted: oklch(0.95 0.012 125);
+    --muted-foreground: oklch(0.35 0.02 140);
+    --border: oklch(0.75 0.012 130);
+    --primary: oklch(0.38 0.07 150);
+    --accent: oklch(0.92 0.02 135);
+    --accent-foreground: oklch(0.24 0.02 150);
+  }
+
+  /*
+   * Navegación fuera, y todos los paneles de Tabs visibles: se renderizan con
+   * keepMounted y se ocultan con el atributo nativo `hidden`, así que sin esto
+   * solo se imprimiría el activo.
+   */
+  [data-slot="sidebar"],
+  [data-slot="tabs-list"] {
     display: none !important;
   }
   [data-slot="tabs-content"][hidden] {
     display: block !important;
   }
-  [data-slot="tabs-list"] {
-    display: none !important;
+
+  /* El padding del <main> duplicaría el margen que ya define `@page`. */
+  [data-slot="sidebar-inset"] > main {
+    padding: 0 !important;
+  }
+
+  /*
+   * La causa del recorte: `ui/table.tsx` envuelve cada tabla en un contenedor
+   * con scroll horizontal. En pantalla se puede arrastrar; en papel, lo que
+   * desborda no se imprime y el documento sale cortado por la derecha.
+   */
+  [data-slot="table-container"] {
+    overflow: visible !important;
+  }
+
+  /*
+   * `whitespace-nowrap` (utilidad aplicada en el propio elemento, de ahí el
+   * !important) impide que los nombres largos rompan línea y ensancha la tabla
+   * más allá del papel. En pantalla interesa; impreso, no.
+   */
+  [data-slot="table-head"],
+  [data-slot="table-cell"] {
+    white-space: normal !important;
+  }
+
+  /* Tablas que ocupan varias páginas: cabecera repetida y filas sin partir. */
+  [data-slot="table-header"] {
+    display: table-header-group;
+  }
+  [data-slot="table-row"] {
+    break-inside: avoid;
   }
 }
 

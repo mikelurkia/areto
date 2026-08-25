@@ -10,6 +10,7 @@ import { getClubSettings } from "@/lib/club";
 import { seasonLabel } from "@/lib/sponsorship";
 import { Link } from "@/i18n/navigation";
 import { PrintButton } from "@/components/print-button";
+import { PrintableSheet } from "@/components/printable-sheet";
 import { Button } from "@/components/ui/button";
 
 export async function generateMetadata({
@@ -68,21 +69,21 @@ export default async function SponsorInvoicePage({
       </div>
 
       {!payment.invoiceNumber ? (
-        <p className="mx-auto w-full max-w-xl rounded-md border border-dashed p-3 text-center text-sm text-muted-foreground print:hidden">
+        <p className="mx-auto w-full max-w-xl rounded-md border border-dashed p-3 text-center text-[8pt] text-muted-foreground print:hidden">
           {t("notInvoicedYet")}
         </p>
       ) : null}
 
-      <div className="mx-auto w-full max-w-xl rounded-lg border p-8">
+      <PrintableSheet>
         {/* Cabecera: título + número/fecha de factura */}
         <div className="mb-8 flex items-start justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">{t("invoiceTitle")}</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-[11pt] font-semibold tracking-tight">{t("invoiceTitle")}</h1>
+            <p className="text-[8pt] text-muted-foreground">
               {club?.legalName ?? "Areto"}
             </p>
           </div>
-          <div className="text-right text-sm">
+          <div className="text-right text-[8pt]">
             {payment.invoiceNumber ? (
               <>
                 <p className="text-muted-foreground">{t("invoiceNumberLabel")}</p>
@@ -90,7 +91,7 @@ export default async function SponsorInvoicePage({
               </>
             ) : null}
             {payment.invoicedOn ? (
-              <p className="mt-1 text-xs text-muted-foreground">{payment.invoicedOn}</p>
+              <p className="mt-1 text-[7pt] text-muted-foreground">{payment.invoicedOn}</p>
             ) : null}
           </div>
         </div>
@@ -98,53 +99,53 @@ export default async function SponsorInvoicePage({
         {/* Emisor y receptor */}
         <div className="mb-8 grid grid-cols-2 gap-6">
           <div>
-            <p className="mb-1 text-xs tracking-wide text-muted-foreground uppercase">
+            <p className="mb-1 text-[7pt] tracking-wide text-muted-foreground uppercase">
               {t("invoiceFrom")}
             </p>
             <p className="font-medium">{club?.legalName ?? "Areto"}</p>
             {club?.taxId ? (
-              <p className="text-sm text-muted-foreground">{club.taxId}</p>
+              <p className="text-[8pt] text-muted-foreground">{club.taxId}</p>
             ) : null}
             {club?.address ? (
-              <p className="text-sm text-muted-foreground">{club.address}</p>
+              <p className="text-[8pt] text-muted-foreground">{club.address}</p>
             ) : null}
             {club?.email ? (
-              <p className="text-sm text-muted-foreground">{club.email}</p>
+              <p className="text-[8pt] text-muted-foreground">{club.email}</p>
             ) : null}
           </div>
           <div>
-            <p className="mb-1 text-xs tracking-wide text-muted-foreground uppercase">
+            <p className="mb-1 text-[7pt] tracking-wide text-muted-foreground uppercase">
               {t("invoiceTo")}
             </p>
             <p className="font-medium">{sponsor.fiscalName ?? sponsor.name}</p>
             {sponsor.taxId ? (
-              <p className="text-sm text-muted-foreground">{sponsor.taxId}</p>
+              <p className="text-[8pt] text-muted-foreground">{sponsor.taxId}</p>
             ) : null}
             {sponsor.fiscalAddress ? (
-              <p className="text-sm text-muted-foreground">{sponsor.fiscalAddress}</p>
+              <p className="text-[8pt] text-muted-foreground">{sponsor.fiscalAddress}</p>
             ) : null}
           </div>
         </div>
 
         {/* Concepto y total (operación sin IVA) */}
-        <div className="flex items-start justify-between border-y py-3 text-sm">
+        <div className="flex items-start justify-between border-y py-3 text-[8pt]">
           <span className="text-muted-foreground">{t("conceptLabel")}</span>
           <span className="max-w-xs text-right font-medium">{concept}</span>
         </div>
 
         <div className="mt-4 flex items-center justify-between">
           <span className="font-semibold">{t("totalLabel")}</span>
-          <span className="text-lg font-semibold">{amount}</span>
+          <span className="text-[10pt] font-semibold">{amount}</span>
         </div>
-        <p className="mt-1 text-right text-xs text-muted-foreground">{t("vatExempt")}</p>
+        <p className="mt-1 text-right text-[7pt] text-muted-foreground">{t("vatExempt")}</p>
 
         {club?.iban ? (
-          <div className="mt-6 border-t pt-4 text-sm">
+          <div className="mt-6 border-t pt-4 text-[8pt]">
             <span className="text-muted-foreground">{t("ibanLabel")}: </span>
             <span className="font-medium">{club.iban}</span>
           </div>
         ) : null}
-      </div>
+      </PrintableSheet>
     </div>
   );
 }

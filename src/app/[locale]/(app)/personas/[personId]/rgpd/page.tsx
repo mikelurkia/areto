@@ -12,6 +12,7 @@ import { calculateAge } from "@/lib/age";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { Link } from "@/i18n/navigation";
 import { PrintButton } from "@/components/print-button";
+import { PrintableSheet } from "@/components/printable-sheet";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -50,7 +51,7 @@ export async function generateMetadata({
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === "") return null;
   return (
-    <div className="flex justify-between gap-6 border-b py-1.5 text-sm last:border-b-0">
+    <div className="flex justify-between gap-6 border-b py-1.5 text-[8pt] last:border-b-0">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-right font-medium">{value}</span>
     </div>
@@ -66,7 +67,7 @@ function Section({
 }) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+      <h2 className="text-[7pt] font-semibold tracking-wide text-muted-foreground uppercase">
         {title}
       </h2>
       <div>{children}</div>
@@ -126,21 +127,21 @@ export default async function PersonRgpdPage({
         <PrintButton label={t("printAction")} />
       </div>
 
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 rounded-lg border p-8">
+      <PrintableSheet className="gap-8">
         {/* Cabecera: responsable del tratamiento + título */}
         <div className="flex items-start justify-between border-b pb-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">
+            <h1 className="text-[11pt] font-semibold tracking-tight">
               {t("rgpdReportTitle")}
             </h1>
-            <p className="text-sm text-muted-foreground">{fullName}</p>
+            <p className="text-[8pt] text-muted-foreground">{fullName}</p>
           </div>
-          <div className="text-right text-sm">
+          <div className="text-right text-[8pt]">
             <p className="font-medium">{club?.legalName ?? "Areto"}</p>
             {club?.taxId ? (
-              <p className="text-xs text-muted-foreground">{club.taxId}</p>
+              <p className="text-[7pt] text-muted-foreground">{club.taxId}</p>
             ) : null}
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-[7pt] text-muted-foreground">
               {t("rgpdGeneratedOn", { date: generatedOn })}
             </p>
           </div>
@@ -262,7 +263,7 @@ export default async function PersonRgpdPage({
 
         {person.tags.length > 0 ? (
           <Section title={t("rgpdTagsSection")}>
-            <p className="text-sm">{person.tags.map((tag) => tag.tag).join(", ")}</p>
+            <p className="text-[8pt]">{person.tags.map((tag) => tag.tag).join(", ")}</p>
           </Section>
         ) : null}
 
@@ -278,10 +279,10 @@ export default async function PersonRgpdPage({
           </Section>
         ) : null}
 
-        <p className="border-t pt-4 text-xs text-muted-foreground">
+        <p className="border-t pt-4 text-[7pt] text-muted-foreground">
           {t("rgpdFooter")}
         </p>
-      </div>
+      </PrintableSheet>
     </div>
   );
 }

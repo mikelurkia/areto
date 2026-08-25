@@ -202,7 +202,12 @@ export default async function CalendarioPage({
   const eventsByDate = groupCourtEventsByWeekend(monthEvents);
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    /*
+      `print:p-[14mm]` porque esta página imprime sin ser una `PrintableSheet`:
+      `@page` ya no da margen (lo pone la hoja como padding), así que sin esto
+      saldría a sangre.
+    */
+    <div className="flex flex-1 flex-col gap-6 print:p-[14mm]">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
@@ -248,7 +253,7 @@ export default async function CalendarioPage({
         </SectionPlaceholder>
       ) : (
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3 print:border-none print:bg-transparent print:p-0">
+          <div className="flex break-inside-avoid flex-col gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3 print:border-none print:bg-transparent print:p-0">
             <div className="flex items-center gap-2">
               <h2 className="text-xs font-semibold tracking-wide text-primary uppercase">
                 {t("weekendHeading", { range: formatWeekendRange(nextWeekendKey, locale) })}
@@ -276,7 +281,7 @@ export default async function CalendarioPage({
 
           {restWeekendKeys.length > 0 ? (
             <div className="flex flex-col gap-2">
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase break-after-avoid">
                 {t("laterMatchesHeading")}
               </h2>
               <Table>
