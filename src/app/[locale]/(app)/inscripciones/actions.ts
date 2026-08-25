@@ -160,11 +160,13 @@ export async function updateRegistration(
   formData: FormData,
 ): Promise<RegistrationReviewState> {
   const t = await getTranslations("Inscripciones");
-  await requirePermission("inscripciones.manage");
 
   const id = String(formData.get("id") ?? "");
   const existing = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });
   if (!existing) return { error: t("notFound") };
+  await requirePermission(
+    existing.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
+  );
   if (existing.status !== "pending") return { error: t("alreadyReviewed") };
 
   const kind = String(formData.get("kind") ?? "player");
@@ -232,7 +234,6 @@ export async function approveRegistration(
   formData: FormData,
 ): Promise<RegistrationReviewState> {
   const t = await getTranslations("Inscripciones");
-  const reviewer = await requirePermission("inscripciones.manage");
 
   const id = String(formData.get("id") ?? "");
   const teamId = String(formData.get("teamId") ?? "").trim() || null;
@@ -247,6 +248,9 @@ export async function approveRegistration(
     with: { guardians: { orderBy: (g, { asc }) => [asc(g.sortOrder)] } },
   });
   if (!registration) return { error: t("notFound") };
+  const reviewer = await requirePermission(
+    registration.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
+  );
   if (registration.status !== "pending") return { error: t("alreadyReviewed") };
   if (registration.iban && !isValidIban(registration.iban)) {
     return { error: t("ibanInvalidFixFirst") };
@@ -539,14 +543,15 @@ export async function rejectRegistration(
   formData: FormData,
 ): Promise<RegistrationReviewState> {
   const t = await getTranslations("Inscripciones");
-  const reviewer = await requirePermission("inscripciones.manage");
 
   const id = String(formData.get("id") ?? "");
-  const rejectionReason = String(formData.get("rejectionReason") ?? "").trim();
-  if (!rejectionReason) return { error: t("rejectionReasonRequired") };
-
   const registration = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });
   if (!registration) return { error: t("notFound") };
+  const reviewer = await requirePermission(
+    registration.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
+  );
+  const rejectionReason = String(formData.get("rejectionReason") ?? "").trim();
+  if (!rejectionReason) return { error: t("rejectionReasonRequired") };
   if (registration.status !== "pending") return { error: t("alreadyReviewed") };
 
   await db
@@ -571,11 +576,13 @@ export async function reopenRegistration(
   formData: FormData,
 ): Promise<RegistrationReviewState> {
   const t = await getTranslations("Inscripciones");
-  await requirePermission("inscripciones.manage");
 
   const id = String(formData.get("id") ?? "");
   const registration = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });
   if (!registration) return { error: t("notFound") };
+  await requirePermission(
+    registration.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
+  );
   if (registration.status !== "rejected") return { error: t("onlyRejectedCanReopen") };
 
   await db

@@ -8,7 +8,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { persons } from "@/db/schema";
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getSignedUrl } from "@/lib/supabase/storage";
@@ -48,7 +48,8 @@ export default async function MemberCardPage({
   const { locale, personId } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requirePermission("personas.view");
+  const user = await requirePermission("personas.view");
+  const canManage = hasPermission(user, "personas.manage");
   const t = await getTranslations("Personas");
 
   const [person, club] = await Promise.all([
@@ -96,7 +97,7 @@ export default async function MemberCardPage({
           <p className="text-sm text-muted-foreground">
             {isMember ? t("memberCardNoNumber") : t("memberCardNotMember")}
           </p>
-          {isMember ? <AssignMemberNumberButton personId={person.id} /> : null}
+          {isMember && canManage ? <AssignMemberNumberButton personId={person.id} /> : null}
         </div>
       ) : (
         /* Al contrario que el resto de documentos, el carné se imprime tal cual

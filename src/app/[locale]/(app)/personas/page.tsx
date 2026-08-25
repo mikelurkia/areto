@@ -2,7 +2,7 @@ import { Users } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { isPastMember } from "@/lib/membership";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { Link } from "@/i18n/navigation";
@@ -33,9 +33,9 @@ export default async function PersonasPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requirePermission("personas.view");
+  const user = await requirePermission("personas.view");
   const t = await getTranslations("Personas");
-  const canManage = true;
+  const canManage = hasPermission(user, "personas.manage");
 
   // Personas y equipos no dependen entre sí: en paralelo, para no pagar dos
   // idas y vueltas a la base de datos en serie.

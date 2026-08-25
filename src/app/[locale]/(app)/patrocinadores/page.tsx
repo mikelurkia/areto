@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ExternalLinkIcon, ReceiptTextIcon, TriangleAlertIcon } from "lucide-react";
 
 import { db } from "@/db";
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { getPublicUrls, getSignedUrls } from "@/lib/supabase/storage";
 import {
   annualEquivalentCents,
@@ -48,7 +48,8 @@ export default async function PatrocinadoresPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requirePermission("patrocinadores.view");
+  const user = await requirePermission("patrocinadores.view");
+  const canManage = hasPermission(user, "patrocinadores.manage");
   const t = await getTranslations("Patrocinadores");
 
   // Patrocinadores y personas (para el selector de contacto) no dependen entre
@@ -235,8 +236,12 @@ export default async function PatrocinadoresPage({
             <ExternalLinkIcon data-icon="inline-start" />
             {t("publicWallLink")}
           </Button>
-          <ImportSponsorsDialog />
-          <SponsorDialog mode="create" personOptions={allPersons} />
+          {canManage ? (
+            <>
+              <ImportSponsorsDialog />
+              <SponsorDialog mode="create" personOptions={allPersons} />
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -306,6 +311,7 @@ export default async function PatrocinadoresPage({
         sponsors={sponsorRows}
         personOptions={allPersons}
         locale={locale}
+        canManage={canManage}
       />
 
       <div className="grid gap-4 lg:grid-cols-2">

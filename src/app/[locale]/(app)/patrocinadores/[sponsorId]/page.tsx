@@ -18,7 +18,7 @@ import {
   deleteSponsorNote,
   updateSponsorDocument,
 } from "@/app/[locale]/(app)/patrocinadores/actions";
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { resolveBackHref } from "@/lib/back-href";
 import { fileTypeLabel } from "@/lib/file-type";
 import { getPublicUrl, getSignedUrls } from "@/lib/supabase/storage";
@@ -120,7 +120,8 @@ export default async function SponsorDetailPage({
   const backHref = resolveBackHref(from, "/patrocinadores");
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requirePermission("patrocinadores.view");
+  const user = await requirePermission("patrocinadores.view");
+  const canManage = hasPermission(user, "patrocinadores.manage");
   const t = await getTranslations("Patrocinadores");
 
   // La ficha y el listado de personas (selector de contacto) son independientes.
@@ -257,13 +258,17 @@ export default async function SponsorDetailPage({
         </div>
         <div className="flex gap-2 print:hidden">
           <PrintButton label={t("printAction")} />
-          <SponsorDialog
-            mode="edit"
-            sponsor={sponsor}
-            logoUrl={logoThumbUrl}
-            personOptions={allPersons}
-          />
-          <DeleteSponsorDialog id={sponsor.id} name={sponsor.name} />
+          {canManage ? (
+            <>
+              <SponsorDialog
+                mode="edit"
+                sponsor={sponsor}
+                logoUrl={logoThumbUrl}
+                personOptions={allPersons}
+              />
+              <DeleteSponsorDialog id={sponsor.id} name={sponsor.name} />
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -401,9 +406,11 @@ export default async function SponsorDetailPage({
             <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               {t("termsHistorySection")}
             </h2>
-            <span className="print:hidden">
-              <SponsorshipTermDialog mode="create" sponsorId={sponsor.id} />
-            </span>
+            {canManage ? (
+              <span className="print:hidden">
+                <SponsorshipTermDialog mode="create" sponsorId={sponsor.id} />
+              </span>
+            ) : null}
           </div>
 
           {sponsor.terms.length === 0 ? (
@@ -504,15 +511,17 @@ export default async function SponsorDetailPage({
                             {formatAmount(term.totalAmountCents) ?? "—"}
                           </p>
                         </div>
-                        <StopPropagation className="flex gap-1 print:hidden">
-                          <RenewSponsorshipTermButton id={term.id} />
-                          <SponsorshipTermDialog
-                            mode="edit"
-                            term={term}
-                            contractUrl={contractUrl}
-                          />
-                          <DeleteSponsorshipTermDialog id={term.id} />
-                        </StopPropagation>
+                        {canManage ? (
+                          <StopPropagation className="flex gap-1 print:hidden">
+                            <RenewSponsorshipTermButton id={term.id} />
+                            <SponsorshipTermDialog
+                              mode="edit"
+                              term={term}
+                              contractUrl={contractUrl}
+                            />
+                            <DeleteSponsorshipTermDialog id={term.id} />
+                          </StopPropagation>
+                        ) : null}
                       </div>
                     </CollapsibleTrigger>
 
@@ -522,19 +531,21 @@ export default async function SponsorDetailPage({
                           <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                             {t("paymentsSection")}
                           </h3>
-                          <span className="flex gap-2 print:hidden">
-                            <GenerateAnnualitiesDialog
-                              termOptions={singleTermOptions}
-                              defaultTermId={term.id}
-                              defaultFirstYear={termFirstYear}
-                            />
-                            <SponsorPaymentDialog
-                              mode="create"
-                              termOptions={singleTermOptions}
-                              defaultTermId={term.id}
-                              defaultAmountCents={suggestedPaymentAmountCents}
-                            />
-                          </span>
+                          {canManage ? (
+                            <span className="flex gap-2 print:hidden">
+                              <GenerateAnnualitiesDialog
+                                termOptions={singleTermOptions}
+                                defaultTermId={term.id}
+                                defaultFirstYear={termFirstYear}
+                              />
+                              <SponsorPaymentDialog
+                                mode="create"
+                                termOptions={singleTermOptions}
+                                defaultTermId={term.id}
+                                defaultAmountCents={suggestedPaymentAmountCents}
+                              />
+                            </span>
+                          ) : null}
                         </div>
                         {term.payments.length === 0 ? (
                           <p className="text-sm text-muted-foreground">
@@ -550,9 +561,11 @@ export default async function SponsorDetailPage({
                                 <TableHead>{t("paymentStatusLabel")}</TableHead>
                                 <TableHead>{t("paidOnLabel")}</TableHead>
                                 <TableHead>{t("invoiceNumberLabel")}</TableHead>
-                                <TableHead className="text-right print:hidden">
-                                  {t("colActions")}
-                                </TableHead>
+                                {canManage ? (
+                                  <TableHead className="text-right print:hidden">
+                                    {t("colActions")}
+                                  </TableHead>
+                                ) : null}
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -605,37 +618,39 @@ export default async function SponsorDetailPage({
                                       "—"
                                     )}
                                   </TableCell>
-                                  <TableCell className="flex justify-end gap-1 print:hidden">
-                                    {payment.status !== "paid" ? (
-                                      <MarkPaymentPaidButton id={payment.id} />
-                                    ) : null}
-                                    {payment.invoiceNumber ? (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        render={
-                                          <Link
-                                            href={`/patrocinadores/${sponsor.id}/recibo/${payment.id}`}
-                                          />
-                                        }
-                                        nativeButton={false}
-                                      >
-                                        <ReceiptTextIcon />
-                                        <span className="sr-only">
-                                          {t("viewInvoiceSr")}
-                                        </span>
-                                      </Button>
-                                    ) : (
-                                      <IssueInvoiceButton id={payment.id} />
-                                    )}
-                                    <SponsorPaymentDialog
-                                      mode="edit"
-                                      payment={payment}
-                                    />
-                                    <DeleteSponsorPaymentDialog
-                                      id={payment.id}
-                                    />
-                                  </TableCell>
+                                  {canManage ? (
+                                    <TableCell className="flex justify-end gap-1 print:hidden">
+                                      {payment.status !== "paid" ? (
+                                        <MarkPaymentPaidButton id={payment.id} />
+                                      ) : null}
+                                      {payment.invoiceNumber ? (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon-sm"
+                                          render={
+                                            <Link
+                                              href={`/patrocinadores/${sponsor.id}/recibo/${payment.id}`}
+                                            />
+                                          }
+                                          nativeButton={false}
+                                        >
+                                          <ReceiptTextIcon />
+                                          <span className="sr-only">
+                                            {t("viewInvoiceSr")}
+                                          </span>
+                                        </Button>
+                                      ) : (
+                                        <IssueInvoiceButton id={payment.id} />
+                                      )}
+                                      <SponsorPaymentDialog
+                                        mode="edit"
+                                        payment={payment}
+                                      />
+                                      <DeleteSponsorPaymentDialog
+                                        id={payment.id}
+                                      />
+                                    </TableCell>
+                                  ) : null}
                                 </TableRow>
                               ))}
                             </TableBody>
@@ -659,9 +674,11 @@ export default async function SponsorDetailPage({
             <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               {t("contactsSection")}
             </h2>
-            <span className="print:hidden">
-              <SponsorContactDialog mode="create" sponsorId={sponsor.id} />
-            </span>
+            {canManage ? (
+              <span className="print:hidden">
+                <SponsorContactDialog mode="create" sponsorId={sponsor.id} />
+              </span>
+            ) : null}
           </div>
           {sponsor.contacts.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -675,9 +692,11 @@ export default async function SponsorDetailPage({
                   <TableHead>{t("contactRoleLabel")}</TableHead>
                   <TableHead>{t("contactEmailLabel")}</TableHead>
                   <TableHead>{t("contactPhoneLabel")}</TableHead>
-                  <TableHead className="text-right print:hidden">
-                    {t("colActions")}
-                  </TableHead>
+                  {canManage ? (
+                    <TableHead className="text-right print:hidden">
+                      {t("colActions")}
+                    </TableHead>
+                  ) : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -691,10 +710,12 @@ export default async function SponsorDetailPage({
                     </TableCell>
                     <TableCell>{contact.email ?? "—"}</TableCell>
                     <TableCell>{contact.phone ?? "—"}</TableCell>
-                    <TableCell className="flex justify-end gap-1 print:hidden">
-                      <SponsorContactDialog mode="edit" contact={contact} />
-                      <DeleteSponsorContactDialog id={contact.id} />
-                    </TableCell>
+                    {canManage ? (
+                      <TableCell className="flex justify-end gap-1 print:hidden">
+                        <SponsorContactDialog mode="edit" contact={contact} />
+                        <DeleteSponsorContactDialog id={contact.id} />
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>
@@ -711,17 +732,19 @@ export default async function SponsorDetailPage({
             <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               {t("documentsSection")}
             </h2>
-            <span className="print:hidden">
-              <DocumentDialog
-                mode="create"
-                parentId={sponsor.id}
-                formKey="sponsorId"
-                namespace="Patrocinadores"
-                htmlIdPrefix="sponsor-document"
-                addAction={addSponsorDocument}
-                updateAction={updateSponsorDocument}
-              />
-            </span>
+            {canManage ? (
+              <span className="print:hidden">
+                <DocumentDialog
+                  mode="create"
+                  parentId={sponsor.id}
+                  formKey="sponsorId"
+                  namespace="Patrocinadores"
+                  htmlIdPrefix="sponsor-document"
+                  addAction={addSponsorDocument}
+                  updateAction={updateSponsorDocument}
+                />
+              </span>
+            ) : null}
           </div>
           {sponsor.documents.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("noDocumentsDescription")}</p>
@@ -733,9 +756,11 @@ export default async function SponsorDetailPage({
                   <TableHead>{t("documentTypeColumn")}</TableHead>
                   <TableHead>{t("documentNotesColumn")}</TableHead>
                   <TableHead>{t("documentViewFile")}</TableHead>
-                  <TableHead className="text-right print:hidden">
-                    {t("colActions")}
-                  </TableHead>
+                  {canManage ? (
+                    <TableHead className="text-right print:hidden">
+                      {t("colActions")}
+                    </TableHead>
+                  ) : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -765,23 +790,25 @@ export default async function SponsorDetailPage({
                           "—"
                         )}
                       </TableCell>
-                      <TableCell className="flex justify-end gap-1 print:hidden">
-                        <DocumentDialog
-                          mode="edit"
-                          namespace="Patrocinadores"
-                          htmlIdPrefix="sponsor-document"
-                          addAction={addSponsorDocument}
-                          updateAction={updateSponsorDocument}
-                          document={{ id: d.id, label: d.label, notes: d.notes }}
-                          fileUrl={fileUrl}
-                        />
-                        <DeleteDocumentDialog
-                          id={d.id}
-                          label={d.label}
-                          namespace="Patrocinadores"
-                          deleteAction={deleteSponsorDocument}
-                        />
-                      </TableCell>
+                      {canManage ? (
+                        <TableCell className="flex justify-end gap-1 print:hidden">
+                          <DocumentDialog
+                            mode="edit"
+                            namespace="Patrocinadores"
+                            htmlIdPrefix="sponsor-document"
+                            addAction={addSponsorDocument}
+                            updateAction={updateSponsorDocument}
+                            document={{ id: d.id, label: d.label, notes: d.notes }}
+                            fileUrl={fileUrl}
+                          />
+                          <DeleteDocumentDialog
+                            id={d.id}
+                            label={d.label}
+                            namespace="Patrocinadores"
+                            deleteAction={deleteSponsorDocument}
+                          />
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   );
                 })}
@@ -805,6 +832,7 @@ export default async function SponsorDetailPage({
             addAction={addSponsorNote}
             deleteAction={deleteSponsorNote}
             notes={noteEntries}
+            canManage={canManage}
           />
         </TabsContent>
       </Tabs>

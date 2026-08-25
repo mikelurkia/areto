@@ -34,10 +34,12 @@ export function PersonTagsEditor({
   personId,
   tags,
   existingTags,
+  canManage,
 }: {
   personId: string;
   tags: Tag[];
   existingTags: string[];
+  canManage: boolean;
 }) {
   const t = useTranslations("Personas");
   const formRef = useRef<HTMLFormElement>(null);
@@ -53,23 +55,25 @@ export function PersonTagsEditor({
       {tags.map((t) => (
         <Badge key={t.id} variant="secondary" className="capitalize">
           {t.tag}
-          <DeleteTagButton id={t.id} tag={t.tag} />
+          {canManage ? <DeleteTagButton id={t.id} tag={t.tag} /> : null}
         </Badge>
       ))}
-      <form ref={formRef} action={formAction} className="print:hidden">
-        <input type="hidden" name="personId" value={personId} />
-        <Input
-          name="tag"
-          list="existing-person-tags"
-          placeholder={t("addTagPlaceholder")}
-          className="h-5 w-44 rounded-4xl px-2 py-0.5 text-xs"
-        />
-        <datalist id="existing-person-tags">
-          {existingTags.map((tag) => (
-            <option key={tag} value={tag} />
-          ))}
-        </datalist>
-      </form>
+      {canManage ? (
+        <form ref={formRef} action={formAction} className="print:hidden">
+          <input type="hidden" name="personId" value={personId} />
+          <Input
+            name="tag"
+            list="existing-person-tags"
+            placeholder={t("addTagPlaceholder")}
+            className="h-5 w-44 rounded-4xl px-2 py-0.5 text-xs"
+          />
+          <datalist id="existing-person-tags">
+            {existingTags.map((tag) => (
+              <option key={tag} value={tag} />
+            ))}
+          </datalist>
+        </form>
+      ) : null}
     </>
   );
 }

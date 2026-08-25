@@ -1635,6 +1635,8 @@
     "registrationDescription": "Ireki edo itxi izen-emateko formulario publikoak. Bidalitako izen-emate bakoitza uneko denboraldiari lotzen zaio beti.",
     "playerRegistrationOpenLabel": "Ireki taldeko izen-ematea web bidez (jokalariak eta gorputz teknikoa)",
     "memberRegistrationOpenLabel": "Ireki bazkidearen izen-ematea web bidez",
+    "registrationOpenBadge": "Irekita",
+    "registrationClosedBadge": "Itxita",
     "saveRegistrationSettings": "Gorde",
     "registrationSettingsSaved": "Izen-emate ezarpenak gorde dira.",
     "federationsSection": "Federazioen aplikazioak",

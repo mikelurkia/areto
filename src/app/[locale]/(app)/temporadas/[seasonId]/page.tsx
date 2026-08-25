@@ -59,6 +59,7 @@ export default async function TemporadaDetailPage({
   const t = await getTranslations("Temporadas");
   const tEquipos = await getTranslations("Equipos");
   const canManage = hasPermission(user, "temporadas.manage");
+  const canManageTeams = hasPermission(user, "equipos.manage");
 
   // Las tres consultas de la temporada se resuelven con el `seasonId` de la
   // URL, así que van en paralelo. `loadSeasonRenewals` va aparte: por debajo
@@ -75,7 +76,7 @@ export default async function TemporadaDetailPage({
         memberships: { columns: { role: true } },
       },
     }),
-    canManage
+    canManageTeams
       ? db.query.seasons.findMany({
           orderBy: (s, { desc }) => [desc(s.name)],
           with: {
@@ -180,7 +181,7 @@ export default async function TemporadaDetailPage({
         <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           {t("teamsSection")}
         </h2>
-        {canManage ? (
+        {canManageTeams ? (
           <div className="flex flex-wrap gap-2">
             {sourceSeasons.length > 0 ? (
               <ImportTeamsDialog targetSeasonId={season.id} sourceSeasons={sourceSeasons} />
@@ -194,7 +195,7 @@ export default async function TemporadaDetailPage({
         <SectionPlaceholder
           icon={ShieldHalf}
           title={t("noTeamsTitle")}
-          description={canManage ? t("noTeamsDescription") : t("noTeamsReadonly")}
+          description={canManageTeams ? t("noTeamsDescription") : t("noTeamsReadonly")}
         />
       ) : (
         <Table>
@@ -203,7 +204,7 @@ export default async function TemporadaDetailPage({
               <TableHead>{tEquipos("colName")}</TableHead>
               <TableHead>{tEquipos("colCategory")}</TableHead>
               <TableHead>{tEquipos("colRoster")}</TableHead>
-              {canManage ? (
+              {canManageTeams ? (
                 <TableHead className="text-right">{tEquipos("colActions")}</TableHead>
               ) : null}
             </TableRow>
@@ -251,7 +252,7 @@ export default async function TemporadaDetailPage({
                     ) : null}
                   </div>
                 </TableCell>
-                {canManage ? (
+                {canManageTeams ? (
                   <TableCell className="flex justify-end gap-1">
                     <TeamDialog
                       mode="edit"

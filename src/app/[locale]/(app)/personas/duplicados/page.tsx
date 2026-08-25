@@ -2,7 +2,7 @@ import { ArrowLeftIcon, UsersRound } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { findDuplicatePersonGroups } from "@/lib/person-matching";
 import { Link } from "@/i18n/navigation";
 import { MergeDuplicatesDialog } from "@/components/personas/merge-duplicates-dialog";
@@ -29,7 +29,8 @@ export default async function PersonDuplicatesPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requirePermission("personas.view");
+  const user = await requirePermission("personas.view");
+  const canManage = hasPermission(user, "personas.manage");
   const t = await getTranslations("Personas");
 
   const allPersons = await db.query.persons.findMany({
@@ -93,7 +94,9 @@ export default async function PersonDuplicatesPage({
                     <Badge variant="outline">{t("matchBySharedContact")}</Badge>
                   ) : null}
                 </CardTitle>
-                <MergeDuplicatesDialog candidates={group.persons} />
+                {canManage ? (
+                  <MergeDuplicatesDialog candidates={group.persons} />
+                ) : null}
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
                 {group.persons.map((person) => (

@@ -5,7 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { registrations, teams } from "@/db/schema";
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format-date";
 import { findCandidates } from "@/lib/person-matching";
 import { personPhotoThumbPath } from "@/lib/person-photo";
@@ -15,6 +15,7 @@ import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
 import { ReviewForm, type RegistrationDetail } from "@/components/inscripciones/review-form";
 import { ReviewedRegistrationPanel } from "@/components/inscripciones/reviewed-registration-panel";
+import { PlayerRegistrationSummary } from "@/components/inscripciones/registration-summary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -36,7 +37,8 @@ export default async function RegistrationDetailPage({
   const { locale, registrationId } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requirePermission("inscripciones.view");
+  const user = await requirePermission("inscripciones.view");
+  const canManage = hasPermission(user, "inscripciones.manage");
   const t = await getTranslations("Inscripciones");
 
   const registration = await db.query.registrations.findFirst({
@@ -222,7 +224,11 @@ export default async function RegistrationDetailPage({
       </div>
 
       {registration.status === "pending" ? (
-        <ReviewForm registration={detail} teamOptions={teamOptions} />
+        canManage ? (
+          <ReviewForm registration={detail} teamOptions={teamOptions} />
+        ) : (
+          <PlayerRegistrationSummary registration={detail} />
+        )
       ) : (
         <ReviewedRegistrationPanel
           registrationId={registration.id}
@@ -237,6 +243,7 @@ export default async function RegistrationDetailPage({
           locale={locale}
           matchedPerson={registration.matchedPerson}
           backHref={`/inscripciones/${registrationId}`}
+          canManage={canManage}
         />
       )}
     </div>

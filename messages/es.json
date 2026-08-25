@@ -1635,6 +1635,8 @@
     "registrationDescription": "Abre o cierra los formularios públicos de inscripción. Cada inscripción enviada se cuelga siempre de la temporada activa.",
     "playerRegistrationOpenLabel": "Abrir inscripción web de equipo (jugadores y cuerpo técnico)",
     "memberRegistrationOpenLabel": "Abrir inscripción web de socio",
+    "registrationOpenBadge": "Abierta",
+    "registrationClosedBadge": "Cerrada",
     "saveRegistrationSettings": "Guardar",
     "registrationSettingsSaved": "Ajustes de inscripción guardados.",
     "federationsSection": "Aplicaciones de las federaciones",

@@ -5,7 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { registrations } from "@/db/schema";
-import { requirePermission } from "@/lib/auth";
+import { hasAnyPermission, requirePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format-date";
 import { findCandidates } from "@/lib/person-matching";
 import { STATUS_VARIANT } from "@/lib/registration-status";
@@ -15,6 +15,7 @@ import {
   type MemberRegistrationDetail,
 } from "@/components/inscripciones/member-review-form";
 import { ReviewedRegistrationPanel } from "@/components/inscripciones/reviewed-registration-panel";
+import { MemberRegistrationSummary } from "@/components/inscripciones/registration-summary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -26,7 +27,8 @@ export default async function SocioRegistrationDetailPage({
   const { locale, registrationId } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requirePermission("socios.view");
+  const user = await requirePermission("socios.view");
+  const canManage = hasAnyPermission(user, ["inscripciones.manage", "socios.manage"]);
   const t = await getTranslations("Inscripciones");
 
   const registration = await db.query.registrations.findFirst({
@@ -118,7 +120,11 @@ export default async function SocioRegistrationDetailPage({
       </div>
 
       {registration.status === "pending" ? (
-        <MemberReviewForm registration={detail} />
+        canManage ? (
+          <MemberReviewForm registration={detail} />
+        ) : (
+          <MemberRegistrationSummary registration={detail} />
+        )
       ) : (
         <ReviewedRegistrationPanel
           registrationId={registration.id}
@@ -133,6 +139,7 @@ export default async function SocioRegistrationDetailPage({
           locale={locale}
           matchedPerson={registration.matchedPerson}
           backHref={`/socios/${registrationId}`}
+          canManage={canManage}
         />
       )}
     </div>
