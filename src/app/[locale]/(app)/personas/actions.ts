@@ -1,12 +1,15 @@
 "use server";
 
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath, updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import {
+  bootType,
   clubMembers,
+  injuryPlace,
+  matchMinute,
   memberships,
   personDocuments,
   personGuardians,
@@ -16,6 +19,7 @@ import {
   personQualifications,
   personTags,
   persons,
+  pitchSurface,
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { nextConsentAt, stampConsent } from "@/lib/consent";
@@ -1015,6 +1019,110 @@ export async function deleteInjuryReport(
 
   revalidatePath("/", "layout");
   return { message: t("injuryReportDeleted") };
+}
+
+/**
+ * Lee un valor de un enum de Postgres desde el formulario. Los `<select>` solo
+ * ofrecen valores válidos, pero un POST a mano puede mandar cualquier cosa: lo
+ * que no esté en el enum se guarda como NULL (casilla en blanco del impreso) en
+ * vez de reventar el UPDATE.
+ */
+/** Un id de la aplicación siempre es un UUID (ver las PK de `schema.ts`). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function readEnum<T extends string>(
+  formData: FormData,
+  key: string,
+  allowed: readonly T[],
+): T | null {
+  const value = String(formData.get(key) ?? "").trim();
+  return (allowed as readonly string[]).includes(value) ? (value as T) : null;
+}
+
+/**
+ * Las preguntas de sí/no del impreso tienen tres estados, no dos: sí, no, y
+ * "aún no se ha contestado". De ahí el `boolean` nullable en vez de un
+ * `default false`, que imprimiría un "NO" que nadie ha dicho.
+ */
+function readTristate(formData: FormData, key: string): boolean | null {
+  const value = String(formData.get(key) ?? "").trim();
+  if (value === "yes") return true;
+  if (value === "no") return false;
+  return null;
+}
+
+/**
+ * Guarda las casillas del parte oficial de la Mutualidad de un parte ya
+ * existente. Es un formulario aparte del diálogo de alta (`updateInjuryReport`)
+ * porque son trece campos más: el parte se abre el día de la lesión con la fecha
+ * y la descripción, y esto se completa después, con el impreso delante.
+ */
+export async function updateInjuryReportFederationFields(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requirePermission("personas.medical.manage");
+
+  const id = String(formData.get("id") ?? "");
+  const existing = await db.query.personInjuryReports.findFirst({
+    where: eq(personInjuryReports.id, id),
+    columns: { personId: true },
+  });
+  if (!existing) return { error: t("injuryReportNotFound") };
+
+  // El equipo tiene que ser uno en el que esta persona esté fichada: de él salen
+  // la categoría de licencia, el sexo y el puesto del impreso, y un id
+  // cualquiera llegado por POST daría un parte con datos de otro equipo.
+  //
+  // Se descarta lo que no tenga forma de UUID antes de consultar, y no solo por
+  // prudencia: la opción "sin equipo" del formulario viaja como un centinela que
+  // no es un id, y comparar eso con una columna `uuid` es un error de Postgres,
+  // no una fila que no aparece.
+  const requestedTeamId = String(formData.get("teamId") ?? "").trim();
+  let teamId: string | null = null;
+  if (UUID.test(requestedTeamId)) {
+    const membership = await db.query.memberships.findFirst({
+      where: and(
+        eq(memberships.personId, existing.personId),
+        eq(memberships.teamId, requestedTeamId),
+      ),
+      columns: { teamId: true },
+    });
+    if (!membership) return { error: t("injuryReportTeamNotFound") };
+    teamId = membership.teamId;
+  }
+
+  const rawMinutes = String(formData.get("weeklyTrainingMinutes") ?? "").trim();
+  const weeklyTrainingMinutes = rawMinutes ? Number(rawMinutes) : null;
+  if (
+    weeklyTrainingMinutes !== null &&
+    (!Number.isInteger(weeklyTrainingMinutes) || weeklyTrainingMinutes < 0)
+  ) {
+    return { error: t("injuryReportWeeklyMinutesInvalid") };
+  }
+
+  await db
+    .update(personInjuryReports)
+    .set({
+      teamId,
+      reportedOn: String(formData.get("reportedOn") ?? "").trim() || null,
+      reportedPlace: String(formData.get("reportedPlace") ?? "").trim() || null,
+      place: readEnum(formData, "place", injuryPlace.enumValues),
+      placeOther: String(formData.get("placeOther") ?? "").trim() || null,
+      matchMinute: readEnum(formData, "matchMinute", matchMinute.enumValues),
+      surface: readEnum(formData, "surface", pitchSurface.enumValues),
+      collision: readTristate(formData, "collision"),
+      opponentTeam: String(formData.get("opponentTeam") ?? "").trim() || null,
+      relatedToPrevious: readTristate(formData, "relatedToPrevious"),
+      bootType: readEnum(formData, "bootType", bootType.enumValues),
+      trainingSurface: readEnum(formData, "trainingSurface", pitchSurface.enumValues),
+      weeklyTrainingMinutes,
+    })
+    .where(eq(personInjuryReports.id, id));
+
+  revalidatePath("/", "layout");
+  return { message: t("injuryReportFederationSaved") };
 }
 
 const personDocumentActions = makeDocumentActions({

@@ -178,7 +178,11 @@ insert into storage.buckets (id, name, public) values
   ('team-documents',           'team-documents',           false),
   ('sponsor-documents',        'sponsor-documents',        false),
   ('sponsorship-contracts',    'sponsorship-contracts',    false),
-  ('registration-documents',   'registration-documents',   false)
+  ('registration-documents',   'registration-documents',   false),
+  -- Plantillas de documentos oficiales que la aplicación rellena (hoy solo el
+  -- parte de lesión de la Mutualidad). Privado: es un impreso federativo, no
+  -- material público, y `public/` se sirve sin sesión.
+  ('document-templates',       'document-templates',       false)
 on conflict (id) do nothing;
 
 -- `sponsorship-logos` es PÚBLICO a diferencia del resto: los logos no son datos
@@ -227,7 +231,8 @@ begin
       ('person-injury-reports',   'personas.medical.view', 'personas.medical.manage'),
       ('team-documents',          'equipos.view',          'equipos.manage'),
       ('sponsor-documents',       'patrocinadores.view',   'patrocinadores.manage'),
-      ('sponsorship-contracts',   'patrocinadores.view',   'patrocinadores.manage')
+      ('sponsorship-contracts',   'patrocinadores.view',   'patrocinadores.manage'),
+      ('document-templates',      'club.view',             'club.manage')
     ) as t(bucket, read_perm, write_perm)
   loop
     prefix := replace(b.bucket, '-', '_');

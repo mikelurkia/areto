@@ -26,6 +26,7 @@ const BUCKET_READ_PERMISSION: Record<string, Permission> = {
   "sponsor-documents": "patrocinadores.view",
   "sponsorship-contracts": "patrocinadores.view",
   "registration-documents": "inscripciones.view",
+  "document-templates": "club.view",
 };
 
 /** Tipos que el navegador puede mostrar inline sin riesgo; cualquier otro se fuerza a descarga. */

@@ -9,7 +9,12 @@ import { clubSettings } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { CLUB_SETTINGS_TAG } from "@/lib/club";
 import { isValidIban } from "@/lib/iban";
+import {
+  DOCUMENT_TEMPLATES_BUCKET,
+  INJURY_REPORT_TEMPLATE_PATH,
+} from "@/lib/injury-report-pdf";
 import { REGISTRATION_AVAILABILITY_TAG } from "@/lib/registration-settings";
+import { uploadFile } from "@/lib/supabase/storage";
 
 export type ClubState = {
   error?: string;
@@ -41,6 +46,11 @@ export async function updateClubSettings(
     phone: String(formData.get("phone") ?? "").trim() || null,
     iban,
     federationCode: String(formData.get("federationCode") ?? "").trim() || null,
+    federationDelegation:
+      String(formData.get("federationDelegation") ?? "").trim() || null,
+    signatoryName: String(formData.get("signatoryName") ?? "").trim() || null,
+    signatoryNationalId:
+      String(formData.get("signatoryNationalId") ?? "").trim() || null,
     updatedAt: new Date(),
   };
 
@@ -89,4 +99,38 @@ export async function updateRegistrationAvailability(
   updateTag(REGISTRATION_AVAILABILITY_TAG);
   revalidatePath("/", "layout");
   return { message: t("registrationSettingsSaved") };
+}
+
+const MAX_TEMPLATE_BYTES = 10 * 1024 * 1024; // 10MB
+
+/**
+ * Sustituye la plantilla del parte de lesión de la Mutualidad.
+ *
+ * Es un único fichero global (ni por temporada ni por equipo) en una ruta fija
+ * del bucket, así que subir una nueva sobreescribe la anterior: no hay historial
+ * ni fila en base de datos que mantener. Se exige PDF porque
+ * `fillInjuryReportPdf` rellena su AcroForm; una imagen escaneada no serviría.
+ */
+export async function uploadInjuryReportTemplate(
+  _prev: ClubState,
+  formData: FormData,
+): Promise<ClubState> {
+  const t = await getTranslations("Club");
+  await requirePermission("club.manage");
+
+  const file = formData.get("template");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: t("injuryTemplateFileRequired") };
+  }
+  if (file.type !== "application/pdf") {
+    return { error: t("injuryTemplateFileInvalidType") };
+  }
+  if (file.size > MAX_TEMPLATE_BYTES) {
+    return { error: t("injuryTemplateFileTooLarge") };
+  }
+
+  await uploadFile(DOCUMENT_TEMPLATES_BUCKET, INJURY_REPORT_TEMPLATE_PATH, file);
+
+  revalidatePath("/", "layout");
+  return { message: t("injuryTemplateSaved") };
 }

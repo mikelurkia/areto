@@ -146,6 +146,43 @@ export const registrationStatus = pgEnum("registration_status", [
 /** Estado de la condición de socio de una persona. */
 export const clubMemberStatus = pgEnum("club_member_status", ["active", "cancelled"]);
 
+/**
+ * Circunstancia en la que se produjo una lesión, tal y como la pregunta el
+ * parte oficial de la Mutualidad ("¿Dónde ocurrió la lesión?"). `other` obliga
+ * a rellenar `placeOther`, que es la casilla "Otros (especificar)" del impreso.
+ */
+export const injuryPlace = pgEnum("injury_place", ["match", "training", "other"]);
+
+/**
+ * Tramo del partido en el que se produjo la lesión. El impreso no pide el
+ * minuto exacto sino una de estas seis casillas, así que se guarda igual: un
+ * `integer` obligaría a decidir el tramo al imprimir y perdería el caso de
+ * quien solo recuerda "en la primera parte".
+ */
+export const matchMinute = pgEnum("match_minute", [
+  "0-15",
+  "16-30",
+  "31-45",
+  "46-60",
+  "61-75",
+  "76-90",
+]);
+
+/**
+ * Superficie de juego. Sirve tanto para la de entrenamiento habitual como para
+ * la del día de la lesión, que en el impreso son dos preguntas con las mismas
+ * cuatro casillas.
+ */
+export const pitchSurface = pgEnum("pitch_surface", [
+  "natural",
+  "artificial",
+  "soil",
+  "other",
+]);
+
+/** Tipo de bota: el impreso solo distingue multitaco de césped artificial y "otros". */
+export const bootType = pgEnum("boot_type", ["studs", "other"]);
+
 // ---------------------------------------------------------------------------
 // Temporadas
 // ---------------------------------------------------------------------------
@@ -348,8 +385,24 @@ export const personMedicalCheckups = pgTable("person_medical_checkups", {
 }).enableRLS();
 
 /**
- * Parte de lesión de un jugador/a: fecha, descripción y documento adjunto
- * opcional (el parte médico en sí).
+ * Parte de lesión de un jugador/a.
+ *
+ * `occurredOn`, `description` y `notes` son el registro interno del club.
+ * El resto de columnas son las casillas del parte oficial de la Mutualidad de
+ * Previsión Social de Futbolistas (RFEF), que se rellena e imprime desde aquí
+ * (ver `src/lib/injury-report-pdf.ts`): se guardan para poder regenerar el
+ * impreso y corregir una errata sin volver a teclearlo todo.
+ *
+ * Todas ellas son opcionales a propósito. Un parte se abre el día de la lesión
+ * con lo que se sabe y se completa después, y los partes anteriores a esta
+ * funcionalidad no tienen estos datos.
+ *
+ * La HISTORIA CLÍNICA del impreso (diagnóstico, lateralidad, baja,
+ * tratamiento) NO está aquí: la plantilla oficial no tiene campos editables en
+ * esa mitad porque la rellena a mano el médico de la Mutualidad sobre el papel.
+ *
+ * `filePath` sigue siendo el parte ya firmado y sellado que se escanea y se
+ * sube: el PDF generado no se guarda, se descarga.
  */
 export const personInjuryReports = pgTable("person_injury_reports", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -360,6 +413,24 @@ export const personInjuryReports = pgTable("person_injury_reports", {
   description: text("description").notNull(),
   filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-injury-reports)
   notes: text("notes"),
+  // Equipo con el que jugaba al lesionarse. De él salen tres casillas del
+  // impreso (categoría de licencia, sexo y modalidad), así que se fija en el
+  // parte en vez de deducirlo al imprimir: un jugador puede cambiar de equipo,
+  // y el parte debe seguir diciendo lo que era verdad el día de la lesión.
+  // `set null` y no `cascade`: borrar un equipo no puede borrar partes médicos.
+  teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
+  reportedOn: date("reported_on"), // "Parte fechado en ... a __ de __ del __"
+  reportedPlace: text("reported_place"), // la localidad de esa misma línea
+  place: injuryPlace("place"),
+  placeOther: text("place_other"),
+  matchMinute: matchMinute("match_minute"),
+  surface: pitchSurface("surface"),
+  collision: boolean("collision"),
+  opponentTeam: text("opponent_team"),
+  relatedToPrevious: boolean("related_to_previous"),
+  bootType: bootType("boot_type"),
+  trainingSurface: pitchSurface("training_surface"),
+  weeklyTrainingMinutes: integer("weekly_training_minutes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }).enableRLS();
 
@@ -808,7 +879,13 @@ export const clubSettings = pgTable("club_settings", {
   email: text("email"),
   phone: text("phone"),
   iban: text("iban"),
-  federationCode: text("federation_code").default("2022"), // código de club en la federación
+  federationCode: text("federation_code").default("2022"), // código de club en la federación (Nº Club en los impresos federativos)
+  // Datos que pide la cabecera del parte de lesión de la Mutualidad. Viven aquí
+  // y no en cada parte porque son constantes del club: la delegación no cambia,
+  // y el directivo que firma los partes es el mismo todo el año.
+  federationDelegation: text("federation_delegation"), // Delegación Territorial (p. ej. "GIPUZKOA")
+  signatoryName: text("signatory_name"), // nombre y apellidos del directivo que firma
+  signatoryNationalId: text("signatory_national_id"), // su DNI
   // Interruptores globales: solo hay una temporada activa a la vez, así que el
   // formulario público de inscripción es un estado del club, no de cada
   // temporada. Cada inscripción enviada se cuelga de la temporada `isCurrent`
@@ -1160,6 +1237,7 @@ export const personInjuryReportsRelations = relations(personInjuryReports, ({ on
     fields: [personInjuryReports.personId],
     references: [persons.id],
   }),
+  team: one(teams, { fields: [personInjuryReports.teamId], references: [teams.id] }),
 }));
 
 export const personDocumentsRelations = relations(personDocuments, ({ one }) => ({

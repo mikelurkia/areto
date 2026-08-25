@@ -1,6 +1,7 @@
 import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import {
+  ClipboardListIcon,
   CreditCardIcon,
   DownloadIcon,
   MailIcon,
@@ -999,6 +1000,19 @@ export default async function PersonDetailPage({
                 ]}
                 renderActions={(r) => (
                   <>
+                    {canManage ? (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        render={<Link href={`/personas/${person.id}/parte-lesion/${r.id}`} />}
+                        nativeButton={false}
+                      >
+                        <ClipboardListIcon />
+                        <span className="sr-only">
+                          {t("injuryReportFederationSr", { date: r.occurredOn })}
+                        </span>
+                      </Button>
+                    ) : null}
                     <InjuryReportDialog
                       mode="edit"
                       report={{
