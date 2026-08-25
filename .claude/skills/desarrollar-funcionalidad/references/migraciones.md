@@ -21,6 +21,7 @@ de esquema sin migración generada no llega a ninguna parte (y el CI lo para).
 | `npm run db:push` | Empuja `schema.ts` directo a la base de datos **sin dejar migración** | Solo prototipos desechables; ver la trampa |
 | `npm run db:studio` | Explorador visual de la base de datos | Para mirar datos |
 | `npm run db:seed` | Datos iniciales (temporada y equipos de ejemplo) | Tras crear o vaciar `areto-dev` |
+| `npm run db:seed:demo` | Juego de datos completo inventado (plantillas, socios, patrocinadores, calendario, inscripciones). Idempotente: cada pasada borra lo de la anterior. `-- --clean` solo borra | Para probar pantallas con datos de verdad delante |
 
 ## La trampa de `db:push`
 

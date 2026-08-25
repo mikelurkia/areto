@@ -73,6 +73,12 @@ esquema y recetas para cuando algo falla) vive en
    npm run db:push
    npm run db:seed
    ```
+   Con eso la app arranca, pero casi todas las pantallas salen vacías. Para
+   trabajar con un club entero inventado (plantillas, socios, patrocinadores,
+   calendario, inscripciones) siembra además el juego de demostración:
+   ```bash
+   npm run db:seed:demo
+   ```
 4. Configura la autenticación (ver [Autenticación](#autenticación) más abajo):
    ejecuta `supabase/setup.sql` en el SQL Editor de Supabase.
 5. Arranca el servidor de desarrollo:
@@ -194,6 +200,29 @@ comprueba `requireUser` en cada petición.
 | `npm run db:push`     | Empuja el esquema directamente (rápido en dev)     |
 | `npm run db:studio`   | Abre Drizzle Studio (explorador de la BD)          |
 | `npm run db:seed`     | Datos iniciales (temporada y equipos de ejemplo)   |
+| `npm run db:seed:demo` | Juego de datos completo inventado, para desarrollo |
+
+### Datos de demostración
+
+`npm run db:seed:demo` llena `areto-dev` con un club entero inventado —dos
+temporadas, seis equipos, 116 personas con sus tutores, 39 socios, 14
+patrocinadores con sus facturas, la temporada de cancha y once inscripciones—
+para poder ver las pantallas con datos delante en vez de vacías.
+
+Todo es inventado: los nombres, los DNI, los IBAN y las empresas los genera
+`src/db/seed-data.ts`, y los DNI e IBAN llevan su dígito de control correcto
+para que la app no los marque como erróneos. Los emails van sobre el dominio
+reservado `.test`, que no resuelve.
+
+- Cada fila lleva un id determinista, así que el seed reconoce lo suyo: correrlo
+  dos veces deja exactamente el mismo estado y no duplica nada.
+- `npm run db:seed:demo -- --clean` borra lo que sembró y no siembra nada.
+- Corta si la base de datos tiene más de 25 fichas que no son del seed (eso son
+  datos de verdad, no un entorno de pruebas). `-- --force` se lo salta.
+- Siembra cinco incoherencias a propósito (fichas sin DNI, dorsales duplicados,
+  dos capitanes, un jugador huérfano y un duplicado por errata) para que las
+  tarjetas del dashboard y los avisos de plantilla se puedan probar. Están
+  numeradas en la cabecera de `src/db/seed-demo.ts`.
 
 ## Estructura
 
@@ -217,7 +246,9 @@ src/
 ├─ db/
 │  ├─ schema.ts           # Esquema de datos
 │  ├─ index.ts            # Cliente de base de datos
-│  └─ seed.ts             # Datos iniciales
+│  ├─ seed.ts             # Datos iniciales
+│  ├─ seed-demo.ts        # Juego de datos de demostración
+│  └─ seed-data.ts        # Catálogos y generadores del seed de demostración
 └─ lib/utils.ts
 ```
 
