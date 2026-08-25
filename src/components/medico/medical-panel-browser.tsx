@@ -1,7 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { DownloadIcon, FileTextIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  ClipboardListIcon,
+  DownloadIcon,
+  FileTextIcon,
+  SearchIcon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { downloadCsv } from "@/lib/csv";
@@ -42,7 +48,6 @@ type InjuryRow = {
   personId: string;
   personName: string;
   occurredOn: string;
-  description: string;
   teams: { id: string; name: string }[];
 };
 
@@ -78,10 +83,12 @@ export function MedicalPanelBrowser({
   certRows,
   injuryRows,
   teamOptions,
+  canManage,
 }: {
   certRows: CertRow[];
   injuryRows: InjuryRow[];
   teamOptions: TeamOption[];
+  canManage: boolean;
 }) {
   const t = useTranslations("Medico");
   const tEquipos = useTranslations("Equipos");
@@ -324,7 +331,11 @@ export function MedicalPanelBrowser({
                 <TableHead>{t("colInjuryDate")}</TableHead>
                 <TableHead>{t("colInjuryPerson")}</TableHead>
                 <TableHead>{t("colTeams")}</TableHead>
-                <TableHead>{t("colInjuryDescription")}</TableHead>
+                {canManage ? (
+                  <TableHead className="print:hidden">
+                    <span className="sr-only">{t("colActions")}</span>
+                  </TableHead>
+                ) : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -348,7 +359,21 @@ export function MedicalPanelBrowser({
                       ))}
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{row.description}</TableCell>
+                  {canManage ? (
+                    <TableCell className="print:hidden">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        render={<Link href={`/personas/${row.personId}/parte-lesion/${row.id}`} />}
+                        nativeButton={false}
+                      >
+                        <ClipboardListIcon />
+                        <span className="sr-only">
+                          {t("viewInjuryReportSr", { date: row.occurredOn })}
+                        </span>
+                      </Button>
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               ))}
             </TableBody>

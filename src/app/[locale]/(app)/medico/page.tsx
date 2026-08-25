@@ -2,7 +2,7 @@ import { Stethoscope } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import type { MedicalPanelRow } from "@/lib/medical-panel-rows";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
@@ -31,7 +31,8 @@ export default async function MedicoPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requirePermission("personas.medical.view");
+  const user = await requirePermission("personas.medical.view");
+  const canManage = hasPermission(user, "personas.medical.manage");
   const t = await getTranslations("Medico");
 
   const [allPersons, allTeams] = await Promise.all([
@@ -57,7 +58,7 @@ export default async function MedicoPage({
           },
         },
         injuryReports: {
-          columns: { id: true, occurredOn: true, description: true },
+          columns: { id: true, occurredOn: true },
           orderBy: (r, { desc }) => [desc(r.occurredOn)],
         },
       },
@@ -103,7 +104,6 @@ export default async function MedicoPage({
         personId: p.id,
         personName: `${p.firstName} ${p.lastName}`,
         occurredOn: r.occurredOn,
-        description: r.description,
         teams: p.memberships
           .filter((m) => m.team.season.isCurrent)
           .map((m) => ({ id: m.team.id, name: m.team.name })),
@@ -125,7 +125,12 @@ export default async function MedicoPage({
           description={t("emptyDescription")}
         />
       ) : (
-        <MedicalPanelBrowser certRows={certRows} injuryRows={injuryRows} teamOptions={teamOptions} />
+        <MedicalPanelBrowser
+          certRows={certRows}
+          injuryRows={injuryRows}
+          teamOptions={teamOptions}
+          canManage={canManage}
+        />
       )}
     </div>
   );

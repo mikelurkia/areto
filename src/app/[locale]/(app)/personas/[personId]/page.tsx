@@ -1,11 +1,13 @@
 import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import {
+  ClipboardListIcon,
   CreditCardIcon,
   DownloadIcon,
   MailIcon,
   MessageCircleIcon,
   PhoneIcon,
+  PlusIcon,
   ShieldCheckIcon,
   TriangleAlertIcon,
   UserRoundIcon,
@@ -46,7 +48,6 @@ import { DocumentDialog } from "@/components/document-dialog";
 import { EntityFileTable } from "@/components/entity-file-table";
 import { FamilyPanel, type FamilyMember } from "@/components/personas/family-panel";
 import { InfoRow } from "@/components/info-row";
-import { InjuryReportDialog } from "@/components/personas/injury-report-dialog";
 import { MedicalCheckupDialog } from "@/components/personas/medical-checkup-dialog";
 import { PersonDialog } from "@/components/personas/person-dialog";
 import { PersonIdScanDialog } from "@/components/personas/person-id-scan-dialog";
@@ -481,7 +482,12 @@ export default async function PersonDetailPage({
         </div>
       </div>
 
-      <Tabs defaultValue={initialTab}>
+      {/* `key` fuerza a remontar si `initialTab` cambia entre navegaciones a esta
+          misma ruta (p. ej. "Volver a la ficha" desde el parte de lesión con
+          `?tab=medico`): al ser React el mismo componente de página, reutilizaría
+          el `<Tabs>` ya montado y Base UI avisa de que un no controlado no debe
+          cambiar su `defaultValue` tras inicializarse. */}
+      <Tabs key={initialTab} defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="general">{t("tabGeneral")}</TabsTrigger>
           <TabsTrigger value="familia">{t("tabFamily")}</TabsTrigger>
@@ -974,7 +980,13 @@ export default async function PersonDetailPage({
               </h2>
               {canManage ? (
                 <span className="print:hidden">
-                  <InjuryReportDialog mode="create" personId={person.id} />
+                  <Button
+                    render={<Link href={`/personas/${person.id}/parte-lesion/nuevo`} />}
+                    nativeButton={false}
+                  >
+                    <PlusIcon data-icon="inline-start" />
+                    {t("addInjuryReportAction")}
+                  </Button>
                 </span>
               ) : null}
             </div>
@@ -995,20 +1007,22 @@ export default async function PersonDetailPage({
                     cell: (r) => r.occurredOn,
                     className: "font-medium",
                   },
-                  { header: t("injuryReportDescriptionLabel"), cell: (r) => r.description },
                 ]}
                 renderActions={(r) => (
                   <>
-                    <InjuryReportDialog
-                      mode="edit"
-                      report={{
-                        id: r.id,
-                        occurredOn: r.occurredOn,
-                        description: r.description,
-                        notes: r.notes,
-                      }}
-                      fileUrl={injuryReportFileUrls.get(r.id) ?? null}
-                    />
+                    {canManage ? (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        render={<Link href={`/personas/${person.id}/parte-lesion/${r.id}`} />}
+                        nativeButton={false}
+                      >
+                        <ClipboardListIcon />
+                        <span className="sr-only">
+                          {t("injuryReportFederationSr", { date: r.occurredOn })}
+                        </span>
+                      </Button>
+                    ) : null}
                     <DeleteInjuryReportDialog id={r.id} date={r.occurredOn} />
                   </>
                 )}

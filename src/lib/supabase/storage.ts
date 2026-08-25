@@ -66,6 +66,24 @@ export async function removeFile(bucket: string, path: string): Promise<void> {
   await supabase.storage.from(bucket).remove([path]);
 }
 
+/**
+ * ¿Existe el objeto? Se resuelve con un `list` del directorio y no con un
+ * `download`, para no traerse el fichero entero solo para saber si está.
+ *
+ * Solo tiene sentido con rutas fijas y conocidas (una plantilla de documento):
+ * para los ficheros que cuelgan de una fila, la propia fila ya dice si hay
+ * ruta guardada y esta comprobación sería una llamada de más.
+ */
+export async function fileExists(bucket: string, path: string): Promise<boolean> {
+  const supabase = await createClient();
+  const slash = path.lastIndexOf("/");
+  const folder = slash < 0 ? "" : path.slice(0, slash);
+  const name = path.slice(slash + 1);
+  const { data, error } = await supabase.storage.from(bucket).list(folder);
+  if (error) return false;
+  return (data ?? []).some((item) => item.name === name);
+}
+
 /** Descarga un objeto de Storage. Para regenerar una miniatura a partir del original ya subido. */
 export async function downloadFile(bucket: string, path: string): Promise<Blob> {
   const supabase = await createClient();

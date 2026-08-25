@@ -20,6 +20,9 @@ type ClubSettingsValues = {
   phone: string | null;
   iban: string | null;
   federationCode: string | null;
+  federationDelegation: string | null;
+  signatoryName: string | null;
+  signatoryNationalId: string | null;
 };
 
 export function ClubSettingsForm({ settings }: { settings: ClubSettingsValues | null }) {
@@ -78,16 +81,51 @@ export function ClubSettingsForm({ settings }: { settings: ClubSettingsValues | 
             <Input id="club-phone" name="phone" defaultValue={settings?.phone ?? ""} />
           </Field>
         </div>
-        <Field>
-          <FieldLabel htmlFor="club-federationCode">
-            {t("clubFederationCodeLabel")}
-          </FieldLabel>
-          <Input
-            id="club-federationCode"
-            name="federationCode"
-            defaultValue={settings?.federationCode ?? "2022"}
-          />
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="club-federationCode">
+              {t("clubFederationCodeLabel")}
+            </FieldLabel>
+            <Input
+              id="club-federationCode"
+              name="federationCode"
+              defaultValue={settings?.federationCode ?? "2022"}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="club-federationDelegation">
+              {t("clubFederationDelegationLabel")}
+            </FieldLabel>
+            <Input
+              id="club-federationDelegation"
+              name="federationDelegation"
+              defaultValue={settings?.federationDelegation ?? ""}
+              placeholder={t("clubFederationDelegationPlaceholder")}
+            />
+          </Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="club-signatoryName">
+              {t("clubSignatoryNameLabel")}
+            </FieldLabel>
+            <Input
+              id="club-signatoryName"
+              name="signatoryName"
+              defaultValue={settings?.signatoryName ?? ""}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="club-signatoryNationalId">
+              {t("clubSignatoryNationalIdLabel")}
+            </FieldLabel>
+            <Input
+              id="club-signatoryNationalId"
+              name="signatoryNationalId"
+              defaultValue={settings?.signatoryNationalId ?? ""}
+            />
+          </Field>
+        </div>
         {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
         <SubmitButton className="self-start">{t("saveClubData")}</SubmitButton>
       </FieldGroup>
