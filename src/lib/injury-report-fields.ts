@@ -255,6 +255,40 @@ function buildFieldValues(input: InjuryReportPdfInput): Record<string, string> {
 }
 
 /**
+ * Registra en la página los widgets de campo "huérfanos": sin entrada `/P` y
+ * ausentes del array `/Annots` de la página.
+ *
+ * La plantilla vigente trae 7 de sus 69 campos así (probablemente un efecto
+ * secundario de la herramienta con la que el club dibujó los campos sobre el
+ * escaneo). `form.flatten()` de pdf-lib necesita saber en qué página vive
+ * cada widget para estampar su apariencia, y si no lo encuentra ni por `/P`
+ * ni recorriendo `/Annots`, lanza `Could not find page for PDFRef N R` y
+ * revienta la generación del parte entero — visto en producción. Como el
+ * impreso es a una sola página, el destino de cualquier huérfano no es
+ * ambiguo; con más de una página no hay forma fiable de adivinarlo, así que
+ * se deja tal cual (y `flatten()` seguirá fallando si aparece un huérfano
+ * ahí, cosa que habrá que mirar campo a campo llegado el caso).
+ */
+function repairOrphanWidgets(doc: PDFDocument): void {
+  const pages = doc.getPages();
+  if (pages.length !== 1) return;
+  const [page] = pages;
+  const registered = new Set(
+    page.node.Annots()?.asArray().map((ref) => ref.toString()) ?? [],
+  );
+
+  for (const field of doc.getForm().getFields()) {
+    for (const widget of field.acroField.getWidgets()) {
+      if (widget.P() !== undefined) continue;
+      const ref = doc.context.getObjectRef(widget.dict);
+      if (!ref || registered.has(ref.toString())) continue;
+      widget.setP(page.ref);
+      page.node.addAnnot(ref);
+    }
+  }
+}
+
+/**
  * Rellena la plantilla recibida y devuelve el PDF.
  *
  * Se aplana (`flatten`) por dos razones: el parte se firma y se sella en papel,
@@ -279,6 +313,7 @@ export async function fillInjuryReportTemplate(
     field.setText(values[field.getName()] ?? "");
   }
 
+  repairOrphanWidgets(doc);
   form.flatten();
   // Se copia a un Uint8Array respaldado por un ArrayBuffer: pdf-lib devuelve el
   // tipo genérico `Uint8Array<ArrayBufferLike>`, que no vale como cuerpo de una
