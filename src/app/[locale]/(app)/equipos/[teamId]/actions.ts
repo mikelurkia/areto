@@ -7,6 +7,7 @@ import { getTranslations } from "next-intl/server";
 import { db } from "@/db";
 import { memberships, playerPosition, teamDocuments, teamNotes } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
+import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
@@ -63,7 +64,7 @@ export async function addMembership(
       position: String(formData.get("position") ?? "").trim() || null,
     });
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "23505") {
+    if (isPostgresError(error, UNIQUE_VIOLATION)) {
       return { error: t("memberAlreadyInTeam") };
     }
     throw error;

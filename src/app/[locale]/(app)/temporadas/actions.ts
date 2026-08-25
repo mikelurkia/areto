@@ -7,11 +7,29 @@ import { getTranslations } from "next-intl/server";
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
+import {
+  FOREIGN_KEY_VIOLATION,
+  UNIQUE_VIOLATION,
+  isPostgresError,
+  postgresConstraint,
+} from "@/lib/db-errors";
 import { REGISTRATION_AVAILABILITY_TAG } from "@/lib/registration-settings";
 
 export type SeasonState = {
   error?: string;
   message?: string;
+};
+
+/**
+ * Las tres tablas que cuelgan de una temporada con `onDelete: "restrict"`. El
+ * mensaje dice cuál de ellas la retiene: decir siempre "tiene equipos" mandaba
+ * a vaciar unos equipos que podían no existir, cuando lo que sobraba era una
+ * inscripción o una cuota.
+ */
+const SEASON_BLOCKERS: Record<string, string> = {
+  teams_season_id_seasons_id_fk: "seasonHasTeamsError",
+  registrations_season_id_seasons_id_fk: "seasonHasRegistrationsError",
+  fees_season_id_seasons_id_fk: "seasonHasFeesError",
 };
 
 // --- CRUD de temporadas ------------------------------------------------------
@@ -48,7 +66,7 @@ export async function createSeason(
       });
     });
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "23505") {
+    if (isPostgresError(error, UNIQUE_VIOLATION)) {
       return { error: t("seasonNameTaken") };
     }
     throw error;
@@ -84,7 +102,7 @@ export async function updateSeason(
         .where(eq(seasons.id, id));
     });
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "23505") {
+    if (isPostgresError(error, UNIQUE_VIOLATION)) {
       return { error: t("seasonNameTaken") };
     }
     throw error;
@@ -107,8 +125,8 @@ export async function deleteSeason(
   try {
     await db.delete(seasons).where(eq(seasons.id, id));
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "23503") {
-      return { error: t("seasonHasTeamsError") };
+    if (isPostgresError(error, FOREIGN_KEY_VIOLATION)) {
+      return { error: t(SEASON_BLOCKERS[postgresConstraint(error) ?? ""] ?? "seasonInUseError") };
     }
     throw error;
   }

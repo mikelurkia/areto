@@ -20,6 +20,7 @@ import {
 import { requirePermission } from "@/lib/auth";
 import { nextConsentAt, stampConsent } from "@/lib/consent";
 import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
+import { UNIQUE_VIOLATION, isPostgresError, postgresConstraint } from "@/lib/db-errors";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
 import { isValidIban } from "@/lib/iban";
@@ -174,27 +175,9 @@ function readMemberNumber(formData: FormData): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-/**
- * Nombre de la restricción única que violó un error de Postgres (23505), o
- * `null` si no es ese tipo de error. El driver `postgres-js` expone el
- * nombre real como `constraint_name` (no `constraint`), y Drizzle envuelve el
- * error real en `.cause` en vez de dejarlo en el nivel superior — verificado
- * contra la BD real, mismo tipo de envoltorio ya visto para el borrado
- * protegido por FK en otras acciones de este proyecto.
- */
+/** Nombre de la restricción única que violó el error, o `null` si no es un 23505. */
 function uniqueViolationConstraint(error: unknown): string | null {
-  const candidates = [error, error instanceof Error ? error.cause : undefined];
-  for (const candidate of candidates) {
-    if (
-      candidate &&
-      typeof candidate === "object" &&
-      "code" in candidate &&
-      (candidate as { code?: unknown }).code === "23505"
-    ) {
-      return (candidate as { constraint_name?: string }).constraint_name ?? null;
-    }
-  }
-  return null;
+  return isPostgresError(error, UNIQUE_VIOLATION) ? postgresConstraint(error) : null;
 }
 
 /** Mensaje de error a mostrar según qué restricción única de `persons`/`club_members` chocó. */
