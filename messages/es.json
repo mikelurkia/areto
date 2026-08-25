@@ -1451,8 +1451,6 @@
     "action": "Redactar aviso"
   },
   "Login": {
-    "title": "Accede a tu club",
-    "subtitle": "Entra para gestionar el club.",
     "email": "Email",
     "password": "Contraseña",
     "signIn": "Entrar",

@@ -1451,8 +1451,6 @@
     "action": "Oharra idatzi"
   },
   "Login": {
-    "title": "Sartu zure klubera",
-    "subtitle": "Sartu kluba kudeatzeko.",
     "email": "Emaila",
     "password": "Pasahitza",
     "signIn": "Sartu",
