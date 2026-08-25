@@ -10,6 +10,7 @@ import { requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { Link } from "@/i18n/navigation";
 import { PrintButton } from "@/components/print-button";
+import { PrintableSheet } from "@/components/printable-sheet";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -83,27 +84,27 @@ export default async function TeamRosterSheetPage({
         <PrintButton label={t("printAction")} />
       </div>
 
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 rounded-lg border p-8">
+      <PrintableSheet>
         {/* Cabecera: club + equipo + datos federativos */}
-        <div className="flex items-start justify-between border-b pb-4">
+        <div className="flex items-start justify-between border-b pb-[9pt]">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">
+            <h1 className="text-[11pt] font-semibold tracking-tight">
               {t("rosterSheetTitle")}
             </h1>
-            <p className="text-sm text-muted-foreground">{club?.legalName ?? "Areto"}</p>
+            <p className="text-[8pt] text-muted-foreground">{club?.legalName ?? "Areto"}</p>
           </div>
-          <div className="text-right text-sm">
+          <div className="text-right text-[8pt]">
             <p className="font-medium">{team.name}</p>
             <p className="text-muted-foreground">
               {team.category ? t(`category.${team.category}`) : t("categoryNone")}
               {team.gender ? ` · ${t(`gender.${team.gender}`)}` : ""}
             </p>
-            <p className="text-xs text-muted-foreground">{team.season.name}</p>
+            <p className="text-[7pt] text-muted-foreground">{team.season.name}</p>
             {team.federationGroup ? (
-              <p className="mt-1 text-xs text-muted-foreground">{team.federationGroup}</p>
+              <p className="mt-1 text-[7pt] text-muted-foreground">{team.federationGroup}</p>
             ) : null}
             {team.federationCode ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[7pt] text-muted-foreground">
                 {t("federationCodeShort", { code: team.federationCode })}
               </p>
             ) : null}
@@ -111,45 +112,52 @@ export default async function TeamRosterSheetPage({
         </div>
 
         {ordered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("emptyRosterDescription")}</p>
+          <p className="text-[8pt] text-muted-foreground">{t("emptyRosterDescription")}</p>
         ) : (
-          <Table>
+          /* Tabla de documento, no de pantalla: `table-fixed` con anchos por
+             columna (el reparto automático daría de sí la columna del nombre a
+             costa de las demás) y sin el `whitespace-nowrap` que `ui/table.tsx`
+             pone por defecto, que es justo lo que ensancha la tabla más allá de
+             la hoja y saca el scroll horizontal. */
+          <Table className="table-fixed text-[8pt] [&_td]:px-[3pt] [&_td]:py-[1.5pt] [&_th]:px-[3pt] [&_th]:py-[1.5pt] [&_td]:whitespace-normal [&_th]:break-words [&_th]:whitespace-normal">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10">{t("colJersey")}</TableHead>
-                <TableHead>{t("rosterSheetColName")}</TableHead>
-                <TableHead>{t("rosterSheetColNationalId")}</TableHead>
-                <TableHead>{t("rosterSheetColBirthDate")}</TableHead>
-                <TableHead>{t("roleLabel")}</TableHead>
-                <TableHead>{t("rosterSheetColMedical")}</TableHead>
+                <TableHead className="w-[8%]">{t("colJersey")}</TableHead>
+                <TableHead className="w-[30%]">{t("rosterSheetColName")}</TableHead>
+                <TableHead className="w-[13%]">{t("rosterSheetColNationalId")}</TableHead>
+                <TableHead className="w-[12%]">{t("rosterSheetColBirthDate")}</TableHead>
+                <TableHead className="w-[19%]">{t("roleLabel")}</TableHead>
+                <TableHead className="w-[18%]">{t("rosterSheetColMedical")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {ordered.map((m) => (
                 <TableRow key={m.id}>
-                  <TableCell className="tabular-nums">
+                  <TableCell className="align-top tabular-nums">
                     {m.role === "player" ? (m.jerseyNumber ?? "—") : "—"}
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="align-top font-medium">
                     {m.person.lastName}, {m.person.firstName}
                     {m.isCaptain ? ` (${t("captainShort")})` : ""}
                     {m.positions.includes("portero") ? ` (${t("isGoalkeeperLabel")})` : ""}
                   </TableCell>
-                  <TableCell>{m.person.nationalId ?? "—"}</TableCell>
-                  <TableCell>{m.person.birthDate ?? "—"}</TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">{m.person.nationalId ?? "—"}</TableCell>
+                  <TableCell className="align-top">{m.person.birthDate ?? "—"}</TableCell>
+                  <TableCell className="align-top">
                     {t(`roleOption.${m.role}`)}
                     {m.position ? ` · ${m.position}` : ""}
                   </TableCell>
-                  <TableCell>{m.person.medicalCertUntil ?? "—"}</TableCell>
+                  <TableCell className="align-top">
+                    {m.person.medicalCertUntil ?? "—"}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
 
-        {/* Firmas */}
-        <div className="mt-8 grid grid-cols-2 gap-8 text-sm">
+        {/* Firmas: `break-inside-avoid` para que un salto de página no las parta */}
+        <div className="mt-[18pt] grid break-inside-avoid grid-cols-2 gap-[18pt] text-[8pt]">
           <div className="border-t pt-2 text-muted-foreground">
             {t("rosterSheetSignCoach")}
           </div>
@@ -157,7 +165,7 @@ export default async function TeamRosterSheetPage({
             {t("rosterSheetSignClub")}
           </div>
         </div>
-      </div>
+      </PrintableSheet>
     </div>
   );
 }

@@ -99,7 +99,10 @@ export default async function MemberCardPage({
           {isMember ? <AssignMemberNumberButton personId={person.id} /> : null}
         </div>
       ) : (
-        <div className="mx-auto w-full max-w-sm overflow-hidden rounded-xl border shadow-sm">
+        /* Al contrario que el resto de documentos, el carné se imprime tal cual
+           se ve: `print-color-adjust: exact` para que el navegador no descarte
+           el fondo de color de la cabecera, que es parte de la identidad. */
+        <div className="mx-auto w-full max-w-sm overflow-hidden rounded-xl border shadow-sm print:[print-color-adjust:exact]">
           {/* Cabecera del club */}
           <div className="bg-primary px-4 py-2 text-primary-foreground">
             <p className="truncate text-sm font-semibold">{club?.legalName ?? "Areto"}</p>
