@@ -20,7 +20,12 @@ import { useActionToast } from "@/hooks/use-action-toast";
 import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 
-type EntityKey = "Document" | "Qualification" | "MedicalCheckup" | "InjuryReport";
+type EntityKey =
+  | "Document"
+  | "Qualification"
+  | "MedicalCheckup"
+  | "InjuryReport"
+  | "InjuryReportFile";
 
 /** Forma común de las Server Actions de borrado (documentos, titulaciones, médico, lesiones). */
 type DeleteActionState = { error?: string; message?: string };

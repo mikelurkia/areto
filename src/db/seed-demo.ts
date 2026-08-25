@@ -493,12 +493,11 @@ const injuryRows: (typeof personInjuryReports.$inferInsert)[] = [
   ["Orkatilaren lokadura, hiru asteko atsedena.", -62],
   ["Belauneko kolpea partidan, azterketa egiteke.", -28],
   ["Bizkarreko kontraktura, fisioterapiara bidalia.", -9],
-].map(([description, days], i) => ({
+].map(([note, days], i) => ({
   id: seedId(`injury:${i}`),
   personId: players.filter((p) => p.teamKey === "senior")[i].person.id,
   occurredOn: shiftDays(now, days as number),
-  description: description as string,
-  notes: i === 2 ? "Falta el parte del traumatólogo." : null,
+  notes: i === 2 ? `${note} Falta el parte del traumatólogo.` : (note as string),
 }));
 
 const qualificationRows: (typeof personQualifications.$inferInsert)[] = coaches.map(

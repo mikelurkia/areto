@@ -1,13 +1,13 @@
 import { and, eq } from "drizzle-orm";
-import { DownloadIcon, TriangleAlertIcon } from "lucide-react";
+import { TriangleAlertIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { memberships, personInjuryReports } from "@/db/schema";
+import { persons, memberships, personInjuryReports } from "@/db/schema";
 import { BackLink } from "@/components/back-link";
-import { InjuryReportFederationForm } from "@/components/personas/injury-report-federation-form";
-import { Button } from "@/components/ui/button";
+import { InjuryReportForm } from "@/components/personas/injury-report-form";
+import { InjuryReportFileManager } from "@/components/personas/injury-report-file-manager";
 import {
   Card,
   CardContent,
@@ -21,7 +21,13 @@ import {
   DOCUMENT_TEMPLATES_BUCKET,
   INJURY_REPORT_TEMPLATE_PATH,
 } from "@/lib/injury-report-pdf";
-import { fileExists } from "@/lib/supabase/storage";
+import { fileExists, getSignedUrl } from "@/lib/supabase/storage";
+
+/** Igual que la constante homónima en `personas/actions.ts` y `personas/[personId]/page.tsx`. */
+const INJURY_REPORTS_BUCKET = "person-injury-reports";
+
+/** El segmento `[reportId]` vale esto cuando la página abre para dar de alta un parte nuevo. */
+const NEW_REPORT_ID = "nuevo";
 
 export async function generateMetadata({
   params,
@@ -46,18 +52,27 @@ export default async function InjuryReportFederationPage({
   await requirePermission("personas.medical.manage");
   const t = await getTranslations("Personas");
 
+  const isNew = reportId === NEW_REPORT_ID;
+
+  const person = await db.query.persons.findFirst({
+    where: eq(persons.id, personId),
+    columns: { firstName: true, lastName: true },
+  });
+  if (!person) notFound();
+
   // El parte tiene que ser de esta persona: si no, la URL está inventada y no
   // hay razón para enseñar el parte de otra bajo su ficha.
-  const report = await db.query.personInjuryReports.findFirst({
-    where: and(
-      eq(personInjuryReports.id, reportId),
-      eq(personInjuryReports.personId, personId),
-    ),
-    with: { person: { columns: { firstName: true, lastName: true } } },
-  });
-  if (!report) notFound();
+  const report = isNew
+    ? null
+    : ((await db.query.personInjuryReports.findFirst({
+        where: and(
+          eq(personInjuryReports.id, reportId),
+          eq(personInjuryReports.personId, personId),
+        ),
+      })) ?? null);
+  if (!isNew && !report) notFound();
 
-  const [personTeams, club, hasTemplate] = await Promise.all([
+  const [personTeams, club, hasTemplate, fileUrl] = await Promise.all([
     db.query.memberships.findMany({
       where: eq(memberships.personId, personId),
       columns: {},
@@ -65,6 +80,7 @@ export default async function InjuryReportFederationPage({
     }),
     getClubSettings(),
     fileExists(DOCUMENT_TEMPLATES_BUCKET, INJURY_REPORT_TEMPLATE_PATH),
+    report ? getSignedUrl(INJURY_REPORTS_BUCKET, report.filePath) : Promise.resolve(null),
   ]);
 
   // Sin estos datos del club el impreso sale con la cabecera a medias, y la
@@ -77,10 +93,11 @@ export default async function InjuryReportFederationPage({
 
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
-          {t("injuryReportFederationTitle")}
+          {isNew ? t("newInjuryReportTitle") : t("injuryReportFederationTitle")}
         </h1>
         <p className="text-muted-foreground">
-          {report.person.firstName} {report.person.lastName} · {report.occurredOn}
+          {person.firstName} {person.lastName}
+          {report ? ` · ${report.occurredOn}` : null}
         </p>
       </div>
 
@@ -108,37 +125,32 @@ export default async function InjuryReportFederationPage({
             <CardDescription>{t("injuryReportFederationDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <InjuryReportFederationForm
-              report={{
-                id: report.id,
-                teamId: report.teamId,
-                reportedOn: report.reportedOn,
-                reportedPlace: report.reportedPlace,
-                place: report.place,
-                placeOther: report.placeOther,
-                matchMinute: report.matchMinute,
-                surface: report.surface,
-                collision: report.collision,
-                opponentTeam: report.opponentTeam,
-                relatedToPrevious: report.relatedToPrevious,
-                bootType: report.bootType,
-                trainingSurface: report.trainingSurface,
-                weeklyTrainingMinutes: report.weeklyTrainingMinutes,
-              }}
+            <InjuryReportForm
+              personId={personId}
+              report={
+                report && {
+                  id: report.id,
+                  notes: report.notes,
+                  teamId: report.teamId,
+                  reportedOn: report.reportedOn,
+                  reportedPlace: report.reportedPlace,
+                  place: report.place,
+                  placeOther: report.placeOther,
+                  matchMinute: report.matchMinute,
+                  surface: report.surface,
+                  collision: report.collision,
+                  opponentTeam: report.opponentTeam,
+                  relatedToPrevious: report.relatedToPrevious,
+                  bootType: report.bootType,
+                  trainingSurface: report.trainingSurface,
+                  weeklyTrainingMinutes: report.weeklyTrainingMinutes,
+                }
+              }
               teams={personTeams.map((m) => m.team)}
             />
-            {/* Enlace normal y no una Server Action: la respuesta es un PDF que
-                el navegador tiene que descargar (ver el route handler). */}
-            <Button
-              variant="outline"
-              className="self-start"
-              disabled={!hasTemplate}
-              render={<a href={`/api/partes-lesion/${report.id}`} />}
-              nativeButton={false}
-            >
-              <DownloadIcon data-icon="inline-start" />
-              {t("injuryReportDownloadAction")}
-            </Button>
+            {report ? (
+              <InjuryReportFileManager reportId={report.id} fileUrl={fileUrl} />
+            ) : null}
           </CardContent>
         </Card>
       </div>

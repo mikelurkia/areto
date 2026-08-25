@@ -387,8 +387,9 @@ export const personMedicalCheckups = pgTable("person_medical_checkups", {
 /**
  * Parte de lesión de un jugador/a.
  *
- * `occurredOn`, `description` y `notes` son el registro interno del club.
- * El resto de columnas son las casillas del parte oficial de la Mutualidad de
+ * `occurredOn` se fija solo al crear el parte (hoy, no se pide en el
+ * formulario) y `notes` es la única nota libre del registro interno. El resto
+ * de columnas son las casillas del parte oficial de la Mutualidad de
  * Previsión Social de Futbolistas (RFEF), que se rellena e imprime desde aquí
  * (ver `src/lib/injury-report-pdf.ts`): se guardan para poder regenerar el
  * impreso y corregir una errata sin volver a teclearlo todo.
@@ -401,8 +402,8 @@ export const personMedicalCheckups = pgTable("person_medical_checkups", {
  * tratamiento) NO está aquí: la plantilla oficial no tiene campos editables en
  * esa mitad porque la rellena a mano el médico de la Mutualidad sobre el papel.
  *
- * `filePath` sigue siendo el parte ya firmado y sellado que se escanea y se
- * sube: el PDF generado no se guarda, se descarga.
+ * `filePath` es el parte relleno (generado desde la plantilla, o uno propio
+ * subido a mano): el fichero del registro es el propio parte.
  */
 export const personInjuryReports = pgTable("person_injury_reports", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -410,7 +411,6 @@ export const personInjuryReports = pgTable("person_injury_reports", {
     .notNull()
     .references(() => persons.id, { onDelete: "cascade" }),
   occurredOn: date("occurred_on").notNull(),
-  description: text("description").notNull(),
   filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-injury-reports)
   notes: text("notes"),
   // Equipo con el que jugaba al lesionarse. De él salen tres casillas del

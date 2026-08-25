@@ -2,8 +2,9 @@
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath, updateTag } from "next/cache";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
+import { redirect } from "@/i18n/navigation";
 import { db } from "@/db";
 import {
   bootType,
@@ -32,8 +33,19 @@ import { isValidNationalId } from "@/lib/national-id";
 import { resizeImageToWebp } from "@/lib/image-resize";
 import { findCandidates } from "@/lib/person-matching";
 import { personPhotoThumbPath } from "@/lib/person-photo";
+import { getClubSettings } from "@/lib/club";
+import {
+  DOCUMENT_TEMPLATES_BUCKET,
+  INJURY_REPORT_TEMPLATE_PATH,
+  fillInjuryReportPdf,
+} from "@/lib/injury-report-pdf";
 import { resolvePayerFields } from "@/lib/payer";
-import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
+import {
+  extensionFromMimeType,
+  fileExists,
+  removeFile,
+  uploadFile,
+} from "@/lib/supabase/storage";
 import type { PersonCandidate } from "@/components/match-select";
 
 export type PersonState = {
@@ -897,109 +909,6 @@ export async function deleteMedicalCheckup(
   return { message: t("medicalCheckupDeleted") };
 }
 
-function readInjuryReportFields(formData: FormData) {
-  return {
-    occurredOn: String(formData.get("occurredOn") ?? "").trim(),
-    description: String(formData.get("description") ?? "").trim(),
-    notes: String(formData.get("notes") ?? "").trim(),
-    removeFile: formData.get("removeFile") === "on",
-  };
-}
-
-export async function addInjuryReport(
-  _prev: PersonState,
-  formData: FormData,
-): Promise<PersonState> {
-  const t = await getTranslations("Personas");
-  await requirePermission("personas.medical.manage");
-
-  const personId = String(formData.get("personId") ?? "");
-  const fields = readInjuryReportFields(formData);
-  const file = readMedicalFile(formData);
-  if (!fields.occurredOn) return { error: t("injuryReportOccurredOnRequired") };
-  if (!fields.description) return { error: t("injuryReportDescriptionRequired") };
-  if (file && !ALLOWED_MEDICAL_FILE_TYPES.includes(file.type)) {
-    return { error: t("injuryReportFileInvalidType") };
-  }
-  if (file && file.size > MAX_MEDICAL_FILE_BYTES) {
-    return { error: t("injuryReportFileTooLarge") };
-  }
-
-  const [report] = await db
-    .insert(personInjuryReports)
-    .values({
-      personId,
-      occurredOn: fields.occurredOn,
-      description: fields.description,
-      notes: fields.notes || null,
-    })
-    .returning({ id: personInjuryReports.id });
-
-  if (file) {
-    const path = await uploadInjuryReportFile(personId, report.id, file);
-    await db
-      .update(personInjuryReports)
-      .set({ filePath: path })
-      .where(eq(personInjuryReports.id, report.id));
-  }
-
-  revalidatePath("/", "layout");
-  return { message: t("injuryReportAdded") };
-}
-
-export async function updateInjuryReport(
-  _prev: PersonState,
-  formData: FormData,
-): Promise<PersonState> {
-  const t = await getTranslations("Personas");
-  await requirePermission("personas.medical.manage");
-
-  const id = String(formData.get("id") ?? "");
-  const fields = readInjuryReportFields(formData);
-  const file = readMedicalFile(formData);
-  if (!fields.occurredOn) return { error: t("injuryReportOccurredOnRequired") };
-  if (!fields.description) return { error: t("injuryReportDescriptionRequired") };
-  if (file && !ALLOWED_MEDICAL_FILE_TYPES.includes(file.type)) {
-    return { error: t("injuryReportFileInvalidType") };
-  }
-  if (file && file.size > MAX_MEDICAL_FILE_BYTES) {
-    return { error: t("injuryReportFileTooLarge") };
-  }
-
-  const existing = await db.query.personInjuryReports.findFirst({
-    where: eq(personInjuryReports.id, id),
-    columns: { personId: true, filePath: true },
-  });
-  if (!existing) return { error: t("injuryReportNotFound") };
-
-  await db
-    .update(personInjuryReports)
-    .set({
-      occurredOn: fields.occurredOn,
-      description: fields.description,
-      notes: fields.notes || null,
-    })
-    .where(eq(personInjuryReports.id, id));
-
-  if (file) {
-    if (existing.filePath) await removeInjuryReportFileObject(existing.filePath);
-    const path = await uploadInjuryReportFile(existing.personId, id, file);
-    await db
-      .update(personInjuryReports)
-      .set({ filePath: path })
-      .where(eq(personInjuryReports.id, id));
-  } else if (fields.removeFile && existing.filePath) {
-    await removeInjuryReportFileObject(existing.filePath);
-    await db
-      .update(personInjuryReports)
-      .set({ filePath: null })
-      .where(eq(personInjuryReports.id, id));
-  }
-
-  revalidatePath("/", "layout");
-  return { message: t("injuryReportUpdated") };
-}
-
 export async function deleteInjuryReport(
   _prev: PersonState,
   formData: FormData,
@@ -1052,12 +961,16 @@ function readTristate(formData: FormData, key: string): boolean | null {
 }
 
 /**
- * Guarda las casillas del parte oficial de la Mutualidad de un parte ya
- * existente. Es un formulario aparte del diálogo de alta (`updateInjuryReport`)
- * porque son trece campos más: el parte se abre el día de la lesión con la fecha
- * y la descripción, y esto se completa después, con el impreso delante.
+ * Guarda de una vez las notas del parte, las casillas del impreso oficial de
+ * la Mutualidad y regenera el fichero del parte con esos datos: una sola
+ * acción para lo que antes eran tres pasos (alta, guardar impreso, generar
+ * fichero). Sin `id` es un alta: inserta con la fecha de hoy —el parte se abre
+ * el mismo día de la lesión, no se pide en el formulario— y redirige a la URL
+ * canónica del parte ya creado. Si falta la plantilla o los datos del club, el
+ * guardado de los campos igualmente tiene éxito — solo el fichero se queda sin
+ * generar, con aviso.
  */
-export async function updateInjuryReportFederationFields(
+export async function saveInjuryReportAndGenerate(
   _prev: PersonState,
   formData: FormData,
 ): Promise<PersonState> {
@@ -1065,11 +978,17 @@ export async function updateInjuryReportFederationFields(
   await requirePermission("personas.medical.manage");
 
   const id = String(formData.get("id") ?? "");
-  const existing = await db.query.personInjuryReports.findFirst({
-    where: eq(personInjuryReports.id, id),
-    columns: { personId: true },
-  });
-  if (!existing) return { error: t("injuryReportNotFound") };
+  const notes = String(formData.get("notes") ?? "").trim();
+
+  let personId = String(formData.get("personId") ?? "");
+  if (id) {
+    const existing = await db.query.personInjuryReports.findFirst({
+      where: eq(personInjuryReports.id, id),
+      columns: { personId: true },
+    });
+    if (!existing) return { error: t("injuryReportNotFound") };
+    personId = existing.personId;
+  }
 
   // El equipo tiene que ser uno en el que esta persona esté fichada: de él salen
   // la categoría de licencia, el sexo y el puesto del impreso, y un id
@@ -1083,10 +1002,7 @@ export async function updateInjuryReportFederationFields(
   let teamId: string | null = null;
   if (UUID.test(requestedTeamId)) {
     const membership = await db.query.memberships.findFirst({
-      where: and(
-        eq(memberships.personId, existing.personId),
-        eq(memberships.teamId, requestedTeamId),
-      ),
+      where: and(eq(memberships.personId, personId), eq(memberships.teamId, requestedTeamId)),
       columns: { teamId: true },
     });
     if (!membership) return { error: t("injuryReportTeamNotFound") };
@@ -1102,27 +1018,159 @@ export async function updateInjuryReportFederationFields(
     return { error: t("injuryReportWeeklyMinutesInvalid") };
   }
 
+  const federationFields = {
+    teamId,
+    reportedOn: String(formData.get("reportedOn") ?? "").trim() || null,
+    reportedPlace: String(formData.get("reportedPlace") ?? "").trim() || null,
+    place: readEnum(formData, "place", injuryPlace.enumValues),
+    placeOther: String(formData.get("placeOther") ?? "").trim() || null,
+    matchMinute: readEnum(formData, "matchMinute", matchMinute.enumValues),
+    surface: readEnum(formData, "surface", pitchSurface.enumValues),
+    collision: readTristate(formData, "collision"),
+    opponentTeam: String(formData.get("opponentTeam") ?? "").trim() || null,
+    relatedToPrevious: readTristate(formData, "relatedToPrevious"),
+    bootType: readEnum(formData, "bootType", bootType.enumValues),
+    trainingSurface: readEnum(formData, "trainingSurface", pitchSurface.enumValues),
+    weeklyTrainingMinutes,
+  };
+
+  let reportId = id;
+  if (!id) {
+    const [inserted] = await db
+      .insert(personInjuryReports)
+      .values({
+        personId,
+        occurredOn: today(),
+        notes: notes || null,
+        ...federationFields,
+      })
+      .returning({ id: personInjuryReports.id });
+    reportId = inserted.id;
+  } else {
+    // `occurredOn` no se toca: se fijó al crear el parte y no viene del
+    // formulario, así que editar las casillas del impreso no puede moverlo.
+    await db
+      .update(personInjuryReports)
+      .set({
+        notes: notes || null,
+        ...federationFields,
+      })
+      .where(eq(personInjuryReports.id, id));
+  }
+
+  // Igual que hacía `generateInjuryReportFile`: rellena la plantilla y guarda el
+  // PDF como el fichero del registro. Si falta la plantilla o los datos del
+  // club, el parte ya se ha guardado igualmente — no se hace fallar la acción
+  // entera por no poder generar el fichero.
+  const hasTemplate = await fileExists(DOCUMENT_TEMPLATES_BUCKET, INJURY_REPORT_TEMPLATE_PATH);
+  const club = await getClubSettings();
+  const canGenerate = hasTemplate && !!club?.federationDelegation && !!club?.signatoryName;
+
+  if (canGenerate) {
+    const report = await db.query.personInjuryReports.findFirst({
+      where: eq(personInjuryReports.id, reportId),
+      with: { person: true, team: true },
+    });
+    if (report) {
+      const membership = report.teamId
+        ? await db.query.memberships.findFirst({
+            where: and(
+              eq(memberships.personId, report.personId),
+              eq(memberships.teamId, report.teamId),
+            ),
+            columns: { positions: true },
+          })
+        : null;
+
+      const pdf = await fillInjuryReportPdf({
+        report,
+        person: report.person,
+        team: report.team,
+        positions: membership?.positions ?? [],
+        club,
+      });
+      const file = new File([pdf], "parte.pdf", { type: "application/pdf" });
+
+      if (report.filePath) await removeInjuryReportFileObject(report.filePath);
+      const path = await uploadInjuryReportFile(report.personId, reportId, file);
+      await db
+        .update(personInjuryReports)
+        .set({ filePath: path })
+        .where(eq(personInjuryReports.id, reportId));
+    }
+  }
+
+  revalidatePath("/", "layout");
+
+  if (!id) {
+    redirect({
+      href: `/personas/${personId}/parte-lesion/${reportId}`,
+      locale: await getLocale(),
+    });
+  }
+
+  return { message: canGenerate ? t("injuryReportSaved") : t("injuryReportSavedNoFile") };
+}
+
+/** Sube un fichero propio como el fichero del parte, reemplazando el que hubiera. */
+export async function uploadInjuryReportCustomFile(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requirePermission("personas.medical.manage");
+
+  const id = String(formData.get("id") ?? "");
+  const file = readMedicalFile(formData);
+  if (!file) return { error: t("injuryReportFileRequired") };
+  if (!ALLOWED_MEDICAL_FILE_TYPES.includes(file.type)) {
+    return { error: t("injuryReportFileInvalidType") };
+  }
+  if (file.size > MAX_MEDICAL_FILE_BYTES) {
+    return { error: t("injuryReportFileTooLarge") };
+  }
+
+  const existing = await db.query.personInjuryReports.findFirst({
+    where: eq(personInjuryReports.id, id),
+    columns: { personId: true, filePath: true },
+  });
+  if (!existing) return { error: t("injuryReportNotFound") };
+
+  if (existing.filePath) await removeInjuryReportFileObject(existing.filePath);
+  const path = await uploadInjuryReportFile(existing.personId, id, file);
   await db
     .update(personInjuryReports)
-    .set({
-      teamId,
-      reportedOn: String(formData.get("reportedOn") ?? "").trim() || null,
-      reportedPlace: String(formData.get("reportedPlace") ?? "").trim() || null,
-      place: readEnum(formData, "place", injuryPlace.enumValues),
-      placeOther: String(formData.get("placeOther") ?? "").trim() || null,
-      matchMinute: readEnum(formData, "matchMinute", matchMinute.enumValues),
-      surface: readEnum(formData, "surface", pitchSurface.enumValues),
-      collision: readTristate(formData, "collision"),
-      opponentTeam: String(formData.get("opponentTeam") ?? "").trim() || null,
-      relatedToPrevious: readTristate(formData, "relatedToPrevious"),
-      bootType: readEnum(formData, "bootType", bootType.enumValues),
-      trainingSurface: readEnum(formData, "trainingSurface", pitchSurface.enumValues),
-      weeklyTrainingMinutes,
-    })
+    .set({ filePath: path })
     .where(eq(personInjuryReports.id, id));
 
   revalidatePath("/", "layout");
-  return { message: t("injuryReportFederationSaved") };
+  return { message: t("injuryReportFileUploaded") };
+}
+
+/** Borra el fichero del parte sin borrar el registro: queda listo para generarlo de nuevo o subir otro. */
+export async function deleteInjuryReportFile(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requirePermission("personas.medical.manage");
+
+  const id = String(formData.get("id") ?? "");
+  const existing = await db.query.personInjuryReports.findFirst({
+    where: eq(personInjuryReports.id, id),
+    columns: { filePath: true },
+  });
+  if (!existing) return { error: t("injuryReportNotFound") };
+  if (!existing.filePath) return { message: t("injuryReportFileDeleted") };
+
+  await removeInjuryReportFileObject(existing.filePath);
+  await db
+    .update(personInjuryReports)
+    .set({ filePath: null })
+    .where(eq(personInjuryReports.id, id));
+
+  revalidatePath("/", "layout");
+  return { message: t("injuryReportFileDeleted") };
 }
 
 const personDocumentActions = makeDocumentActions({

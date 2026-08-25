@@ -4,7 +4,7 @@ import { useActionState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import {
-  updateInjuryReportFederationFields,
+  saveInjuryReportAndGenerate,
   type PersonState,
 } from "@/app/[locale]/(app)/personas/actions";
 import { SubmitButton } from "@/components/submit-button";
@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useActionToast } from "@/hooks/use-action-toast";
 
 const initialState: PersonState = {};
@@ -29,8 +30,9 @@ const initialState: PersonState = {};
  */
 const UNSET = "-";
 
-export type InjuryReportFederationValues = {
+export type InjuryReportValues = {
   id: string;
+  notes: string | null;
   teamId: string | null;
   reportedOn: string | null;
   reportedPlace: string | null;
@@ -50,34 +52,40 @@ const MINUTES = ["0-15", "16-30", "31-45", "46-60", "61-75", "76-90"];
 const SURFACES = ["natural", "artificial", "soil", "other"];
 
 /**
- * Casillas del parte oficial de la Mutualidad para un parte de lesión ya
- * abierto. Solo cubre la mitad que rellena el club: la HISTORIA CLÍNICA del
- * impreso la escribe a mano el médico sobre el papel, porque la plantilla
- * oficial no tiene campos editables en esa parte.
+ * Ficha completa del parte de lesión: las casillas del impreso oficial de la
+ * Mutualidad y las notas internas, en un único formulario que guarda y
+ * regenera el fichero del parte de una vez. `report` es `null` en el alta:
+ * entonces el envío crea el parte —con la fecha de hoy, que no se pide aquí—
+ * y redirige a su URL definitiva. Solo cubre la mitad del impreso que rellena
+ * el club: la HISTORIA CLÍNICA la escribe a mano el médico sobre el papel,
+ * porque la plantilla oficial no tiene campos editables ahí.
  */
-export function InjuryReportFederationForm({
+export function InjuryReportForm({
+  personId,
   report,
   teams,
 }: {
-  report: InjuryReportFederationValues;
+  personId: string;
+  report: InjuryReportValues | null;
   teams: { id: string; name: string }[];
 }) {
   const t = useTranslations("Personas");
-  const [state, action] = useActionState(updateInjuryReportFederationFields, initialState);
+  const [state, action] = useActionState(saveInjuryReportAndGenerate, initialState);
   useActionToast(state);
 
-  const tristate = (value: boolean | null) =>
+  const tristate = (value: boolean | null | undefined) =>
     value === true ? "yes" : value === false ? "no" : UNSET;
 
   return (
     <form action={action}>
-      <input type="hidden" name="id" value={report.id} />
+      <input type="hidden" name="personId" value={personId} />
+      <input type="hidden" name="id" value={report?.id ?? ""} />
       <FieldGroup>
         <Choice
           id="injury-teamId"
           name="teamId"
           label={t("injuryReportTeamLabel")}
-          defaultValue={report.teamId ?? UNSET}
+          defaultValue={report?.teamId ?? UNSET}
           unsetLabel={t("injuryReportNoTeamOption")}
           options={teams.map((team) => ({ value: team.id, label: team.name }))}
         />
@@ -90,7 +98,7 @@ export function InjuryReportFederationForm({
             <Input
               id="injury-reportedPlace"
               name="reportedPlace"
-              defaultValue={report.reportedPlace ?? ""}
+              defaultValue={report?.reportedPlace ?? ""}
             />
           </Field>
           <Field>
@@ -101,7 +109,7 @@ export function InjuryReportFederationForm({
               id="injury-reportedOn"
               name="reportedOn"
               type="date"
-              defaultValue={report.reportedOn ?? ""}
+              defaultValue={report?.reportedOn ?? ""}
             />
           </Field>
         </div>
@@ -111,7 +119,7 @@ export function InjuryReportFederationForm({
             id="injury-place"
             name="place"
             label={t("injuryReportPlaceLabel")}
-            defaultValue={report.place ?? UNSET}
+            defaultValue={report?.place ?? UNSET}
             unsetLabel={t("injuryReportUnspecifiedOption")}
             options={["match", "training", "other"].map((value) => ({
               value,
@@ -125,7 +133,7 @@ export function InjuryReportFederationForm({
             <Input
               id="injury-placeOther"
               name="placeOther"
-              defaultValue={report.placeOther ?? ""}
+              defaultValue={report?.placeOther ?? ""}
             />
           </Field>
         </div>
@@ -135,7 +143,7 @@ export function InjuryReportFederationForm({
             id="injury-matchMinute"
             name="matchMinute"
             label={t("injuryReportMinuteLabel")}
-            defaultValue={report.matchMinute ?? UNSET}
+            defaultValue={report?.matchMinute ?? UNSET}
             unsetLabel={t("injuryReportUnspecifiedOption")}
             options={MINUTES.map((value) => ({ value, label: value }))}
           />
@@ -143,7 +151,7 @@ export function InjuryReportFederationForm({
             id="injury-surface"
             name="surface"
             label={t("injuryReportSurfaceLabel")}
-            defaultValue={report.surface ?? UNSET}
+            defaultValue={report?.surface ?? "other"}
             unsetLabel={t("injuryReportUnspecifiedOption")}
             options={SURFACES.map((value) => ({
               value,
@@ -160,14 +168,14 @@ export function InjuryReportFederationForm({
             <Input
               id="injury-opponentTeam"
               name="opponentTeam"
-              defaultValue={report.opponentTeam ?? ""}
+              defaultValue={report?.opponentTeam ?? ""}
             />
           </Field>
           <Choice
             id="injury-collision"
             name="collision"
             label={t("injuryReportCollisionLabel")}
-            defaultValue={tristate(report.collision)}
+            defaultValue={tristate(report?.collision)}
             unsetLabel={t("injuryReportUnspecifiedOption")}
             options={[
               { value: "yes", label: t("injuryReportAnswerYes") },
@@ -181,7 +189,7 @@ export function InjuryReportFederationForm({
             id="injury-relatedToPrevious"
             name="relatedToPrevious"
             label={t("injuryReportRelatedToPreviousLabel")}
-            defaultValue={tristate(report.relatedToPrevious)}
+            defaultValue={tristate(report?.relatedToPrevious)}
             unsetLabel={t("injuryReportUnspecifiedOption")}
             options={[
               { value: "yes", label: t("injuryReportAnswerYes") },
@@ -192,7 +200,7 @@ export function InjuryReportFederationForm({
             id="injury-bootType"
             name="bootType"
             label={t("injuryReportBootTypeLabel")}
-            defaultValue={report.bootType ?? UNSET}
+            defaultValue={report?.bootType ?? "other"}
             unsetLabel={t("injuryReportUnspecifiedOption")}
             options={["studs", "other"].map((value) => ({
               value,
@@ -206,7 +214,7 @@ export function InjuryReportFederationForm({
             id="injury-trainingSurface"
             name="trainingSurface"
             label={t("injuryReportTrainingSurfaceLabel")}
-            defaultValue={report.trainingSurface ?? UNSET}
+            defaultValue={report?.trainingSurface ?? "other"}
             unsetLabel={t("injuryReportUnspecifiedOption")}
             options={SURFACES.map((value) => ({
               value,
@@ -223,13 +231,20 @@ export function InjuryReportFederationForm({
               type="number"
               min={0}
               step={1}
-              defaultValue={report.weeklyTrainingMinutes ?? ""}
+              defaultValue={report?.weeklyTrainingMinutes ?? 150}
             />
           </Field>
         </div>
 
+        <Field>
+          <FieldLabel htmlFor="injury-report-notes">{t("notesLabel")}</FieldLabel>
+          <Textarea id="injury-report-notes" name="notes" defaultValue={report?.notes ?? ""} />
+        </Field>
+
         {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
-        <SubmitButton className="self-start">{t("saveChanges")}</SubmitButton>
+        <SubmitButton className="self-start">
+          {report ? t("injuryReportSaveAction") : t("injuryReportCreateAction")}
+        </SubmitButton>
       </FieldGroup>
     </form>
   );

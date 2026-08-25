@@ -1,0 +1,1 @@
+ALTER TABLE "person_injury_reports" DROP COLUMN "description";
