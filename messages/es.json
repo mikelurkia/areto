@@ -20,7 +20,8 @@
     "roles": "Roles · Areto",
     "contrasena": "Contraseña · Areto",
     "accesoRevocado": "Acceso desactivado · Areto",
-    "accesoNoAutorizado": "Acceso no autorizado · Areto"
+    "accesoNoAutorizado": "Acceso no autorizado · Areto",
+    "medicoListado": "Reconocimientos médicos · Areto"
   },
   "Landing": {
     "brand": "Aloña Mendi",
@@ -371,7 +372,19 @@
     "colInjuryDate": "Fecha",
     "colInjuryPerson": "Persona",
     "colInjuryDescription": "Descripción",
-    "noInjuryReportsDescription": "No hay partes de lesión registrados."
+    "noInjuryReportsDescription": "No hay partes de lesión registrados.",
+    "printListAction": "Listado imprimible",
+    "printAction": "Imprimir",
+    "exportCsvAction": "Exportar CSV",
+    "backToPanel": "Volver al panel médico",
+    "listTitle": "Reconocimientos médicos",
+    "listGeneratedOn": "Generado el {date}",
+    "listSearchLabel": "Búsqueda",
+    "colListName": "Apellidos, nombre",
+    "colNationalId": "DNI/NIE",
+    "colBirthDate": "Fecha nac.",
+    "colRole": "Rol",
+    "colExpiry": "Caducidad"
   },
   "Personas": {
     "title": "Personas",

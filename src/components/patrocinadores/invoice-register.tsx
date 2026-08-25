@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { DownloadIcon, ReceiptTextIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { downloadCsv } from "@/lib/csv";
 import { Link, usePathname } from "@/i18n/navigation";
 import { PrintButton } from "@/components/print-button";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -34,10 +35,6 @@ export type InvoiceRow = {
   concept: string;
   amountCents: number;
 };
-
-function csvEscape(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`;
-}
 
 export function InvoiceRegister({
   invoices,
@@ -84,16 +81,7 @@ export function InvoiceRegister({
       inv.concept,
       formatAmount(inv.amountCents),
     ]);
-    const csv = [headers, ...rows]
-      .map((row) => row.map(csvEscape).join(","))
-      .join("\r\n");
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `libro-facturas${year === "all" ? "" : `-${year}`}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadCsv(`libro-facturas${year === "all" ? "" : `-${year}`}.csv`, headers, rows);
   }
 
   return (

@@ -1,12 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SearchIcon, TriangleAlertIcon } from "lucide-react";
+import { DownloadIcon, FileTextIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { medicalCertStatus, MEDICAL_EXPIRY_WINDOW_DAYS, type MedicalCertStatus } from "@/lib/medical-status";
+import { downloadCsv } from "@/lib/csv";
+import {
+  EMPTY_MEDICAL_PANEL_FILTERS,
+  filterMedicalPanelRows,
+  medicalPanelRowRoles,
+  medicalReferenceDates,
+  type MedicalPanelRow,
+} from "@/lib/medical-panel-rows";
+import { type MedicalCertStatus } from "@/lib/medical-status";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -26,13 +35,7 @@ import {
 
 type TeamOption = { id: string; label: string };
 
-type CertRow = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  medicalCertUntil: string | null;
-  teams: { id: string; name: string; role: string; requiresMedicalCheckup: boolean }[];
-};
+type CertRow = MedicalPanelRow;
 
 type InjuryRow = {
   id: string;
@@ -88,25 +91,10 @@ export function MedicalPanelBrowser({
 
   // Fechas de referencia calculadas en cliente, para no forzar el prerender
   // estático de la página a depender del reloj de la petición.
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const cutoff = useMemo(() => {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() + MEDICAL_EXPIRY_WINDOW_DAYS);
-    return cutoffDate.toISOString().slice(0, 10);
-  }, []);
+  const { today, cutoff } = useMemo(() => medicalReferenceDates(new Date()), []);
 
   const statusRows = useMemo(
-    () =>
-      certRows.map((row) => {
-        // Exento si ninguno de sus equipos activos exige reconocimiento
-        // médico; si tiene varios equipos y al menos uno lo exige, sigue
-        // haciendo falta.
-        const requiresCheckup = row.teams.some((tm) => tm.requiresMedicalCheckup);
-        return {
-          ...row,
-          status: medicalCertStatus(row.medicalCertUntil, today, cutoff, requiresCheckup),
-        };
-      }),
+    () => filterMedicalPanelRows(certRows, EMPTY_MEDICAL_PANEL_FILTERS, today, cutoff),
     [certRows, today, cutoff],
   );
 
@@ -116,26 +104,10 @@ export function MedicalPanelBrowser({
     return { total: statusRows.length, ...counts };
   }, [statusRows]);
 
-  const filteredCertRows = useMemo(() => {
-    let result = statusRows;
-    if (query.trim()) {
-      const needle = query.trim().toLowerCase();
-      result = result.filter((p) =>
-        `${p.firstName} ${p.lastName}`.toLowerCase().includes(needle),
-      );
-    }
-    if (team !== "all") {
-      result = result.filter((p) => p.teams.some((tm) => tm.id === team));
-    }
-    if (status === "needsUpdate") {
-      result = result.filter(
-        (p) => p.status === "expired" || p.status === "expiring" || p.status === "missing",
-      );
-    } else if (status !== "all") {
-      result = result.filter((p) => p.status === status);
-    }
-    return result;
-  }, [statusRows, query, team, status]);
+  const filteredCertRows = useMemo(
+    () => filterMedicalPanelRows(certRows, { query, team, status }, today, cutoff),
+    [certRows, query, team, status, today, cutoff],
+  );
 
   const filteredInjuryRows = useMemo(() => {
     let result = injuryRows;
@@ -148,6 +120,43 @@ export function MedicalPanelBrowser({
     }
     return result;
   }, [injuryRows, query, team]);
+
+  // Los filtros viven en estado local, así que viajan al listado imprimible
+  // por la URL: es lo que le permite reproducir en servidor la misma selección
+  // que hay en pantalla. Los valores neutros no se escriben.
+  const exportParams = new URLSearchParams();
+  if (team !== "all") exportParams.set("team", team);
+  if (status !== "all") exportParams.set("status", status);
+  if (query.trim()) exportParams.set("q", query.trim());
+  const printListHref = exportParams.size
+    ? `/medico/listado?${exportParams}`
+    : "/medico/listado";
+
+  function handleExportCsv() {
+    const headers = [
+      t("colListName"),
+      t("colNationalId"),
+      t("colBirthDate"),
+      t("colTeams"),
+      t("colRole"),
+      t("colExpiry"),
+      t("colStatus"),
+    ];
+    // Fechas en ISO crudo, como el resto de CSV del proyecto: así ordenan e
+    // importan bien en la hoja de cálculo.
+    const rows = filteredCertRows.map((row) => [
+      `${row.lastName}, ${row.firstName}`,
+      row.nationalId ?? "",
+      row.birthDate ?? "",
+      row.teams.map((tm) => tm.name).join(" / "),
+      medicalPanelRowRoles(row)
+        .map((role) => tEquipos(`roleOption.${role}`))
+        .join(" / "),
+      row.medicalCertUntil ?? "",
+      t(`filterStatus.${row.status}`),
+    ]);
+    downloadCsv("reconocimientos-medicos.csv", headers, rows);
+  }
 
   const alertBadges: React.ReactNode[] = [];
   if (overview.expired > 0) {
@@ -174,7 +183,7 @@ export function MedicalPanelBrowser({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-3 py-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-3 py-2 print:hidden">
         <dl className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <Stat label={t("statTotal")} value={overview.total} />
         </dl>
@@ -188,7 +197,7 @@ export function MedicalPanelBrowser({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 print:hidden">
         <div className="relative">
           <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -235,6 +244,20 @@ export function MedicalPanelBrowser({
             <SelectItem value="exempt">{t("filterStatus.exempt")}</SelectItem>
           </SelectContent>
         </Select>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            render={<Link href={printListHref} />}
+            nativeButton={false}
+          >
+            <FileTextIcon data-icon="inline-start" />
+            {t("printListAction")}
+          </Button>
+          <Button variant="outline" onClick={handleExportCsv}>
+            <DownloadIcon data-icon="inline-start" />
+            {t("exportCsvAction")}
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3">

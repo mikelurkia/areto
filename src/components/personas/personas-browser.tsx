@@ -17,6 +17,7 @@ import {
   bulkSetMember,
 } from "@/app/[locale]/(app)/personas/actions";
 import { calculateAge, isMinor } from "@/lib/age";
+import { downloadCsv } from "@/lib/csv";
 import { whatsappLink } from "@/lib/contact-links";
 import { Link } from "@/i18n/navigation";
 import { DeletePersonDialog } from "@/components/personas/delete-person-dialog";
@@ -93,10 +94,6 @@ const EXPIRY_WINDOW_DAYS = 60;
 
 /** Equipos visibles por fila antes de resumir el resto en un «+N». */
 const MAX_TEAM_BADGES = 2;
-
-function csvEscape(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`;
-}
 
 function initials(firstName: string, lastName: string): string {
   return `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
@@ -219,16 +216,7 @@ export function PersonasBrowser({
       p.phone ?? "",
       p.isMember ? t("memberBadge") : "",
     ]);
-    const csv = [headers, ...rows]
-      .map((row) => row.map(csvEscape).join(","))
-      .join("\r\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "personas.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadCsv("personas.csv", headers, rows);
   }
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
