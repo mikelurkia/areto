@@ -52,6 +52,8 @@ type Federation = { id: string; name: string; url: string };
 
 type SidebarUser = {
   email: string;
+  /** Nombre del usuario; `null` mientras no lo haya rellenado. */
+  fullName: string | null;
   /** Nombre del rol tal y como está guardado (para los roles creados por el club). */
   roleName: string | null;
   /** Clave del rol: si es de sistema, la etiqueta se traduce; si no, se usa `roleName`. */
@@ -139,12 +141,29 @@ function federationInfo(url: string) {
   }
 }
 
+/**
+ * Iniciales para el avatar: del nombre (dos palabras como mucho) y, si no hay
+ * nombre, del correo.
+ */
+function initialsOf(fullName: string | null, email: string) {
+  const parts = fullName?.trim().split(/\s+/).filter(Boolean) ?? [];
+  if (parts.length === 0) return email.slice(0, 2).toUpperCase();
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
 /** Contenido y pie del sidebar: navegación según el rol, accesos federativos y chip de usuario. */
 export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) {
   const t = useTranslations("Sidebar");
   const tNav = useTranslations("Nav");
   const pathname = usePathname();
-  const initials = user.email.slice(0, 2).toUpperCase();
+  // El correo solo hace de recambio: se muestra el nombre siempre que el
+  // usuario lo tenga puesto.
+  const displayName = user.fullName?.trim() || user.email;
+  const initials = initialsOf(user.fullName, user.email);
 
   // Los roles de fábrica se traducen por su clave; los que crea el club se
   // muestran con el nombre que le hayan puesto. No se traducen, y es
@@ -300,7 +319,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.email}</span>
+                  <span className="truncate font-medium">{displayName}</span>
                   <span className="truncate text-xs text-muted-foreground">
                     {roleLabel}
                   </span>
@@ -315,7 +334,12 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                 <DropdownMenuGroup>
                   <DropdownMenuLabel className="font-normal">
                     <div className="grid text-sm">
-                      <span className="truncate font-medium">{user.email}</span>
+                      <span className="truncate font-medium">{displayName}</span>
+                      {user.fullName ? (
+                        <span className="truncate text-xs text-muted-foreground">
+                          {user.email}
+                        </span>
+                      ) : null}
                       <span className="truncate text-xs text-muted-foreground">
                         {roleLabel}
                       </span>

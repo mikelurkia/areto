@@ -1,7 +1,6 @@
-import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { Link } from "@/i18n/navigation";
+import { AuthBrand } from "@/components/auth/auth-brand";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { CourtLines } from "@/components/public/court-lines";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -38,16 +37,7 @@ export default async function AccesoRevocadoPage({
       <CourtLines />
       <ThemeToggle className="absolute top-6 right-6" />
       <div className="relative flex w-full max-w-sm flex-col gap-8">
-        <Link href="/" className="flex items-center gap-2 self-center">
-          <Image
-            src="/logo.png"
-            alt=""
-            width={32}
-            height={32}
-            className="size-8 object-contain"
-          />
-          <span className="font-heading text-lg font-semibold">Areto</span>
-        </Link>
+        <AuthBrand />
 
         <div className="flex flex-col gap-1 text-center">
           <h1 className="text-xl font-semibold">{t("accessRevokedTitle")}</h1>

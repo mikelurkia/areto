@@ -1451,8 +1451,6 @@
     "action": "Redactar aviso"
   },
   "Login": {
-    "title": "Accede a tu club",
-    "subtitle": "Entra para gestionar el club.",
     "email": "Email",
     "password": "Contraseña",
     "signIn": "Entrar",
@@ -1528,6 +1526,7 @@
     "deleteConfirmLabel": "Email de confirmación",
     "deleteConfirmButton": "Eliminar mi cuenta definitivamente",
     "deleteConfirmMismatch": "El email no coincide.",
+    "deleteLastAdminGuard": "Si eliminas tu cuenta no quedaría nadie que pueda gestionar usuarios. Da antes ese permiso a otra persona.",
     "deleteNotConfigured": "El borrado de cuenta no está disponible todavía.",
     "cancel": "Cancelar"
   },
