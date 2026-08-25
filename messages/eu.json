@@ -1528,6 +1528,7 @@
     "deleteConfirmLabel": "Berresteko emaila",
     "deleteConfirmButton": "Ezabatu nire kontua betiko",
     "deleteConfirmMismatch": "Emaila ez dator bat.",
+    "deleteLastAdminGuard": "Zure kontua ezabatuz gero, ez litzateke inor geratuko erabiltzaileak kudeatzeko. Eman lehenago baimen hori beste norbaiti.",
     "deleteNotConfigured": "Kontua ezabatzea oraindik ez dago erabilgarri.",
     "cancel": "Utzi"
   },
