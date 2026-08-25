@@ -845,6 +845,7 @@
     "seasonBadge": "Temporada {season}",
     "formHasErrors": "Revisa los campos marcados en rojo.",
     "submissionFailed": "No se ha podido enviar la inscripción por un problema de conexión. Vuelve a intentarlo en unos minutos.",
+    "submissionNotDelivered": "La inscripción no ha llegado a enviarse: se ha cortado la conexión o las fotos pesaban demasiado. Lo que habías rellenado sigue aquí; vuelve a adjuntar las tres fotos y envíalo otra vez.",
     "searchPlaceholder": "Buscar por nombre, DNI o email...",
     "filterStatusLabel": "Estado",
     "filterStatusAll": "Todos los estados",
