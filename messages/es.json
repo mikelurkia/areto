@@ -732,7 +732,10 @@
     "startAction": "Empezar",
     "playerFormSubtitle": "Rellena tus datos. Si eres menor de edad, añade a tu tutor/a legal.",
     "requiredFieldsLegend": "Los campos marcados con * son obligatorios.",
-    "photoSizeHint": "JPG, PNG o WebP · máx. 5 MB.",
+    "photoSizeHint": "JPG, PNG o WebP. Se reduce automáticamente antes de enviarla.",
+    "photoOptimizing": "Preparando la foto…",
+    "photoTooLarge": "Esta foto es demasiado grande para enviarla. Hazla con menos resolución o redúcela antes de adjuntarla.",
+    "photoTooLargeSummary": "Alguna de las fotos es demasiado grande. Sustitúyela para poder enviar la inscripción.",
     "memberFormSubtitle": "Rellena tus datos. La cuota anual de socio/a es de {amount}.",
     "playerSection": "Datos de la persona inscrita",
     "memberSection": "Datos del socio/a",
@@ -1507,6 +1510,14 @@
     "description": "Ha fallado la conexión con la base de datos o la consulta ha tardado demasiado. Puedes reintentar sin perder la sesión.",
     "retry": "Reintentar",
     "backToDashboard": "Ir al panel",
+    "detailsLabel": "Detalle técnico",
+    "referenceLabel": "Referencia"
+  },
+  "PublicErrorBoundary": {
+    "title": "No se ha podido completar la operación",
+    "description": "Ha habido un problema al enviar los datos. Vuelve a intentarlo; si sigue fallando, avisa al club y dile el código de referencia si aparece.",
+    "retry": "Volver a intentarlo",
+    "back": "Volver al inicio de inscripciones",
     "detailsLabel": "Detalle técnico",
     "referenceLabel": "Referencia"
   },
