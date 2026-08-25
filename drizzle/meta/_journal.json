@@ -442,6 +442,13 @@
       "when": 1787605208028,
       "tag": "0062_slimy_ares",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1787665362476,
+      "tag": "0063_powerful_squirrel_girl",
+      "breakpoints": true
     }
   ]
 }

@@ -15,6 +15,8 @@ export type GuardianData = {
   birthDate: string | null;
   nationalId: string | null;
   address: string | null;
+  city: string | null;
+  postalCode: string | null;
   phone: string | null;
   email: string | null;
   candidates: PersonCandidate[];
@@ -26,6 +28,8 @@ const GUARDIAN_DIFF_FIELDS = [
   "birthDate",
   "nationalId",
   "address",
+  "city",
+  "postalCode",
   "phone",
   "email",
 ] as const;
@@ -99,10 +103,24 @@ export function GuardianEditBlock({ guardians }: { guardians: GuardianData[] }) 
                 <Input name="guardianNationalId" defaultValue={existing?.nationalId ?? ""} />
               </Field>
             </div>
-            <Field>
-              <FieldLabel>{t("addressLabel")}</FieldLabel>
-              <Input name="guardianAddress" defaultValue={existing?.address ?? ""} />
-            </Field>
+            <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
+              <Field>
+                <FieldLabel>{t("addressLabel")}</FieldLabel>
+                <Input name="guardianAddress" defaultValue={existing?.address ?? ""} />
+              </Field>
+              <Field>
+                <FieldLabel>{t("postalCodeLabel")}</FieldLabel>
+                <Input
+                  name="guardianPostalCode"
+                  inputMode="numeric"
+                  defaultValue={existing?.postalCode ?? ""}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>{t("cityLabel")}</FieldLabel>
+                <Input name="guardianCity" defaultValue={existing?.city ?? ""} />
+              </Field>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel>{t("phoneLabel")}</FieldLabel>
@@ -150,6 +168,8 @@ export function GuardianMatchBlock({
               birthDate: g.birthDate,
               nationalId: g.nationalId,
               address: g.address,
+              city: g.city,
+              postalCode: g.postalCode,
               phone: g.phone,
               email: g.email,
               ...(isPayer ? { iban: registrationIban } : {}),

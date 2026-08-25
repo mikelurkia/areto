@@ -93,10 +93,20 @@ export function SocioForm() {
             />
           </Field>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
           <Field>
             <FieldLabel htmlFor="address">{t("addressLabel")}</FieldLabel>
             <Input id="address" name="address" required defaultValue={submitted?.address ?? ""} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="postalCode">{t("postalCodeLabel")}</FieldLabel>
+            <Input
+              id="postalCode"
+              name="postalCode"
+              inputMode="numeric"
+              required
+              defaultValue={submitted?.postalCode ?? ""}
+            />
           </Field>
           <Field>
             <FieldLabel htmlFor="city">{t("cityLabel")}</FieldLabel>
@@ -214,18 +224,45 @@ export function SocioForm() {
                     />
                   </Field>
                 </div>
-                <Field>
-                  <FieldLabel htmlFor={`guardian-${key}-address`}>
-                    {t("addressLabel")}
-                    <Req />
-                  </FieldLabel>
-                  <Input
-                    id={`guardian-${key}-address`}
-                    name="guardianAddress"
-                    required={showGuardians}
-                    defaultValue={existing?.address ?? ""}
-                  />
-                </Field>
+                <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
+                  <Field>
+                    <FieldLabel htmlFor={`guardian-${key}-address`}>
+                      {t("addressLabel")}
+                      <Req />
+                    </FieldLabel>
+                    <Input
+                      id={`guardian-${key}-address`}
+                      name="guardianAddress"
+                      required={showGuardians}
+                      defaultValue={existing?.address ?? ""}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`guardian-${key}-postalCode`}>
+                      {t("postalCodeLabel")}
+                      <Req />
+                    </FieldLabel>
+                    <Input
+                      id={`guardian-${key}-postalCode`}
+                      name="guardianPostalCode"
+                      inputMode="numeric"
+                      required={showGuardians}
+                      defaultValue={existing?.postalCode ?? ""}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`guardian-${key}-city`}>
+                      {t("cityLabel")}
+                      <Req />
+                    </FieldLabel>
+                    <Input
+                      id={`guardian-${key}-city`}
+                      name="guardianCity"
+                      required={showGuardians}
+                      defaultValue={existing?.city ?? ""}
+                    />
+                  </Field>
+                </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field>
                     <FieldLabel htmlFor={`guardian-${key}-phone`}>

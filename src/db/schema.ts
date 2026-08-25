@@ -255,6 +255,7 @@ export const persons = pgTable(
     nationalId: text("national_id"), // DNI/NIE
     address: text("address"),
     city: text("city"),
+    postalCode: text("postal_code"),
     photoFilename: text("photo_filename"), // nombre de archivo original (referencia, sin subir)
     photoPath: text("photo_path"), // ruta del objeto en Supabase Storage (bucket person-photos)
     idFrontPath: text("id_front_path"), // DNI/NIE frontal (bucket person-documents)
@@ -895,6 +896,7 @@ export const registrations = pgTable("registrations", {
   nationalId: text("national_id"),
   address: text("address"),
   city: text("city"),
+  postalCode: text("postal_code"),
   phone: text("phone"),
   email: text("email"),
   iban: text("iban"),
@@ -947,6 +949,7 @@ export const registrationGuardians = pgTable(
     nationalId: text("national_id"),
     address: text("address"),
     city: text("city"),
+    postalCode: text("postal_code"),
     phone: text("phone"),
     email: text("email"),
     matchedPersonId: uuid("matched_person_id").references(() => persons.id, {

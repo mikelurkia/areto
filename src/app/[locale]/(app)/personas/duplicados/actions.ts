@@ -77,6 +77,7 @@ export async function mergePersons(
         nationalId: primary.nationalId ?? duplicate.nationalId,
         address: primary.address ?? duplicate.address,
         city: primary.city ?? duplicate.city,
+        postalCode: primary.postalCode ?? duplicate.postalCode,
         iban: primary.iban ?? duplicate.iban,
         medicalCertUntil: primary.medicalCertUntil ?? duplicate.medicalCertUntil,
         shirtSize: primary.shirtSize ?? duplicate.shirtSize,

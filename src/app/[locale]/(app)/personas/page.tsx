@@ -85,6 +85,7 @@ export default async function PersonasPage({
     memberNumber: p.clubMember?.memberNumber ?? null,
     address: p.address,
     city: p.city,
+    postalCode: p.postalCode,
     iban: p.iban,
     medicalCertUntil: p.medicalCertUntil,
     shirtSize: p.shirtSize,

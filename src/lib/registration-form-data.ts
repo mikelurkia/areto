@@ -22,6 +22,8 @@ export type SubmittedGuardian = {
   birthDate: string;
   nationalId: string;
   address: string;
+  city: string;
+  postalCode: string;
   phone: string;
   email: string;
 };
@@ -41,6 +43,7 @@ export type SubmittedFields = {
   nationalId: string;
   address: string;
   city: string;
+  postalCode: string;
   phone: string;
   email: string;
   iban: string;
@@ -96,6 +99,7 @@ export function readCommonFields(formData: FormData) {
     nationalId: text(formData, "nationalId"),
     address: text(formData, "address"),
     city: text(formData, "city"),
+    postalCode: text(formData, "postalCode"),
     phone: text(formData, "phone"),
     email: text(formData, "email"),
     iban: text(formData, "iban"),

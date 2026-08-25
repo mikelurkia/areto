@@ -43,6 +43,7 @@ const PERSON_DIFF_FIELDS = [
   "nationalId",
   "address",
   "city",
+  "postalCode",
   "phone",
   "email",
   "iban",
@@ -63,6 +64,7 @@ export type RegistrationDetail = {
   nationalId: string | null;
   address: string | null;
   city: string | null;
+  postalCode: string | null;
   phone: string | null;
   email: string | null;
   iban: string | null;
@@ -144,10 +146,19 @@ export function ReviewForm({
               <Input id="nationalId" name="nationalId" defaultValue={registration.nationalId ?? ""} />
             </Field>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
             <Field>
               <FieldLabel htmlFor="address">{t("addressLabel")}</FieldLabel>
               <Input id="address" name="address" defaultValue={registration.address ?? ""} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="postalCode">{t("postalCodeLabel")}</FieldLabel>
+              <Input
+                id="postalCode"
+                name="postalCode"
+                inputMode="numeric"
+                defaultValue={registration.postalCode ?? ""}
+              />
             </Field>
             <Field>
               <FieldLabel htmlFor="city">{t("cityLabel")}</FieldLabel>
@@ -289,6 +300,7 @@ export function ReviewForm({
               nationalId: registration.nationalId,
               address: registration.address,
               city: registration.city,
+              postalCode: registration.postalCode,
               phone: registration.phone,
               email: registration.email,
               iban: hasGuardians ? null : registration.iban,

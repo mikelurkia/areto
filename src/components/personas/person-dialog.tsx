@@ -47,6 +47,7 @@ const PERSON_MATCH_DIFF_FIELDS = [
   "nationalId",
   "address",
   "city",
+  "postalCode",
   "phone",
   "email",
   "iban",
@@ -67,6 +68,7 @@ type Person = {
   memberNumber: number | null;
   address: string | null;
   city: string | null;
+  postalCode: string | null;
   iban: string | null;
   guardians: { id: string; firstName: string; lastName: string }[];
   shirtSize: string | null;
@@ -238,16 +240,28 @@ export function PersonDialog(props: PersonDialogProps) {
                   />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <Field>
+                <FieldLabel htmlFor="person-address">
+                  {t("addressLabel")}
+                </FieldLabel>
+                <Input
+                  id="person-address"
+                  name="address"
+                  defaultValue={person?.address ?? ""}
+                  placeholder={t("addressPlaceholder")}
+                />
+              </Field>
+              <div className="grid grid-cols-[1fr_2fr] gap-3">
                 <Field>
-                  <FieldLabel htmlFor="person-address">
-                    {t("addressLabel")}
+                  <FieldLabel htmlFor="person-postal-code">
+                    {t("postalCodeLabel")}
                   </FieldLabel>
                   <Input
-                    id="person-address"
-                    name="address"
-                    defaultValue={person?.address ?? ""}
-                    placeholder={t("addressPlaceholder")}
+                    id="person-postal-code"
+                    name="postalCode"
+                    inputMode="numeric"
+                    defaultValue={person?.postalCode ?? ""}
+                    placeholder={t("postalCodePlaceholder")}
                   />
                 </Field>
                 <Field>

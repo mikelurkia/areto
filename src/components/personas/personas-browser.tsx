@@ -66,6 +66,7 @@ type PersonRow = {
   memberNumber: number | null;
   address: string | null;
   city: string | null;
+  postalCode: string | null;
   iban: string | null;
   medicalCertUntil: string | null;
   shirtSize: string | null;

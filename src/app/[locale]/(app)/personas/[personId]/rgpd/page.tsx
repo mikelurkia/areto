@@ -166,6 +166,7 @@ export default async function PersonRgpdPage({
           <Row label={t("emailLabel")} value={person.email} />
           <Row label={t("phoneLabel")} value={person.phone} />
           <Row label={t("addressLabel")} value={person.address} />
+          <Row label={t("postalCodeLabel")} value={person.postalCode} />
           <Row label={t("cityLabel")} value={person.city} />
           <Row
             label={t("ibanLabel")}
