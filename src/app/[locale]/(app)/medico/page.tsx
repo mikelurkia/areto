@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { requirePermission } from "@/lib/auth";
+import type { MedicalPanelRow } from "@/lib/medical-panel-rows";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
 import { MedicalPanelBrowser } from "@/components/medico/medical-panel-browser";
@@ -35,7 +36,16 @@ export default async function MedicoPage({
 
   const [allPersons, allTeams] = await Promise.all([
     db.query.persons.findMany({
-      columns: { id: true, firstName: true, lastName: true, medicalCertUntil: true },
+      // `birthDate`/`nationalId` no se pintan en la tabla: los piden las
+      // exportaciones (listado imprimible y CSV), que salen de estas filas.
+      columns: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        birthDate: true,
+        nationalId: true,
+        medicalCertUntil: true,
+      },
       with: {
         memberships: {
           columns: { role: true },
@@ -69,10 +79,12 @@ export default async function MedicoPage({
     p.memberships.some((m) => m.team.season.isCurrent),
   );
 
-  const certRows = inScopePersons.map((p) => ({
+  const certRows: MedicalPanelRow[] = inScopePersons.map((p) => ({
     id: p.id,
     firstName: p.firstName,
     lastName: p.lastName,
+    birthDate: p.birthDate,
+    nationalId: p.nationalId,
     medicalCertUntil: p.medicalCertUntil,
     teams: p.memberships
       .filter((m) => m.team.season.isCurrent)
