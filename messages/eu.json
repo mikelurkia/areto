@@ -732,7 +732,10 @@
     "startAction": "Hasi",
     "playerFormSubtitle": "Bete zure datuak. Adin txikikoa bazara, gehitu zure legezko tutorea.",
     "requiredFieldsLegend": "* markatutako eremuak derrigorrezkoak dira.",
-    "photoSizeHint": "JPG, PNG edo WebP · gehienez 5 MB.",
+    "photoSizeHint": "JPG, PNG edo WebP. Bidali aurretik automatikoki txikitzen da.",
+    "photoOptimizing": "Argazkia prestatzen…",
+    "photoTooLarge": "Argazki hau handiegia da bidaltzeko. Atera ezazu bereizmen txikiagoan edo txikitu erantsi aurretik.",
+    "photoTooLargeSummary": "Argazkiren bat handiegia da. Ordezkatu ezazu izen-ematea bidali ahal izateko.",
     "memberFormSubtitle": "Bete zure datuak. Urteko bazkide-kuota {amount} da.",
     "playerSection": "Izena eman duen pertsonaren datuak",
     "memberSection": "Bazkidearen datuak",
@@ -1507,6 +1510,14 @@
     "description": "Datu-basearekiko konexioak huts egin du edo kontsultak luzeegi jo du. Berriro saia zaitezke saioa galdu gabe.",
     "retry": "Saiatu berriro",
     "backToDashboard": "Joan panelera",
+    "detailsLabel": "Xehetasun teknikoa",
+    "referenceLabel": "Erreferentzia"
+  },
+  "PublicErrorBoundary": {
+    "title": "Ezin izan da eragiketa osatu",
+    "description": "Arazo bat egon da datuak bidaltzean. Saiatu berriro; huts egiten jarraitzen badu, abisatu klubari eta esan erreferentzia-kodea, agertzen bada.",
+    "retry": "Saiatu berriro",
+    "back": "Itzuli izen-emateen hasierara",
     "detailsLabel": "Xehetasun teknikoa",
     "referenceLabel": "Erreferentzia"
   },

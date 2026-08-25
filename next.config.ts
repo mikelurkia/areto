@@ -29,8 +29,15 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    // El formulario de inscripción envía hasta 3 ficheros (foto + DNI ambas
-    // caras) de hasta 5MB cada uno (ver MAX_PHOTO_BYTES en inscripcion/actions.ts).
+    // OJO: esto solo levanta el límite de Next. El de la plataforma manda y
+    // es MUY inferior: una función de Vercel rechaza con 413
+    // (FUNCTION_PAYLOAD_TOO_LARGE) cualquier petición de más de 4,5MB de
+    // cuerpo, y lo hace antes de ejecutar una sola línea, así que la Server
+    // Action no puede ni capturarlo ni devolver un error decente.
+    // https://vercel.com/docs/functions/limitations#request-body-size
+    // Por eso el formulario de inscripción reduce las 3 fotos en el navegador
+    // antes de enviarlas (src/lib/image-downscale.ts): sin eso, cualquier
+    // móvil moderno se pasa del límite y la inscripción no llega nunca.
     serverActions: {
       bodySizeLimit: "20mb",
     },

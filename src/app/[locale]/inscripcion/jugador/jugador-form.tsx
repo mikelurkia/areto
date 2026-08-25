@@ -1,13 +1,18 @@
 "use client";
 
-import { useActionState, useEffect, useState, type ReactNode } from "react";
-import { CheckCircle2Icon, PlusIcon, TrashIcon } from "lucide-react";
+import { useActionState, useCallback, useEffect, useState, type ReactNode } from "react";
+import { CheckCircle2Icon, Loader2Icon, PlusIcon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { submitTeamRegistration } from "@/app/[locale]/inscripcion/actions";
 import { useIbanField } from "@/hooks/use-iban-field";
 import { useRequiredCheckboxError } from "@/hooks/use-required-checkbox-error";
 import { isMinor } from "@/lib/age";
+import {
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_TOTAL_BYTES,
+  downscaleImage,
+} from "@/lib/image-downscale";
 import { Link } from "@/i18n/navigation";
 import { Req } from "@/components/inscripciones/required-asterisk";
 import { SubmitButton } from "@/components/submit-button";
@@ -28,22 +33,36 @@ let nextGuardianKey = 1;
 const CLOTHING_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 const SHOE_SIZES = Array.from({ length: 50 - 28 + 1 }, (_, i) => String(28 + i));
 
-/** Campo de foto con miniatura tras seleccionar (revocada al cambiar/desmontar,
- * para no acumular URLs de objeto) y el límite de tamaño siempre visible. */
+/**
+ * Campo de foto con miniatura tras seleccionar (revocada al cambiar/desmontar,
+ * para no acumular URLs de objeto).
+ *
+ * Al elegir un fichero lo reduce en el navegador y REEMPLAZA el del `<input>`,
+ * de forma que el `<form action>` envíe la versión ligera sin que el resto del
+ * formulario tenga que enterarse. Se hace aquí, al elegir, y no al enviar,
+ * para que la espera caiga mientras la persona sigue rellenando campos y no
+ * al final, y para poder avisar en el momento si algo no cuadra
+ * (ver `MAX_UPLOAD_BYTES` en `@/lib/image-downscale`).
+ */
 function PhotoField({
   id,
   name,
   label,
   hint,
   error,
+  onStateChange,
 }: {
   id: string;
   name: string;
   label: ReactNode;
   hint: string;
   error?: string;
+  onStateChange: (state: PhotoFieldState) => void;
 }) {
+  const t = useTranslations("Inscripciones");
   const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [size, setSize] = useState(0);
 
   useEffect(() => {
     return () => {
@@ -51,8 +70,45 @@ function PhotoField({
     };
   }, [preview]);
 
+  useEffect(() => {
+    onStateChange({ busy, size });
+  }, [busy, size, onStateChange]);
+
+  async function handleChange(input: HTMLInputElement) {
+    const file = input.files?.[0] ?? null;
+    setPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return file ? URL.createObjectURL(file) : null;
+    });
+    if (!file) {
+      setSize(0);
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const reduced = await downscaleImage(file);
+      if (reduced !== file) {
+        // Sustituir `input.files` es la única forma de que el `<form action>`
+        // envíe el fichero reducido sin tocar el camino de envío (y con él
+        // `useActionState`/`useFormStatus`, que siguen funcionando igual).
+        const transfer = new DataTransfer();
+        transfer.items.add(reduced);
+        input.files = transfer.files;
+      }
+    } catch {
+      // La reducción no ha podido con ella (navegador sin canvas, imagen que
+      // no decodifica): el tamaño que quede es el que se mira abajo.
+    } finally {
+      setSize(input.files?.[0]?.size ?? 0);
+      setBusy(false);
+    }
+  }
+
+  const message = error ?? (size > MAX_UPLOAD_BYTES ? t("photoTooLarge") : undefined);
+
   return (
-    <Field data-invalid={error ? true : undefined}>
+    <Field data-invalid={message ? true : undefined}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <div className="flex items-center gap-3">
         {preview ? (
@@ -65,21 +121,60 @@ function PhotoField({
           type="file"
           accept="image/png,image/jpeg,image/webp"
           required
-          aria-invalid={error ? true : undefined}
+          aria-invalid={message ? true : undefined}
           className="flex-1"
-          onChange={(e) => {
-            const file = e.target.files?.[0] ?? null;
-            setPreview((prev) => {
-              if (prev) URL.revokeObjectURL(prev);
-              return file ? URL.createObjectURL(file) : null;
-            });
-          }}
+          onChange={(e) => void handleChange(e.currentTarget)}
         />
       </div>
-      <p className="text-xs text-muted-foreground">{hint}</p>
-      {error ? <FieldError>{error}</FieldError> : null}
+      {busy ? (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Loader2Icon className="size-3 animate-spin" />
+          {t("photoOptimizing")}
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      )}
+      {message ? <FieldError>{message}</FieldError> : null}
     </Field>
   );
+}
+
+type PhotoFieldState = { busy: boolean; size: number };
+
+/**
+ * Reúne el estado de los tres campos de foto para poder desactivar el envío
+ * mientras alguna se está reduciendo (si no, el `<input>` aún tendría el
+ * fichero original) o si alguna no cabe.
+ */
+function usePhotoFieldsState() {
+  const [states, setStates] = useState<Record<string, PhotoFieldState>>({});
+
+  // Una función estable por campo: `PhotoField` la tiene como dependencia de
+  // un efecto, así que recrearla en cada render lo dispararía en bucle.
+  const handlerFor = useCallback(
+    (key: string) => (state: PhotoFieldState) =>
+      setStates((prev) =>
+        prev[key]?.busy === state.busy && prev[key]?.size === state.size
+          ? prev
+          : { ...prev, [key]: state },
+      ),
+    [],
+  );
+  const handlers = useState(() => ({
+    photo: handlerFor("photo"),
+    idFront: handlerFor("idFront"),
+    idBack: handlerFor("idBack"),
+  }))[0];
+
+  const values = Object.values(states);
+  const total = values.reduce((sum, s) => sum + s.size, 0);
+  return {
+    on: handlers,
+    busy: values.some((s) => s.busy),
+    // Lo que corta la plataforma es la petición entera, no cada fichero: tres
+    // fotos que pasan el techo individual pueden pasarse igualmente juntas.
+    tooLarge: values.some((s) => s.size > MAX_UPLOAD_BYTES) || total > MAX_UPLOAD_TOTAL_BYTES,
+  };
 }
 
 export function JugadorForm() {
@@ -94,6 +189,7 @@ export function JugadorForm() {
   const sepaConsent = useRequiredCheckboxError();
   const termsConsent = useRequiredCheckboxError();
   const privacyConsent = useRequiredCheckboxError();
+  const photos = usePhotoFieldsState();
   const fieldErrors = state.fieldErrors ?? {};
   const submitted = state.submitted;
   // Controlado (a diferencia del resto de campos de texto de este
@@ -589,6 +685,7 @@ export function JugadorForm() {
           }
           hint={t("photoSizeHint")}
           error={fieldErrors.photo}
+          onStateChange={photos.on.photo}
         />
         <div className="grid gap-3 sm:grid-cols-2">
           <PhotoField
@@ -602,6 +699,7 @@ export function JugadorForm() {
             }
             hint={t("photoSizeHint")}
             error={fieldErrors.idFront}
+            onStateChange={photos.on.idFront}
           />
           <PhotoField
             id="idBack"
@@ -614,6 +712,7 @@ export function JugadorForm() {
             }
             hint={t("photoSizeHint")}
             error={fieldErrors.idBack}
+            onStateChange={photos.on.idBack}
           />
         </div>
         <Field orientation="horizontal">
@@ -710,7 +809,14 @@ export function JugadorForm() {
           {state.error}
         </p>
       ) : null}
-      <SubmitButton size="lg">{t("submitAction")}</SubmitButton>
+      {photos.tooLarge ? (
+        <p className="text-sm text-destructive">{t("photoTooLargeSummary")}</p>
+      ) : null}
+      {/* Mientras se reduce una foto el `<input>` todavía tiene el original:
+          enviar ahora subiría los megas que estamos intentando evitar. */}
+      <SubmitButton size="lg" disabled={photos.busy || photos.tooLarge}>
+        {t("submitAction")}
+      </SubmitButton>
     </form>
   );
 }
