@@ -61,10 +61,12 @@ export function SponsorsBrowser({
   sponsors,
   personOptions,
   locale,
+  canManage,
 }: {
   sponsors: SponsorRow[];
   personOptions: PersonOption[];
   locale: string;
+  canManage: boolean;
 }) {
   const t = useTranslations("Patrocinadores");
   const [query, setQuery] = useState("");
@@ -210,9 +212,11 @@ export function SponsorsBrowser({
               <TableHead>{t("colAmount")}</TableHead>
               <TableHead>{t("colDates")}</TableHead>
               <TableHead>{t("colStatus")}</TableHead>
-              <TableHead className="text-right print:hidden">
-                {t("colActions")}
-              </TableHead>
+              {canManage ? (
+                <TableHead className="text-right print:hidden">
+                  {t("colActions")}
+                </TableHead>
+              ) : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -297,15 +301,17 @@ export function SponsorsBrowser({
                       <Badge variant="outline">{t("noTermBadge")}</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="flex justify-end gap-1 print:hidden">
-                    <SponsorDialog
-                      mode="edit"
-                      sponsor={s}
-                      logoUrl={s.logoUrl}
-                      personOptions={personOptions}
-                    />
-                    <DeleteSponsorDialog id={s.id} name={s.name} />
-                  </TableCell>
+                  {canManage ? (
+                    <TableCell className="flex justify-end gap-1 print:hidden">
+                      <SponsorDialog
+                        mode="edit"
+                        sponsor={s}
+                        logoUrl={s.logoUrl}
+                        personOptions={personOptions}
+                      />
+                      <DeleteSponsorDialog id={s.id} name={s.name} />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               );
             })}

@@ -22,6 +22,7 @@ type Props = {
   /** Ruta del propio detalle (`/inscripciones/{id}` o `/socios/{id}`), para el
    * `from`/`fromLabel` del enlace a la persona resultante. */
   backHref: string;
+  canManage: boolean;
 };
 
 /**
@@ -43,6 +44,7 @@ export async function ReviewedRegistrationPanel({
   locale,
   matchedPerson,
   backHref,
+  canManage,
 }: Props) {
   const t = await getTranslations("Inscripciones");
   const messageKey =
@@ -104,7 +106,7 @@ export async function ReviewedRegistrationPanel({
           </Button>
         ) : null}
       </div>
-      {status === "rejected" ? (
+      {status === "rejected" && canManage ? (
         <div className="pt-2">
           <ReopenRegistrationButton registrationId={registrationId} />
         </div>

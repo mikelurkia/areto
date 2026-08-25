@@ -24,7 +24,7 @@ import {
   deletePersonNote,
   updatePersonDocument,
 } from "@/app/[locale]/(app)/personas/actions";
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { resolveBackHref } from "@/lib/back-href";
 import { calculateAge, isMinor } from "@/lib/age";
 import { getBankName } from "@/lib/bank";
@@ -247,14 +247,17 @@ export default async function PersonDetailPage({
   const { locale, personId } = await params;
   const { from, fromLabel, tab } = await searchParams;
   const backHref = resolveBackHref(from, "/personas");
-  const initialTab = PERSON_TABS.find((value) => value === tab) ?? "general";
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requirePermission("personas.view");
+  const user = await requirePermission("personas.view");
+  const canManage = hasPermission(user, "personas.manage");
+  const canViewMedical = hasPermission(user, "personas.medical.view");
+  const canManageMedical = hasPermission(user, "personas.medical.manage");
+  const requestedTab = PERSON_TABS.find((value) => value === tab) ?? "general";
+  const initialTab = requestedTab === "medico" && !canViewMedical ? "general" : requestedTab;
   const t = await getTranslations("Personas");
   const tEquipos = await getTranslations("Equipos");
   const tInscripciones = await getTranslations("Inscripciones");
-  const canManage = true;
 
   // `getPerson` va aparte del resto: es, con diferencia, la consulta más
   // pesada de toda la app (una docena de relaciones, varias anidadas dos
@@ -427,6 +430,7 @@ export default async function PersonDetailPage({
                 personId={person.id}
                 tags={person.tags}
                 existingTags={existingTags}
+                canManage={canManage}
               />
             </div>
           </div>
@@ -497,11 +501,13 @@ export default async function PersonDetailPage({
           <TabsTrigger value="titulaciones">
             {t("tabQualifications", { count: person.qualifications.length })}
           </TabsTrigger>
-          <TabsTrigger value="medico">
-            {t("tabMedical", {
-              count: person.medicalCheckups.length + person.injuryReports.length,
-            })}
-          </TabsTrigger>
+          {canViewMedical ? (
+            <TabsTrigger value="medico">
+              {t("tabMedical", {
+                count: person.medicalCheckups.length + person.injuryReports.length,
+              })}
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="documentos">
             {t("tabDocuments", { count: person.documents.length })}
           </TabsTrigger>
@@ -590,7 +596,7 @@ export default async function PersonDetailPage({
                   label={t("memberNumberLabel")}
                   value={
                     memberNumber ??
-                    (isMember ? (
+                    (isMember && canManage ? (
                       <span className="print:hidden">
                         <AssignMemberNumberButton personId={person.id} />
                       </span>
@@ -892,13 +898,14 @@ export default async function PersonDetailPage({
           )}
         </TabsContent>
 
-        <TabsContent value="medico" keepMounted className="flex flex-col gap-6">
+        {canViewMedical ? (
+          <TabsContent value="medico" keepMounted className="flex flex-col gap-6">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 {t("medicalCheckupsSection")}
               </h2>
-              {canManage ? (
+              {canManageMedical ? (
                 <span className="print:hidden">
                   <MedicalCheckupDialog mode="create" personId={person.id} />
                 </span>
@@ -926,7 +933,7 @@ export default async function PersonDetailPage({
                 })()}
                 <EntityFileTable
                   items={person.medicalCheckups}
-                  canManage={canManage}
+                  canManage={canManageMedical}
                   actionsLabel={t("colActions")}
                   viewFileLabel={t("medicalCheckupViewFile")}
                   fileUrl={(m) => medicalCheckupFileUrls.get(m.id) ?? null}
@@ -978,7 +985,7 @@ export default async function PersonDetailPage({
               <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 {t("injuryReportsSection")}
               </h2>
-              {canManage ? (
+              {canManageMedical ? (
                 <span className="print:hidden">
                   <Button
                     render={<Link href={`/personas/${person.id}/parte-lesion/nuevo`} />}
@@ -997,7 +1004,7 @@ export default async function PersonDetailPage({
             ) : (
               <EntityFileTable
                 items={person.injuryReports}
-                canManage={canManage}
+                canManage={canManageMedical}
                 actionsLabel={t("colActions")}
                 viewFileLabel={t("injuryReportViewFile")}
                 fileUrl={(r) => injuryReportFileUrls.get(r.id) ?? null}
@@ -1010,7 +1017,7 @@ export default async function PersonDetailPage({
                 ]}
                 renderActions={(r) => (
                   <>
-                    {canManage ? (
+                    {canManageMedical ? (
                       <Button
                         variant="ghost"
                         size="icon-sm"
@@ -1029,7 +1036,8 @@ export default async function PersonDetailPage({
               />
             )}
           </div>
-        </TabsContent>
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="documentos" keepMounted className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
@@ -1152,6 +1160,7 @@ export default async function PersonDetailPage({
             namespace="Personas"
             addAction={addPersonNote}
             deleteAction={deletePersonNote}
+            canManage={canManage}
             notes={person.noteEntries.map((n) => ({
               id: n.id,
               body: n.body,

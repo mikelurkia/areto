@@ -57,6 +57,7 @@ export function NotesLog({
   addAction,
   deleteAction,
   namespace,
+  canManage,
 }: {
   parentId: string;
   formKey: string;
@@ -64,6 +65,7 @@ export function NotesLog({
   addAction: NoteAction;
   deleteAction: NoteAction;
   namespace: "Personas" | "Equipos" | "Patrocinadores";
+  canManage: boolean;
 }) {
   const t = useTranslations(namespace);
   const formRef = useRef<HTMLFormElement>(null);
@@ -76,24 +78,26 @@ export function NotesLog({
 
   return (
     <div className="flex flex-col gap-4">
-      <form
-        ref={formRef}
-        action={formAction}
-        className="flex flex-col gap-2 print:hidden"
-      >
-        <input type="hidden" name={formKey} value={parentId} />
-        <Textarea
-          name="body"
-          placeholder={t("noteBodyPlaceholder")}
-          required
-        />
-        {state.error ? (
-          <p className="text-sm text-destructive">{state.error}</p>
-        ) : null}
-        <SubmitButton size="sm" className="self-end">
-          {t("addNoteAction")}
-        </SubmitButton>
-      </form>
+      {canManage ? (
+        <form
+          ref={formRef}
+          action={formAction}
+          className="flex flex-col gap-2 print:hidden"
+        >
+          <input type="hidden" name={formKey} value={parentId} />
+          <Textarea
+            name="body"
+            placeholder={t("noteBodyPlaceholder")}
+            required
+          />
+          {state.error ? (
+            <p className="text-sm text-destructive">{state.error}</p>
+          ) : null}
+          <SubmitButton size="sm" className="self-end">
+            {t("addNoteAction")}
+          </SubmitButton>
+        </form>
+      ) : null}
 
       {notes.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("noNotesDescription")}</p>
@@ -108,11 +112,13 @@ export function NotesLog({
                   {note.createdAt}
                 </p>
               </div>
-              <DeleteNoteButton
-                id={note.id}
-                deleteAction={deleteAction}
-                namespace={namespace}
-              />
+              {canManage ? (
+                <DeleteNoteButton
+                  id={note.id}
+                  deleteAction={deleteAction}
+                  namespace={namespace}
+                />
+              ) : null}
             </div>
           ))}
         </div>

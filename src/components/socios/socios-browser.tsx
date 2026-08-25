@@ -50,7 +50,13 @@ function AssignMemberNumberButton({ personId }: { personId: string }) {
   );
 }
 
-export function SociosBrowser({ socios }: { socios: SocioRow[] }) {
+export function SociosBrowser({
+  socios,
+  canManage,
+}: {
+  socios: SocioRow[];
+  canManage: boolean;
+}) {
   const t = useTranslations("Socios");
   const [query, setQuery] = useState("");
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
@@ -101,7 +107,9 @@ export function SociosBrowser({ socios }: { socios: SocioRow[] }) {
               <TableHead>{t("colMemberNumber")}</TableHead>
               <TableHead>{t("colContact")}</TableHead>
               <TableHead>{t("colJoinedAt")}</TableHead>
-              <TableHead className="text-right">{t("colActions")}</TableHead>
+              {canManage ? (
+                <TableHead className="text-right">{t("colActions")}</TableHead>
+              ) : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -122,20 +130,22 @@ export function SociosBrowser({ socios }: { socios: SocioRow[] }) {
                   {s.email || s.phone || "—"}
                 </TableCell>
                 <TableCell className="text-muted-foreground">{s.joinedAt}</TableCell>
-                <TableCell className="flex justify-end gap-2">
-                  {s.memberNumber === null ? (
-                    <AssignMemberNumberButton personId={s.id} />
-                  ) : null}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive"
-                    disabled={isPending && pendingCancelId === s.id}
-                    onClick={() => handleCancel(s.id)}
-                  >
-                    {t("cancelMembershipAction")}
-                  </Button>
-                </TableCell>
+                {canManage ? (
+                  <TableCell className="flex justify-end gap-2">
+                    {s.memberNumber === null ? (
+                      <AssignMemberNumberButton personId={s.id} />
+                    ) : null}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive"
+                      disabled={isPending && pendingCancelId === s.id}
+                      onClick={() => handleCancel(s.id)}
+                    >
+                      {t("cancelMembershipAction")}
+                    </Button>
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))}
           </TableBody>

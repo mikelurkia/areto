@@ -451,6 +451,7 @@ export default async function TeamDetailPage({
             namespace="Equipos"
             addAction={addTeamNote}
             deleteAction={deleteTeamNote}
+            canManage={canManage}
             notes={team.noteEntries.map((n) => ({
               id: n.id,
               body: n.body,
