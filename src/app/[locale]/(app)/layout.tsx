@@ -35,6 +35,7 @@ async function AppSidebarBodyWithSession() {
     <AppSidebarBody
       user={{
         email: user.email,
+        fullName: user.fullName,
         roleName: user.assignedRole?.name ?? null,
         roleKey: user.assignedRole?.key ?? null,
         permissions: [...user.permissions],
