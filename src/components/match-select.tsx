@@ -26,6 +26,7 @@ export type PersonCandidate = {
   nationalId?: string | null;
   address?: string | null;
   city?: string | null;
+  postalCode?: string | null;
   phone?: string | null;
   email?: string | null;
   iban?: string | null;
@@ -44,6 +45,7 @@ const FIELD_LABEL_KEYS: Record<string, string> = {
   nationalId: "nationalIdLabel",
   address: "addressLabel",
   city: "cityLabel",
+  postalCode: "postalCodeLabel",
   phone: "phoneLabel",
   email: "emailLabel",
   iban: "ibanLabel",

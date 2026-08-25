@@ -12,6 +12,8 @@ export function readGuardians(formData: FormData) {
   const birthDates = formData.getAll("guardianBirthDate").map(String);
   const nationalIds = formData.getAll("guardianNationalId").map(String);
   const addresses = formData.getAll("guardianAddress").map(String);
+  const cities = formData.getAll("guardianCity").map(String);
+  const postalCodes = formData.getAll("guardianPostalCode").map(String);
   const phones = formData.getAll("guardianPhone").map(String);
   const emails = formData.getAll("guardianEmail").map(String);
 
@@ -22,6 +24,8 @@ export function readGuardians(formData: FormData) {
       birthDate: (birthDates[i] ?? "").trim(),
       nationalId: (nationalIds[i] ?? "").trim(),
       address: (addresses[i] ?? "").trim(),
+      city: (cities[i] ?? "").trim(),
+      postalCode: (postalCodes[i] ?? "").trim(),
       phone: (phones[i] ?? "").trim(),
       email: (emails[i] ?? "").trim(),
     }))

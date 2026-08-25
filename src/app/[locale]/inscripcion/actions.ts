@@ -10,6 +10,7 @@ import { isMinor } from "@/lib/age";
 import { stampConsent } from "@/lib/consent";
 import { isValidIban } from "@/lib/iban";
 import { isValidNationalId } from "@/lib/national-id";
+import { isValidPostalCode } from "@/lib/postal-code";
 import {
   readCommonFields,
   readPlayerFields,
@@ -110,6 +111,10 @@ export async function submitTeamRegistration(
   }
   if (!submitted.address) errors.address = t("addressRequired");
   if (!submitted.city) errors.city = t("cityRequired");
+  if (!submitted.postalCode) errors.postalCode = t("postalCodeRequired");
+  else if (!isValidPostalCode(submitted.postalCode)) {
+    errors.postalCode = t("postalCodeInvalid");
+  }
   if (!submitted.phone) errors.phone = t("phoneRequired");
   if (!submitted.email) errors.email = t("emailRequired");
   if (!shirtSize) errors.shirtSize = t("shirtSizeRequired");
@@ -142,6 +147,10 @@ export async function submitTeamRegistration(
     const guardianPhones = formData.getAll("guardianPhone").map((v) => String(v).trim());
     const guardianEmails = formData.getAll("guardianEmail").map((v) => String(v).trim());
     const guardianAddresses = formData.getAll("guardianAddress").map((v) => String(v).trim());
+    const guardianCities = formData.getAll("guardianCity").map((v) => String(v).trim());
+    const guardianPostalCodes = formData
+      .getAll("guardianPostalCode")
+      .map((v) => String(v).trim());
     guardianFirstNames.forEach((firstName, i) => {
       const lastName = guardianLastNames[i] ?? "";
       if (!firstName && !lastName) return;
@@ -153,6 +162,13 @@ export async function submitTeamRegistration(
       if (!(guardianEmails[i] ?? "")) errors[`guardian-${i}-email`] = t("guardianEmailRequired");
       if (!(guardianAddresses[i] ?? "")) {
         errors[`guardian-${i}-address`] = t("guardianAddressRequired");
+      }
+      if (!(guardianCities[i] ?? "")) errors[`guardian-${i}-city`] = t("guardianCityRequired");
+      const guardianPostalCode = guardianPostalCodes[i] ?? "";
+      if (!guardianPostalCode) {
+        errors[`guardian-${i}-postalCode`] = t("guardianPostalCodeRequired");
+      } else if (!isValidPostalCode(guardianPostalCode)) {
+        errors[`guardian-${i}-postalCode`] = t("postalCodeInvalid");
       }
     });
   }
@@ -197,6 +213,7 @@ export async function submitTeamRegistration(
         nationalId: submitted.nationalId || null,
         address: submitted.address || null,
         city: submitted.city || null,
+        postalCode: submitted.postalCode || null,
         phone: submitted.phone || null,
         email: submitted.email || null,
         iban: submitted.iban || null,
@@ -226,6 +243,8 @@ export async function submitTeamRegistration(
             birthDate: g.birthDate || null,
             nationalId: g.nationalId || null,
             address: g.address || null,
+            city: g.city || null,
+            postalCode: g.postalCode || null,
             phone: g.phone || null,
             email: g.email || null,
             sortOrder: i,
@@ -265,6 +284,10 @@ export async function submitMemberRegistration(
   }
   if (!fields.address) return { error: t("addressRequired"), submitted };
   if (!fields.city) return { error: t("cityRequired"), submitted };
+  if (!fields.postalCode) return { error: t("postalCodeRequired"), submitted };
+  if (!isValidPostalCode(fields.postalCode)) {
+    return { error: t("postalCodeInvalid"), submitted };
+  }
   if (!fields.phone) return { error: t("phoneRequired"), submitted };
   if (!fields.email) return { error: t("emailRequired"), submitted };
   if (!fields.iban) return { error: t("ibanRequired"), submitted };
@@ -283,6 +306,9 @@ export async function submitMemberRegistration(
     if (!g.phone) return { error: t("guardianPhoneRequired"), submitted };
     if (!g.email) return { error: t("guardianEmailRequired"), submitted };
     if (!g.address) return { error: t("guardianAddressRequired"), submitted };
+    if (!g.city) return { error: t("guardianCityRequired"), submitted };
+    if (!g.postalCode) return { error: t("guardianPostalCodeRequired"), submitted };
+    if (!isValidPostalCode(g.postalCode)) return { error: t("postalCodeInvalid"), submitted };
   }
 
   const { seasonId, memberOpen } = await getRegistrationAvailability();
@@ -305,6 +331,7 @@ export async function submitMemberRegistration(
         nationalId: fields.nationalId || null,
         address: fields.address || null,
         city: fields.city || null,
+        postalCode: fields.postalCode || null,
         phone: fields.phone || null,
         email: fields.email || null,
         iban: fields.iban || null,
@@ -323,6 +350,8 @@ export async function submitMemberRegistration(
             birthDate: g.birthDate || null,
             nationalId: g.nationalId || null,
             address: g.address || null,
+            city: g.city || null,
+            postalCode: g.postalCode || null,
             phone: g.phone || null,
             email: g.email || null,
             sortOrder: i,

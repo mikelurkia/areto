@@ -517,6 +517,7 @@ export default async function PersonDetailPage({
                 <InfoRow label={t("emailLabel")} value={person.email} />
                 <InfoRow label={t("phoneLabel")} value={person.phone} />
                 <InfoRow label={t("addressLabel")} value={person.address} />
+                <InfoRow label={t("postalCodeLabel")} value={person.postalCode} />
                 <InfoRow label={t("cityLabel")} value={person.city} />
               </dl>
               {person.email || person.phone ? (

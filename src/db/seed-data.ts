@@ -196,6 +196,18 @@ export function city(n: number): string {
   return CITIES[n % CITIES.length];
 }
 
+/** CP del municipio que le toca a `city(n)`: los tres del reparto tienen uno
+ * solo, igual que en produccion. */
+const POSTAL_CODES: Record<string, string> = {
+  "Oñati": "20560",
+  Eskoriatza: "20540",
+  Arrasate: "20500",
+};
+
+export function postalCode(n: number): string {
+  return POSTAL_CODES[city(n)];
+}
+
 // ---------------------------------------------------------------------------
 // Patrocinadores y rivales (comercios y clubes inventados)
 // ---------------------------------------------------------------------------

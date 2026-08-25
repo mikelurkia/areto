@@ -315,7 +315,7 @@ export function JugadorForm() {
             {fieldErrors.nationalId ? <FieldError>{fieldErrors.nationalId}</FieldError> : null}
           </Field>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
           <Field data-invalid={fieldErrors.address ? true : undefined}>
             <FieldLabel htmlFor="address">
               {t("addressLabel")}
@@ -329,6 +329,21 @@ export function JugadorForm() {
               aria-invalid={fieldErrors.address ? true : undefined}
             />
             {fieldErrors.address ? <FieldError>{fieldErrors.address}</FieldError> : null}
+          </Field>
+          <Field data-invalid={fieldErrors.postalCode ? true : undefined}>
+            <FieldLabel htmlFor="postalCode">
+              {t("postalCodeLabel")}
+              <Req />
+            </FieldLabel>
+            <Input
+              id="postalCode"
+              name="postalCode"
+              inputMode="numeric"
+              required
+              defaultValue={submitted?.postalCode ?? ""}
+              aria-invalid={fieldErrors.postalCode ? true : undefined}
+            />
+            {fieldErrors.postalCode ? <FieldError>{fieldErrors.postalCode}</FieldError> : null}
           </Field>
           <Field data-invalid={fieldErrors.city ? true : undefined}>
             <FieldLabel htmlFor="city">
@@ -483,6 +498,8 @@ export function JugadorForm() {
             const phoneError = fieldErrors[`guardian-${i}-phone`];
             const emailError = fieldErrors[`guardian-${i}-email`];
             const addressError = fieldErrors[`guardian-${i}-address`];
+            const cityError = fieldErrors[`guardian-${i}-city`];
+            const postalCodeError = fieldErrors[`guardian-${i}-postalCode`];
             const existing = submitted?.guardians[i];
             return (
               <div key={key} className="flex flex-col gap-3 rounded-lg border p-4">
@@ -559,20 +576,51 @@ export function JugadorForm() {
                     />
                   </Field>
                 </div>
-                <Field data-invalid={addressError ? true : undefined}>
-                  <FieldLabel htmlFor={`guardian-${key}-address`}>
-                    {t("addressLabel")}
-                    <Req />
-                  </FieldLabel>
-                  <Input
-                    id={`guardian-${key}-address`}
-                    name="guardianAddress"
-                    required={showGuardians}
-                    defaultValue={existing?.address ?? ""}
-                    aria-invalid={addressError ? true : undefined}
-                  />
-                  {addressError ? <FieldError>{addressError}</FieldError> : null}
-                </Field>
+                <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
+                  <Field data-invalid={addressError ? true : undefined}>
+                    <FieldLabel htmlFor={`guardian-${key}-address`}>
+                      {t("addressLabel")}
+                      <Req />
+                    </FieldLabel>
+                    <Input
+                      id={`guardian-${key}-address`}
+                      name="guardianAddress"
+                      required={showGuardians}
+                      defaultValue={existing?.address ?? ""}
+                      aria-invalid={addressError ? true : undefined}
+                    />
+                    {addressError ? <FieldError>{addressError}</FieldError> : null}
+                  </Field>
+                  <Field data-invalid={postalCodeError ? true : undefined}>
+                    <FieldLabel htmlFor={`guardian-${key}-postalCode`}>
+                      {t("postalCodeLabel")}
+                      <Req />
+                    </FieldLabel>
+                    <Input
+                      id={`guardian-${key}-postalCode`}
+                      name="guardianPostalCode"
+                      inputMode="numeric"
+                      required={showGuardians}
+                      defaultValue={existing?.postalCode ?? ""}
+                      aria-invalid={postalCodeError ? true : undefined}
+                    />
+                    {postalCodeError ? <FieldError>{postalCodeError}</FieldError> : null}
+                  </Field>
+                  <Field data-invalid={cityError ? true : undefined}>
+                    <FieldLabel htmlFor={`guardian-${key}-city`}>
+                      {t("cityLabel")}
+                      <Req />
+                    </FieldLabel>
+                    <Input
+                      id={`guardian-${key}-city`}
+                      name="guardianCity"
+                      required={showGuardians}
+                      defaultValue={existing?.city ?? ""}
+                      aria-invalid={cityError ? true : undefined}
+                    />
+                    {cityError ? <FieldError>{cityError}</FieldError> : null}
+                  </Field>
+                </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field data-invalid={phoneError ? true : undefined}>
                     <FieldLabel htmlFor={`guardian-${key}-phone`}>
