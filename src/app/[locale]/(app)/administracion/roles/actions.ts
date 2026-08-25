@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { rolePermissions, roles, users } from "@/db/schema";
 import { countActiveAdmins, getRolePermissions } from "@/lib/admin-guards";
 import { requirePermission } from "@/lib/auth";
+import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import {
   ADMIN_LOCKED_PERMISSIONS,
   isPermission,
@@ -87,7 +88,7 @@ export async function createRole(
         .onConflictDoNothing();
     });
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "23505") {
+    if (isPostgresError(error, UNIQUE_VIOLATION)) {
       return { error: t("roleNameTaken") };
     }
     throw error;
@@ -134,7 +135,7 @@ export async function updateRole(
         .where(eq(roles.id, id));
     });
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "23505") {
+    if (isPostgresError(error, UNIQUE_VIOLATION)) {
       return { error: t("roleNameTaken") };
     }
     throw error;

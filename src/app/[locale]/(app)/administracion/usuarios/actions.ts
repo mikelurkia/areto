@@ -12,6 +12,7 @@ import {
   roleEscalates,
 } from "@/lib/admin-guards";
 import { hasPermission, requirePermission, type CurrentUser } from "@/lib/auth";
+import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import { getSiteUrl } from "@/lib/site-url";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 
@@ -155,7 +156,7 @@ export async function inviteUser(
         },
       });
   } catch (dbError) {
-    if (dbError && typeof dbError === "object" && "code" in dbError && dbError.code === "23505") {
+    if (isPostgresError(dbError, UNIQUE_VIOLATION)) {
       return { error: t("personAlreadyLinked") };
     }
     throw dbError;
@@ -211,7 +212,7 @@ export async function updateUser(
       .set({ fullName: fullName || null, roleId, personId })
       .where(eq(users.id, id));
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "23505") {
+    if (isPostgresError(error, UNIQUE_VIOLATION)) {
       return { error: t("personAlreadyLinked") };
     }
     throw error;
