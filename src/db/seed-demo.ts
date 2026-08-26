@@ -19,8 +19,6 @@ import {
   persons,
   registrationGuardians,
   registrations,
-  rolePermissions,
-  roles,
   seasons,
   sponsorContacts,
   sponsorNotes,
@@ -46,7 +44,6 @@ import {
   shiftDays,
   taxId,
 } from "./seed-data";
-import { SYSTEM_ROLE_PERMISSIONS } from "../lib/permissions";
 import { seasonLabel, seasonYearOf } from "../lib/sponsorship";
 
 /**
@@ -75,11 +72,11 @@ import { seasonLabel, seasonYearOf } from "../lib/sponsorship";
  * - Documentos y fotos (`*_documents`, `photoPath`, `contractPath`): apuntan a
  *   objetos de Supabase Storage. Una ruta a un objeto que no existe solo
  *   produce descargas rotas.
- * - `club_settings`, `federation_accounts` y el rol propio del club: se
- *   siembran solo si faltan, nunca se pisan — son ajustes que el club edita a
- *   mano. `federation_accounts` y el rol tampoco se borran (el rol no se puede
- *   borrar si alguien lo tiene puesto); la fila de ajustes sí, si la creó el
- *   seed.
+ * - `club_settings` y `federation_accounts`: se siembran solo si faltan, nunca
+ *   se pisan — son ajustes que el club edita a mano. `federation_accounts`
+ *   tampoco se borra; la fila de ajustes sí, si la creó el seed.
+ * - Roles: los siembra `seedRoles()`, que solo pone los seis de fábrica. El
+ *   seed de demo ya no crea ninguno propio del club.
  *
  * Única excepción a "solo toco lo mío": las temporadas. `seasons_name_idx` es
  * único, así que si ya existe una "2026/27" el seed la adopta (le ajusta las
@@ -844,28 +841,6 @@ async function deleteSeedRows() {
   await db.delete(clubSettings).where(eq(clubSettings.id, seedId("club-settings")));
 }
 
-/** Rol propio del club, como el que hay en producción además de los cuatro de fábrica. */
-async function seedCustomRole() {
-  const roleId = seedId("role:presidente");
-  await db
-    .insert(roles)
-    .values({
-      id: roleId,
-      key: "presidente",
-      name: "Presidentea",
-      description: "Klubaren lehendakaria: idazkaritzaren ikuspegi osoa.",
-      isSystem: false,
-      isDefault: false,
-      sortOrder: 100,
-    })
-    .onConflictDoNothing({ target: roles.key });
-
-  await db
-    .insert(rolePermissions)
-    .values(SYSTEM_ROLE_PERMISSIONS.staff.map((permission) => ({ roleId, permission })))
-    .onConflictDoNothing();
-}
-
 /** Ajustes del club y credenciales de federación: solo si faltan. */
 async function seedClubSettings() {
   // `club_settings` es una tabla singleton (se lee siempre la primera fila),
@@ -1053,7 +1028,6 @@ async function main() {
   }
 
   await seedRoles();
-  await seedCustomRole();
   await seedClubSettings();
   await insertSeedRows(await ensureSeasons());
 

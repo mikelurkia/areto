@@ -80,7 +80,9 @@
       "admin": "Administratzailea",
       "staff": "Idazkaritza",
       "coach": "Entrenatzailea",
-      "member": "Bazkidea"
+      "player": "Jokalaria",
+      "member": "Bazkidea",
+      "basic": "Oinarrizko sarbidea"
     }
   },
   "AppLayout": {
@@ -259,7 +261,9 @@
       "admin": "Administratzailea",
       "staff": "Idazkaritza",
       "coach": "Entrenatzailea",
-      "member": "Bazkidea"
+      "player": "Jokalaria",
+      "member": "Bazkidea",
+      "basic": "Oinarrizko sarbidea"
     },
     "modules": {
       "personas": "Pertsonak",
