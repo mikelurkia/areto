@@ -46,3 +46,28 @@ Invariantes, sin excepciones:
 El procedimiento completo —comandos, decisión expand/contract y qué hacer
 cuando algo falla— está en la skill `desarrollar-funcionalidad`
 (`.claude/skills/desarrollar-funcionalidad/`).
+
+## Coste de contexto
+
+Cada turno reenvía el contexto entero: lo que entra en contexto se paga
+multiplicado por los turnos que queden de sesión. Reglas medidas sobre el
+histórico real de este proyecto (contexto medio de 205k/turno, sesiones de
+hasta 744k):
+
+- **Una tarea, una sesión.** `/clear` al terminar cada funcionalidad. Una sola
+  sesión de 767 turnos consumió el 29% del gasto histórico del proyecto.
+- **Nunca `Read` sobre imágenes o PDFs completos.** Recorta o reescala antes y
+  lee una imagen por vez: una captura a pantalla completa se queda en contexto
+  el resto de la sesión.
+- **Verificación visual: texto antes que píxeles.** `get_page_text` / `read_page`
+  antes que `screenshot`, y `read_console_messages` siempre con `pattern`,
+  nunca el volcado entero.
+- **Búsquedas amplias, al subagente `Explore`**, para que devuelva la conclusión
+  y no los volcados de ficheros.
+- **`Grep`/`Glob` antes que `Read` completo**, y `offset`/`limit` cuando ya se
+  sabe la zona. `src/db/schema.ts` y `messages/*.json` son grandes y se releen
+  con demasiada frecuencia.
+- **Salidas de comandos acotadas.** `npm run build` y `npm run lint` solo cuando
+  toca verificar de verdad, filtrando la salida (`| tail -40`,
+  `2>&1 | grep -E "error|warn"`).
+- **Sin `cd` al proyecto en cada comando**: el cwd ya es el del proyecto.
