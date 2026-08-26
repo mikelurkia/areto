@@ -5,6 +5,7 @@ import { UserPlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { inviteUser } from "@/app/[locale]/(app)/administracion/usuarios/actions";
+import { RoleCheckboxGroup } from "@/components/administracion/role-checkbox-group";
 import type { RoleOption } from "@/components/administracion/role-dialog";
 import {
   UserPersonCombobox,
@@ -29,13 +30,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useDialogParam } from "@/hooks/use-dialog-param";
@@ -90,23 +84,16 @@ export function InviteUserDialog({
               <Input id="invite-name" name="fullName" />
             </Field>
             <Field>
-              <FieldLabel htmlFor="invite-role">{t("roleLabel")}</FieldLabel>
-              <Select name="roleId" defaultValue={defaultRoleId ?? ""}>
-                <SelectTrigger id="invite-role" className="w-full">
-                  <SelectValue>
-                    {(value: string) =>
-                      roles.find((r) => r.id === value)?.name ?? ""
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((role) => (
-                    <SelectItem key={role.id} value={role.id}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FieldLabel>{t("rolesLabel")}</FieldLabel>
+              <FieldDescription>{t("rolesHint")}</FieldDescription>
+              <RoleCheckboxGroup
+                // Igual que en el diálogo de edición: si cambia cuál es el rol
+                // por defecto, la preselección vuelve a sembrarse.
+                key={defaultRoleId ?? ""}
+                roles={roles}
+                selected={defaultRoleId ? [defaultRoleId] : []}
+                idPrefix="invite"
+              />
             </Field>
             <Field>
               <FieldLabel>{t("personLabel")}</FieldLabel>

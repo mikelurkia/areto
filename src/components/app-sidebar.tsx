@@ -54,10 +54,12 @@ type SidebarUser = {
   email: string;
   /** Nombre del usuario; `null` mientras no lo haya rellenado. */
   fullName: string | null;
-  /** Nombre del rol tal y como está guardado (para los roles creados por el club). */
-  roleName: string | null;
-  /** Clave del rol: si es de sistema, la etiqueta se traduce; si no, se usa `roleName`. */
-  roleKey: string | null;
+  /**
+   * Roles de acceso, ya ordenados. De cada uno: la `key` (si es de sistema, la
+   * etiqueta se traduce por ella) y el `name` guardado (para los que crea el
+   * club, que no tienen traducción).
+   */
+  roles: { key: string; name: string }[];
   /** Array y no `Set`: cruza el límite servidor→cliente sin sorpresas. */
   permissions: Permission[];
 };
@@ -168,10 +170,18 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
   // Los roles de fábrica se traducen por su clave; los que crea el club se
   // muestran con el nombre que le hayan puesto. No se traducen, y es
   // deliberado: son datos del club, no cadenas de la aplicación.
-  const roleLabel =
-    user.roleKey && isSystemRoleKey(user.roleKey)
-      ? t(`roles.${user.roleKey}` as "roles.admin")
-      : (user.roleName ?? "");
+  const roleLabels = user.roles.map((r) =>
+    isSystemRoleKey(r.key) ? t(`roles.${r.key}` as "roles.admin") : r.name,
+  );
+
+  // El chip del pie es estrecho y va con `truncate`: encadenar ahí seis roles
+  // no comunica nada, así que solo el primero y un contador. El desplegable,
+  // que tiene sitio, los lista enteros.
+  const roleSummary =
+    roleLabels.length > 1
+      ? `${roleLabels[0]} ${t("moreRoles", { count: roleLabels.length - 1 })}`
+      : (roleLabels[0] ?? "");
+  const roleLabel = roleLabels.join(" · ");
 
   const can = (permission: Permission) => user.permissions.includes(permission);
 
@@ -321,7 +331,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{displayName}</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {roleLabel}
+                    {roleSummary}
                   </span>
                 </div>
                 <ChevronsUpDown className="ml-auto size-4" />
@@ -340,7 +350,10 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                           {user.email}
                         </span>
                       ) : null}
-                      <span className="truncate text-xs text-muted-foreground">
+                      <span
+                        className="truncate text-xs text-muted-foreground"
+                        title={roleLabel}
+                      >
                         {roleLabel}
                       </span>
                     </div>
