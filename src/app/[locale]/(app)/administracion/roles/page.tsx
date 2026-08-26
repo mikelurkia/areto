@@ -2,12 +2,20 @@ import { ShieldCheckIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { Link } from "@/i18n/navigation";
 import { requirePermission } from "@/lib/auth";
-import { isSystemRoleKey, PERMISSION_MODULES, PERMISSIONS } from "@/lib/permissions";
+import {
+  isPermission,
+  isSystemRoleKey,
+  PERMISSIONS,
+  type Permission,
+} from "@/lib/permissions";
 import { AdminSectionNav } from "@/components/administracion/admin-section-nav";
 import { DeleteRoleDialog } from "@/components/administracion/delete-role-dialog";
 import { RoleDialog, type RoleOption } from "@/components/administracion/role-dialog";
+import {
+  RolesPermissionMatrix,
+  type MatrixRole,
+} from "@/components/administracion/roles-permission-matrix";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -42,7 +50,9 @@ export default async function RolesPage({
   const allRoles = await db.query.roles.findMany({
     with: {
       permissions: { columns: { permission: true } },
-      users: { columns: { id: true } },
+      // Cuenta por la puente: `users.role_id` ya solo existe para las RLS
+      // viejas de Storage y no refleja los roles secundarios.
+      userAssignments: { columns: { userId: true } },
     },
     orderBy: (r, { asc }) => [asc(r.sortOrder), asc(r.name)],
   });
@@ -51,6 +61,25 @@ export default async function RolesPage({
   // club, con el nombre que le hayan puesto (son datos suyos, no de la app).
   const label = (role: { key: string; name: string }) =>
     isSystemRoleKey(role.key) ? t(`roles.${role.key}` as "roles.admin") : role.name;
+
+  const matrixRoles: MatrixRole[] = allRoles.map((r) => ({
+    id: r.id,
+    key: r.key,
+    label: label(r),
+    description: r.description,
+    isSystem: r.isSystem,
+    isDefault: r.isDefault,
+    userCount: r.userAssignments.length,
+  }));
+
+  // Ya filtrados contra el catálogo del código: lo que no esté en él no
+  // concede nada y tampoco tiene por qué llegar al cliente.
+  const granted: Record<string, Permission[]> = Object.fromEntries(
+    allRoles.map((r) => [
+      r.id,
+      r.permissions.map((p) => p.permission).filter(isPermission),
+    ]),
+  );
 
   const options: RoleOption[] = allRoles.map((r) => ({
     id: r.id,
@@ -90,12 +119,7 @@ export default async function RolesPage({
               <TableRow key={role.id}>
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Link
-                      href={`/administracion/roles/${role.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {option.name}
-                    </Link>
+                    <span className="font-medium">{option.name}</span>
                     {role.isSystem ? (
                       <Badge variant="outline">{t("systemBadge")}</Badge>
                     ) : null}
@@ -108,7 +132,7 @@ export default async function RolesPage({
                   {role.description ?? "—"}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {role.users.length}
+                  {role.userAssignments.length}
                 </TableCell>
                 <TableCell className="text-right tabular-nums text-muted-foreground">
                   {t("permissionCount", {
@@ -123,7 +147,7 @@ export default async function RolesPage({
                     {role.isSystem ? null : (
                       <DeleteRoleDialog
                         role={option}
-                        userCount={role.users.length}
+                        userCount={role.userAssignments.length}
                         otherRoles={options.filter((o) => o.id !== role.id)}
                       />
                     )}
@@ -136,61 +160,17 @@ export default async function RolesPage({
       </Table>
 
       {/*
-        Foto global: qué concede cada rol en cada módulo, de un vistazo. Es de
-        solo lectura a propósito — la edición vive en la ficha de cada rol, con
-        un único guardado, para que un cambio no toque varios roles a la vez.
+        Matriz editable: permisos en filas, roles en columnas. Sustituye a la
+        ficha por rol y al resumen de solo lectura que había aquí — eran la
+        misma información contada dos veces, y comparar dos roles obligaba a ir
+        y volver.
       */}
       <section className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <ShieldCheckIcon className="size-4 text-muted-foreground" />
           <h2 className="text-lg font-medium">{t("matrixTitle")}</h2>
         </div>
-        <p className="text-sm text-muted-foreground">{t("matrixSubtitle")}</p>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("colModule")}</TableHead>
-                {allRoles.map((role) => (
-                  <TableHead key={role.id} className="text-center">
-                    {label(role)}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {PERMISSION_MODULES.map((module) => (
-                <TableRow key={module.key}>
-                  <TableCell className="font-medium">
-                    {t(`modules.${module.key}` as "modules.personas")}
-                  </TableCell>
-                  {allRoles.map((role) => {
-                    const granted = new Set(role.permissions.map((p) => p.permission));
-                    const count = module.permissions.filter((p) =>
-                      granted.has(p),
-                    ).length;
-                    return (
-                      <TableCell key={role.id} className="text-center text-sm">
-                        {count === 0 ? (
-                          <span className="text-muted-foreground">—</span>
-                        ) : count === module.permissions.length ? (
-                          t("matrixAll")
-                        ) : (
-                          <span className="text-muted-foreground">
-                            {t("matrixPartial", {
-                              count,
-                              total: module.permissions.length,
-                            })}
-                          </span>
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <RolesPermissionMatrix roles={matrixRoles} granted={granted} canEdit />
       </section>
     </div>
   );

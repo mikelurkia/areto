@@ -1,20 +1,16 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { roles, users } from "@/db/schema";
-import {
-  countActiveAdmins,
-  getRolePermissions,
-  roleEscalates,
-} from "@/lib/admin-guards";
+import { countActiveAdminsAfter, rolesEscalate } from "@/lib/admin-guards";
 import { hasPermission, requirePermission, type CurrentUser } from "@/lib/auth";
 import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import { getSiteUrl } from "@/lib/site-url";
-import { setUserRoles } from "@/lib/user-roles";
+import { getUserRoleIds, sameRoleSet, setUserRoles } from "@/lib/user-roles";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 
 export type UserState = {
@@ -67,15 +63,32 @@ function readPersonId(formData: FormData): string | null {
 }
 
 /**
- * ¿Puede `actor` asignar el rol `roleId`?
+ * Roles enviados por el formulario, validados contra los que existen. Un id que
+ * no exista se descarta en silencio; que no quede ninguno es un error visible.
+ */
+async function readRoleIds(formData: FormData): Promise<string[]> {
+  const submitted = [...new Set(formData.getAll("roleIds").map(String))].filter(Boolean);
+  if (submitted.length === 0) return [];
+  const existing = await db
+    .select({ id: roles.id })
+    .from(roles)
+    .where(inArray(roles.id, submitted));
+  return existing.map((r) => r.id);
+}
+
+/**
+ * ¿Puede `actor` asignar estos roles?
  *
  * Quien solo tiene `usuarios.manage` puede dar de alta gente, pero no repartir
  * la administración: si no, invitándose a sí mismo con otro correo se saltaría
  * la separación entre dar acceso y decidir qué puede hacer cada cual.
  */
-async function canAssignRole(actor: CurrentUser, roleId: string): Promise<boolean> {
+async function canAssignRoles(
+  actor: CurrentUser,
+  roleIds: readonly string[],
+): Promise<boolean> {
   if (hasPermission(actor, "roles.manage")) return true;
-  return !(await roleEscalates(roleId));
+  return !(await rolesEscalate(roleIds));
 }
 
 // --- Alta por invitación -----------------------------------------------------
@@ -91,15 +104,13 @@ export async function inviteUser(
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const fullName = String(formData.get("fullName") ?? "").trim();
-  const roleId = String(formData.get("roleId") ?? "").trim();
+  const roleIds = await readRoleIds(formData);
   const personId = readPersonId(formData);
 
   if (!EMAIL_RE.test(email)) return { error: t("emailInvalid") };
-  if (!roleId) return { error: t("roleRequired") };
+  if (roleIds.length === 0) return { error: t("roleRequired") };
 
-  const role = await db.query.roles.findFirst({ where: eq(roles.id, roleId) });
-  if (!role) return { error: t("roleNotFound") };
-  if (!(await canAssignRole(current, roleId))) {
+  if (!(await canAssignRoles(current, roleIds))) {
     return { error: t("cannotAssignAdminRole") };
   }
 
@@ -139,7 +150,6 @@ export async function inviteUser(
         id: data.user.id,
         email,
         fullName: fullName || null,
-        roleId,
         personId,
         status: "active",
         invitedAt: new Date(),
@@ -150,7 +160,6 @@ export async function inviteUser(
         set: {
           email,
           fullName: fullName || null,
-          roleId,
           personId,
           status: "active",
           invitedAt: new Date(),
@@ -158,9 +167,9 @@ export async function inviteUser(
         },
       });
 
-      // El `roleId` de arriba es deuda expand; la fuente de verdad es la
-      // puente. Un solo rol por ahora: el formulario todavía manda uno.
-      await setUserRoles(tx, data.user.id, [roleId]);
+      // `setUserRoles` escribe la puente y, mientras dure la fase expand,
+      // también `users.role_id` con el rol principal.
+      await setUserRoles(tx, data.user.id, roleIds);
     });
   } catch (dbError) {
     if (isPostgresError(dbError, UNIQUE_VIOLATION)) {
@@ -184,33 +193,34 @@ export async function updateUser(
 
   const id = String(formData.get("id") ?? "");
   const fullName = String(formData.get("fullName") ?? "").trim();
-  const roleId = String(formData.get("roleId") ?? "").trim();
+  const nextRoleIds = await readRoleIds(formData);
   const personId = readPersonId(formData);
 
   const target = await db.query.users.findFirst({ where: eq(users.id, id) });
   if (!target) return { error: t("userNotFound") };
-  if (!roleId) return { error: t("roleRequired") };
+  if (nextRoleIds.length === 0) return { error: t("roleRequired") };
 
-  const role = await db.query.roles.findFirst({ where: eq(roles.id, roleId) });
-  if (!role) return { error: t("roleNotFound") };
-
-  const changesRole = target.roleId !== roleId;
+  const currentRoleIds = await getUserRoleIds(id);
+  const changesRole = !sameRoleSet(currentRoleIds, nextRoleIds);
 
   // Cambiarse el rol a uno mismo es la vía más rápida de perder el acceso a
   // esta pantalla sin querer, y no hay ningún caso legítimo: para eso está
   // otra persona con permiso de administración.
   if (changesRole && id === current.id) return { error: t("cannotChangeOwnRole") };
 
-  if (changesRole && !(await canAssignRole(current, roleId))) {
+  // Solo se comprueba sobre los roles que se AÑADEN: quitar uno que escala es
+  // una des-escalada, y exigir el permiso para eso impediría hasta corregirle
+  // el nombre a alguien que ya es administrador.
+  const addedRoleIds = nextRoleIds.filter((r) => !currentRoleIds.includes(r));
+  if (!(await canAssignRoles(current, addedRoleIds))) {
     return { error: t("cannotAssignAdminRole") };
   }
 
   if (changesRole && target.status === "active") {
-    const newPermissions = await getRolePermissions(roleId);
-    if (!newPermissions.has("usuarios.manage")) {
-      const remaining = await countActiveAdmins({ excludeUserId: id });
-      if (remaining === 0) return { error: t("lastAdminGuard") };
-    }
+    const remaining = await countActiveAdminsAfter({
+      userRoles: new Map([[id, nextRoleIds]]),
+    });
+    if (remaining === 0) return { error: t("lastAdminGuard") };
   }
 
   try {
@@ -220,7 +230,7 @@ export async function updateUser(
         .set({ fullName: fullName || null, personId })
         .where(eq(users.id, id));
 
-      await setUserRoles(tx, id, [roleId]);
+      await setUserRoles(tx, id, nextRoleIds);
     });
   } catch (error) {
     if (isPostgresError(error, UNIQUE_VIOLATION)) {
@@ -249,10 +259,14 @@ export async function toggleUserStatus(
 
   const target = await db.query.users.findFirst({ where: eq(users.id, id) });
   if (!target) return { error: t("userNotFound") };
-  if (!target.roleId) return { error: t("userWithoutRole") };
+  if ((await getUserRoleIds(id)).length === 0) {
+    return { error: t("userWithoutRole") };
+  }
 
   if (!activate) {
-    const remaining = await countActiveAdmins({ excludeUserId: id });
+    const remaining = await countActiveAdminsAfter({
+      userRoles: new Map([[id, null]]),
+    });
     if (remaining === 0) return { error: t("lastAdminGuard") };
   }
 
@@ -296,7 +310,9 @@ export async function deleteUser(
   const target = await db.query.users.findFirst({ where: eq(users.id, id) });
   if (!target) return { error: t("userNotFound") };
 
-  const remaining = await countActiveAdmins({ excludeUserId: id });
+  const remaining = await countActiveAdminsAfter({
+    userRoles: new Map([[id, null]]),
+  });
   if (remaining === 0) return { error: t("lastAdminGuard") };
 
   // Igual que `deleteAccount` en los ajustes: primero el perfil, luego la

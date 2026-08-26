@@ -7,7 +7,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { countActiveAdmins } from "@/lib/admin-guards";
+import { countActiveAdminsAfter } from "@/lib/admin-guards";
 import { requireUser } from "@/lib/auth";
 import { getSiteUrl } from "@/lib/site-url";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
@@ -94,7 +94,9 @@ export async function deleteAccount(
   // cuenta es otra manera —la única que quedaba sin cubrir— de dejar al club
   // sin nadie que pueda administrar la aplicación. `deleteUser` no puede
   // taparla: se niega a borrar la cuenta de quien la ejecuta.
-  const remainingAdmins = await countActiveAdmins({ excludeUserId: user.id });
+  const remainingAdmins = await countActiveAdminsAfter({
+    userRoles: new Map([[user.id, null]]),
+  });
   if (remainingAdmins === 0) return { error: t("deleteLastAdminGuard") };
 
   // Borra primero el perfil (no hay cascada automática desde auth.users).
