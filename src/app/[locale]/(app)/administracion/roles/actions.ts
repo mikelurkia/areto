@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
@@ -167,14 +167,35 @@ export async function deleteRole(
     .from(userRoles)
     .where(eq(userRoles.roleId, id));
 
+  // Con varios roles por cuenta, perder este solo deja a alguien sin acceso si
+  // era el único que tenía. Reasignar solo es obligatorio para esos.
+  const orphans =
+    assigned.length === 0
+      ? []
+      : await db
+          .select({ userId: userRoles.userId })
+          .from(userRoles)
+          .where(
+            inArray(
+              userRoles.userId,
+              assigned.map((a) => a.userId),
+            ),
+          )
+          .groupBy(userRoles.userId)
+          .having(sql`count(*) = 1`);
+
   if (assigned.length > 0) {
-    if (!reassignRoleId) {
-      return { error: t("roleHasUsers", { count: assigned.length }) };
+    if (orphans.length > 0 && !reassignRoleId) {
+      return { error: t("roleHasUsers", { count: orphans.length }) };
     }
-    const target = await db.query.roles.findFirst({
-      where: and(eq(roles.id, reassignRoleId), ne(roles.id, id)),
-    });
-    if (!target) return { error: t("reassignRoleRequired") };
+    const target = reassignRoleId
+      ? await db.query.roles.findFirst({
+          where: and(eq(roles.id, reassignRoleId), ne(roles.id, id)),
+        })
+      : null;
+    if (orphans.length > 0 && !target) {
+      return { error: t("reassignRoleRequired") };
+    }
 
     // Si el rol que desaparece era el que sostenía la administración y el
     // destino no lo hace, el club se quedaría sin nadie que pueda entrar aquí.
@@ -182,7 +203,7 @@ export async function deleteRole(
     // destino) en vez de restar: con varios roles por cuenta, restar el que se
     // borra ignoraría que a alguien se lo concede otro de los suyos.
     const remaining = await countActiveAdminsAfter({
-      reassign: { from: id, to: target.id },
+      ...(target ? { reassign: { from: id, to: target.id } } : {}),
       rolePermissions: new Map([[id, null]]),
     });
     if (remaining === 0) return { error: t("lastAdminGuard") };
@@ -191,13 +212,27 @@ export async function deleteRole(
       // El orden importa: `user_roles.role_id` y `users.role_id` son ambos
       // RESTRICT, así que hay que soltar las dos referencias antes de borrar
       // el rol o el DELETE falla con 23503.
-      await tx
-        .insert(userRoles)
-        .values(assigned.map((a) => ({ userId: a.userId, roleId: target.id })))
-        .onConflictDoNothing();
+      if (target) {
+        await tx
+          .insert(userRoles)
+          .values(assigned.map((a) => ({ userId: a.userId, roleId: target.id })))
+          .onConflictDoNothing();
+      }
       await tx.delete(userRoles).where(eq(userRoles.roleId, id));
-      // DEUDA EXPAND: mientras `users.role_id` exista hay que moverla también.
-      await tx.update(users).set({ roleId: target.id }).where(eq(users.roleId, id));
+      // DEUDA EXPAND: mientras `users.role_id` exista hay que recolocarla. Se
+      // deja en el rol de menor `sortOrder` de los que le queden a cada cuenta,
+      // igual que hace `setUserRoles`.
+      await tx.execute(sql`
+        update ${users} u
+           set role_id = (
+             select ur.role_id from ${userRoles} ur
+               join ${roles} r on r.id = ur.role_id
+              where ur.user_id = u.id
+              order by r.sort_order
+              limit 1
+           )
+         where u.role_id = ${id}
+      `);
       await tx.delete(roles).where(eq(roles.id, id));
     });
   } else {

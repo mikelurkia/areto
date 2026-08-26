@@ -78,10 +78,6 @@ export default async function UsuariosPage({
       .map((a) => a.role)
       .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
 
-  // El "principal" es el de menor `sortOrder`, o sea el más poderoso. Lo usa el
-  // `<Select>` de rol único del diálogo, que todavía no es múltiple.
-  const principalRole = (u: (typeof userRows)[number]) => rolesOf(u)[0];
-
   const roleOptions: RoleOption[] = allRoles.map((r) => ({
     id: r.id,
     key: r.key,
@@ -111,9 +107,8 @@ export default async function UsuariosPage({
         id: u.id,
         email: u.email,
         fullName: u.fullName,
-        roleId: principalRole(u)?.id ?? null,
+        roleIds: rolesOf(u).map((r) => r.id),
         roleLabels: rolesOf(u).map(roleLabel),
-        roleIsSystem: principalRole(u)?.isSystem ?? false,
         personId: u.personId,
         personName: u.person
           ? `${u.person.firstName} ${u.person.lastName}`.trim()
