@@ -17,8 +17,7 @@ export type IntegrityIssueKey =
   | "orphanPlayers"
   | "missingNationalId"
   | "medicalCertMismatch"
-  | "duplicateCaptains"
-  | "sponsorshipMismatch";
+  | "duplicateCaptains";
 
 export type IntegrityIssue = {
   key: IntegrityIssueKey;
@@ -140,39 +139,6 @@ async function countDuplicateCaptains(seasonId: string): Promise<number> {
 }
 
 /**
- * Un acuerdo de patrocinio tiene un problema si dos anualidades comparten el
- * mismo año (nada lo impide al añadir un cobro manual con `addSponsorPayment`)
- * o si la suma de sus anualidades ya no cuadra con el importe total pactado
- * (`sponsorshipTerms.totalAmountCents`) una vez el acuerdo ha dejado de estar
- * en negociación.
- */
-async function countSponsorshipMismatches(): Promise<number> {
-  const terms = await db.query.sponsorshipTerms.findMany({
-    columns: { id: true, totalAmountCents: true, agreementStatus: true },
-    with: { payments: { columns: { year: true, amountCents: true } } },
-  });
-
-  let count = 0;
-  for (const term of terms) {
-    const countsByYear = new Map<number, number>();
-    for (const payment of term.payments) {
-      if (payment.year === null) continue;
-      countsByYear.set(payment.year, (countsByYear.get(payment.year) ?? 0) + 1);
-    }
-    const hasDuplicateYear = [...countsByYear.values()].some((c) => c > 1);
-
-    const paidTotal = term.payments.reduce((sum, p) => sum + p.amountCents, 0);
-    const sumMismatch =
-      term.agreementStatus !== "negotiating" &&
-      term.totalAmountCents !== null &&
-      paidTotal !== term.totalAmountCents;
-
-    if (hasDuplicateYear || sumMismatch) count++;
-  }
-  return count;
-}
-
-/**
  * Incoherencias de datos que no están forzadas a nivel de base de datos:
  * cada chequeo detecta una regla de negocio que solo se rompe editando a
  * mano, con un bug puntual, o saltándose un paso del flujo normal. Solo
@@ -185,13 +151,12 @@ export async function loadDataIntegrityIssues(
   cacheTag(INTEGRITY_ISSUES_TAG);
   cacheLife("minutes");
 
-  const [orphanPlayers, missingNationalId, medicalCertMismatch, duplicateCaptains, sponsorshipMismatch] =
+  const [orphanPlayers, missingNationalId, medicalCertMismatch, duplicateCaptains] =
     await Promise.all([
       countOrphanPlayers(),
       countMissingNationalId(),
       countMedicalCertMismatches(currentSeasonId),
       currentSeasonId ? countDuplicateCaptains(currentSeasonId) : Promise.resolve(0),
-      countSponsorshipMismatches(),
     ]);
 
   const issues: IntegrityIssue[] = [
@@ -208,12 +173,6 @@ export async function loadDataIntegrityIssues(
       count: duplicateCaptains,
       severity: "hard",
       href: "/equipos",
-    },
-    {
-      key: "sponsorshipMismatch",
-      count: sponsorshipMismatch,
-      severity: "hard",
-      href: "/patrocinadores",
     },
   ];
 

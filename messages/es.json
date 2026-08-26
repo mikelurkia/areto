@@ -94,39 +94,36 @@
   },
   "Dashboard": {
     "title": "Panel",
-    "subtitle": "Resumen del club y de la temporada en curso.",
-    "actionsSection": "Por hacer",
-    "actionsSectionHint": "Tareas concretas que conviene resolver ahora.",
-    "noActionsDescription": "No hay ninguna tarea pendiente.",
-    "actions": {
-      "playerRegistrations": "Inscripciones de jugador por validar",
-      "memberRegistrations": "Solicitudes de socio por validar",
-      "weekendPreferredDay": "Partidos del {date} sin fecha preferente confirmada"
+    "subtitle": "Lo que hay pendiente hoy y la próxima jornada de cada equipo.",
+    "alertsSection": "Alertas",
+    "alertsSectionHint": "Solo aparece lo que tiene algo pendiente.",
+    "allClearTitle": "Todo al día",
+    "allClearDescription": "No hay ninguna alerta pendiente.",
+    "alerts": {
+      "playerRegistrations": "Solicitudes de jugador sin atender",
+      "memberRegistrations": "Solicitudes de socio sin atender",
+      "missingRegistrations": "Personas en equipo sin solicitud",
+      "medicalCerts": "Reconocimientos caducados o por caducar",
+      "medicalBreakdown": "{expired} caducados · {expiring} por caducar"
     },
-    "sponsorshipSection": "Patrocinio",
-    "sponsorshipSectionHint": "Resumen de la temporada actual.",
-    "sponsorshipCommitted": "Comprometido",
-    "sponsorshipCollected": "Cobrado",
-    "sponsorshipPending": "Pendiente",
-    "expiringSection": "Vencimientos próximos",
-    "expiringSectionHint": "Certificados médicos, titulaciones y patrocinios que caducan en los próximos {days} días.",
-    "noExpiringDescription": "No hay ningún vencimiento próximo.",
-    "expiringMedicalCertLabel": "Certificado médico",
-    "expiringSponsorshipLabel": "Patrocinio",
-    "expiredBadge": "Caducó el {date}",
-    "expiresBadge": "Caduca el {date}",
-    "integritySection": "Incoherencias de datos",
-    "integritySectionHint": "Casos que conviene revisar a mano.",
-    "noIntegrityIssuesDescription": "No se ha detectado ninguna incoherencia.",
-    "integrity": {
+    "reviewSection": "Para revisar",
+    "reviewSectionHint": "Casos que conviene mirar a mano de vez en cuando.",
+    "noReviewDescription": "No se ha detectado nada que revisar.",
+    "review": {
       "orphanPlayers": "Jugadores aprobados sin equipo asignado",
       "missingNationalId": "Fichas activas sin DNI/NIE",
       "medicalCertMismatch": "Certificado médico desincronizado",
       "duplicateCaptains": "Equipos con más de un capitán",
-      "sponsorshipMismatch": "Anualidades de patrocinio duplicadas o descuadradas",
-      "duplicatePersons": "Posibles personas duplicadas",
-      "pendingRenewals": "Renovaciones de temporada pendientes o rechazadas"
-    }
+      "duplicatePersons": "Posibles personas duplicadas"
+    },
+    "fixturesSection": "Próxima jornada",
+    "fixturesSectionHint": "El siguiente partido de cada equipo, por categoría.",
+    "noFixturesDescription": "No hay ningún equipo en la temporada actual.",
+    "fixtureNoCategory": "Sin categoría",
+    "fixtureNoMatch": "Sin partido programado",
+    "fixtureUnknownOpponent": "Rival por confirmar",
+    "fixtureMissingPreferredDay": "Sin día confirmado",
+    "fixturesPreferredDayWarning": "{count, plural, one {# partido en casa de la próxima jornada sin día confirmado} other {# partidos en casa de la próxima jornada sin día confirmado}}"
   },
   "Administracion": {
     "title": "Administración",

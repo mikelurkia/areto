@@ -12,6 +12,7 @@ import {
 } from "@/lib/calendar-grid";
 import {
   canEditCourtEventBadge,
+  formatWeekendRange,
   getCoachTeamIds,
   groupCourtEventsByWeekend,
   loadCourtEvents,
@@ -45,15 +46,6 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Metadata" });
   return { title: t("calendario") };
-}
-
-/** "14 de febrero – 15 de febrero 2026" a partir del sábado del fin de semana. */
-function formatWeekendRange(weekendOf: string, locale: string): string {
-  const saturday = new Date(`${weekendOf}T00:00:00`);
-  const sunday = new Date(saturday);
-  sunday.setDate(sunday.getDate() + 1);
-  const dayMonth = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long" });
-  return `${dayMonth.format(saturday)} – ${dayMonth.format(sunday)} ${saturday.getFullYear()}`;
 }
 
 export default async function CalendarioPage({

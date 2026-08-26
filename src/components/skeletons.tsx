@@ -273,6 +273,28 @@ export function FieldGridSkeleton({
 }
 
 /** Tarjeta genérica con título y unas líneas de contenido. */
+/**
+ * Rejilla de alertas del panel: cuatro fichas con un número grande. No se sabe
+ * de antemano cuántas tendrán aviso, así que reserva la rejilla completa.
+ */
+export function AlertTilesSkeleton({ tiles = 4 }: { tiles?: number }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-hidden>
+      {Array.from({ length: tiles }, (_, i) => (
+        <Card key={i} className="gap-2">
+          <div className="flex items-start justify-between gap-3 px-4">
+            <Skeleton className="h-9 w-12" />
+            <Skeleton className="size-5 rounded-full" />
+          </div>
+          <div className="px-4">
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export function CardSkeleton({ lines = 3 }: { lines?: number }) {
   return (
     <Card aria-hidden>

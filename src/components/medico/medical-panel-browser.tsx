@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ClipboardListIcon,
   DownloadIcon,
@@ -61,6 +62,16 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+/** Valores que acepta el select de estado, incluido el agregado "needsUpdate". */
+const STATUS_FILTER_VALUES = [
+  "expired",
+  "expiring",
+  "missing",
+  "ok",
+  "exempt",
+  "needsUpdate",
+];
+
 function StatusBadge({
   status,
   date,
@@ -92,9 +103,15 @@ export function MedicalPanelBrowser({
 }) {
   const t = useTranslations("Medico");
   const tEquipos = useTranslations("Equipos");
+  // El panel de alertas enlaza aquí con el filtro ya puesto
+  // (`/medico?estado=needsUpdate`). Solo es la semilla del estado inicial: a
+  // partir de ahí los filtros siguen siendo locales y no tocan la URL.
+  const estadoParam = useSearchParams().get("estado");
   const [query, setQuery] = useState("");
   const [team, setTeam] = useState("all");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState(() =>
+    estadoParam && STATUS_FILTER_VALUES.includes(estadoParam) ? estadoParam : "all",
+  );
 
   // Fechas de referencia calculadas en cliente, para no forzar el prerender
   // estático de la página a depender del reloj de la petición.

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Stethoscope } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -8,6 +9,7 @@ import { teamSeasonLabel } from "@/lib/team-label";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
 import { MedicalPanelBrowser } from "@/components/medico/medical-panel-browser";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { TableSkeleton } from "@/components/skeletons";
 
 export async function generateMetadata({
   params,
@@ -125,12 +127,17 @@ export default async function MedicoPage({
           description={t("emptyDescription")}
         />
       ) : (
-        <MedicalPanelBrowser
-          certRows={certRows}
-          injuryRows={injuryRows}
-          teamOptions={teamOptions}
-          canManage={canManage}
-        />
+        // El panel siembra su filtro de estado desde `?estado=` (enlace del
+        // panel de alertas), y `useSearchParams` obliga a un límite de Suspense
+        // para no arrastrar toda la página al render en cliente.
+        <Suspense fallback={<TableSkeleton columns={["w-40", "w-24", "w-28", "w-32", "w-20"]} />}>
+          <MedicalPanelBrowser
+            certRows={certRows}
+            injuryRows={injuryRows}
+            teamOptions={teamOptions}
+            canManage={canManage}
+          />
+        </Suspense>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -19,7 +19,6 @@ import {
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { nextInvoiceNumber } from "@/lib/club";
-import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
 import { resizeImageToWebp } from "@/lib/image-resize";
@@ -526,7 +525,6 @@ export async function addSponsorPayment(
     notes: fields.notes,
   });
 
-  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("paymentCreated") };
 }
@@ -563,7 +561,6 @@ export async function updateSponsorPayment(
     })
     .where(eq(sponsorPayments.id, id));
 
-  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("paymentUpdated") };
 }
@@ -578,7 +575,6 @@ export async function deleteSponsorPayment(
   const id = String(formData.get("id") ?? "");
   await db.delete(sponsorPayments).where(eq(sponsorPayments.id, id));
 
-  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("paymentDeleted") };
 }
@@ -598,7 +594,6 @@ export async function markSponsorPaymentPaid(
     .set({ status: "paid", paidOn: today })
     .where(eq(sponsorPayments.id, id));
 
-  updateTag(INTEGRITY_ISSUES_TAG);
   revalidatePath("/", "layout");
   return { message: t("paymentMarkedPaid") };
 }
