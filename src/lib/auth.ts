@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 export type UserLocale = (typeof users.$inferSelect)["locale"];
 export type UserStatus = (typeof users.$inferSelect)["status"];
 
-/** Rol asignado, tal y como lo necesita la interfaz. `null` = cuenta sin rol. */
+/** Rol asignado, tal y como lo necesita la interfaz. */
 export type CurrentUserRole = {
   id: string;
   key: string;
@@ -28,7 +28,9 @@ export type CurrentUser = {
   personId: string | null;
   locale: UserLocale;
   status: UserStatus;
-  assignedRole: CurrentUserRole | null;
+  /** Roles de acceso, ordenados por `sortOrder`. Vacío = cuenta sin ninguno. */
+  assignedRoles: CurrentUserRole[];
+  /** UNIÓN de los permisos de todos sus roles. */
   permissions: ReadonlySet<Permission>;
 };
 
@@ -43,9 +45,10 @@ const NO_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>();
  * la página y a veces `generateMetadata`. Con `cache()` se ejecuta una sola vez
  * por petición y las siguientes llamadas son gratis.
  *
- * El rol y sus permisos viajan en la MISMA consulta (relación `role` →
- * `permissions`), así que esto no añade ni un viaje más a la base de datos que
- * antes de existir los permisos.
+ * Los roles y sus permisos viajan en la MISMA consulta (`user_roles` → `roles`
+ * → `role_permissions`): las consultas relacionales de Drizzle compilan el
+ * anidamiento a una sola sentencia con agregación JSON lateral, así que son
+ * cuatro tablas en un viaje, no cuatro viajes.
  */
 export const getCurrentUser = cache(async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!isSupabaseConfigured) return null;
@@ -60,30 +63,36 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
   const profile = await db.query.users.findFirst({
     where: eq(users.id, user.id),
     with: {
-      accessRole: {
-        with: { permissions: { columns: { permission: true } } },
+      roleAssignments: {
+        with: {
+          role: {
+            with: { permissions: { columns: { permission: true } } },
+          },
+        },
       },
     },
   });
 
-  const assignedRole = profile?.accessRole
-    ? {
-        id: profile.accessRole.id,
-        key: profile.accessRole.key,
-        name: profile.accessRole.name,
-        isSystem: profile.accessRole.isSystem,
-      }
-    : null;
+  const assignments = profile?.roleAssignments ?? [];
 
-  // Se descarta lo que ya no esté en el catálogo del código: un permiso
-  // renombrado o retirado no debe conceder nada (fail-closed).
-  const permissions: ReadonlySet<Permission> = profile?.accessRole
-    ? new Set(
-        profile.accessRole.permissions
-          .map((p) => p.permission)
-          .filter((p): p is Permission => isPermission(p)),
-      )
-    : NO_PERMISSIONS;
+  const assignedRoles: CurrentUserRole[] = assignments
+    .map((a) => a.role)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
+    .map(({ id, key, name, isSystem }) => ({ id, key, name, isSystem }));
+
+  // Unión de los permisos de todos sus roles. Se descarta lo que ya no esté en
+  // el catálogo del código: un permiso renombrado o retirado no debe conceder
+  // nada (fail-closed).
+  const permissions: ReadonlySet<Permission> =
+    assignments.length === 0
+      ? NO_PERMISSIONS
+      : new Set(
+          assignments.flatMap((a) =>
+            a.role.permissions
+              .map((p) => p.permission)
+              .filter((p): p is Permission => isPermission(p)),
+          ),
+        );
 
   return {
     id: user.id,
@@ -92,7 +101,7 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
     personId: profile?.personId ?? null,
     locale: profile?.locale ?? routing.defaultLocale,
     status: profile?.status ?? "pending",
-    assignedRole,
+    assignedRoles,
     permissions,
   };
 });

@@ -35,7 +35,9 @@ export default async function RolePermissionsPage({
     where: eq(roles.id, roleId),
     with: {
       permissions: { columns: { permission: true } },
-      users: { columns: { id: true } },
+      // Cuenta por la puente: `users.role_id` ya solo existe para las RLS
+      // viejas de Storage y no refleja los roles secundarios.
+      userAssignments: { columns: { userId: true } },
     },
   });
 
@@ -70,7 +72,7 @@ export default async function RolePermissionsPage({
             {role.description ?? t("permissionsSubtitle")}
           </p>
           <p className="text-sm text-muted-foreground">
-            {t("roleUserCount", { count: role.users.length })}
+            {t("roleUserCount", { count: role.userAssignments.length })}
           </p>
         </div>
       </div>

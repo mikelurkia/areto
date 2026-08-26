@@ -6,15 +6,11 @@ import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { roles, users } from "@/db/schema";
-import {
-  countActiveAdmins,
-  getRolePermissions,
-  roleEscalates,
-} from "@/lib/admin-guards";
+import { countActiveAdminsAfter, rolesEscalate } from "@/lib/admin-guards";
 import { hasPermission, requirePermission, type CurrentUser } from "@/lib/auth";
 import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import { getSiteUrl } from "@/lib/site-url";
-import { setUserRoles } from "@/lib/user-roles";
+import { getUserRoleIds, sameRoleSet, setUserRoles } from "@/lib/user-roles";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 
 export type UserState = {
@@ -67,15 +63,18 @@ function readPersonId(formData: FormData): string | null {
 }
 
 /**
- * ¿Puede `actor` asignar el rol `roleId`?
+ * ¿Puede `actor` asignar estos roles?
  *
  * Quien solo tiene `usuarios.manage` puede dar de alta gente, pero no repartir
  * la administración: si no, invitándose a sí mismo con otro correo se saltaría
  * la separación entre dar acceso y decidir qué puede hacer cada cual.
  */
-async function canAssignRole(actor: CurrentUser, roleId: string): Promise<boolean> {
+async function canAssignRoles(
+  actor: CurrentUser,
+  roleIds: readonly string[],
+): Promise<boolean> {
   if (hasPermission(actor, "roles.manage")) return true;
-  return !(await roleEscalates(roleId));
+  return !(await rolesEscalate(roleIds));
 }
 
 // --- Alta por invitación -----------------------------------------------------
@@ -99,7 +98,7 @@ export async function inviteUser(
 
   const role = await db.query.roles.findFirst({ where: eq(roles.id, roleId) });
   if (!role) return { error: t("roleNotFound") };
-  if (!(await canAssignRole(current, roleId))) {
+  if (!(await canAssignRoles(current, [roleId]))) {
     return { error: t("cannotAssignAdminRole") };
   }
 
@@ -194,23 +193,28 @@ export async function updateUser(
   const role = await db.query.roles.findFirst({ where: eq(roles.id, roleId) });
   if (!role) return { error: t("roleNotFound") };
 
-  const changesRole = target.roleId !== roleId;
+  const currentRoleIds = await getUserRoleIds(id);
+  const nextRoleIds = [roleId];
+  const changesRole = !sameRoleSet(currentRoleIds, nextRoleIds);
 
   // Cambiarse el rol a uno mismo es la vía más rápida de perder el acceso a
   // esta pantalla sin querer, y no hay ningún caso legítimo: para eso está
   // otra persona con permiso de administración.
   if (changesRole && id === current.id) return { error: t("cannotChangeOwnRole") };
 
-  if (changesRole && !(await canAssignRole(current, roleId))) {
+  // Solo se comprueba sobre los roles que se AÑADEN: quitar uno que escala es
+  // una des-escalada, y exigir el permiso para eso impediría hasta corregirle
+  // el nombre a alguien que ya es administrador.
+  const addedRoleIds = nextRoleIds.filter((r) => !currentRoleIds.includes(r));
+  if (!(await canAssignRoles(current, addedRoleIds))) {
     return { error: t("cannotAssignAdminRole") };
   }
 
   if (changesRole && target.status === "active") {
-    const newPermissions = await getRolePermissions(roleId);
-    if (!newPermissions.has("usuarios.manage")) {
-      const remaining = await countActiveAdmins({ excludeUserId: id });
-      if (remaining === 0) return { error: t("lastAdminGuard") };
-    }
+    const remaining = await countActiveAdminsAfter({
+      userRoles: new Map([[id, nextRoleIds]]),
+    });
+    if (remaining === 0) return { error: t("lastAdminGuard") };
   }
 
   try {
@@ -249,10 +253,14 @@ export async function toggleUserStatus(
 
   const target = await db.query.users.findFirst({ where: eq(users.id, id) });
   if (!target) return { error: t("userNotFound") };
-  if (!target.roleId) return { error: t("userWithoutRole") };
+  if ((await getUserRoleIds(id)).length === 0) {
+    return { error: t("userWithoutRole") };
+  }
 
   if (!activate) {
-    const remaining = await countActiveAdmins({ excludeUserId: id });
+    const remaining = await countActiveAdminsAfter({
+      userRoles: new Map([[id, null]]),
+    });
     if (remaining === 0) return { error: t("lastAdminGuard") };
   }
 
@@ -296,7 +304,9 @@ export async function deleteUser(
   const target = await db.query.users.findFirst({ where: eq(users.id, id) });
   if (!target) return { error: t("userNotFound") };
 
-  const remaining = await countActiveAdmins({ excludeUserId: id });
+  const remaining = await countActiveAdminsAfter({
+    userRoles: new Map([[id, null]]),
+  });
   if (remaining === 0) return { error: t("lastAdminGuard") };
 
   // Igual que `deleteAccount` en los ajustes: primero el perfil, luego la

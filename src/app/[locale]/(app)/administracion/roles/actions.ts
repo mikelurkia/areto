@@ -6,7 +6,7 @@ import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { rolePermissions, roles, userRoles, users } from "@/db/schema";
-import { countActiveAdmins, getRolePermissions } from "@/lib/admin-guards";
+import { countActiveAdminsAfter, permissionsOfRoles } from "@/lib/admin-guards";
 import { requirePermission } from "@/lib/auth";
 import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import {
@@ -178,11 +178,14 @@ export async function deleteRole(
 
     // Si el rol que desaparece era el que sostenía la administración y el
     // destino no lo hace, el club se quedaría sin nadie que pueda entrar aquí.
-    const targetPermissions = await getRolePermissions(target.id);
-    if (!targetPermissions.has("usuarios.manage")) {
-      const remaining = await countActiveAdmins({ excludeRoleId: id });
-      if (remaining === 0) return { error: t("lastAdminGuard") };
-    }
+    // Se simula el resultado completo (el rol se va, sus usuarios pasan al
+    // destino) en vez de restar: con varios roles por cuenta, restar el que se
+    // borra ignoraría que a alguien se lo concede otro de los suyos.
+    const remaining = await countActiveAdminsAfter({
+      reassign: { from: id, to: target.id },
+      rolePermissions: new Map([[id, null]]),
+    });
+    if (remaining === 0) return { error: t("lastAdminGuard") };
 
     await db.transaction(async (tx) => {
       // El orden importa: `user_roles.role_id` y `users.role_id` son ambos
@@ -231,17 +234,23 @@ export async function setRolePermissions(
     for (const locked of ADMIN_LOCKED_PERMISSIONS) submitted.add(locked);
   }
 
-  const isOwnRole = current.assignedRole?.id === roleId;
-  if (isOwnRole && !submitted.has("roles.manage")) {
-    return { error: t("cannotRemoveOwnAdmin") };
+  // La pregunta ya no es "¿este rol es el mío?" sino "¿el estado que estoy
+  // guardando me deja sin `roles.manage`?": con varios roles, quitárselo a uno
+  // de los míos es legítimo si otro me lo sigue dando.
+  const myRoleIds = current.assignedRoles.map((r) => r.id);
+  if (myRoleIds.includes(roleId)) {
+    const fromOthers = await permissionsOfRoles(myRoleIds.filter((r) => r !== roleId));
+    if (!submitted.has("roles.manage") && !fromOthers.has("roles.manage")) {
+      return { error: t("cannotRemoveOwnAdmin") };
+    }
   }
 
   // Si este rol deja de conceder la administración, tiene que quedar alguien
-  // más que la tenga.
-  if (!submitted.has("usuarios.manage")) {
-    const remaining = await countActiveAdmins({ excludeRoleId: roleId });
-    if (remaining === 0) return { error: t("lastAdminGuard") };
-  }
+  // más que la tenga —por el rol que sea—.
+  const remaining = await countActiveAdminsAfter({
+    rolePermissions: new Map([[roleId, submitted]]),
+  });
+  if (remaining === 0) return { error: t("lastAdminGuard") };
 
   await db.transaction(async (tx) => {
     await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, roleId));

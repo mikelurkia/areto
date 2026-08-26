@@ -83,7 +83,8 @@
       "player": "Jokalaria",
       "member": "Bazkidea",
       "basic": "Oinarrizko sarbidea"
-    }
+    },
+    "moreRoles": "+{count}"
   },
   "AppLayout": {
     "headerTitle": "Klubaren kudeaketa",
@@ -138,7 +139,7 @@
     "cancel": "Utzi",
     "save": "Gorde",
     "colUser": "Erabiltzailea",
-    "colRole": "Rola",
+    "colRole": "Rolak",
     "colPerson": "Lotutako pertsona",
     "colStatus": "Egoera",
     "colLastSignIn": "Azken sarrera",
