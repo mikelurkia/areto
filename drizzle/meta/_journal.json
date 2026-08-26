@@ -470,6 +470,13 @@
       "when": 1787740198919,
       "tag": "0066_roles_de_fabrica",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1787745262253,
+      "tag": "0067_rare_iron_lad",
+      "breakpoints": true
     }
   ]
 }

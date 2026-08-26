@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
-import { rolePermissions, roles, users } from "@/db/schema";
+import { rolePermissions, roles, userRoles, users } from "@/db/schema";
 import { countActiveAdmins, getRolePermissions } from "@/lib/admin-guards";
 import { requirePermission } from "@/lib/auth";
 import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
@@ -160,10 +160,12 @@ export async function deleteRole(
   if (role.isSystem) return { error: t("cannotDeleteSystemRole") };
   if (role.isDefault) return { error: t("cannotDeleteDefaultRole") };
 
-  const assigned = await db.query.users.findMany({
-    where: eq(users.roleId, id),
-    columns: { id: true },
-  });
+  // Quién lo tiene, leído de la puente (la fuente de verdad), no de
+  // `users.role_id`.
+  const assigned = await db
+    .select({ userId: userRoles.userId })
+    .from(userRoles)
+    .where(eq(userRoles.roleId, id));
 
   if (assigned.length > 0) {
     if (!reassignRoleId) {
@@ -183,6 +185,15 @@ export async function deleteRole(
     }
 
     await db.transaction(async (tx) => {
+      // El orden importa: `user_roles.role_id` y `users.role_id` son ambos
+      // RESTRICT, así que hay que soltar las dos referencias antes de borrar
+      // el rol o el DELETE falla con 23503.
+      await tx
+        .insert(userRoles)
+        .values(assigned.map((a) => ({ userId: a.userId, roleId: target.id })))
+        .onConflictDoNothing();
+      await tx.delete(userRoles).where(eq(userRoles.roleId, id));
+      // DEUDA EXPAND: mientras `users.role_id` exista hay que moverla también.
       await tx.update(users).set({ roleId: target.id }).where(eq(users.roleId, id));
       await tx.delete(roles).where(eq(roles.id, id));
     });
