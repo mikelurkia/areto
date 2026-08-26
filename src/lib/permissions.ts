@@ -129,8 +129,15 @@ export const PERMISSION_MODULES: readonly {
   { key: "administracion", permissions: ["usuarios.manage", "roles.manage"] },
 ];
 
-/** Claves de los cuatro roles sembrados de fábrica. */
-export const SYSTEM_ROLE_KEYS = ["admin", "staff", "coach", "member"] as const;
+/** Claves de los seis roles sembrados de fábrica. */
+export const SYSTEM_ROLE_KEYS = [
+  "admin",
+  "staff",
+  "coach",
+  "player",
+  "member",
+  "basic",
+] as const;
 export type SystemRoleKey = (typeof SYSTEM_ROLE_KEYS)[number];
 
 export function isSystemRoleKey(value: string): value is SystemRoleKey {
@@ -148,17 +155,18 @@ export const ADMIN_LOCKED_PERMISSIONS: readonly Permission[] = [
 ];
 
 /**
- * Matriz de fábrica de los cuatro roles de sistema. La usa `db:seed` para que
+ * Matriz de fábrica de los seis roles de sistema. La usa `db:seed` para que
  * una base de datos de desarrollo nueva arranque usable.
  *
  * OJO: la migración que siembra estos roles en `drizzle/` lleva una COPIA
  * literal de esta tabla. Es duplicación deliberada — una migración que dependa
  * del código de hoy deja de ser reproducible mañana. No intentes unificarlas.
  *
- * `member` conserva `equipos.view` y `temporadas.view` porque antes de este
- * cambio esas dos páginas solo llamaban a `requireUser()` y las veía todo el
- * mundo. `staff` es el único que cambia de comportamiento: deja de equivaler a
- * `admin`, porque no administra usuarios ni roles.
+ * `basic` conserva `equipos.view` y `temporadas.view` porque antes de existir
+ * los permisos esas dos páginas solo llamaban a `requireUser()` y las veía todo
+ * el mundo: es el suelo, y ninguna cuenta debe perder acceso al pasar a él.
+ * `member` (Socio) añade el calendario, que es lo que distingue a un socio del
+ * club de una cuenta recién creada. `staff` no administra usuarios ni roles.
  */
 export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, readonly Permission[]> = {
   admin: [...PERMISSIONS],
@@ -172,7 +180,9 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, readonly Permission[
     "calendario.view",
     "calendario.manage",
   ],
-  member: ["equipos.view", "temporadas.view"],
+  player: ["equipos.view", "temporadas.view", "calendario.view"],
+  member: ["equipos.view", "temporadas.view", "calendario.view"],
+  basic: ["equipos.view", "temporadas.view"],
 };
 
 /** Nombre y orden de fábrica de los roles de sistema (el nombre visible se traduce por `key`). */
@@ -205,10 +215,24 @@ export const SYSTEM_ROLES: readonly {
     isDefault: false,
   },
   {
+    key: "player",
+    name: "Jokalaria",
+    description: "Bere taldea, denboraldiak eta egutegia ikusi.",
+    sortOrder: 35,
+    isDefault: false,
+  },
+  {
     key: "member",
     name: "Bazkidea",
-    description: "Irakurketa soila: taldeak eta denboraldiak.",
+    description: "Klubeko bazkidea: taldeak, denboraldiak eta egutegia ikusi.",
     sortOrder: 40,
+    isDefault: false,
+  },
+  {
+    key: "basic",
+    name: "Oinarrizko sarbidea",
+    description: "Kontu berri baten abiapuntua: taldeak eta denboraldiak ikusi.",
+    sortOrder: 50,
     isDefault: true,
   },
 ];

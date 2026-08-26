@@ -80,7 +80,9 @@
       "admin": "Administrador",
       "staff": "Secretaría",
       "coach": "Entrenador",
-      "member": "Socio"
+      "player": "Jugador",
+      "member": "Socio",
+      "basic": "Acceso básico"
     }
   },
   "AppLayout": {
@@ -259,7 +261,9 @@
       "admin": "Administrador",
       "staff": "Secretaría",
       "coach": "Entrenador",
-      "member": "Socio"
+      "player": "Jugador",
+      "member": "Socio",
+      "basic": "Acceso básico"
     },
     "modules": {
       "personas": "Personas",
