@@ -50,6 +50,24 @@ export function getWeekendKey(dateStr: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * "14 de febrero – 15 de febrero 2026" a partir del sábado del fin de semana.
+ * Con `month: "short"` sale la variante compacta, sin año ("14 feb – 15 feb"),
+ * pensada para el cuadro de próxima jornada del panel.
+ */
+export function formatWeekendRange(
+  weekendOf: string,
+  locale: string,
+  month: "long" | "short" = "long",
+): string {
+  const saturday = new Date(`${weekendOf}T00:00:00`);
+  const sunday = new Date(saturday);
+  sunday.setDate(sunday.getDate() + 1);
+  const dayMonth = new Intl.DateTimeFormat(locale, { day: "numeric", month });
+  const range = `${dayMonth.format(saturday)} – ${dayMonth.format(sunday)}`;
+  return month === "short" ? range : `${range} ${saturday.getFullYear()}`;
+}
+
 /** Agrupa eventos por la clave de fin de semana (sábado), reutilizable tanto
  * por la vista de lista como por la de mes. */
 export function groupCourtEventsByWeekend<T extends { weekendOf: string }>(

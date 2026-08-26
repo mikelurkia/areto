@@ -95,39 +95,36 @@
   },
   "Dashboard": {
     "title": "Panela",
-    "subtitle": "Klubaren eta uneko denboraldiaren laburpena.",
-    "actionsSection": "Egiteko",
-    "actionsSectionHint": "Orain konpondu beharreko eginkizun zehatzak.",
-    "noActionsDescription": "Ez dago eginkizun zain daudenik.",
-    "actions": {
-      "playerRegistrations": "Balioztatzeko dauden jokalari izen-emateak",
-      "memberRegistrations": "Balioztatzeko dauden bazkide eskaerak",
-      "weekendPreferredDay": "{date}(e)ko partidek ez dute lehentasunezko egunik baieztatuta"
+    "subtitle": "Gaur zain dagoena eta talde bakoitzaren hurrengo jardunaldia.",
+    "alertsSection": "Alertak",
+    "alertsSectionHint": "Zain dagoena bakarrik agertzen da.",
+    "allClearTitle": "Dena egunean",
+    "allClearDescription": "Ez dago alertarik zain.",
+    "alerts": {
+      "playerRegistrations": "Artatu gabeko jokalari eskaerak",
+      "memberRegistrations": "Artatu gabeko bazkide eskaerak",
+      "missingRegistrations": "Taldean daudenak eskaerarik gabe",
+      "medicalCerts": "Iraungitako edo iraungitzear dauden azterketa medikoak",
+      "medicalBreakdown": "{expired} iraungita · {expiring} iraungitzear"
     },
-    "sponsorshipSection": "Babesletza",
-    "sponsorshipSectionHint": "Uneko denboraldiaren laburpena.",
-    "sponsorshipCommitted": "Konprometituta",
-    "sponsorshipCollected": "Kobratuta",
-    "sponsorshipPending": "Zain",
-    "expiringSection": "Hurrengo iraungitzeak",
-    "expiringSectionHint": "Hurrengo {days} egunetan iraungiko diren ziurtagiri medikoak, titulazioak eta babesletzak.",
-    "noExpiringDescription": "Ez dago hurrengo iraungitzerik.",
-    "expiringMedicalCertLabel": "Ziurtagiri medikoa",
-    "expiringSponsorshipLabel": "Babesletza",
-    "expiredBadge": "Iraungita: {date}",
-    "expiresBadge": "Iraungitzea: {date}",
-    "integritySection": "Datuen desadostasunak",
-    "integritySectionHint": "Eskuz berrikusi beharreko kasuak.",
-    "noIntegrityIssuesDescription": "Ez da desadostasunik antzeman.",
-    "integrity": {
+    "reviewSection": "Berrikusteko",
+    "reviewSectionHint": "Noizean behin eskuz begiratzea komeni den kasuak.",
+    "noReviewDescription": "Ez da berrikusteko ezer antzeman.",
+    "review": {
       "orphanPlayers": "Taldea esleitu gabeko onartutako jokalariak",
       "missingNationalId": "NAN/AIZ gabeko fitxa aktiboak",
       "medicalCertMismatch": "Sinkronizatu gabeko ziurtagiri medikoa",
       "duplicateCaptains": "Kapitain bat baino gehiago duten taldeak",
-      "sponsorshipMismatch": "Babesletza-urtekotasun bikoiztu edo koadratu gabeak",
-      "duplicatePersons": "Bikoiztuta egon daitezkeen pertsonak",
-      "pendingRenewals": "Denboraldi-berritze zain edo baztertutakoak"
-    }
+      "duplicatePersons": "Bikoiztuta egon daitezkeen pertsonak"
+    },
+    "fixturesSection": "Hurrengo jardunaldia",
+    "fixturesSectionHint": "Talde bakoitzaren hurrengo partida, kategoriaka.",
+    "noFixturesDescription": "Ez dago talderik uneko denboraldian.",
+    "fixtureNoCategory": "Kategoriarik gabe",
+    "fixtureNoMatch": "Partidarik programatu gabe",
+    "fixtureUnknownOpponent": "Aurkaria zehazteke",
+    "fixtureMissingPreferredDay": "Egunik baieztatu gabe",
+    "fixturesPreferredDayWarning": "{count, plural, one {hurrengo jardunaldiko etxeko partida # egun baieztatu gabe} other {hurrengo jardunaldiko etxeko # partida egun baieztatu gabe}}"
   },
   "Administracion": {
     "title": "Administrazioa",
