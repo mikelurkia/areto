@@ -124,7 +124,19 @@ export function RoleDialog(props: RoleDialogProps) {
           </DialogTitle>
           <DialogDescription>{t("roleDialogDescription")}</DialogDescription>
         </DialogHeader>
-        <form action={action} className="flex flex-col gap-4">
+        {/*
+          Los campos son no controlados y sus valores de partida salen de
+          `initial`, que cambia cuando la página se revalida —el diálogo sigue
+          montado entre medias—. Sin esta `key` React se queda con el valor de
+          la primera vez y Base UI avisa de que se está cambiando el estado
+          inicial de una casilla no controlada. Mismo recurso que en
+          `registration-availability-form.tsx`.
+        */}
+        <form
+          key={`${initial?.name ?? ""}|${initial?.description ?? ""}|${initial?.isDefault ?? false}`}
+          action={action}
+          className="flex flex-col gap-4"
+        >
           {props.mode === "edit" ? (
             <input type="hidden" name="id" value={props.role.id} />
           ) : null}
