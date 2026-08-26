@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 
 import { updateUser } from "@/app/[locale]/(app)/administracion/usuarios/actions";
+import { RoleCheckboxGroup } from "@/components/administracion/role-checkbox-group";
 import type { RoleOption } from "@/components/administracion/role-dialog";
 import {
   UserPersonCombobox,
@@ -27,13 +28,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useDialogParam } from "@/hooks/use-dialog-param";
@@ -42,9 +36,8 @@ export type AdminUserRow = {
   id: string;
   email: string;
   fullName: string | null;
-  roleId: string | null;
+  roleIds: string[];
   roleLabels: string[];
-  roleIsSystem: boolean;
   personId: string | null;
   personName: string | null;
   status: "pending" | "active" | "disabled";
@@ -100,32 +93,16 @@ export function UserDialog({
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor={`user-role-${user.id}`}>
-                {t("roleLabel")}
-              </FieldLabel>
-              <Select
-                name="roleId"
-                defaultValue={user.roleId ?? ""}
+              <FieldLabel>{t("rolesLabel")}</FieldLabel>
+              <FieldDescription>
+                {isSelf ? t("cannotChangeOwnRoleHint") : t("rolesHint")}
+              </FieldDescription>
+              <RoleCheckboxGroup
+                roles={roles}
+                selected={user.roleIds}
                 disabled={isSelf}
-              >
-                <SelectTrigger id={`user-role-${user.id}`} className="w-full">
-                  <SelectValue>
-                    {(value: string) =>
-                      roles.find((r) => r.id === value)?.name ?? ""
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((role) => (
-                    <SelectItem key={role.id} value={role.id}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {isSelf ? (
-                <FieldDescription>{t("cannotChangeOwnRoleHint")}</FieldDescription>
-              ) : null}
+                idPrefix={`user-${user.id}`}
+              />
             </Field>
             <Field>
               <FieldLabel>{t("personLabel")}</FieldLabel>
