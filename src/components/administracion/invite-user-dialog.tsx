@@ -87,6 +87,9 @@ export function InviteUserDialog({
               <FieldLabel>{t("rolesLabel")}</FieldLabel>
               <FieldDescription>{t("rolesHint")}</FieldDescription>
               <RoleCheckboxGroup
+                // Igual que en el diálogo de edición: si cambia cuál es el rol
+                // por defecto, la preselección vuelve a sembrarse.
+                key={defaultRoleId ?? ""}
                 roles={roles}
                 selected={defaultRoleId ? [defaultRoleId] : []}
                 idPrefix="invite"

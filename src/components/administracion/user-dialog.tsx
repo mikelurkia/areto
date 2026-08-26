@@ -98,6 +98,9 @@ export function UserDialog({
                 {isSelf ? t("cannotChangeOwnRoleHint") : t("rolesHint")}
               </FieldDescription>
               <RoleCheckboxGroup
+                // Vuelve a sembrarse cuando la página se revalida y llegan
+                // roles distintos: el diálogo sigue montado entre medias.
+                key={user.roleIds.join(",")}
                 roles={roles}
                 selected={user.roleIds}
                 disabled={isSelf}
