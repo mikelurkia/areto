@@ -987,13 +987,22 @@ export default async function PersonDetailPage({
               </h2>
               {canManageMedical ? (
                 <span className="print:hidden">
-                  <Button
-                    render={<Link href={`/personas/${person.id}/parte-lesion/nuevo`} />}
-                    nativeButton={false}
-                  >
-                    <PlusIcon data-icon="inline-start" />
-                    {t("addInjuryReportAction")}
-                  </Button>
+                  {/* Sin ficha en ningún equipo no hay parte que tramitar: lo
+                      cubre la licencia federativa del jugador con su equipo
+                      (ver la página del parte, que rechaza el alta igual). */}
+                  {person.memberships.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      {t("injuryReportNoTeamHint")}
+                    </p>
+                  ) : (
+                    <Button
+                      render={<Link href={`/personas/${person.id}/parte-lesion/nuevo`} />}
+                      nativeButton={false}
+                    >
+                      <PlusIcon data-icon="inline-start" />
+                      {t("addInjuryReportAction")}
+                    </Button>
+                  )}
                 </span>
               ) : null}
             </div>

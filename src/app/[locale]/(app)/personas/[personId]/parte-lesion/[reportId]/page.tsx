@@ -72,11 +72,16 @@ export default async function InjuryReportFederationPage({
       })) ?? null);
   if (!isNew && !report) notFound();
 
-  const [personTeams, club, hasTemplate, fileUrl] = await Promise.all([
+  const [personMemberships, club, hasTemplate, fileUrl] = await Promise.all([
     db.query.memberships.findMany({
       where: eq(memberships.personId, personId),
       columns: {},
-      with: { team: { columns: { id: true, name: true } } },
+      with: {
+        team: {
+          columns: { id: true, name: true },
+          with: { season: { columns: { name: true, isCurrent: true, startsOn: true } } },
+        },
+      },
     }),
     getClubSettings(),
     fileExists(DOCUMENT_TEMPLATES_BUCKET, INJURY_REPORT_TEMPLATE_PATH),
@@ -86,6 +91,30 @@ export default async function InjuryReportFederationPage({
   // Sin estos datos del club el impreso sale con la cabecera a medias, y la
   // Mutualidad devuelve los partes incompletos.
   const clubDataMissing = !club?.federationDelegation || !club?.signatoryName;
+
+  // Equipos del jugador, el de la temporada en curso primero: es el que el
+  // formulario deja ya elegido. Cuando hay fichas de varias temporadas se les
+  // añade el nombre de la temporada, porque los equipos se llaman igual año
+  // tras año ("Senior A") y si no, las opciones serían indistinguibles.
+  const teams = [...personMemberships]
+    .sort((a, b) => {
+      if (a.team.season.isCurrent !== b.team.season.isCurrent) {
+        return a.team.season.isCurrent ? -1 : 1;
+      }
+      return (b.team.season.startsOn ?? "").localeCompare(a.team.season.startsOn ?? "");
+    })
+    .map((m) => m.team);
+  const severalSeasons = new Set(teams.map((team) => team.season.name)).size > 1;
+  const teamOptions = teams.map((team) => ({
+    id: team.id,
+    name: severalSeasons ? `${team.name} · ${team.season.name}` : team.name,
+  }));
+
+  // El parte lo cubre la licencia federativa del jugador con su equipo: sin
+  // ficha en ninguno no hay nada que tramitar, así que el formulario ni se
+  // ofrece (el botón de alta tampoco aparece en la ficha de la persona). Un
+  // parte ya existente sigue accesible para consultar o borrar su fichero.
+  const noTeam = teamOptions.length === 0;
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -101,8 +130,14 @@ export default async function InjuryReportFederationPage({
         </p>
       </div>
 
-      {hasTemplate && !clubDataMissing ? null : (
+      {hasTemplate && !clubDataMissing && !noTeam ? null : (
         <div className="flex flex-col gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+          {noTeam ? (
+            <p className="flex items-start gap-2">
+              <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+              {t("injuryReportNoTeamWarning")}
+            </p>
+          ) : null}
           {!hasTemplate ? (
             <p className="flex items-start gap-2">
               <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
@@ -118,42 +153,46 @@ export default async function InjuryReportFederationPage({
         </div>
       )}
 
-      <div className="grid gap-4 lg:max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("injuryReportFederationSection")}</CardTitle>
-            <CardDescription>{t("injuryReportFederationDescription")}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <InjuryReportForm
-              personId={personId}
-              report={
-                report && {
-                  id: report.id,
-                  notes: report.notes,
-                  teamId: report.teamId,
-                  reportedOn: report.reportedOn,
-                  reportedPlace: report.reportedPlace,
-                  place: report.place,
-                  placeOther: report.placeOther,
-                  matchMinute: report.matchMinute,
-                  surface: report.surface,
-                  collision: report.collision,
-                  opponentTeam: report.opponentTeam,
-                  relatedToPrevious: report.relatedToPrevious,
-                  bootType: report.bootType,
-                  trainingSurface: report.trainingSurface,
-                  weeklyTrainingMinutes: report.weeklyTrainingMinutes,
-                }
-              }
-              teams={personTeams.map((m) => m.team)}
-            />
-            {report ? (
-              <InjuryReportFileManager reportId={report.id} fileUrl={fileUrl} />
-            ) : null}
-          </CardContent>
-        </Card>
-      </div>
+      {isNew && noTeam ? null : (
+        <div className="grid gap-4 lg:max-w-2xl">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("injuryReportFederationSection")}</CardTitle>
+              <CardDescription>{t("injuryReportFederationDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {noTeam ? null : (
+                <InjuryReportForm
+                  personId={personId}
+                  report={
+                    report && {
+                      id: report.id,
+                      notes: report.notes,
+                      teamId: report.teamId,
+                      reportedOn: report.reportedOn,
+                      reportedPlace: report.reportedPlace,
+                      place: report.place,
+                      placeOther: report.placeOther,
+                      matchMinute: report.matchMinute,
+                      surface: report.surface,
+                      collision: report.collision,
+                      opponentTeam: report.opponentTeam,
+                      relatedToPrevious: report.relatedToPrevious,
+                      bootType: report.bootType,
+                      trainingSurface: report.trainingSurface,
+                      weeklyTrainingMinutes: report.weeklyTrainingMinutes,
+                    }
+                  }
+                  teams={teamOptions}
+                />
+              )}
+              {report ? (
+                <InjuryReportFileManager reportId={report.id} fileUrl={fileUrl} />
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
