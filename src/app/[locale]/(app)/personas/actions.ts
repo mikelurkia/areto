@@ -2,9 +2,8 @@
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath, updateTag } from "next/cache";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 
-import { redirect } from "@/i18n/navigation";
 import { db } from "@/db";
 import {
   bootType,
@@ -43,6 +42,7 @@ import { resolvePayerFields } from "@/lib/payer";
 import {
   extensionFromMimeType,
   fileExists,
+  getSignedUrl,
   removeFile,
   uploadFile,
 } from "@/lib/supabase/storage";
@@ -55,6 +55,20 @@ export type PersonState = {
    * usuario elija "vincular" o "crear de todas formas" antes de continuar. */
   candidates?: PersonCandidate[];
   submittedFields?: Record<string, string | null>;
+  /**
+   * Fichero que el navegador tiene que descargar en cuanto vuelva la acción.
+   * Lo usa el parte de lesión: generarlo y bajárselo son el mismo gesto, no dos
+   * pasos. Solo lo puede hacer el cliente, así que la acción se limita a decir
+   * qué bajar (ver `InjuryReportForm`).
+   */
+  download?: { url: string; filename: string };
+  /**
+   * Navegación que hace el cliente después de procesar el resto del estado. Un
+   * `redirect()` del servidor cortaría la respuesta y con ella el `download`,
+   * así que las acciones que además tienen que llevar a otra URL la devuelven
+   * aquí en vez de redirigir ellas.
+   */
+  redirectTo?: string;
 };
 
 const PHOTO_BUCKET = "person-photos";
@@ -143,6 +157,21 @@ async function uploadInjuryReportFile(
 
 async function removeInjuryReportFileObject(path: string) {
   await removeFile(INJURY_REPORTS_BUCKET, path);
+}
+
+/**
+ * Nombre con el que se baja el PDF del parte. En Storage el objeto se llama
+ * como el id del parte (un UUID), que en la carpeta de descargas de quien lo
+ * tramita no dice nada: la Mutualidad los recibe por jugador y fecha.
+ */
+function injuryReportDownloadName(fullName: string, occurredOn: string): string {
+  const slug = fullName
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return `parte_lesion_${slug || "jugador"}_${occurredOn}.pdf`;
 }
 
 /**
@@ -965,10 +994,13 @@ function readTristate(formData: FormData, key: string): boolean | null {
  * la Mutualidad y regenera el fichero del parte con esos datos: una sola
  * acción para lo que antes eran tres pasos (alta, guardar impreso, generar
  * fichero). Sin `id` es un alta: inserta con la fecha de hoy —el parte se abre
- * el mismo día de la lesión, no se pide en el formulario— y redirige a la URL
- * canónica del parte ya creado. Si falta la plantilla o los datos del club, el
- * guardado de los campos igualmente tiene éxito — solo el fichero se queda sin
- * generar, con aviso.
+ * el mismo día de la lesión, no se pide en el formulario— y devuelve la URL
+ * canónica del parte ya creado para que el cliente navegue a ella. Si falta la
+ * plantilla o los datos del club, el guardado de los campos igualmente tiene
+ * éxito — solo el fichero se queda sin generar, con aviso.
+ *
+ * El fichero generado vuelve en `download` para que el navegador se lo baje sin
+ * un segundo clic.
  */
 export async function saveInjuryReportAndGenerate(
   _prev: PersonState,
@@ -990,24 +1022,25 @@ export async function saveInjuryReportAndGenerate(
     personId = existing.personId;
   }
 
-  // El equipo tiene que ser uno en el que esta persona esté fichada: de él salen
-  // la categoría de licencia, el sexo y el puesto del impreso, y un id
-  // cualquiera llegado por POST daría un parte con datos de otro equipo.
+  // El equipo es obligatorio y tiene que ser uno en el que esta persona esté
+  // fichada: el parte lo cubre la licencia federativa del jugador con ese
+  // equipo, y de él salen además la categoría de licencia, el sexo y el puesto
+  // del impreso. Sin ficha en ningún equipo no hay parte que tramitar, así que
+  // esto no es solo validación de formulario — es la regla del trámite.
   //
   // Se descarta lo que no tenga forma de UUID antes de consultar, y no solo por
-  // prudencia: la opción "sin equipo" del formulario viaja como un centinela que
-  // no es un id, y comparar eso con una columna `uuid` es un error de Postgres,
-  // no una fila que no aparece.
+  // prudencia: comparar con una columna `uuid` algo que no lo es es un error de
+  // Postgres, no una fila que no aparece.
   const requestedTeamId = String(formData.get("teamId") ?? "").trim();
-  let teamId: string | null = null;
-  if (UUID.test(requestedTeamId)) {
-    const membership = await db.query.memberships.findFirst({
-      where: and(eq(memberships.personId, personId), eq(memberships.teamId, requestedTeamId)),
-      columns: { teamId: true },
-    });
-    if (!membership) return { error: t("injuryReportTeamNotFound") };
-    teamId = membership.teamId;
-  }
+  if (!UUID.test(requestedTeamId)) return { error: t("injuryReportTeamRequired") };
+  // `positions` se lee ya aquí: es el puesto que va al impreso más abajo, y
+  // volver a buscar la misma ficha para eso sería una consulta de más.
+  const membership = await db.query.memberships.findFirst({
+    where: and(eq(memberships.personId, personId), eq(memberships.teamId, requestedTeamId)),
+    columns: { teamId: true, positions: true },
+  });
+  if (!membership) return { error: t("injuryReportTeamNotFound") };
+  const teamId = membership.teamId;
 
   const rawMinutes = String(formData.get("weeklyTrainingMinutes") ?? "").trim();
   const weeklyTrainingMinutes = rawMinutes ? Number(rawMinutes) : null;
@@ -1066,27 +1099,18 @@ export async function saveInjuryReportAndGenerate(
   const club = await getClubSettings();
   const canGenerate = hasTemplate && !!club?.federationDelegation && !!club?.signatoryName;
 
+  let download: PersonState["download"];
   if (canGenerate) {
     const report = await db.query.personInjuryReports.findFirst({
       where: eq(personInjuryReports.id, reportId),
       with: { person: true, team: true },
     });
     if (report) {
-      const membership = report.teamId
-        ? await db.query.memberships.findFirst({
-            where: and(
-              eq(memberships.personId, report.personId),
-              eq(memberships.teamId, report.teamId),
-            ),
-            columns: { positions: true },
-          })
-        : null;
-
       const pdf = await fillInjuryReportPdf({
         report,
         person: report.person,
         team: report.team,
-        positions: membership?.positions ?? [],
+        positions: membership.positions,
         club,
       });
       const file = new File([pdf], "parte.pdf", { type: "application/pdf" });
@@ -1097,19 +1121,39 @@ export async function saveInjuryReportAndGenerate(
         .update(personInjuryReports)
         .set({ filePath: path })
         .where(eq(personInjuryReports.id, reportId));
+
+      // El fichero se baja solo al volver la acción: el parte se genera para
+      // imprimirlo y llevarlo al médico, así que pedirlo y descargarlo son el
+      // mismo gesto. La URL es la del proxy de Storage (comprueba la sesión y
+      // el permiso en cada petición), con el nombre útil que el UUID no da.
+      const url = await getSignedUrl(INJURY_REPORTS_BUCKET, path);
+      if (url) {
+        const filename = injuryReportDownloadName(
+          `${report.person.firstName} ${report.person.lastName}`,
+          report.occurredOn,
+        );
+        // El `v` no lo lee nadie: está para que el navegador no sirva de su
+        // caché el PDF anterior. El fichero de un parte se sobreescribe siempre
+        // en la misma ruta, y el proxy de Storage responde con una hora de
+        // `max-age`, así que sin esto regenerar un parte bajaría el de antes.
+        download = {
+          url: `${url}?filename=${encodeURIComponent(filename)}&v=${Date.now()}`,
+          filename,
+        };
+      }
     }
   }
 
   revalidatePath("/", "layout");
 
-  if (!id) {
-    redirect({
-      href: `/personas/${personId}/parte-lesion/${reportId}`,
-      locale: await getLocale(),
-    });
-  }
-
-  return { message: canGenerate ? t("injuryReportSaved") : t("injuryReportSavedNoFile") };
+  return {
+    message: canGenerate ? t("injuryReportSaved") : t("injuryReportSavedNoFile"),
+    download,
+    // En el alta la URL definitiva del parte solo se conoce ahora. La
+    // navegación la hace el cliente y no un `redirect()` de aquí: redirigir
+    // descartaría el estado, y con él la descarga que se acaba de preparar.
+    redirectTo: id ? undefined : `/personas/${personId}/parte-lesion/${reportId}`,
+  };
 }
 
 /** Sube un fichero propio como el fichero del parte, reemplazando el que hubiera. */

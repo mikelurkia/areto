@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, type ReactNode } from "react";
+import { useActionState, useCallback, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import {
   saveInjuryReportAndGenerate,
   type PersonState,
 } from "@/app/[locale]/(app)/personas/actions";
+import { useRouter } from "@/i18n/navigation";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useActionToast } from "@/hooks/use-action-toast";
+import { useActionResult, useActionToast } from "@/hooks/use-action-toast";
 
 const initialState: PersonState = {};
 
@@ -52,6 +53,21 @@ const MINUTES = ["0-15", "16-30", "31-45", "46-60", "61-75", "76-90"];
 const SURFACES = ["natural", "artificial", "soil", "other"];
 
 /**
+ * Lanza la descarga del fichero recién generado sin sacar al usuario de la
+ * página. El `href` apunta al proxy de Storage, que es del mismo origen: por
+ * eso el atributo `download` se respeta y manda el PDF a la carpeta de
+ * descargas en vez de abrirlo en una pestaña.
+ */
+function startDownload({ url, filename }: { url: string; filename: string }) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+/**
  * Ficha completa del parte de lesión: las casillas del impreso oficial de la
  * Mutualidad y las notas internas, en un único formulario que guarda y
  * regenera el fichero del parte de una vez. `report` es `null` en el alta:
@@ -70,8 +86,24 @@ export function InjuryReportForm({
   teams: { id: string; name: string }[];
 }) {
   const t = useTranslations("Personas");
+  const router = useRouter();
   const [state, action] = useActionState(saveInjuryReportAndGenerate, initialState);
   useActionToast(state);
+
+  // Guardar deja el parte generado y bajado en un solo gesto. En el alta, la
+  // navegación a la URL definitiva la hace el cliente (ver `redirectTo` en la
+  // acción) y va después de disparar la descarga, que ya está en marcha y no la
+  // corta una navegación de cliente.
+  useActionResult(
+    state,
+    useCallback(
+      (result: PersonState) => {
+        if (result.download) startDownload(result.download);
+        if (result.redirectTo) router.replace(result.redirectTo);
+      },
+      [router],
+    ),
+  );
 
   const tristate = (value: boolean | null | undefined) =>
     value === true ? "yes" : value === false ? "no" : UNSET;
@@ -85,8 +117,13 @@ export function InjuryReportForm({
           id="injury-teamId"
           name="teamId"
           label={t("injuryReportTeamLabel")}
-          defaultValue={report?.teamId ?? UNSET}
-          unsetLabel={t("injuryReportNoTeamOption")}
+          // Viene elegido de antemano: en un parte nuevo, el equipo del jugador
+          // esta temporada (`teams` llega ordenado por la página). Es el dato
+          // que casi nunca hay que cambiar, y no tiene opción "sin equipo"
+          // porque sin ficha federativa no hay parte que tramitar.
+          defaultValue={report?.teamId ?? teams[0]?.id ?? UNSET}
+          allowUnset={false}
+          unsetLabel={t("injuryReportTeamPlaceholder")}
           options={teams.map((team) => ({ value: team.id, label: team.name }))}
         />
 
@@ -250,13 +287,19 @@ export function InjuryReportForm({
   );
 }
 
-/** Select con una opción "sin especificar" al principio, que es el caso normal
- *  mientras el parte se está completando. */
+/**
+ * Select con una opción "sin especificar" al principio, que es el caso normal
+ * mientras el parte se está completando. Con `allowUnset={false}` esa opción
+ * deja de ofrecerse —el campo es obligatorio— y `unsetLabel` pasa a ser solo el
+ * texto del hueco, para el caso raro de que el valor guardado ya no esté entre
+ * las opciones.
+ */
 function Choice({
   id,
   name,
   label,
   defaultValue,
+  allowUnset = true,
   unsetLabel,
   options,
 }: {
@@ -264,10 +307,11 @@ function Choice({
   name: string;
   label: ReactNode;
   defaultValue: string;
+  allowUnset?: boolean;
   unsetLabel: string;
   options: { value: string; label: string }[];
 }) {
-  const all = [{ value: UNSET, label: unsetLabel }, ...options];
+  const all = allowUnset ? [{ value: UNSET, label: unsetLabel }, ...options] : options;
   return (
     <Field>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
