@@ -43,7 +43,7 @@ export type AdminUserRow = {
   email: string;
   fullName: string | null;
   roleId: string | null;
-  roleLabel: string | null;
+  roleLabels: string[];
   roleIsSystem: boolean;
   personId: string | null;
   personName: string | null;

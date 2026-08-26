@@ -42,7 +42,9 @@ export default async function RolesPage({
   const allRoles = await db.query.roles.findMany({
     with: {
       permissions: { columns: { permission: true } },
-      users: { columns: { id: true } },
+      // Cuenta por la puente: `users.role_id` ya solo existe para las RLS
+      // viejas de Storage y no refleja los roles secundarios.
+      userAssignments: { columns: { userId: true } },
     },
     orderBy: (r, { asc }) => [asc(r.sortOrder), asc(r.name)],
   });
@@ -108,7 +110,7 @@ export default async function RolesPage({
                   {role.description ?? "—"}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {role.users.length}
+                  {role.userAssignments.length}
                 </TableCell>
                 <TableCell className="text-right tabular-nums text-muted-foreground">
                   {t("permissionCount", {
@@ -123,7 +125,7 @@ export default async function RolesPage({
                     {role.isSystem ? null : (
                       <DeleteRoleDialog
                         role={option}
-                        userCount={role.users.length}
+                        userCount={role.userAssignments.length}
                         otherRoles={options.filter((o) => o.id !== role.id)}
                       />
                     )}

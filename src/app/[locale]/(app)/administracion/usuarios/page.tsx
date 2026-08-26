@@ -53,7 +53,7 @@ export default async function UsuariosPage({
   const [userRows, allRoles, allPersons] = await Promise.all([
     db.query.users.findMany({
       with: {
-        accessRole: true,
+        roleAssignments: { with: { role: true } },
         person: { columns: { id: true, firstName: true, lastName: true } },
       },
       orderBy: (u, { asc }) => [asc(u.email)],
@@ -71,6 +71,16 @@ export default async function UsuariosPage({
 
   const roleLabel = (role: { key: string; name: string }) =>
     isSystemRoleKey(role.key) ? t(`roles.${role.key}` as "roles.admin") : role.name;
+
+  /** Roles de una cuenta, ordenados como en la tabla de roles. */
+  const rolesOf = (u: (typeof userRows)[number]) =>
+    u.roleAssignments
+      .map((a) => a.role)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+
+  // El "principal" es el de menor `sortOrder`, o sea el más poderoso. Lo usa el
+  // `<Select>` de rol único del diálogo, que todavía no es múltiple.
+  const principalRole = (u: (typeof userRows)[number]) => rolesOf(u)[0];
 
   const roleOptions: RoleOption[] = allRoles.map((r) => ({
     id: r.id,
@@ -101,9 +111,9 @@ export default async function UsuariosPage({
         id: u.id,
         email: u.email,
         fullName: u.fullName,
-        roleId: u.roleId,
-        roleLabel: u.accessRole ? roleLabel(u.accessRole) : null,
-        roleIsSystem: u.accessRole?.isSystem ?? false,
+        roleId: principalRole(u)?.id ?? null,
+        roleLabels: rolesOf(u).map(roleLabel),
+        roleIsSystem: principalRole(u)?.isSystem ?? false,
         personId: u.personId,
         personName: u.person
           ? `${u.person.firstName} ${u.person.lastName}`.trim()
@@ -183,8 +193,14 @@ export default async function UsuariosPage({
                 </div>
               </TableCell>
               <TableCell>
-                {row.roleLabel ? (
-                  <Badge variant="secondary">{row.roleLabel}</Badge>
+                {row.roleLabels.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {row.roleLabels.map((label) => (
+                      <Badge key={label} variant="secondary">
+                        {label}
+                      </Badge>
+                    ))}
+                  </div>
                 ) : (
                   <span className="text-muted-foreground">{t("noRole")}</span>
                 )}

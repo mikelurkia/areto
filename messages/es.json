@@ -83,7 +83,8 @@
       "player": "Jugador",
       "member": "Socio",
       "basic": "Acceso básico"
-    }
+    },
+    "moreRoles": "+{count}"
   },
   "AppLayout": {
     "headerTitle": "Gestión del club",
@@ -138,7 +139,7 @@
     "cancel": "Cancelar",
     "save": "Guardar",
     "colUser": "Usuario",
-    "colRole": "Rol",
+    "colRole": "Roles",
     "colPerson": "Persona vinculada",
     "colStatus": "Estado",
     "colLastSignIn": "Último acceso",
