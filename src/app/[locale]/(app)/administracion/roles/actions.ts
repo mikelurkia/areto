@@ -208,59 +208,87 @@ export async function deleteRole(
   return { message: t("roleDeleted") };
 }
 
-export async function setRolePermissions(
+/**
+ * Guarda la matriz roles × permisos: varios roles en un solo envío.
+ *
+ * El formulario manda dos cosas distintas:
+ *
+ * - `cell` = `"<roleId>:<permission>"`, una por casilla marcada.
+ * - `role` = `"<roleId>"`, un oculto por cada COLUMNA que se haya tocado.
+ *
+ * La segunda no es opcional. Sin ella, un rol al que se le quitan TODOS los
+ * permisos es indistinguible de un rol que no venía en el formulario, y la
+ * acción no sabría si vaciarlo o dejarlo en paz. Con la lista explícita la
+ * regla es inequívoca: se reemplaza el conjunto de exactamente los roles
+ * listados en `role`, y ningún otro se toca. De paso, solo se escribe lo que
+ * de verdad ha cambiado.
+ */
+export async function setPermissionMatrix(
   _prev: RoleState,
   formData: FormData,
 ): Promise<RoleState> {
   const t = await getTranslations("Administracion");
   const current = await requirePermission("roles.manage");
 
-  const roleId = String(formData.get("roleId") ?? "");
-  const role = await db.query.roles.findFirst({ where: eq(roles.id, roleId) });
-  if (!role) return { error: t("roleNotFound") };
+  const allRoles = await db.query.roles.findMany();
+  const byId = new Map(allRoles.map((r) => [r.id, r]));
 
-  // Se filtra contra el catálogo del código: lo que llegue por el formulario y
-  // no exista como permiso se descarta, no se guarda "por si acaso".
-  const submitted = new Set<Permission>(
-    formData
-      .getAll("permissions")
-      .map(String)
-      .filter((p): p is Permission => isPermission(p)),
-  );
+  // Fail-closed en dos pasos. Primero los roles: un id que no exista se
+  // descarta en silencio, no se crea nada "por si acaso".
+  const next = new Map<string, Set<Permission>>();
+  for (const raw of formData.getAll("role").map(String)) {
+    if (byId.has(raw)) next.set(raw, new Set<Permission>());
+  }
+  if (next.size === 0) return { message: t("noChanges") };
 
-  // El rol de administrador no puede quedarse sin poder administrar: es el
-  // único que garantiza que siempre hay una vía de vuelta.
-  if (role.key === "admin") {
-    for (const locked of ADMIN_LOCKED_PERMISSIONS) submitted.add(locked);
+  // Luego las casillas, filtradas contra el catálogo del CÓDIGO y contra los
+  // roles admitidos arriba. Los uuid no llevan `:` y las claves de permiso
+  // tampoco (solo puntos), así que el primer `:` parte sin ambigüedad.
+  for (const raw of formData.getAll("cell").map(String)) {
+    const sep = raw.indexOf(":");
+    if (sep < 0) continue;
+    const target = next.get(raw.slice(0, sep));
+    const permission = raw.slice(sep + 1);
+    if (!target || !isPermission(permission)) continue;
+    target.add(permission);
   }
 
-  // La pregunta ya no es "¿este rol es el mío?" sino "¿el estado que estoy
-  // guardando me deja sin `roles.manage`?": con varios roles, quitárselo a uno
-  // de los míos es legítimo si otro me lo sigue dando.
-  const myRoleIds = current.assignedRoles.map((r) => r.id);
-  if (myRoleIds.includes(roleId)) {
-    const fromOthers = await permissionsOfRoles(myRoleIds.filter((r) => r !== roleId));
-    if (!submitted.has("roles.manage") && !fromOthers.has("roles.manage")) {
-      return { error: t("cannotRemoveOwnAdmin") };
+  // El rol de administrador no puede quedarse sin poder administrar: es lo
+  // único que garantiza que siempre hay una vía de vuelta.
+  for (const [roleId, set] of next) {
+    if (byId.get(roleId)?.key === "admin") {
+      for (const locked of ADMIN_LOCKED_PERMISSIONS) set.add(locked);
     }
   }
 
-  // Si este rol deja de conceder la administración, tiene que quedar alguien
-  // más que la tenga —por el rol que sea—.
-  const remaining = await countActiveAdminsAfter({
-    rolePermissions: new Map([[roleId, submitted]]),
-  });
+  // ¿Me estoy dejando a mí mismo sin poder gestionar roles? Con varios roles,
+  // quitárselo a uno es legítimo mientras otro me lo siga dando.
+  const myRoleIds = current.assignedRoles.map((r) => r.id);
+  const untouched = myRoleIds.filter((id) => !next.has(id));
+  const keepsRolesManage =
+    myRoleIds.some((id) => next.get(id)?.has("roles.manage")) ||
+    (await permissionsOfRoles(untouched)).has("roles.manage");
+  if (myRoleIds.length > 0 && !keepsRolesManage) {
+    return { error: t("cannotRemoveOwnAdmin") };
+  }
+
+  // Y que siga quedando alguien que pueda administrar, evaluado sobre el
+  // estado completo resultante y ANTES de escribir nada.
+  const remaining = await countActiveAdminsAfter({ rolePermissions: next });
   if (remaining === 0) return { error: t("lastAdminGuard") };
 
   await db.transaction(async (tx) => {
-    await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, roleId));
-    if (submitted.size > 0) {
-      await tx
-        .insert(rolePermissions)
-        .values([...submitted].map((permission) => ({ roleId, permission })));
+    for (const [roleId, set] of next) {
+      await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, roleId));
+      if (set.size > 0) {
+        await tx
+          .insert(rolePermissions)
+          .values([...set].map((permission) => ({ roleId, permission })));
+      }
     }
   });
 
+  // Un cambio de permisos altera el sidebar de todo el mundo.
   revalidatePath("/", "layout");
   return { message: t("permissionsSaved") };
 }
