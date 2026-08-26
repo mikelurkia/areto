@@ -14,6 +14,7 @@ import {
 import { hasPermission, requirePermission, type CurrentUser } from "@/lib/auth";
 import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import { getSiteUrl } from "@/lib/site-url";
+import { setUserRoles } from "@/lib/user-roles";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 
 export type UserState = {
@@ -131,7 +132,8 @@ export async function inviteUser(
   // estado `pending`. Aquí se le pone el rol elegido y se le abre el acceso.
   // Es un upsert y no un update para no depender de que el trigger exista.
   try {
-    await db
+    await db.transaction(async (tx) => {
+    await tx
       .insert(users)
       .values({
         id: data.user.id,
@@ -155,6 +157,11 @@ export async function inviteUser(
           invitedBy: current.id,
         },
       });
+
+      // El `roleId` de arriba es deuda expand; la fuente de verdad es la
+      // puente. Un solo rol por ahora: el formulario todavía manda uno.
+      await setUserRoles(tx, data.user.id, [roleId]);
+    });
   } catch (dbError) {
     if (isPostgresError(dbError, UNIQUE_VIOLATION)) {
       return { error: t("personAlreadyLinked") };
@@ -207,10 +214,14 @@ export async function updateUser(
   }
 
   try {
-    await db
-      .update(users)
-      .set({ fullName: fullName || null, roleId, personId })
-      .where(eq(users.id, id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ fullName: fullName || null, personId })
+        .where(eq(users.id, id));
+
+      await setUserRoles(tx, id, [roleId]);
+    });
   } catch (error) {
     if (isPostgresError(error, UNIQUE_VIOLATION)) {
       return { error: t("personAlreadyLinked") };

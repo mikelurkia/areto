@@ -81,6 +81,10 @@ begin
     raise exception
       'Falta la tabla public.role_permissions: aplica antes las migraciones de Drizzle (npm run db:migrate).';
   end if;
+  if to_regclass('public.user_roles') is null then
+    raise exception
+      'Falta la tabla public.user_roles: aplica antes las migraciones de Drizzle (npm run db:migrate).';
+  end if;
 end $guard$;
 
 -- 1) Trigger: crear perfil al registrarse -------------------------------------
@@ -94,15 +98,23 @@ language plpgsql
 security definer
 set search_path = ''
 as $fn$
+declare
+  default_role_id uuid;
 begin
+  select id into default_role_id from public.roles where is_default limit 1;
+
+  -- DEUDA EXPAND: `role_id` desaparece de este insert cuando se retire la
+  -- columna. La verdad son las filas de `public.user_roles` de abajo.
   insert into public.users (id, email, role_id, status)
-  values (
-    new.id,
-    new.email,
-    (select id from public.roles where is_default limit 1),
-    'pending'
-  )
+  values (new.id, new.email, default_role_id, 'pending')
   on conflict (id) do nothing;
+
+  if default_role_id is not null then
+    insert into public.user_roles (user_id, role_id)
+    values (new.id, default_role_id)
+    on conflict do nothing;
+  end if;
+
   return new;
 end;
 $fn$;
@@ -133,11 +145,11 @@ create policy "users_select_own"
 -- Una sola función, usada por todas las políticas de Storage. Cuatro detalles
 -- que no son opcionales:
 --
---   · `security definer`: `public.role_permissions` tiene RLS activado y
---     ninguna política, así que una función `invoker` devolvería siempre falso
---     para todo el mundo. La alternativa sería abrir una política de lectura
---     sobre esa tabla para `authenticated`, pero eso expondría la matriz de
---     permisos entera a través de PostgREST.
+--   · `security definer`: `public.role_permissions` y `public.user_roles` tienen
+--     RLS activado y ninguna política, así que una función `invoker` devolvería
+--     siempre falso para todo el mundo. La alternativa sería abrir políticas de
+--     lectura sobre esas tablas para `authenticated`, pero eso expondría la
+--     matriz de permisos entera a través de PostgREST.
 --   · `stable`: la política se evalúa por fila de `storage.objects`; sin esto
 --     el planificador no puede reutilizar el resultado.
 --   · `set search_path = ''` con todos los nombres cualificados: requisito
@@ -152,10 +164,13 @@ stable
 security definer
 set search_path = ''
 as $fn$
+  -- Los permisos son la UNIÓN de los de todos sus roles: basta con que UNO de
+  -- ellos conceda `perm`. El `exists` corta en el primero que lo haga.
   select exists (
     select 1
     from public.users u
-    join public.role_permissions rp on rp.role_id = u.role_id
+    join public.user_roles ur on ur.user_id = u.id
+    join public.role_permissions rp on rp.role_id = ur.role_id
     where u.id = (select auth.uid())
       and u.status = 'active'
       and rp.permission = perm

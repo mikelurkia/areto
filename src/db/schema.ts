@@ -635,6 +635,42 @@ export const users = pgTable(
   ],
 ).enableRLS();
 
+/**
+ * Roles de acceso de cada cuenta. Los permisos efectivos son la UNIÓN de los de
+ * todos sus roles: alguien que juega y además entrena necesita lo de ambos.
+ *
+ * Esta tabla es la fuente de verdad; `users.role_id` sigue existiendo en fase
+ * *expand* solo porque `public.user_has_permission` de `supabase/setup.sql` la
+ * lee, y ese fichero se aplica a mano y no por migración. Todas las escrituras
+ * pasan por `setUserRoles()` (`src/lib/user-roles.ts`), que mantiene las dos.
+ *
+ * `user_id` cae en cascada (borrar una cuenta se lleva sus asignaciones) y
+ * `role_id` es `restrict`, que es la garantía que tenía `users.role_id`: borrar
+ * un rol asignado falla con 23503 en vez de dejar cuentas sin permisos en
+ * silencio. Ojo: eso obliga a limpiar esta tabla ANTES de borrar un rol.
+ */
+export const userRoles = pgTable(
+  "user_roles",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "restrict" }),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // La PK impide duplicados por construcción: "quitar X, añadir Y" se
+    // resuelve con un `on conflict do nothing` y ya está.
+    primaryKey({ columns: [t.userId, t.roleId] }),
+    // El índice de la PK solo sirve con prefijo `user_id`. "Quién tiene el rol
+    // X" (contador de la tabla de roles, `deleteRole`, la guarda del último
+    // administrador) y la comprobación del FK `restrict` van por `role_id`.
+    index("user_roles_role_idx").on(t.roleId),
+  ],
+).enableRLS();
+
 // ---------------------------------------------------------------------------
 // Calendario: eventos (entrenamientos / partidos) y asistencia
 // ---------------------------------------------------------------------------
@@ -1065,7 +1101,9 @@ export const seasonsRelations = relations(seasons, ({ many }) => ({
 
 export const rolesRelations = relations(roles, ({ many }) => ({
   permissions: many(rolePermissions),
+  /** DEUDA EXPAND: vía `users.role_id`. La buena es `userAssignments`. */
   users: many(users),
+  userAssignments: many(userRoles),
 }));
 
 export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
@@ -1075,14 +1113,30 @@ export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => 
   }),
 }));
 
+export const userRolesRelations = relations(userRoles, ({ one }) => ({
+  user: one(users, {
+    fields: [userRoles.userId],
+    references: [users.id],
+  }),
+  role: one(roles, {
+    fields: [userRoles.roleId],
+    references: [roles.id],
+  }),
+}));
+
 /**
  * Permite resolver usuario + rol + permisos en UNA sola sentencia SQL desde
  * `getCurrentUser`, que se ejecuta en cada petición.
  */
-export const usersRelations = relations(users, ({ one }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
+  /** Roles de acceso. Los permisos efectivos son la unión de todos ellos. */
+  roleAssignments: many(userRoles),
   // `accessRole` y no `role`: mientras siga existiendo la columna heredada
   // `users.role` (enum), una relación llamada igual haría que Drizzle mezclara
   // ambas en el tipo inferido. Al retirar la columna se puede renombrar.
+  //
+  // DEUDA EXPAND: apunta a `users.role_id`, que ya solo existe para las RLS
+  // viejas de Storage. Los lectores nuevos usan `roleAssignments`.
   accessRole: one(roles, {
     fields: [users.roleId],
     references: [roles.id],
