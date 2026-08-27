@@ -1,10 +1,14 @@
 import { Users } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { db } from "@/db";
 import { hasPermission, requirePermission } from "@/lib/auth";
-import { isPastMember } from "@/lib/membership";
-import { teamSeasonLabel } from "@/lib/team-label";
+import {
+  hasActiveFilters,
+  loadCurrentTeamOptions,
+  loadPersonPage,
+  loadPersonTagOptions,
+  parsePersonFilters,
+} from "@/lib/person-list";
 import { Link } from "@/i18n/navigation";
 import { PersonasBrowser } from "@/components/personas/personas-browser";
 import { PersonDialog } from "@/components/personas/person-dialog";
@@ -27,8 +31,10 @@ export async function generateMetadata({
  */
 export default async function PersonasPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
@@ -37,84 +43,15 @@ export default async function PersonasPage({
   const t = await getTranslations("Personas");
   const canManage = hasPermission(user, "personas.manage");
 
-  // Personas y equipos no dependen entre sí: en paralelo, para no pagar dos
-  // idas y vueltas a la base de datos en serie.
-  const [allPersons, allTeams] = await Promise.all([
-    db.query.persons.findMany({
-      orderBy: (persons, { asc }) => [asc(persons.lastName), asc(persons.firstName)],
-      with: {
-        guardianRows: {
-          with: { guardian: { columns: { id: true, firstName: true, lastName: true } } },
-          orderBy: (g, { desc }) => [desc(g.isPrimary)],
-        },
-        guardianOfRows: { columns: { id: true } },
-        clubMember: { columns: { status: true, memberNumber: true } },
-        memberships: { with: { team: { with: { season: true } } } },
-        qualifications: { columns: { title: true, expiresOn: true } },
-        tags: { columns: { tag: true } },
-      },
-    }),
-    db.query.teams.findMany({
-      with: { season: true },
-      orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
-    }),
+  // Los filtros viven en la URL y se resuelven en SQL: de la tabla `persons`
+  // solo suben las 25 filas de la página. El diálogo de alta ya no recibe la
+  // lista de personas del club para elegir tutor; la busca al escribir.
+  const filters = parsePersonFilters(await searchParams);
+  const [personPage, teamOptions, tagOptions] = await Promise.all([
+    loadPersonPage(filters),
+    loadCurrentTeamOptions(),
+    loadPersonTagOptions(),
   ]);
-  const teamOptions = allTeams
-    .filter((team) => team.season.isCurrent)
-    .map((team) => ({
-      id: team.id,
-      label: teamSeasonLabel(team, team.season),
-    }));
-
-  const guardianOptions = allPersons.map((p) => ({
-    id: p.id,
-    firstName: p.firstName,
-    lastName: p.lastName,
-    birthDate: p.birthDate,
-  }));
-
-  const personRows = allPersons.map((p) => ({
-    id: p.id,
-    firstName: p.firstName,
-    lastName: p.lastName,
-    email: p.email,
-    phone: p.phone,
-    birthDate: p.birthDate,
-    nationalId: p.nationalId,
-    isMember: p.clubMember?.status === "active",
-    memberNumber: p.clubMember?.memberNumber ?? null,
-    address: p.address,
-    city: p.city,
-    postalCode: p.postalCode,
-    iban: p.iban,
-    medicalCertUntil: p.medicalCertUntil,
-    shirtSize: p.shirtSize,
-    pantsSize: p.pantsSize,
-    shoeSize: p.shoeSize,
-    photoConsent: p.photoConsent,
-    sepaConsent: p.sepaConsent,
-    notes: p.notes,
-    guardians: p.guardianRows.map((r) => ({
-      id: r.guardian.id,
-      firstName: r.guardian.firstName,
-      lastName: r.guardian.lastName,
-    })),
-    memberships: p.memberships.map((m) => ({
-      teamId: m.teamId,
-      role: m.role,
-      jerseyNumber: m.jerseyNumber,
-      team: { name: m.team.name },
-    })),
-    qualifications: p.qualifications.map((q) => ({
-      title: q.title,
-      expiresOn: q.expiresOn,
-    })),
-    tags: p.tags.map((t) => t.tag),
-    dependentsCount: p.guardianOfRows.length,
-    isPastMember: isPastMember(p.memberships),
-  }));
-
-  const tagOptions = [...new Set(allPersons.flatMap((p) => p.tags.map((t) => t.tag)))].sort();
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -134,12 +71,14 @@ export default async function PersonasPage({
             >
               {t("reviewDuplicatesAction")}
             </Button>
-            <PersonDialog mode="create" guardianOptions={guardianOptions} />
+            <PersonDialog mode="create" />
           </div>
         ) : null}
       </div>
 
-      {allPersons.length === 0 ? (
+      {/* El vacío real (club sin personas) se distingue de "ningún resultado":
+          sin filtros aplicados y sin filas, no hay nada que buscar todavía. */}
+      {personPage.total === 0 && !hasActiveFilters(filters) ? (
         <SectionPlaceholder
           icon={Users}
           title={t("emptyTitle")}
@@ -147,9 +86,11 @@ export default async function PersonasPage({
         />
       ) : (
         <PersonasBrowser
-          persons={personRows}
+          persons={personPage.rows}
+          total={personPage.total}
+          pageCount={personPage.pageCount}
+          page={personPage.page}
           teamOptions={teamOptions}
-          guardianOptions={guardianOptions}
           tagOptions={tagOptions}
           canManage={canManage}
         />

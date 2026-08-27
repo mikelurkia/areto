@@ -268,12 +268,11 @@ export default async function PersonDetailPage({
 
   // Segunda tanda: todo lo que no depende de la propia ficha. Los equipos se
   // traen completos y se filtran en memoria (son pocas filas), así esta consulta
-  // deja de esperar a que lleguen las membresías de la persona.
-  const [existingTagRows, allPersons, allTeams] = await Promise.all([
+  // deja de esperar a que lleguen las membresías de la persona. Ya no se trae
+  // la lista de personas del club: el selector de tutores los busca al escribir
+  // (`GuardianPicker`), así que ver una ficha ya no descarga el listado entero.
+  const [existingTagRows, allTeams] = await Promise.all([
     db.selectDistinct({ tag: personTags.tag }).from(personTags).orderBy(personTags.tag),
-    db.query.persons.findMany({
-      columns: { id: true, firstName: true, lastName: true, birthDate: true },
-    }),
     db.query.teams.findMany({
       with: { season: true },
       orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
@@ -480,7 +479,6 @@ export default async function PersonDetailPage({
                 })),
               }}
               photoUrl={photoThumbUrl}
-              guardianOptions={allPersons}
             />
           ) : null}
         </div>

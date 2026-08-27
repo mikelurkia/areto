@@ -5,6 +5,7 @@ import { ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { persons, teams } from "@/db/schema";
 import { hasPermission, requireUser } from "@/lib/auth";
+import { likePattern } from "@/lib/sql-text";
 
 export type SearchResult = {
   type: "person" | "team";
@@ -16,11 +17,6 @@ export type SearchResult = {
 
 /** Longitud mínima: con una letra la lista no dice nada y la consulta sí cuesta. */
 const MIN_QUERY_LENGTH = 2;
-
-/** `%` y `_` son comodines de LIKE; escritos por el usuario son literales. */
-function likePattern(query: string) {
-  return `%${query.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
-}
 
 /**
  * Búsqueda global de la paleta de comandos.

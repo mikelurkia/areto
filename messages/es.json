@@ -506,6 +506,8 @@
     "privacyConsentLabel": "Tratamiento de datos (RGPD)",
     "consentSinceLabel": "Concedido el {date}",
     "addGuardianPlaceholder": "Añadir tutor/a...",
+    "guardianSearchHint": "Escribe al menos dos letras para buscar.",
+    "guardianNoResults": "Ninguna persona coincide.",
     "removeGuardianSr": "Quitar a {name} como tutor/a",
     "colNationalId": "DNI",
     "colTeam": "Equipo",
