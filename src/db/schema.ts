@@ -212,49 +212,55 @@ export const seasons = pgTable(
 // Equipos
 // ---------------------------------------------------------------------------
 
-export const teams = pgTable("teams", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  seasonId: uuid("season_id")
-    .notNull()
-    .references(() => seasons.id, { onDelete: "restrict" }),
-  name: text("name").notNull(), // "Senior A", "Cadete"...
-  category: teamCategory("category"),
-  gender: teamGender("gender"),
-  /**
-   * Rango de año de nacimiento admitido en el equipo esta temporada (p.ej.
-   * "nacidos entre 2010 y 2011"). Lo define el club al inscribir el equipo,
-   * cambia cada temporada y no lo deducimos nosotros de la categoría: sirve
-   * solo para avisar de incoherencias, no bloquea la inscripción.
-   */
-  minBirthYear: integer("min_birth_year"),
-  maxBirthYear: integer("max_birth_year"),
-  /** Grupo/liga del equipo en la competición federada (p.ej. "1ª División Grupo B"). */
-  federationGroup: text("federation_group"),
-  /** Código/identificador del equipo en la federación, para actas y trámites. */
-  federationCode: text("federation_code"),
-  /**
-   * Cuota que el club cobra a cada jugador de este equipo esta temporada.
-   * Es un dato de configuración: no genera cobros por sí solo — el módulo
-   * económico (`fees`/`payments`, todavía sin construir) lo leerá de aquí.
-   * En céntimos, nunca float, como el resto del dinero del proyecto.
-   * Null = cuota sin definir todavía.
-   */
-  playerFeeCents: integer("player_fee_cents"),
-  playerFeePeriod: feePeriod("player_fee_period").notNull().default("season"),
-  /** Matices del importe ("incluye equipación", "descuento hermanos"). Interno. */
-  playerFeeNotes: text("player_fee_notes"),
-  /**
-   * Equipo del que proviene esta fila al "renovar" la plantilla a otra
-   * temporada (ver `renewTeam` en equipos/actions.ts). Null si el equipo se
-   * creó directamente. Un equipo sigue sin ser una entidad persistente entre
-   * temporadas (cada temporada es una fila distinta); este campo solo permite
-   * reconstruir la cadena de renovación y copiar la plantilla sin retecleo.
-   */
-  previousTeamId: uuid("previous_team_id").references((): AnyPgColumn => teams.id, {
-    onDelete: "set null",
-  }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+export const teams = pgTable(
+  "teams",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => seasons.id, { onDelete: "restrict" }),
+    name: text("name").notNull(), // "Senior A", "Cadete"...
+    category: teamCategory("category"),
+    gender: teamGender("gender"),
+    /**
+     * Rango de año de nacimiento admitido en el equipo esta temporada (p.ej.
+     * "nacidos entre 2010 y 2011"). Lo define el club al inscribir el equipo,
+     * cambia cada temporada y no lo deducimos nosotros de la categoría: sirve
+     * solo para avisar de incoherencias, no bloquea la inscripción.
+     */
+    minBirthYear: integer("min_birth_year"),
+    maxBirthYear: integer("max_birth_year"),
+    /** Grupo/liga del equipo en la competición federada (p.ej. "1ª División Grupo B"). */
+    federationGroup: text("federation_group"),
+    /** Código/identificador del equipo en la federación, para actas y trámites. */
+    federationCode: text("federation_code"),
+    /**
+     * Cuota que el club cobra a cada jugador de este equipo esta temporada.
+     * Es un dato de configuración: no genera cobros por sí solo — el módulo
+     * económico (`fees`/`payments`, todavía sin construir) lo leerá de aquí.
+     * En céntimos, nunca float, como el resto del dinero del proyecto.
+     * Null = cuota sin definir todavía.
+     */
+    playerFeeCents: integer("player_fee_cents"),
+    playerFeePeriod: feePeriod("player_fee_period").notNull().default("season"),
+    /** Matices del importe ("incluye equipación", "descuento hermanos"). Interno. */
+    playerFeeNotes: text("player_fee_notes"),
+    /**
+     * Equipo del que proviene esta fila al "renovar" la plantilla a otra
+     * temporada (ver `renewTeam` en equipos/actions.ts). Null si el equipo se
+     * creó directamente. Un equipo sigue sin ser una entidad persistente entre
+     * temporadas (cada temporada es una fila distinta); este campo solo permite
+     * reconstruir la cadena de renovación y copiar la plantilla sin retecleo.
+     */
+    previousTeamId: uuid("previous_team_id").references((): AnyPgColumn => teams.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("teams_season_idx").on(t.seasonId),
+  ],
+).enableRLS();
 
 /**
  * Documento genérico de un equipo (convocatoria, normativa interna,
@@ -335,6 +341,7 @@ export const persons = pgTable(
   (t) => [
     uniqueIndex("persons_email_idx").on(t.email),
     uniqueIndex("persons_national_id_idx").on(t.nationalId),
+    index("persons_name_idx").on(t.lastName, t.firstName),
   ],
 ).enableRLS();
 
@@ -362,19 +369,25 @@ export const personTags = pgTable(
  * auxilios...). Texto libre: el club no necesita un catálogo cerrado de
  * tipos de título, son demasiado heterogéneos.
  */
-export const personQualifications = pgTable("person_qualifications", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  personId: uuid("person_id")
-    .notNull()
-    .references(() => persons.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  issuer: text("issuer"), // entidad emisora
-  issuedOn: date("issued_on"),
-  expiresOn: date("expires_on"),
-  filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-qualifications)
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+export const personQualifications = pgTable(
+  "person_qualifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => persons.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    issuer: text("issuer"), // entidad emisora
+    issuedOn: date("issued_on"),
+    expiresOn: date("expires_on"),
+    filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-qualifications)
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("person_qualifications_person_idx").on(t.personId),
+  ],
+).enableRLS();
 
 /**
  * Reconocimiento médico realizado a una persona. `medical_cert_until` en
@@ -382,18 +395,24 @@ export const personQualifications = pgTable("person_qualifications", {
  * reciente (por `occurred_on`) — ver `recomputeMedicalCertUntil` en
  * personas/actions.ts.
  */
-export const personMedicalCheckups = pgTable("person_medical_checkups", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  personId: uuid("person_id")
-    .notNull()
-    .references(() => persons.id, { onDelete: "cascade" }),
-  occurredOn: date("occurred_on").notNull(),
-  expiresOn: date("expires_on"),
-  issuer: text("issuer"), // centro/médico
-  filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-medical-checkups)
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+export const personMedicalCheckups = pgTable(
+  "person_medical_checkups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => persons.id, { onDelete: "cascade" }),
+    occurredOn: date("occurred_on").notNull(),
+    expiresOn: date("expires_on"),
+    issuer: text("issuer"), // centro/médico
+    filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-medical-checkups)
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("person_medical_checkups_person_idx").on(t.personId),
+  ],
+).enableRLS();
 
 /**
  * Parte de lesión de un jugador/a.
@@ -416,34 +435,40 @@ export const personMedicalCheckups = pgTable("person_medical_checkups", {
  * `filePath` es el parte relleno (generado desde la plantilla, o uno propio
  * subido a mano): el fichero del registro es el propio parte.
  */
-export const personInjuryReports = pgTable("person_injury_reports", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  personId: uuid("person_id")
-    .notNull()
-    .references(() => persons.id, { onDelete: "cascade" }),
-  occurredOn: date("occurred_on").notNull(),
-  filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-injury-reports)
-  notes: text("notes"),
-  // Equipo con el que jugaba al lesionarse. De él salen tres casillas del
-  // impreso (categoría de licencia, sexo y modalidad), así que se fija en el
-  // parte en vez de deducirlo al imprimir: un jugador puede cambiar de equipo,
-  // y el parte debe seguir diciendo lo que era verdad el día de la lesión.
-  // `set null` y no `cascade`: borrar un equipo no puede borrar partes médicos.
-  teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
-  reportedOn: date("reported_on"), // "Parte fechado en ... a __ de __ del __"
-  reportedPlace: text("reported_place"), // la localidad de esa misma línea
-  place: injuryPlace("place"),
-  placeOther: text("place_other"),
-  matchMinute: matchMinute("match_minute"),
-  surface: pitchSurface("surface"),
-  collision: boolean("collision"),
-  opponentTeam: text("opponent_team"),
-  relatedToPrevious: boolean("related_to_previous"),
-  bootType: bootType("boot_type"),
-  trainingSurface: pitchSurface("training_surface"),
-  weeklyTrainingMinutes: integer("weekly_training_minutes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+export const personInjuryReports = pgTable(
+  "person_injury_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => persons.id, { onDelete: "cascade" }),
+    occurredOn: date("occurred_on").notNull(),
+    filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-injury-reports)
+    notes: text("notes"),
+    // Equipo con el que jugaba al lesionarse. De él salen tres casillas del
+    // impreso (categoría de licencia, sexo y modalidad), así que se fija en el
+    // parte en vez de deducirlo al imprimir: un jugador puede cambiar de equipo,
+    // y el parte debe seguir diciendo lo que era verdad el día de la lesión.
+    // `set null` y no `cascade`: borrar un equipo no puede borrar partes médicos.
+    teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
+    reportedOn: date("reported_on"), // "Parte fechado en ... a __ de __ del __"
+    reportedPlace: text("reported_place"), // la localidad de esa misma línea
+    place: injuryPlace("place"),
+    placeOther: text("place_other"),
+    matchMinute: matchMinute("match_minute"),
+    surface: pitchSurface("surface"),
+    collision: boolean("collision"),
+    opponentTeam: text("opponent_team"),
+    relatedToPrevious: boolean("related_to_previous"),
+    bootType: bootType("boot_type"),
+    trainingSurface: pitchSurface("training_surface"),
+    weeklyTrainingMinutes: integer("weekly_training_minutes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("person_injury_reports_person_idx").on(t.personId),
+  ],
+).enableRLS();
 
 /**
  * Documento genérico de una persona (DNI escaneado, ficha firmada, autorización
@@ -451,32 +476,44 @@ export const personInjuryReports = pgTable("person_injury_reports", {
  * emisor: es solo un archivo con una etiqueta libre. El archivo es obligatorio
  * (un documento sin archivo no tiene sentido).
  */
-export const personDocuments = pgTable("person_documents", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  personId: uuid("person_id")
-    .notNull()
-    .references(() => persons.id, { onDelete: "cascade" }),
-  label: text("label").notNull(), // "DNI", "Ficha firmada", "Autorización imagen"...
-  filePath: text("file_path").notNull(), // ruta del objeto en Supabase Storage (bucket person-documents)
-  fileName: text("file_name"), // nombre de archivo original (referencia)
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+export const personDocuments = pgTable(
+  "person_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => persons.id, { onDelete: "cascade" }),
+    label: text("label").notNull(), // "DNI", "Ficha firmada", "Autorización imagen"...
+    filePath: text("file_path").notNull(), // ruta del objeto en Supabase Storage (bucket person-documents)
+    fileName: text("file_name"), // nombre de archivo original (referencia)
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("person_documents_person_idx").on(t.personId),
+  ],
+).enableRLS();
 
 /**
  * Bitácora de seguimiento de una persona: entradas fechadas de secretaría
  * ("llamó el 12/03 para..."), independiente del campo `notes` (observación
  * general de la ficha). Es un log de solo alta/baja, no se editan entradas.
  */
-export const personNotes = pgTable("person_notes", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  personId: uuid("person_id")
-    .notNull()
-    .references(() => persons.id, { onDelete: "cascade" }),
-  body: text("body").notNull(),
-  authorName: text("author_name"), // nombre/email de quien la escribió, en el momento de escribirla
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+export const personNotes = pgTable(
+  "person_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => persons.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    authorName: text("author_name"), // nombre/email de quien la escribió, en el momento de escribirla
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("person_notes_person_idx").on(t.personId),
+  ],
+).enableRLS();
 
 /**
  * Tutor/a legal de una persona (para menores). Relación N:M en vez de un campo
@@ -497,7 +534,10 @@ export const personGuardians = pgTable(
     isPrimary: boolean("is_primary").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("person_guardians_pair_idx").on(t.personId, t.guardianId)],
+  (t) => [
+    uniqueIndex("person_guardians_pair_idx").on(t.personId, t.guardianId),
+    index("person_guardians_guardian_idx").on(t.guardianId),
+  ],
 ).enableRLS();
 
 /**
@@ -550,7 +590,18 @@ export const memberships = pgTable(
     position: text("position"), // cargo libre: delegado, 2º entrenador, fisio, subcapitán...
     joinedAt: date("joined_at"),
   },
-  (t) => [uniqueIndex("memberships_person_team_idx").on(t.personId, t.teamId)],
+  (t) => [
+    uniqueIndex("memberships_person_team_idx").on(t.personId, t.teamId),
+    index("memberships_team_idx").on(t.teamId),
+    /**
+     * Un solo capitán por equipo, forzado en la base de datos. Hasta ahora la
+     * única garantía era `updateTeamCaptain`, y `data-integrity.ts` tenía que
+     * salir a contar los equipos que se hubieran saltado ese camino.
+     */
+    uniqueIndex("memberships_single_captain_idx")
+      .on(t.teamId)
+      .where(sql`${t.isCaptain}`),
+  ],
 ).enableRLS();
 
 // ---------------------------------------------------------------------------
@@ -686,20 +737,27 @@ export const userRoles = pgTable(
 // Calendario: eventos (entrenamientos / partidos) y asistencia
 // ---------------------------------------------------------------------------
 
-export const events = pgTable("events", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  teamId: uuid("team_id")
-    .notNull()
-    .references(() => teams.id, { onDelete: "cascade" }),
-  type: eventType("type").notNull(),
-  title: text("title"),
-  location: text("location"),
-  opponent: text("opponent"), // solo partidos
-  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
-  endsAt: timestamp("ends_at", { withTimezone: true }),
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+export const events = pgTable(
+  "events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    type: eventType("type").notNull(),
+    title: text("title"),
+    location: text("location"),
+    opponent: text("opponent"), // solo partidos
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("events_team_idx").on(t.teamId),
+    index("events_starts_at_idx").on(t.startsAt),
+  ],
+).enableRLS();
 
 export const attendances = pgTable(
   "attendances",
@@ -713,7 +771,10 @@ export const attendances = pgTable(
       .references(() => persons.id, { onDelete: "cascade" }),
     status: attendanceStatus("status").notNull().default("called"),
   },
-  (t) => [uniqueIndex("attendances_event_person_idx").on(t.eventId, t.personId)],
+  (t) => [
+    uniqueIndex("attendances_event_person_idx").on(t.eventId, t.personId),
+    index("attendances_person_idx").on(t.personId),
+  ],
 ).enableRLS();
 
 /**
@@ -820,23 +881,29 @@ export const sponsors = pgTable("sponsors", {
  * Nota: la columna sigue llamándose `amount_cents` por compatibilidad, pero su
  * significado es el importe TOTAL del acuerdo (no el anual).
  */
-export const sponsorshipTerms = pgTable("sponsorship_terms", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  sponsorId: uuid("sponsor_id")
-    .notNull()
-    .references(() => sponsors.id, { onDelete: "cascade" }),
-  tier: sponsorshipTier("tier"),
-  agreementStatus: sponsorshipAgreementStatus("agreement_status")
-    .notNull()
-    .default("confirmed"),
-  totalAmountCents: integer("amount_cents"), // importe TOTAL pactado para todo el acuerdo
-  startsOn: date("starts_on"), // inicio de la vigencia del acuerdo
-  endsOn: date("ends_on"), // fin de la vigencia (null = en curso / indefinido)
-  benefits: text("benefits"), // contrapartidas: qué recibe el patrocinador a cambio
-  contractPath: text("contract_path"),
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+export const sponsorshipTerms = pgTable(
+  "sponsorship_terms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sponsorId: uuid("sponsor_id")
+      .notNull()
+      .references(() => sponsors.id, { onDelete: "cascade" }),
+    tier: sponsorshipTier("tier"),
+    agreementStatus: sponsorshipAgreementStatus("agreement_status")
+      .notNull()
+      .default("confirmed"),
+    totalAmountCents: integer("amount_cents"), // importe TOTAL pactado para todo el acuerdo
+    startsOn: date("starts_on"), // inicio de la vigencia del acuerdo
+    endsOn: date("ends_on"), // fin de la vigencia (null = en curso / indefinido)
+    benefits: text("benefits"), // contrapartidas: qué recibe el patrocinador a cambio
+    contractPath: text("contract_path"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("sponsorship_terms_sponsor_idx").on(t.sponsorId),
+  ],
+).enableRLS();
 
 /**
  * Anualidad de un acuerdo: una fila por temporada del acuerdo (`year` = año de
@@ -845,22 +912,29 @@ export const sponsorshipTerms = pgTable("sponsorship_terms", {
  * (una por temporada, como se factura en el club) y su cobro. Un acuerdo de 4
  * años genera 4 anualidades. Reutiliza el enum de estado de los pagos de cuotas.
  */
-export const sponsorPayments = pgTable("sponsor_payments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  termId: uuid("term_id")
-    .notNull()
-    .references(() => sponsorshipTerms.id, { onDelete: "cascade" }),
-  year: integer("year"), // año de inicio de la temporada de esta anualidad
-  amountCents: integer("amount_cents").notNull(),
-  status: paymentStatus("status").notNull().default("pending"),
-  dueDate: date("due_date"), // fecha prevista de cobro
-  paidOn: date("paid_on"), // fecha real de cobro (cuando status = "paid")
-  method: text("method"), // "cash", "transfer"...
-  invoiceNumber: text("invoice_number"), // nº de factura emitida por este cobro
-  invoicedOn: date("invoiced_on"), // fecha de emisión de la factura
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+export const sponsorPayments = pgTable(
+  "sponsor_payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    termId: uuid("term_id")
+      .notNull()
+      .references(() => sponsorshipTerms.id, { onDelete: "cascade" }),
+    year: integer("year"), // año de inicio de la temporada de esta anualidad
+    amountCents: integer("amount_cents").notNull(),
+    status: paymentStatus("status").notNull().default("pending"),
+    dueDate: date("due_date"), // fecha prevista de cobro
+    paidOn: date("paid_on"), // fecha real de cobro (cuando status = "paid")
+    method: text("method"), // "cash", "transfer"...
+    invoiceNumber: text("invoice_number"), // nº de factura emitida por este cobro
+    invoicedOn: date("invoiced_on"), // fecha de emisión de la factura
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("sponsor_payments_term_idx").on(t.termId),
+    index("sponsor_payments_status_year_idx").on(t.status, t.year),
+  ],
+).enableRLS();
 
 /**
  * Bitácora de seguimiento de un patrocinador (llamadas, reuniones,
@@ -1006,54 +1080,62 @@ export const announcements = pgTable("announcements", {
  * admin/staff la aprueba desde `/inscripciones`. Los campos marcados "solo
  * equipo" quedan `null` en las de socio.
  */
-export const registrations = pgTable("registrations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  kind: registrationKind("kind").notNull(),
-  status: registrationStatus("status").notNull().default("pending"),
-  seasonId: uuid("season_id")
-    .notNull()
-    .references(() => seasons.id, { onDelete: "restrict" }),
+export const registrations = pgTable(
+  "registrations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: registrationKind("kind").notNull(),
+    status: registrationStatus("status").notNull().default("pending"),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => seasons.id, { onDelete: "restrict" }),
 
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  birthDate: date("birth_date"),
-  nationalId: text("national_id"),
-  address: text("address"),
-  city: text("city"),
-  postalCode: text("postal_code"),
-  phone: text("phone"),
-  email: text("email"),
-  iban: text("iban"),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    birthDate: date("birth_date"),
+    nationalId: text("national_id"),
+    address: text("address"),
+    city: text("city"),
+    postalCode: text("postal_code"),
+    phone: text("phone"),
+    email: text("email"),
+    iban: text("iban"),
 
-  // Solo equipo (kind "player"):
-  shirtSize: text("shirt_size"),
-  pantsSize: text("pants_size"),
-  shoeSize: text("shoe_size"),
-  installmentsChosen: integer("installments_chosen"), // plazos elegidos; informativo, no genera cuotas
-  sepaConsent: boolean("sepa_consent").notNull().default(false),
-  sepaConsentAt: timestamp("sepa_consent_at", { withTimezone: true }),
-  termsConsent: boolean("terms_consent").notNull().default(false), // acepta condiciones de traslados y devolución de equipación
-  termsConsentAt: timestamp("terms_consent_at", { withTimezone: true }),
+    // Solo equipo (kind "player"):
+    shirtSize: text("shirt_size"),
+    pantsSize: text("pants_size"),
+    shoeSize: text("shoe_size"),
+    installmentsChosen: integer("installments_chosen"), // plazos elegidos; informativo, no genera cuotas
+    sepaConsent: boolean("sepa_consent").notNull().default(false),
+    sepaConsentAt: timestamp("sepa_consent_at", { withTimezone: true }),
+    termsConsent: boolean("terms_consent").notNull().default(false), // acepta condiciones de traslados y devolución de equipación
+    termsConsentAt: timestamp("terms_consent_at", { withTimezone: true }),
 
-  photoConsent: boolean("photo_consent").notNull().default(false), // mismo nombre que persons.photoConsent (antes "imageConsent")
-  photoConsentAt: timestamp("photo_consent_at", { withTimezone: true }),
-  privacyConsent: boolean("privacy_consent").notNull().default(false), // acepta el tratamiento de datos (RGPD)
-  privacyConsentAt: timestamp("privacy_consent_at", { withTimezone: true }),
+    photoConsent: boolean("photo_consent").notNull().default(false), // mismo nombre que persons.photoConsent (antes "imageConsent")
+    photoConsentAt: timestamp("photo_consent_at", { withTimezone: true }),
+    privacyConsent: boolean("privacy_consent").notNull().default(false), // acepta el tratamiento de datos (RGPD)
+    privacyConsentAt: timestamp("privacy_consent_at", { withTimezone: true }),
 
-  photoPath: text("photo_path"), // bucket registration-documents
-  idFrontPath: text("id_front_path"),
-  idBackPath: text("id_back_path"),
+    photoPath: text("photo_path"), // bucket registration-documents
+    idFrontPath: text("id_front_path"),
+    idBackPath: text("id_back_path"),
 
-  /** Ficha de `persons` que el revisor confirma como la misma persona (si existía). */
-  matchedPersonId: uuid("matched_person_id").references(() => persons.id, {
-    onDelete: "set null",
-  }),
+    /** Ficha de `persons` que el revisor confirma como la misma persona (si existía). */
+    matchedPersonId: uuid("matched_person_id").references(() => persons.id, {
+      onDelete: "set null",
+    }),
 
-  reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
-  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-  rejectionReason: text("rejection_reason"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+    reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    rejectionReason: text("rejection_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("registrations_kind_status_idx").on(t.kind, t.status),
+    index("registrations_season_idx").on(t.seasonId),
+    index("registrations_created_at_idx").on(t.createdAt),
+  ],
+).enableRLS();
 
 /**
  * Tutor/a indicado en una solicitud de jugador menor. Puede haber varios; no

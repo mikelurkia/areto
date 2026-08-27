@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "memberships_single_captain_idx" ON "memberships" USING btree ("team_id") WHERE "memberships"."is_captain";
