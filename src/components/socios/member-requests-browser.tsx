@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { DeleteRegistrationDialog } from "@/components/inscripciones/delete-registration-dialog";
 
 export type MemberRequestRow = {
   id: string;
@@ -38,7 +39,13 @@ export type MemberRequestRow = {
 
 /** Igual que `RegistrationsBrowser` (inscripciones de equipo) pero sin
  * columnas de tutores/fotos, que un socio nunca tiene. */
-export function MemberRequestsBrowser({ registrations }: { registrations: MemberRequestRow[] }) {
+export function MemberRequestsBrowser({
+  registrations,
+  canManage,
+}: {
+  registrations: MemberRequestRow[];
+  canManage: boolean;
+}) {
   const t = useTranslations("Inscripciones");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("pending");
@@ -103,6 +110,9 @@ export function MemberRequestsBrowser({ registrations }: { registrations: Member
               <TableHead>{t("colContact")}</TableHead>
               <TableHead>{t("colDate")}</TableHead>
               <TableHead>{t("colStatus")}</TableHead>
+              {canManage ? (
+                <TableHead className="text-right">{t("colActions")}</TableHead>
+              ) : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -123,6 +133,16 @@ export function MemberRequestsBrowser({ registrations }: { registrations: Member
                 <TableCell>
                   <Badge variant={STATUS_VARIANT[r.status]}>{t(`status.${r.status}`)}</Badge>
                 </TableCell>
+                {canManage ? (
+                  <TableCell className="text-right">
+                    {r.status === "rejected" ? (
+                      <DeleteRegistrationDialog
+                        registrationId={r.id}
+                        fullName={`${r.firstName} ${r.lastName}`}
+                      />
+                    ) : null}
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))}
           </TableBody>

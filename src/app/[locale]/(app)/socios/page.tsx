@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { registrations } from "@/db/schema";
-import { hasPermission, requirePermission } from "@/lib/auth";
+import { hasAnyPermission, hasPermission, requirePermission } from "@/lib/auth";
 import { MemberRequestsBrowser } from "@/components/socios/member-requests-browser";
 import { SociosBrowser } from "@/components/socios/socios-browser";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -30,6 +30,9 @@ export default async function SociosPage({
   setRequestLocale(locale);
   const user = await requirePermission("socios.view");
   const canManage = hasPermission(user, "personas.manage");
+  // Borrar una solicitud de socio pide el mismo permiso que revisarla, que no
+  // es el de gestionar personas del listado de socios.
+  const canManageRequests = hasAnyPermission(user, ["inscripciones.manage", "socios.manage"]);
   const t = await getTranslations("Socios");
   const tInscripciones = await getTranslations("Inscripciones");
 
@@ -104,7 +107,7 @@ export default async function SociosPage({
               description={t("emptySolicitudesDescription")}
             />
           ) : (
-            <MemberRequestsBrowser registrations={requestRows} />
+            <MemberRequestsBrowser registrations={requestRows} canManage={canManageRequests} />
           )}
         </TabsContent>
       </Tabs>

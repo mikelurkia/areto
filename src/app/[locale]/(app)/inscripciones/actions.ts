@@ -2,8 +2,9 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath, updateTag } from "next/cache";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
+import { redirect } from "@/i18n/navigation";
 import { db } from "@/db";
 import {
   clubMembers,
@@ -22,7 +23,7 @@ import { personPhotoThumbPath } from "@/lib/person-photo";
 import { resolvePayerFields } from "@/lib/payer";
 import { readGuardians } from "@/lib/registration-guardians";
 import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
-import { copyFileBetweenBuckets, downloadFile, uploadFile } from "@/lib/supabase/storage";
+import { copyFileBetweenBuckets, downloadFile, removeFile, uploadFile } from "@/lib/supabase/storage";
 
 export type RegistrationReviewState = {
   error?: string;
@@ -593,4 +594,52 @@ export async function reopenRegistration(
   updateTag(SEASON_RENEWALS_TAG);
   revalidatePath("/", "layout");
   return { message: t("registrationReopened") };
+}
+
+/**
+ * Borra definitivamente una solicitud rechazada: la fila (sus tutores caen por
+ * `on delete cascade`) y los ficheros que subió el solicitante. Solo rechazadas
+ * —una aprobada ya creó persona, tutores, membership y copias de sus ficheros,
+ * y una pendiente está aún por revisar—. Al no haber aprobación no existe copia
+ * en `person-photos`/`person-documents`, así que limpiar el bucket de
+ * inscripciones no deja a nadie sin foto.
+ */
+export async function deleteRegistration(
+  _prev: RegistrationReviewState,
+  formData: FormData,
+): Promise<RegistrationReviewState> {
+  const t = await getTranslations("Inscripciones");
+
+  const id = String(formData.get("id") ?? "");
+  const registration = await db.query.registrations.findFirst({
+    where: eq(registrations.id, id),
+    columns: { kind: true, status: true, photoPath: true, idFrontPath: true, idBackPath: true },
+  });
+  if (!registration) return { error: t("notFound") };
+  await requirePermission(
+    registration.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
+  );
+  if (registration.status !== "rejected") return { error: t("onlyRejectedCanDelete") };
+
+  await db.delete(registrations).where(eq(registrations.id, id));
+
+  const { photoPath, idFrontPath, idBackPath } = registration;
+  const paths = [
+    photoPath,
+    photoPath ? personPhotoThumbPath(photoPath) : null,
+    idFrontPath,
+    idBackPath,
+  ].filter((path): path is string => Boolean(path));
+  await Promise.all(paths.map((path) => removeFile(REGISTRATION_BUCKET, path)));
+
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidatePath("/", "layout");
+
+  // Desde el detalle la fila ya no existe y la página daría 404, así que la
+  // acción se lleva al listado; desde el propio listado no hay redirección y
+  // se ve el toast de confirmación.
+  const redirectTo = String(formData.get("redirectTo") ?? "");
+  if (redirectTo) redirect({ href: redirectTo, locale: await getLocale() });
+
+  return { message: t("registrationDeleted") };
 }
