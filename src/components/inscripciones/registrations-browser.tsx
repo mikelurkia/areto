@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { DeleteRegistrationDialog } from "@/components/inscripciones/delete-registration-dialog";
 
 type RegistrationRow = {
   id: string;
@@ -38,7 +39,13 @@ type RegistrationRow = {
   createdAt: string;
 };
 
-export function RegistrationsBrowser({ registrations }: { registrations: RegistrationRow[] }) {
+export function RegistrationsBrowser({
+  registrations,
+  canManage,
+}: {
+  registrations: RegistrationRow[];
+  canManage: boolean;
+}) {
   const t = useTranslations("Inscripciones");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("pending");
@@ -105,6 +112,9 @@ export function RegistrationsBrowser({ registrations }: { registrations: Registr
               <TableHead>{t("colPhotos")}</TableHead>
               <TableHead>{t("colDate")}</TableHead>
               <TableHead>{t("colStatus")}</TableHead>
+              {canManage ? (
+                <TableHead className="text-right">{t("colActions")}</TableHead>
+              ) : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -133,6 +143,16 @@ export function RegistrationsBrowser({ registrations }: { registrations: Registr
                 <TableCell>
                   <Badge variant={STATUS_VARIANT[r.status]}>{t(`status.${r.status}`)}</Badge>
                 </TableCell>
+                {canManage ? (
+                  <TableCell className="text-right">
+                    {r.status === "rejected" ? (
+                      <DeleteRegistrationDialog
+                        registrationId={r.id}
+                        fullName={`${r.firstName} ${r.lastName}`}
+                      />
+                    ) : null}
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))}
           </TableBody>

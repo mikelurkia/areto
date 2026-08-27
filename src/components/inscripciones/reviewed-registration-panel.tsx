@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { mailtoLink, whatsappLink } from "@/lib/contact-links";
 import { formatDateTime } from "@/lib/format-date";
 import { Link } from "@/i18n/navigation";
+import { DeleteRegistrationDialog } from "@/components/inscripciones/delete-registration-dialog";
 import { ReopenRegistrationButton } from "@/components/inscripciones/reopen-registration-button";
 import { Button } from "@/components/ui/button";
 
@@ -29,7 +30,7 @@ type Props = {
  * Bloque de solo lectura de una solicitud ya revisada (aprobada o
  * rechazada), compartido entre `/inscripciones/[id]` y `/socios/[id]` — antes
  * duplicado byte a byte salvo por las claves de mensaje según `kind`. Incluye
- * el botón para reabrir una rechazada.
+ * los botones para reabrir o borrar una rechazada.
  */
 export async function ReviewedRegistrationPanel({
   registrationId,
@@ -107,8 +108,13 @@ export async function ReviewedRegistrationPanel({
         ) : null}
       </div>
       {status === "rejected" && canManage ? (
-        <div className="pt-2">
+        <div className="flex items-center gap-2 pt-2">
           <ReopenRegistrationButton registrationId={registrationId} />
+          <DeleteRegistrationDialog
+            registrationId={registrationId}
+            fullName={fullName}
+            redirectTo={kind === "member" ? "/socios" : "/inscripciones"}
+          />
         </div>
       ) : null}
     </div>
