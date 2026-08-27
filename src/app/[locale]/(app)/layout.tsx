@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { AppHeader } from "@/components/app-header";
 import { AppSidebar, AppSidebarBody } from "@/components/app-sidebar";
+import { CommandPalette } from "@/components/command-palette";
 import { AppSidebarBodySkeleton } from "@/components/app-sidebar-skeleton";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { hasPermission, requireUser } from "@/lib/auth";
@@ -45,6 +46,16 @@ async function AppSidebarBodyWithSession() {
 }
 
 /**
+ * La paleta ofrece las mismas secciones que el sidebar, así que necesita los
+ * permisos del usuario. `getCurrentUser` está envuelto en `cache()`, de modo que
+ * este `await` comparte la consulta con el del sidebar en vez de repetirla.
+ */
+async function CommandPaletteWithSession() {
+  const user = await requireUser();
+  return <CommandPalette permissions={[...user.permissions]} />;
+}
+
+/**
  * Layout sincrónico a propósito: no debe hacer ningún `await`. Todo lo que
  * necesite datos de runtime va dentro de un <Suspense>.
  */
@@ -71,6 +82,9 @@ export default function AppLayout({
         <main className="flex flex-1 flex-col gap-4 p-4 md:p-6">
           {children}
         </main>
+        <Suspense fallback={null}>
+          <CommandPaletteWithSession />
+        </Suspense>
       </SidebarInset>
     </SidebarProvider>
   );

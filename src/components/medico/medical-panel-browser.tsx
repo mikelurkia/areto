@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import {
   ClipboardListIcon,
   DownloadIcon,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { downloadCsv } from "@/lib/csv";
 import {
   EMPTY_MEDICAL_PANEL_FILTERS,
@@ -90,6 +90,9 @@ function StatusBadge({
   return <Badge variant="outline">{t("statusOkBadge", { date: date! })}</Badge>;
 }
 
+/** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
+const FILTER_DEFAULTS = { q: "", equipo: "all", estado: "all" };
+
 export function MedicalPanelBrowser({
   certRows,
   injuryRows,
@@ -104,13 +107,16 @@ export function MedicalPanelBrowser({
   const t = useTranslations("Medico");
   const tEquipos = useTranslations("Equipos");
   // El panel de alertas enlaza aquí con el filtro ya puesto
-  // (`/medico?estado=needsUpdate`). Solo es la semilla del estado inicial: a
-  // partir de ahí los filtros siguen siendo locales y no tocan la URL.
-  const estadoParam = useSearchParams().get("estado");
-  const [query, setQuery] = useState("");
-  const [team, setTeam] = useState("all");
-  const [status, setStatus] = useState(() =>
-    estadoParam && STATUS_FILTER_VALUES.includes(estadoParam) ? estadoParam : "all",
+  // (`/medico?estado=needsUpdate`); ahora esa misma URL es la que manda mientras
+  // se navega, no solo la semilla del estado inicial.
+  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
+  const { equipo: team } = filters;
+  // El valor viene de la URL, así que puede ser cualquier cosa.
+  const status = STATUS_FILTER_VALUES.includes(filters.estado)
+    ? filters.estado
+    : "all";
+  const [query, setQuery] = useSearchText(filters.q, (value) =>
+    setFilters({ q: value }),
   );
 
   // Fechas de referencia calculadas en cliente, para no forzar el prerender
@@ -231,7 +237,7 @@ export function MedicalPanelBrowser({
             className="w-56 pl-8"
           />
         </div>
-        <Select value={team} onValueChange={(v) => setTeam(v ?? "all")}>
+        <Select value={team} onValueChange={(v) => setFilters({ equipo: v ?? "all" })}>
           <SelectTrigger aria-label={t("filterTeamLabel")}>
             <SelectValue>
               {(value: string) =>
@@ -250,7 +256,7 @@ export function MedicalPanelBrowser({
             ))}
           </SelectContent>
         </Select>
-        <Select value={status} onValueChange={(v) => setStatus(v ?? "all")}>
+        <Select value={status} onValueChange={(v) => setFilters({ estado: v ?? "all" })}>
           <SelectTrigger aria-label={t("filterStatusLabel")}>
             <SelectValue>
               {(value: string) =>

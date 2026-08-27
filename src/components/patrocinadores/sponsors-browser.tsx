@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { DownloadIcon, HandshakeIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -27,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { downloadCsv } from "@/lib/csv";
 import { SPONSORSHIP_EXPIRY_WINDOW_DAYS, sponsorshipStatus } from "@/lib/sponsorship";
 
@@ -57,6 +58,9 @@ type SponsorRow = {
 
 type PersonOption = { id: string; firstName: string; lastName: string };
 
+/** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
+const FILTER_DEFAULTS = { q: "", estado: "all", nivel: "all" };
+
 export function SponsorsBrowser({
   sponsors,
   personOptions,
@@ -69,9 +73,11 @@ export function SponsorsBrowser({
   canManage: boolean;
 }) {
   const t = useTranslations("Patrocinadores");
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
-  const [tier, setTier] = useState("all");
+  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
+  const { estado: status, nivel: tier } = filters;
+  const [query, setQuery] = useSearchText(filters.q, (value) =>
+    setFilters({ q: value }),
+  );
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const cutoff = useMemo(() => {
@@ -146,7 +152,7 @@ export function SponsorsBrowser({
             className="w-56 pl-8"
           />
         </div>
-        <Select value={status} onValueChange={(v) => setStatus(v ?? "all")}>
+        <Select value={status} onValueChange={(v) => setFilters({ estado: v ?? "all" })}>
           <SelectTrigger aria-label={t("filterStatusLabel")}>
             <SelectValue>
               {(value: string) => {
@@ -166,7 +172,7 @@ export function SponsorsBrowser({
             <SelectItem value="noTerm">{t("filterStatusNoTerm")}</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={tier} onValueChange={(v) => setTier(v ?? "all")}>
+        <Select value={tier} onValueChange={(v) => setFilters({ nivel: v ?? "all" })}>
           <SelectTrigger aria-label={t("filterTierLabel")}>
             <SelectValue>
               {(value: string) => {

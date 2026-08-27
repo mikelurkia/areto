@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { InboxIcon, SearchIcon } from "lucide-react";
+import { useMemo } from "react";
+import { DownloadIcon, InboxIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { downloadCsv } from "@/lib/csv";
 import { Link } from "@/i18n/navigation";
 import { STATUS_VARIANT, type RegistrationStatus } from "@/lib/registration-status";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -39,6 +42,12 @@ type RegistrationRow = {
   createdAt: string;
 };
 
+/**
+ * Filtros de la pantalla. Se entra viendo las pendientes, que es a lo que se
+ * viene; el resto se pide expresamente y queda escrito en la URL.
+ */
+const FILTER_DEFAULTS = { q: "", estado: "pending" };
+
 export function RegistrationsBrowser({
   registrations,
   canManage,
@@ -47,8 +56,11 @@ export function RegistrationsBrowser({
   canManage: boolean;
 }) {
   const t = useTranslations("Inscripciones");
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("pending");
+  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
+  const status = filters.estado;
+  const [query, setQuery] = useSearchText(filters.q, (value) =>
+    setFilters({ q: value }),
+  );
 
   const filtered = useMemo(() => {
     let result = registrations;
@@ -64,6 +76,29 @@ export function RegistrationsBrowser({
     return result;
   }, [registrations, query, status]);
 
+  /** Exporta lo que se está viendo, filtro incluido. */
+  function handleExportCsv() {
+    const headers = [
+      t("colName"),
+      t("colNationalId"),
+      t("colContact"),
+      t("colGuardians"),
+      t("colPhotos"),
+      t("colDate"),
+      t("colStatus"),
+    ];
+    const rows = filtered.map((r) => [
+      `${r.firstName} ${r.lastName}`,
+      r.nationalId ?? "",
+      r.email || r.phone || "",
+      String(r.guardiansCount),
+      String(r.photosCount),
+      r.createdAt,
+      t(`status.${r.status}`),
+    ]);
+    downloadCsv("inscripciones.csv", headers, rows);
+  }
+
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -76,7 +111,7 @@ export function RegistrationsBrowser({
             className="w-56 pl-8"
           />
         </div>
-        <Select value={status} onValueChange={(v) => setStatus(v ?? "all")}>
+        <Select value={status} onValueChange={(v) => setFilters({ estado: v ?? "all" })}>
           <SelectTrigger aria-label={t("filterStatusLabel")}>
             <SelectValue>
               {(value: string) =>
@@ -93,6 +128,15 @@ export function RegistrationsBrowser({
             <SelectItem value="rejected">{t("status.rejected")}</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          className="ml-auto"
+          onClick={handleExportCsv}
+          disabled={filtered.length === 0}
+        >
+          <DownloadIcon data-icon="inline-start" />
+          {t("exportCsvAction")}
+        </Button>
       </div>
 
       {filtered.length === 0 ? (

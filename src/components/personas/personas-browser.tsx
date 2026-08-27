@@ -17,6 +17,7 @@ import {
   bulkSetMember,
 } from "@/app/[locale]/(app)/personas/actions";
 import { calculateAge, isMinor } from "@/lib/age";
+import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { downloadCsv } from "@/lib/csv";
 import { whatsappLink } from "@/lib/contact-links";
 import { Link } from "@/i18n/navigation";
@@ -100,6 +101,17 @@ function initials(firstName: string, lastName: string): string {
   return `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
 }
 
+/** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
+const FILTER_DEFAULTS = {
+  q: "",
+  equipo: "all",
+  rol: "all",
+  caduca: "all",
+  docs: "all",
+  etiqueta: "all",
+  pagina: "1",
+};
+
 export function PersonasBrowser({
   persons,
   teamOptions,
@@ -115,13 +127,14 @@ export function PersonasBrowser({
 }) {
   const t = useTranslations("Personas");
   const tEquipos = useTranslations("Equipos");
-  const [query, setQuery] = useState("");
-  const [team, setTeam] = useState("all");
-  const [role, setRole] = useState("all");
-  const [expiry, setExpiry] = useState("all");
-  const [docs, setDocs] = useState("all");
-  const [tag, setTag] = useState("all");
-  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
+  const { equipo: team, rol: role, caduca: expiry, docs, etiqueta: tag } = filters;
+  // Viene de la URL, así que puede ser cualquier cosa; más abajo se acota
+  // además al número de páginas que haya.
+  const page = Number(filters.pagina) || 1;
+  const [query, setQuery] = useSearchText(filters.q, (value) =>
+    setFilters({ q: value }),
+  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkTeam, setBulkTeam] = useState("");
   const [bulkRole, setBulkRole] = useState<"player" | "coach" | "staff">("player");
@@ -282,29 +295,29 @@ export function PersonasBrowser({
     });
   }
 
+  // Cambiar un filtro vuelve a la primera página: la que se estuviera viendo
+  // ya no significa lo mismo sobre una lista distinta.
   function handleQueryChange(value: string) {
     setQuery(value);
-    setPage(1);
+    setFilters({ pagina: "1" });
   }
   function handleTeamChange(value: string | null) {
-    setTeam(value ?? "all");
-    setPage(1);
+    setFilters({ equipo: value ?? "all", pagina: "1" });
   }
   function handleRoleChange(value: string | null) {
-    setRole(value ?? "all");
-    setPage(1);
+    setFilters({ rol: value ?? "all", pagina: "1" });
   }
   function handleExpiryChange(value: string | null) {
-    setExpiry(value ?? "all");
-    setPage(1);
+    setFilters({ caduca: value ?? "all", pagina: "1" });
   }
   function handleDocsChange(value: string | null) {
-    setDocs(value ?? "all");
-    setPage(1);
+    setFilters({ docs: value ?? "all", pagina: "1" });
   }
   function handleTagChange(value: string | null) {
-    setTag(value ?? "all");
-    setPage(1);
+    setFilters({ etiqueta: value ?? "all", pagina: "1" });
+  }
+  function goToPage(next: number) {
+    setFilters({ pagina: String(Math.min(Math.max(1, next), pageCount)) });
   }
 
   return (
@@ -717,7 +730,7 @@ export function PersonasBrowser({
                     text={t("paginationPrevious")}
                     onClick={(e) => {
                       e.preventDefault();
-                      setPage((p) => Math.max(1, p - 1));
+                      goToPage(currentPage - 1);
                     }}
                     href="#"
                     className={
@@ -734,7 +747,7 @@ export function PersonasBrowser({
                       isActive={p === currentPage}
                       onClick={(e) => {
                         e.preventDefault();
-                        setPage(p);
+                        goToPage(p);
                       }}
                     >
                       {p}
@@ -746,7 +759,7 @@ export function PersonasBrowser({
                     text={t("paginationNext")}
                     onClick={(e) => {
                       e.preventDefault();
-                      setPage((p) => Math.min(pageCount, p + 1));
+                      goToPage(currentPage + 1);
                     }}
                     href="#"
                     className={

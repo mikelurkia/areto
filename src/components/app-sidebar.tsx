@@ -2,29 +2,12 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import {
-  Building2,
-  CalendarDays,
-  ChevronsUpDown,
-  ClipboardCheckIcon,
-  ClipboardList,
-  GlobeIcon,
-  HandshakeIcon,
-  IdCard,
-  LayoutDashboard,
-  LogOut,
-  Megaphone,
-  Settings,
-  Shirt,
-  Stethoscope,
-  ShieldUser,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { ChevronsUpDown, GlobeIcon, LogOut, Settings } from "lucide-react";
 
 import { logout } from "@/app/[locale]/(auth)/actions";
 import { Link, usePathname } from "@/i18n/navigation";
 import { isSystemRoleKey, type Permission } from "@/lib/permissions";
+import { useNavItems } from "@/components/nav-items";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -183,58 +166,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
       : (roleLabels[0] ?? "");
   const roleLabel = roleLabels.join(" · ");
 
-  const can = (permission: Permission) => user.permissions.includes(permission);
-
-  // `match` para las secciones cuyo enlace no es el prefijo de la sección
-  // (Administración apunta a su primera subpágina).
-  const nav: {
-    title: string;
-    href: string;
-    icon: typeof LayoutDashboard;
-    match?: string;
-    disabled?: boolean;
-  }[] = [
-    { title: tNav("dashboard"), href: "/dashboard", icon: LayoutDashboard },
-    ...(can("personas.view")
-      ? [{ title: tNav("personas"), href: "/personas", icon: Users }]
-      : []),
-    ...(can("socios.view")
-      ? [{ title: tNav("socios"), href: "/socios", icon: IdCard }]
-      : []),
-    ...(can("inscripciones.view")
-      ? [{ title: tNav("inscripciones"), href: "/inscripciones", icon: ClipboardCheckIcon }]
-      : []),
-    ...(can("personas.medical.view")
-      ? [{ title: tNav("medico"), href: "/medico", icon: Stethoscope }]
-      : []),
-    ...(can("temporadas.view")
-      ? [{ title: tNav("temporada"), href: "/temporadas", icon: ClipboardList }]
-      : []),
-    ...(can("equipos.view")
-      ? [{ title: tNav("equipos"), href: "/equipos", icon: Shirt }]
-      : []),
-    ...(can("calendario.view")
-      ? [{ title: tNav("calendario"), href: "/calendario", icon: CalendarDays }]
-      : []),
-    ...(can("patrocinadores.view")
-      ? [{ title: tNav("patrocinadores"), href: "/patrocinadores", icon: HandshakeIcon }]
-      : []),
-    { title: tNav("cuotas"), href: "/cuotas", icon: Wallet, disabled: true },
-    { title: tNav("avisos"), href: "/avisos", icon: Megaphone, disabled: true },
-    ...(can("club.view")
-      ? [{ title: tNav("club"), href: "/club", icon: Building2 }]
-      : []),
-    ...(can("usuarios.manage") || can("roles.manage")
-      ? [
-          {
-            title: tNav("administracion"),
-            href: "/administracion/usuarios",
-            match: "/administracion",
-            icon: ShieldUser,
-          },
-        ]
-      : []),
-  ];
+  const nav = useNavItems(user.permissions);
 
   return (
     <>

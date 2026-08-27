@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState } from "react";
-import { Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { deleteRole } from "@/app/[locale]/(app)/administracion/roles/actions";
@@ -16,7 +15,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import {
@@ -54,14 +52,6 @@ export function DeleteRoleDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button variant="ghost" size="icon-sm" className="text-destructive" />
-        }
-      >
-        <Trash2Icon />
-        <span className="sr-only">{t("deleteRoleSr", { name: role.name })}</span>
-      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("deleteRoleTitle", { name: role.name })}</DialogTitle>

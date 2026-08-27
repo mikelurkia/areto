@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { PencilIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { createRole, updateRole } from "@/app/[locale]/(app)/administracion/roles/actions";
@@ -87,36 +87,17 @@ export function RoleDialog(props: RoleDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          props.mode === "create" && !props.copyFrom ? (
-            <Button />
-          ) : (
-            <Button variant="ghost" size="icon-sm" />
-          )
-        }
-      >
-        {props.mode === "create" ? (
-          props.copyFrom ? (
-            <>
-              <PlusIcon />
-              <span className="sr-only">
-                {t("duplicateRoleSr", { name: props.copyFrom.name })}
-              </span>
-            </>
-          ) : (
-            <>
-              <PlusIcon data-icon="inline-start" />
-              {t("createRole")}
-            </>
-          )
-        ) : (
-          <>
-            <PencilIcon />
-            <span className="sr-only">{t("editRoleSr", { name: props.role.name })}</span>
-          </>
-        )}
-      </DialogTrigger>
+      {/*
+        Solo el botón de la cabecera lleva disparador propio. Editar y duplicar
+        se abren desde el menú de acciones de la fila (`role-row-actions`), que
+        comparte con este diálogo la clave de `useDialogParam`.
+      */}
+      {props.mode === "create" && !props.copyFrom ? (
+        <DialogTrigger render={<Button />}>
+          <PlusIcon data-icon="inline-start" />
+          {t("createRole")}
+        </DialogTrigger>
+      ) : null}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
