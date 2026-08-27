@@ -1,9 +1,19 @@
 /**
+ * Caracteres que Excel/Sheets interpretan como inicio de fórmula si abren la
+ * celda tal cual. Un campo que venga de datos del usuario (nombre, notas...)
+ * y empiece por uno de ellos podría ejecutar código al abrir el CSV
+ * exportado — se neutraliza anteponiendo un apóstrofo, que fuerza texto
+ * literal sin cambiar lo que ve quien lo lee.
+ */
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
+/**
  * Envuelve siempre entre comillas y duplica las internas: así ni las comas ni
  * los saltos de línea de un campo rompen la fila.
  */
 export function csvEscape(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`;
+  const safe = FORMULA_PREFIX.test(value) ? `'${value}` : value;
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
 /** Serializa cabeceras y filas a CSV, con CRLF entre filas. */
