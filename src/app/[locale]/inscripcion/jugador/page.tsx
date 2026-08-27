@@ -1,7 +1,7 @@
 import { LockIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { getRegistrationAvailability } from "@/lib/registration-settings";
+import { getRegistrationAvailability, getSeasonFeeTable } from "@/lib/registration-settings";
 import { Badge } from "@/components/ui/badge";
 import { PublicHeader } from "@/components/public/public-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -31,9 +31,10 @@ export default async function InscripcionJugadorPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  const [t, { teamRegistrationOpen, seasonName }] = await Promise.all([
+  const [t, { teamRegistrationOpen, seasonName }, feeTable] = await Promise.all([
     getTranslations("Inscripciones"),
     getRegistrationAvailability(),
+    getSeasonFeeTable(),
   ]);
 
   return (
@@ -50,7 +51,7 @@ export default async function InscripcionJugadorPage({
               </div>
               <p className="text-muted-foreground">{t("playerFormSubtitle")}</p>
             </div>
-            <JugadorForm />
+            <JugadorForm feeTable={feeTable} seasonName={seasonName} />
           </>
         ) : (
           <SectionPlaceholder

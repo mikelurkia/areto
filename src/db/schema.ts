@@ -233,6 +233,17 @@ export const teams = pgTable("teams", {
   /** Código/identificador del equipo en la federación, para actas y trámites. */
   federationCode: text("federation_code"),
   /**
+   * Cuota que el club cobra a cada jugador de este equipo esta temporada.
+   * Es un dato de configuración: no genera cobros por sí solo — el módulo
+   * económico (`fees`/`payments`, todavía sin construir) lo leerá de aquí.
+   * En céntimos, nunca float, como el resto del dinero del proyecto.
+   * Null = cuota sin definir todavía.
+   */
+  playerFeeCents: integer("player_fee_cents"),
+  playerFeePeriod: feePeriod("player_fee_period").notNull().default("season"),
+  /** Matices del importe ("incluye equipación", "descuento hermanos"). Interno. */
+  playerFeeNotes: text("player_fee_notes"),
+  /**
    * Equipo del que proviene esta fila al "renovar" la plantilla a otra
    * temporada (ver `renewTeam` en equipos/actions.ts). Null si el equipo se
    * creó directamente. Un equipo sigue sin ser una entidad persistente entre

@@ -30,6 +30,7 @@ import { useDialogParam } from "@/hooks/use-dialog-param";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { TEAM_CATEGORIES } from "@/components/equipos/team-categories";
 import { TEAM_GENDERS } from "@/components/equipos/team-genders";
+import { FEE_PERIODS } from "@/components/equipos/fee-periods";
 
 type Team = {
   id: string;
@@ -40,6 +41,9 @@ type Team = {
   maxBirthYear: number | null;
   federationGroup: string | null;
   federationCode: string | null;
+  playerFeeCents: number | null;
+  playerFeePeriod: string;
+  playerFeeNotes: string | null;
 };
 
 type TeamDialogProps =
@@ -218,6 +222,62 @@ export function TeamDialog(props: TeamDialogProps) {
                 />
               </Field>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field>
+                <FieldLabel htmlFor="team-player-fee">
+                  {t("playerFeeLabel")}
+                </FieldLabel>
+                <Input
+                  id="team-player-fee"
+                  name="playerFee"
+                  inputMode="decimal"
+                  placeholder={t("playerFeePlaceholder")}
+                  defaultValue={
+                    props.mode === "edit" && props.team.playerFeeCents !== null
+                      ? String(props.team.playerFeeCents / 100)
+                      : ""
+                  }
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="team-player-fee-period">
+                  {t("playerFeePeriodLabel")}
+                </FieldLabel>
+                <Select
+                  key={props.mode === "edit" ? props.team.playerFeePeriod : "season"}
+                  name="playerFeePeriod"
+                  defaultValue={
+                    props.mode === "edit" ? props.team.playerFeePeriod : "season"
+                  }
+                >
+                  <SelectTrigger id="team-player-fee-period" className="w-full">
+                    <SelectValue>
+                      {(value: string) => t(`feePeriod.${value}`)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FEE_PERIODS.map((period) => (
+                      <SelectItem key={period} value={period}>
+                        {t(`feePeriod.${period}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+            <Field>
+              <FieldLabel htmlFor="team-player-fee-notes">
+                {t("playerFeeNotesLabel")}
+              </FieldLabel>
+              <Input
+                id="team-player-fee-notes"
+                name="playerFeeNotes"
+                placeholder={t("playerFeeNotesPlaceholder")}
+                defaultValue={
+                  props.mode === "edit" ? (props.team.playerFeeNotes ?? "") : ""
+                }
+              />
+            </Field>
             {state.error ? (
               <p className="text-sm text-destructive">{state.error}</p>
             ) : null}

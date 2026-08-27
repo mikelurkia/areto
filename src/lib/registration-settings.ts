@@ -1,10 +1,11 @@
 import "server-only";
 
 import { cacheLife, cacheTag } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
 import { db } from "@/db";
-import { seasons } from "@/db/schema";
+import { feePeriod, seasons, teams } from "@/db/schema";
+import { TEAM_CATEGORIES, type TeamCategoryValue } from "@/components/equipos/team-categories";
 
 export type RegistrationAvailability = {
   seasonId: string | null;
@@ -55,4 +56,73 @@ export async function getRegistrationAvailability(): Promise<RegistrationAvailab
     memberOpen: Boolean(season) && (settings?.memberRegistrationOpen ?? false),
     memberAnnualFeeCents: settings?.memberAnnualFeeCents ?? 2000,
   };
+}
+
+/** Etiqueta de caché de la tabla pública de cuotas; la invalidan las acciones de equipo. */
+export const SEASON_FEES_TAG = "season-fees";
+
+export type SeasonFeeRow = {
+  /** Categoría del enum `team_category`, o null para los equipos sin categoría. */
+  category: TeamCategoryValue | null;
+  period: (typeof feePeriod.enumValues)[number];
+  minCents: number;
+  /** Igual a `minCents` salvo que dos equipos de la misma categoría cobren distinto. */
+  maxCents: number;
+};
+
+/**
+ * Cuotas de la temporada actual agrupadas por categoría, para enseñárselas a
+ * quien se inscribe por la web.
+ *
+ * Al inscribirse todavía no hay equipo asignado (`registrations` no tiene
+ * `teamId`: el equipo se elige al aprobar la solicitud), así que lo más
+ * concreto que podemos decir con verdad es el importe de la categoría. Si dos
+ * equipos de la misma categoría cobran distinto, sale el rango.
+ *
+ * Cacheada con `use cache` por lo mismo que `getRegistrationAvailability`: no
+ * depende del usuario ni de la petición, la pide una página pública que así
+ * sigue formando parte del armazón estático, y el dato se fija una vez por
+ * temporada. Las acciones de equipo la invalidan por etiqueta.
+ */
+export async function getSeasonFeeTable(): Promise<SeasonFeeRow[]> {
+  "use cache";
+  cacheTag(SEASON_FEES_TAG);
+  cacheLife("max");
+
+  const season = await db.query.seasons.findFirst({
+    where: eq(seasons.isCurrent, true),
+    columns: { id: true },
+  });
+  if (!season) return [];
+
+  const rows = await db.query.teams.findMany({
+    where: and(eq(teams.seasonId, season.id), isNotNull(teams.playerFeeCents)),
+    columns: { category: true, playerFeeCents: true, playerFeePeriod: true },
+  });
+
+  const byKey = new Map<string, SeasonFeeRow>();
+  for (const row of rows) {
+    const cents = row.playerFeeCents;
+    if (cents === null) continue;
+    const key = `${row.category ?? ""}:${row.playerFeePeriod}`;
+    const current = byKey.get(key);
+    if (current) {
+      current.minCents = Math.min(current.minCents, cents);
+      current.maxCents = Math.max(current.maxCents, cents);
+    } else {
+      byKey.set(key, {
+        category: row.category,
+        period: row.playerFeePeriod,
+        minCents: cents,
+        maxCents: cents,
+      });
+    }
+  }
+
+  // Orden de categoría (escuela → senior), con los equipos sin categoría al final.
+  return [...byKey.values()].sort((a, b) => {
+    const ia = a.category ? TEAM_CATEGORIES.indexOf(a.category) : TEAM_CATEGORIES.length;
+    const ib = b.category ? TEAM_CATEGORIES.indexOf(b.category) : TEAM_CATEGORIES.length;
+    return ia - ib || a.minCents - b.minCents;
+  });
 }

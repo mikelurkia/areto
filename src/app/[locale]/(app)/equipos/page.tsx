@@ -17,6 +17,7 @@ import { Link } from "@/i18n/navigation";
 import { SeasonSelect } from "@/components/equipos/season-select";
 import { TeamDialog } from "@/components/equipos/team-dialog";
 import { DeleteTeamDialog } from "@/components/equipos/delete-team-dialog";
+import { formatCents } from "@/lib/money";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -131,6 +132,7 @@ export default async function EquiposPage({
             <TableRow>
               <TableHead>{t("colName")}</TableHead>
               <TableHead>{t("colCategory")}</TableHead>
+              <TableHead>{t("colFee")}</TableHead>
               <TableHead>{t("colRoster")}</TableHead>
               <TableHead>{t("colHealth")}</TableHead>
               {canManage ? (
@@ -157,6 +159,13 @@ export default async function EquiposPage({
                 <TableCell>
                   {team.category ? t(`category.${team.category}`) : "—"}
                   {team.gender ? ` · ${t(`gender.${team.gender}`)}` : ""}
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {team.playerFeeCents !== null
+                    ? t(`feePeriodShort.${team.playerFeePeriod}`, {
+                        amount: formatCents(team.playerFeeCents, locale),
+                      })
+                    : "—"}
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
@@ -218,6 +227,9 @@ export default async function EquiposPage({
                         maxBirthYear: team.maxBirthYear,
                         federationGroup: team.federationGroup,
                         federationCode: team.federationCode,
+                        playerFeeCents: team.playerFeeCents,
+                        playerFeePeriod: team.playerFeePeriod,
+                        playerFeeNotes: team.playerFeeNotes,
                       }}
                     />
                     <DeleteTeamDialog id={team.id} name={team.name} />

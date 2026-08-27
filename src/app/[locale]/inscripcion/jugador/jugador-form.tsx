@@ -2,7 +2,7 @@
 
 import { useActionState, useCallback, useEffect, useState, type ReactNode } from "react";
 import { CheckCircle2Icon, Loader2Icon, PlusIcon, TrashIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { submitTeamRegistration } from "@/app/[locale]/inscripcion/actions";
 import { useIbanField } from "@/hooks/use-iban-field";
@@ -13,7 +13,9 @@ import {
   MAX_UPLOAD_TOTAL_BYTES,
   downscaleImage,
 } from "@/lib/image-downscale";
+import { formatCents } from "@/lib/money";
 import { readPlayerFields, type RegistrationState } from "@/lib/registration-form-data";
+import type { SeasonFeeRow } from "@/lib/registration-settings";
 import { Link } from "@/i18n/navigation";
 import { Req } from "@/components/inscripciones/required-asterisk";
 import { SubmitButton } from "@/components/submit-button";
@@ -178,7 +180,54 @@ function usePhotoFieldsState() {
   };
 }
 
-export function JugadorForm() {
+function FeeTable({
+  rows,
+  seasonName,
+}: {
+  rows: SeasonFeeRow[];
+  seasonName: string | null;
+}) {
+  const t = useTranslations("Inscripciones");
+  const tEquipos = useTranslations("Equipos");
+  const locale = useLocale();
+
+  return (
+    <div className="rounded-lg border bg-muted/40 p-4">
+      <p className="text-sm font-medium">
+        {seasonName ? t("feeTableTitle", { season: seasonName }) : t("feeTableTitleNoSeason")}
+      </p>
+      <dl className="mt-2 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
+        {rows.map((row) => (
+          <div
+            key={`${row.category ?? ""}:${row.period}`}
+            className="flex items-baseline justify-between gap-3"
+          >
+            <dt className="text-muted-foreground">
+              {row.category ? tEquipos(`category.${row.category}`) : tEquipos("categoryNone")}
+            </dt>
+            <dd className="font-medium tabular-nums">
+              {tEquipos(`feePeriodShort.${row.period}`, {
+                amount:
+                  row.minCents === row.maxCents
+                    ? formatCents(row.minCents, locale)
+                    : `${formatCents(row.minCents, locale)} – ${formatCents(row.maxCents, locale)}`,
+              })}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 text-xs text-muted-foreground">{t("feeTableHint")}</p>
+    </div>
+  );
+}
+
+export function JugadorForm({
+  feeTable,
+  seasonName,
+}: {
+  feeTable: SeasonFeeRow[];
+  seasonName: string | null;
+}) {
   const t = useTranslations("Inscripciones");
   // La Server Action atrapa sus propios fallos y devuelve estado, pero solo
   // puede hacerlo si llega a ejecutarse. Cuando la petición muere antes —la
@@ -663,6 +712,11 @@ export function JugadorForm() {
         <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
           {t("paymentSection")}
         </h2>
+        {/* Informativo: al inscribirse todavía no hay equipo asignado (lo
+            decide el club al revisar la solicitud), así que lo más concreto
+            que podemos decir es el importe de cada categoría. Sin cuotas
+            configuradas el bloque no existe. */}
+        {feeTable.length > 0 ? <FeeTable rows={feeTable} seasonName={seasonName} /> : null}
         <div className="grid gap-3 sm:grid-cols-2">
           <Field data-invalid={fieldErrors.iban ? true : undefined}>
             <FieldLabel htmlFor="iban">
