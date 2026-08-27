@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath, updateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { redirect } from "@/i18n/navigation";
@@ -24,6 +24,7 @@ import { resolvePayerFields } from "@/lib/payer";
 import { readGuardians } from "@/lib/registration-guardians";
 import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
 import { copyFileBetweenBuckets, downloadFile, removeFile, uploadFile } from "@/lib/supabase/storage";
+import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 
 export type RegistrationReviewState = {
   error?: string;
@@ -226,7 +227,13 @@ export async function updateRegistration(
     );
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.inscripciones,
+    ROUTE.inscripcionFicha,
+    ROUTE.socios,
+    ROUTE.socioFicha,
+    ROUTE.dashboard,
+  );
   return { message: t("registrationUpdated") };
 }
 
@@ -535,7 +542,16 @@ export async function approveRegistration(
 
   updateTag(INTEGRITY_ISSUES_TAG);
   updateTag(SEASON_RENEWALS_TAG);
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.inscripciones,
+    ROUTE.inscripcionFicha,
+    ROUTE.socios,
+    ROUTE.socioFicha,
+    ROUTE.personas,
+    ROUTE.personaFicha,
+    ROUTE.equipoFicha,
+    ROUTE.dashboard,
+  );
   return { message: t("registrationApproved") };
 }
 
@@ -561,7 +577,13 @@ export async function rejectRegistration(
     .where(eq(registrations.id, id));
 
   updateTag(SEASON_RENEWALS_TAG);
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.inscripciones,
+    ROUTE.inscripcionFicha,
+    ROUTE.socios,
+    ROUTE.socioFicha,
+    ROUTE.dashboard,
+  );
   return { message: t("registrationRejected") };
 }
 
@@ -592,7 +614,13 @@ export async function reopenRegistration(
     .where(eq(registrations.id, id));
 
   updateTag(SEASON_RENEWALS_TAG);
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.inscripciones,
+    ROUTE.inscripcionFicha,
+    ROUTE.socios,
+    ROUTE.socioFicha,
+    ROUTE.dashboard,
+  );
   return { message: t("registrationReopened") };
 }
 
@@ -633,7 +661,13 @@ export async function deleteRegistration(
   await Promise.all(paths.map((path) => removeFile(REGISTRATION_BUCKET, path)));
 
   updateTag(SEASON_RENEWALS_TAG);
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.inscripciones,
+    ROUTE.inscripcionFicha,
+    ROUTE.socios,
+    ROUTE.socioFicha,
+    ROUTE.dashboard,
+  );
 
   // Desde el detalle la fila ya no existe y la página daría 404, así que la
   // acción se lleva al listado; desde el propio listado no hay redirección y

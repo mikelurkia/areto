@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath, updateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -9,8 +9,10 @@ import { memberships, playerPosition, teamDocuments, teamNotes } from "@/db/sche
 import { requirePermission } from "@/lib/auth";
 import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
+import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
+import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 
 export type MembershipState = {
   error?: string;
@@ -70,7 +72,9 @@ export async function addMembership(
     throw error;
   }
 
-  revalidatePath("/", "layout");
+  updateTag(INTEGRITY_ISSUES_TAG);
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidateRoutes(ROUTE.equipoFicha, ROUTE.equipos, ROUTE.personaFicha, ROUTE.dashboard);
   return { message: t("memberAdded") };
 }
 
@@ -94,7 +98,9 @@ export async function updateMembership(
     })
     .where(eq(memberships.id, id));
 
-  revalidatePath("/", "layout");
+  updateTag(INTEGRITY_ISSUES_TAG);
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidateRoutes(ROUTE.equipoFicha, ROUTE.equipos, ROUTE.personaFicha);
   return { message: t("memberUpdated") };
 }
 
@@ -134,7 +140,7 @@ export async function updateTeamCaptain(
   }
 
   updateTag(INTEGRITY_ISSUES_TAG);
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.equipoFicha, ROUTE.dashboard);
   return { message: t("captainUpdated") };
 }
 
@@ -149,7 +155,9 @@ export async function removeMembership(
 
   await db.delete(memberships).where(eq(memberships.id, id));
 
-  revalidatePath("/", "layout");
+  updateTag(INTEGRITY_ISSUES_TAG);
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidateRoutes(ROUTE.equipoFicha, ROUTE.equipos, ROUTE.personaFicha, ROUTE.dashboard);
   return { message: t("memberRemoved") };
 }
 
@@ -164,6 +172,7 @@ const teamDocumentActions = makeDocumentActions({
   formKey: "teamId",
   namespace: "Equipos",
   permission: "equipos.manage",
+  routes: [ROUTE.equipoFicha],
 });
 export const addTeamDocument = teamDocumentActions.add;
 export const updateTeamDocument = teamDocumentActions.update;
@@ -179,6 +188,7 @@ const teamNoteActions = makeNoteActions({
   formKey: "teamId",
   namespace: "Equipos",
   permission: "equipos.manage",
+  routes: [ROUTE.equipoFicha],
 });
 export const addTeamNote = teamNoteActions.add;
 export const deleteTeamNote = teamNoteActions.delete;

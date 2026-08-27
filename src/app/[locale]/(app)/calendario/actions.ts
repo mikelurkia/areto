@@ -1,7 +1,6 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -9,6 +8,7 @@ import { courtEvents } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { assertCourtEventAccess } from "@/lib/court-events";
 import { PREFERRED_DAYS, type PreferredDayValue } from "@/components/calendario/preferred-days";
+import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 
 export type CourtEventState = {
   error?: string;
@@ -64,7 +64,7 @@ export async function createCourtEvent(
     createdByUserId: user.id,
   });
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.calendario, ROUTE.dashboard);
   return { message: t("matchCreated") };
 }
 
@@ -104,7 +104,7 @@ export async function updateCourtEvent(
     })
     .where(eq(courtEvents.id, id));
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.calendario, ROUTE.dashboard);
   return { message: t("matchUpdated") };
 }
 
@@ -125,6 +125,6 @@ export async function deleteCourtEvent(
 
   await db.delete(courtEvents).where(eq(courtEvents.id, id));
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.calendario, ROUTE.dashboard);
   return { message: t("matchDeleted") };
 }
