@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState, useTransition } from "react";
-import { SearchIcon, UsersIcon } from "lucide-react";
+import { DownloadIcon, SearchIcon, UsersIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -22,6 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { downloadCsv } from "@/lib/csv";
 
 export type SocioRow = {
   id: string;
@@ -50,6 +52,9 @@ function AssignMemberNumberButton({ personId }: { personId: string }) {
   );
 }
 
+/** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
+const FILTER_DEFAULTS = { q: "" };
+
 export function SociosBrowser({
   socios,
   canManage,
@@ -58,7 +63,10 @@ export function SociosBrowser({
   canManage: boolean;
 }) {
   const t = useTranslations("Socios");
-  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
+  const [query, setQuery] = useSearchText(filters.q, (value) =>
+    setFilters({ q: value }),
+  );
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -72,6 +80,24 @@ export function SociosBrowser({
     );
   }, [socios, query]);
 
+  /** Exporta lo que se está viendo, no la tabla entera: el filtro es parte de
+   * lo que se quiere llevar a la hoja de cálculo. */
+  function handleExportCsv() {
+    const headers = [
+      t("colName"),
+      t("colMemberNumber"),
+      t("colContact"),
+      t("colJoinedAt"),
+    ];
+    const rows = filtered.map((s) => [
+      `${s.firstName} ${s.lastName}`,
+      s.memberNumber !== null ? String(s.memberNumber) : "",
+      s.email || s.phone || "",
+      s.joinedAt,
+    ]);
+    downloadCsv("socios.csv", headers, rows);
+  }
+
   function handleCancel(personId: string) {
     setPendingCancelId(personId);
     startTransition(async () => {
@@ -83,14 +109,25 @@ export function SociosBrowser({
 
   return (
     <>
-      <div className="relative w-56">
-        <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("searchPlaceholder")}
-          className="pl-8"
-        />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-56">
+          <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            className="pl-8"
+          />
+        </div>
+        <Button
+          variant="outline"
+          className="ml-auto"
+          onClick={handleExportCsv}
+          disabled={filtered.length === 0}
+        >
+          <DownloadIcon data-icon="inline-start" />
+          {t("exportCsvAction")}
+        </Button>
       </div>
 
       {filtered.length === 0 ? (

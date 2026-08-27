@@ -52,6 +52,44 @@ const localeNames: Record<Locale, string> = { eu: "Euskara", es: "Castellano" };
 /** El teclado no cambia mientras la página vive: no hay a qué suscribirse. */
 const subscribeToNothing = () => () => {};
 
+/** Últimas fichas abiertas desde la paleta. Por navegador, no por usuario. */
+const RECENTS_KEY = "areto:paleta-recientes";
+const RECENTS_LIMIT = 5;
+
+/**
+ * Se guarda en `localStorage` y no en la base de datos a propósito: es una
+ * comodidad de este navegador, no un dato del club. Todo va entre `try`: el
+ * usuario puede tener el almacenamiento bloqueado, y perder los recientes no
+ * puede tumbar el buscador.
+ */
+function readRecents(): SearchResult[] {
+  try {
+    const raw = window.localStorage.getItem(RECENTS_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (item): item is SearchResult =>
+        typeof item?.id === "string" &&
+        typeof item?.label === "string" &&
+        typeof item?.href === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+function rememberRecent(result: SearchResult) {
+  try {
+    const next = [
+      result,
+      ...readRecents().filter((item) => item.href !== result.href),
+    ].slice(0, RECENTS_LIMIT);
+    window.localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
+  } catch {
+    // Sin almacenamiento no hay recientes, y no pasa nada más.
+  }
+}
+
 /**
  * Botón de la cabecera que abre la paleta.
  *
@@ -172,6 +210,10 @@ function PaletteBody({
   });
   const requestRef = useRef(0);
 
+  // Se leen una sola vez, al abrir: el cuerpo de la paleta se monta de cero
+  // cada vez, así que aquí no hace falta ni efecto ni sincronización.
+  const [recents] = useState(readRecents);
+
   const nav = useNavItems(permissions);
   const term = query.trim();
   const searchable = term.length >= MIN_QUERY_LENGTH;
@@ -201,6 +243,12 @@ function PaletteBody({
     action();
   }
 
+  /** Abrir una ficha, y dejarla apuntada para la próxima vez. */
+  function openResult(result: SearchResult) {
+    rememberRecent(result);
+    run(() => router.push(result.href));
+  }
+
   const people = results.filter((result) => result.type === "person");
   const teams = results.filter((result) => result.type === "team");
 
@@ -214,6 +262,22 @@ function PaletteBody({
       <CommandList>
         <CommandEmpty>{loading ? t("searching") : t("empty")}</CommandEmpty>
 
+        {/* Mientras no se busca nada, lo último abierto: es lo que más se
+            repite —volver a la ficha en la que se estaba— y ahorra teclear. */}
+        {!searchable && recents.length > 0 ? (
+          <CommandGroup heading={t("groupRecent")}>
+            {recents.map((recent) => (
+              <ResultItem
+                key={recent.href}
+                result={recent}
+                query={query}
+                icon={recent.type === "team" ? <Shirt /> : <Users />}
+                onSelect={() => openResult(recent)}
+              />
+            ))}
+          </CommandGroup>
+        ) : null}
+
         {people.length > 0 ? (
           <CommandGroup heading={t("groupPeople")}>
             {people.map((person) => (
@@ -222,7 +286,7 @@ function PaletteBody({
                 result={person}
                 query={query}
                 icon={<Users />}
-                onSelect={() => run(() => router.push(person.href))}
+                onSelect={() => openResult(person)}
               />
             ))}
           </CommandGroup>
@@ -236,7 +300,7 @@ function PaletteBody({
                 result={team}
                 query={query}
                 icon={<Shirt />}
-                onSelect={() => run(() => router.push(team.href))}
+                onSelect={() => openResult(team)}
               />
             ))}
           </CommandGroup>
