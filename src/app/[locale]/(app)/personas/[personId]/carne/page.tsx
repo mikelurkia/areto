@@ -1,13 +1,12 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import { ArrowLeftIcon, UserRoundIcon } from "lucide-react";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, isNull, lte, or } from "drizzle-orm";
 import QRCode from "qrcode";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { persons } from "@/db/schema";
+import { persons, seasons } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { personPhotoThumbPath } from "@/lib/person-photo";
@@ -67,14 +66,22 @@ export default async function MemberCardPage({
     person.photoPath ? personPhotoThumbPath(person.photoPath) : null,
   );
 
-  // QR con enlace absoluto a la ficha de la persona.
-  const h = await headers();
-  const host = h.get("host") ?? "";
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  const cardUrl = `${proto}://${host}/${locale}/personas/${person.id}`;
+  const joinedAt = person.clubMember?.joinedAt ?? null;
+  const joinedSeason = joinedAt
+    ? await db.query.seasons.findFirst({
+        where: and(
+          lte(seasons.startsOn, joinedAt),
+          or(isNull(seasons.endsOn), gte(seasons.endsOn, joinedAt)),
+        ),
+        columns: { name: true },
+      })
+    : null;
+
+  // QR con el nº de socio a secas (pensado para escanearlo en el futuro,
+  // p. ej. para registrar asistencia a partidos).
   const qrSvg =
     memberNumber !== null
-      ? await QRCode.toString(cardUrl, { type: "svg", margin: 0, width: 132 })
+      ? await QRCode.toString(String(memberNumber), { type: "svg", margin: 0, width: 132 })
       : null;
 
   return (
@@ -122,10 +129,18 @@ export default async function MemberCardPage({
               <p className="text-2xl font-bold tabular-nums tracking-tight">
                 {memberNumber}
               </p>
+              {joinedSeason ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("memberSinceLabel")} {joinedSeason.name}
+                </p>
+              ) : null}
             </div>
             {qrSvg ? (
               <div
-                className="size-[72px] shrink-0"
+                // El SVG generado trae width/height="132" fijos (resolución de
+                // impresión); sin forzar el hijo a size-full queda más grande
+                // que el contenedor y se recorta.
+                className="size-[72px] shrink-0 [&>svg]:size-full"
                 dangerouslySetInnerHTML={{ __html: qrSvg }}
               />
             ) : null}
