@@ -593,6 +593,14 @@ export const memberships = pgTable(
   (t) => [
     uniqueIndex("memberships_person_team_idx").on(t.personId, t.teamId),
     index("memberships_team_idx").on(t.teamId),
+    /**
+     * Un solo capitán por equipo, forzado en la base de datos. Hasta ahora la
+     * única garantía era `updateTeamCaptain`, y `data-integrity.ts` tenía que
+     * salir a contar los equipos que se hubieran saltado ese camino.
+     */
+    uniqueIndex("memberships_single_captain_idx")
+      .on(t.teamId)
+      .where(sql`${t.isCaptain}`),
   ],
 ).enableRLS();
 
