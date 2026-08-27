@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 
 import { updateUser } from "@/app/[locale]/(app)/administracion/usuarios/actions";
-import { RoleCheckboxGroup } from "@/components/administracion/role-checkbox-group";
+import { RoleMultiCombobox } from "@/components/administracion/role-multi-combobox";
 import type { RoleOption } from "@/components/administracion/role-dialog";
 import {
   UserPersonCombobox,
@@ -97,14 +97,13 @@ export function UserDialog({
               <FieldDescription>
                 {isSelf ? t("cannotChangeOwnRoleHint") : t("rolesHint")}
               </FieldDescription>
-              <RoleCheckboxGroup
+              <RoleMultiCombobox
                 // Vuelve a sembrarse cuando la página se revalida y llegan
                 // roles distintos: el diálogo sigue montado entre medias.
                 key={user.roleIds.join(",")}
                 roles={roles}
                 selected={user.roleIds}
                 disabled={isSelf}
-                idPrefix={`user-${user.id}`}
               />
             </Field>
             <Field>

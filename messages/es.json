@@ -336,6 +336,8 @@
     "matrixDirtyCount": "{count, plural, one {# cambio sin guardar} other {# cambios sin guardar}}",
     "discardChanges": "Descartar cambios",
     "rolesLabel": "Roles",
+    "rolesSearchPlaceholder": "Buscar un rol…",
+    "rolesNoResults": "Ningún rol coincide.",
     "rolesHint": "Puede tener varios. Sus permisos son la suma de todos."
   },
   "Medico": {

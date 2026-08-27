@@ -336,6 +336,8 @@
     "matrixDirtyCount": "{count, plural, one {gorde gabeko aldaketa #} other {gorde gabeko # aldaketa}}",
     "discardChanges": "Baztertu aldaketak",
     "rolesLabel": "Rolak",
+    "rolesSearchPlaceholder": "Bilatu rol bat…",
+    "rolesNoResults": "Ez dago bat datorren rolik.",
     "rolesHint": "Bat baino gehiago izan ditzake. Bere baimenak guztien batura dira."
   },
   "Medico": {
