@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, MailIcon, MessageCircleIcon, ShieldHalf } from "lucide-react";
+import { MailIcon, MessageCircleIcon, ShieldHalf } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -9,6 +9,7 @@ import { requirePermission } from "@/lib/auth";
 import { loadSeasonRenewals, type RenewalStatus } from "@/lib/season-renewals";
 import { mailtoLink, whatsappLink } from "@/lib/contact-links";
 import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,13 +87,7 @@ export default async function SeasonRenewalsPage({
   return (
     <div className="flex flex-1 flex-col gap-4">
       <div>
-        <Link
-          href={`/temporadas/${season.id}`}
-          className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
-        >
-          <ArrowLeftIcon className="size-3.5" />
-          {t("backToSeason")}
-        </Link>
+        <BackLink href={`/temporadas/${season.id}`} label={t("backToSeason")} className="mb-2" />
         <h1 className="text-2xl font-semibold tracking-tight">{t("renewalsPageTitle")}</h1>
         <p className="text-muted-foreground">
           {season.name}
