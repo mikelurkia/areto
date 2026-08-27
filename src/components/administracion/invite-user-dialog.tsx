@@ -5,7 +5,7 @@ import { UserPlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { inviteUser } from "@/app/[locale]/(app)/administracion/usuarios/actions";
-import { RoleCheckboxGroup } from "@/components/administracion/role-checkbox-group";
+import { RoleMultiCombobox } from "@/components/administracion/role-multi-combobox";
 import type { RoleOption } from "@/components/administracion/role-dialog";
 import {
   UserPersonCombobox,
@@ -86,13 +86,12 @@ export function InviteUserDialog({
             <Field>
               <FieldLabel>{t("rolesLabel")}</FieldLabel>
               <FieldDescription>{t("rolesHint")}</FieldDescription>
-              <RoleCheckboxGroup
+              <RoleMultiCombobox
                 // Igual que en el diálogo de edición: si cambia cuál es el rol
                 // por defecto, la preselección vuelve a sembrarse.
                 key={defaultRoleId ?? ""}
                 roles={roles}
                 selected={defaultRoleId ? [defaultRoleId] : []}
-                idPrefix="invite"
               />
             </Field>
             <Field>
