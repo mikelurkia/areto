@@ -2,12 +2,12 @@ import "server-only";
 
 import { eq } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
-import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { requirePermission } from "@/lib/auth";
 import type { Permission } from "@/lib/permissions";
+import { revalidateRoutes, type AppRoute } from "@/lib/revalidate";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 
 export type DocumentActionState = {
@@ -62,8 +62,14 @@ export function makeDocumentActions(config: {
   namespace: "Personas" | "Equipos" | "Patrocinadores";
   /** Permiso necesario para subir, renombrar o borrar. Lo decide cada módulo. */
   permission: Permission;
+  /**
+   * Páginas donde se ven estos documentos, para invalidarlas al escribir.
+   * Las declara cada módulo: la fábrica no sabe en qué ficha se pintan.
+   */
+  routes: readonly AppRoute[];
 }) {
-  const { table, bucket, parentIdColumn, formKey, namespace, permission } = config;
+  const { table, bucket, parentIdColumn, formKey, namespace, permission, routes } =
+    config;
 
   async function uploadDocumentFile(
     parentId: string,
@@ -109,7 +115,7 @@ export function makeDocumentActions(config: {
     const path = await uploadDocumentFile(parentId, document.id, file);
     await db.update(table).set({ filePath: path }).where(eq(table.id, document.id));
 
-    revalidatePath("/", "layout");
+    revalidateRoutes(...routes);
     return { message: t("documentAdded") };
   }
 
@@ -153,7 +159,7 @@ export function makeDocumentActions(config: {
       await db.update(table).set({ filePath: path }).where(eq(table.id, id));
     }
 
-    revalidatePath("/", "layout");
+    revalidateRoutes(...routes);
     return { message: t("documentUpdated") };
   }
 
@@ -175,7 +181,7 @@ export function makeDocumentActions(config: {
     await db.delete(table).where(eq(table.id, id));
     if (existing?.filePath) await removeFile(bucket, existing.filePath as string);
 
-    revalidatePath("/", "layout");
+    revalidateRoutes(...routes);
     return { message: t("documentDeleted") };
   }
 

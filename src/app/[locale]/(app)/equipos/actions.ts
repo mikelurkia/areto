@@ -1,7 +1,7 @@
 "use server";
 
 import { and, eq, inArray } from "drizzle-orm";
-import { revalidatePath, updateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -9,9 +9,11 @@ import { memberships, seasons, teams } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { readAmountCents } from "@/lib/money";
 import { SEASON_FEES_TAG } from "@/lib/registration-settings";
+import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
 import { TEAM_CATEGORIES, type TeamCategoryValue } from "@/components/equipos/team-categories";
 import { TEAM_GENDERS, type TeamGenderValue } from "@/components/equipos/team-genders";
 import { FEE_PERIODS, type FeePeriodValue } from "@/components/equipos/fee-periods";
+import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 
 export type TeamState = {
   error?: string;
@@ -105,7 +107,8 @@ export async function createTeam(
   });
 
   updateTag(SEASON_FEES_TAG);
-  revalidatePath("/", "layout");
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidateRoutes(ROUTE.equipos, ROUTE.equipoFicha, ROUTE.dashboard);
   return { message: t("teamCreated") };
 }
 
@@ -149,7 +152,8 @@ export async function updateTeam(
     .where(eq(teams.id, id));
 
   updateTag(SEASON_FEES_TAG);
-  revalidatePath("/", "layout");
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidateRoutes(ROUTE.equipos, ROUTE.equipoFicha, ROUTE.dashboard);
   return { message: t("teamUpdated") };
 }
 
@@ -165,7 +169,8 @@ export async function deleteTeam(
   await db.delete(teams).where(eq(teams.id, id));
 
   updateTag(SEASON_FEES_TAG);
-  revalidatePath("/", "layout");
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidateRoutes(ROUTE.equipos, ROUTE.equipoFicha, ROUTE.dashboard);
   return { message: t("teamDeleted") };
 }
 
@@ -240,7 +245,8 @@ export async function renewTeam(
   });
 
   updateTag(SEASON_FEES_TAG);
-  revalidatePath("/", "layout");
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidateRoutes(ROUTE.equipos, ROUTE.equipoFicha, ROUTE.dashboard);
   return { message: t("teamRenewed", { season: targetSeason.name }) };
 }
 
@@ -353,6 +359,7 @@ export async function importTeamsFromSeason(
   });
 
   updateTag(SEASON_FEES_TAG);
-  revalidatePath("/", "layout");
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidateRoutes(ROUTE.equipos, ROUTE.equipoFicha, ROUTE.dashboard);
   return { message: t("teamsImported", { count: toImport.length }) };
 }

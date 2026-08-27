@@ -1,7 +1,6 @@
 "use server";
 
 import { eq, inArray } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -12,6 +11,7 @@ import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import { getSiteUrl } from "@/lib/site-url";
 import { getUserRoleIds, sameRoleSet, setUserRoles } from "@/lib/user-roles";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
+import { revalidateAppShell } from "@/lib/revalidate";
 
 export type UserState = {
   error?: string;
@@ -178,7 +178,7 @@ export async function inviteUser(
     throw dbError;
   }
 
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("inviteSent", { email }) };
 }
 
@@ -239,7 +239,7 @@ export async function updateUser(
     throw error;
   }
 
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("userUpdated") };
 }
 
@@ -290,7 +290,7 @@ export async function toggleUserStatus(
     if (!activate) await admin.auth.admin.signOut(id, "global");
   }
 
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: activate ? t("userReactivated") : t("userDeactivated") };
 }
 
@@ -323,7 +323,7 @@ export async function deleteUser(
   const { error } = await admin.auth.admin.deleteUser(id);
   if (error) return { error: authErrorMessage(error, t, "userDeleteFailed") };
 
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("userDeleted") };
 }
 

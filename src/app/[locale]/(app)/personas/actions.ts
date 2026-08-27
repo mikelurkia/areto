@@ -1,7 +1,7 @@
 "use server";
 
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { revalidatePath, updateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -23,7 +23,8 @@ import {
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { nextConsentAt, stampConsent } from "@/lib/consent";
-import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
+import { DUPLICATE_PERSONS_TAG, INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
+import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
 import { UNIQUE_VIOLATION, isPostgresError, postgresConstraint } from "@/lib/db-errors";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
@@ -39,6 +40,7 @@ import {
   fillInjuryReportPdf,
 } from "@/lib/injury-report-pdf";
 import { resolvePayerFields } from "@/lib/payer";
+import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 import {
   extensionFromMimeType,
   fileExists,
@@ -448,7 +450,9 @@ export async function createPerson(
   }
   await replaceGuardians(personId, guardianIds);
 
-  revalidatePath("/", "layout");
+  updateTag(DUPLICATE_PERSONS_TAG);
+  updateTag(INTEGRITY_ISSUES_TAG);
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha, ROUTE.socios, ROUTE.medico);
   return { message: t("personCreated") };
 }
 
@@ -551,7 +555,9 @@ export async function updatePerson(
   }
   await replaceGuardians(id, guardianIds);
 
-  revalidatePath("/", "layout");
+  updateTag(DUPLICATE_PERSONS_TAG);
+  updateTag(INTEGRITY_ISSUES_TAG);
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha, ROUTE.socios, ROUTE.medico);
   return { message: t("personUpdated") };
 }
 
@@ -587,7 +593,7 @@ export async function updatePersonPhoto(
     await db.update(persons).set({ photoPath: null }).where(eq(persons.id, id));
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha);
   return { message: t("photoUpdated") };
 }
 
@@ -642,7 +648,7 @@ export async function updatePersonIdScan(
     }
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha);
   return { message: t("idScanUpdated") };
 }
 
@@ -663,7 +669,9 @@ export async function deletePerson(
   await db.delete(persons).where(eq(persons.id, id));
   if (existing?.photoPath) await removePersonPhotoObject(existing.photoPath);
 
-  revalidatePath("/", "layout");
+  updateTag(DUPLICATE_PERSONS_TAG);
+  updateTag(INTEGRITY_ISSUES_TAG);
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha, ROUTE.socios, ROUTE.medico);
   return { message: t("personDeleted") };
 }
 
@@ -722,7 +730,7 @@ export async function addQualification(
       .where(eq(personQualifications.id, qualification.id));
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha);
   return { message: t("qualificationAdded") };
 }
 
@@ -776,7 +784,7 @@ export async function updateQualification(
       .where(eq(personQualifications.id, id));
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha);
   return { message: t("qualificationUpdated") };
 }
 
@@ -797,7 +805,7 @@ export async function deleteQualification(
   await db.delete(personQualifications).where(eq(personQualifications.id, id));
   if (existing?.filePath) await removeQualificationFileObject(existing.filePath);
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha);
   return { message: t("qualificationDeleted") };
 }
 
@@ -856,7 +864,7 @@ export async function addMedicalCheckup(
 
   await recomputeMedicalCertUntil(personId);
   updateTag(INTEGRITY_ISSUES_TAG);
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado, ROUTE.dashboard);
   return { message: t("medicalCheckupAdded") };
 }
 
@@ -911,7 +919,7 @@ export async function updateMedicalCheckup(
 
   await recomputeMedicalCertUntil(existing.personId);
   updateTag(INTEGRITY_ISSUES_TAG);
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado, ROUTE.dashboard);
   return { message: t("medicalCheckupUpdated") };
 }
 
@@ -934,7 +942,7 @@ export async function deleteMedicalCheckup(
   if (existing) await recomputeMedicalCertUntil(existing.personId);
 
   updateTag(INTEGRITY_ISSUES_TAG);
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado, ROUTE.dashboard);
   return { message: t("medicalCheckupDeleted") };
 }
 
@@ -955,7 +963,7 @@ export async function deleteInjuryReport(
   await db.delete(personInjuryReports).where(eq(personInjuryReports.id, id));
   if (existing?.filePath) await removeInjuryReportFileObject(existing.filePath);
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado);
   return { message: t("injuryReportDeleted") };
 }
 
@@ -1144,7 +1152,7 @@ export async function saveInjuryReportAndGenerate(
     }
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado);
 
   return {
     message: canGenerate ? t("injuryReportSaved") : t("injuryReportSavedNoFile"),
@@ -1187,7 +1195,7 @@ export async function uploadInjuryReportCustomFile(
     .set({ filePath: path })
     .where(eq(personInjuryReports.id, id));
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado);
   return { message: t("injuryReportFileUploaded") };
 }
 
@@ -1213,7 +1221,7 @@ export async function deleteInjuryReportFile(
     .set({ filePath: null })
     .where(eq(personInjuryReports.id, id));
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado);
   return { message: t("injuryReportFileDeleted") };
 }
 
@@ -1224,6 +1232,7 @@ const personDocumentActions = makeDocumentActions({
   formKey: "personId",
   namespace: "Personas",
   permission: "personas.manage",
+  routes: [ROUTE.personaFicha],
 });
 export const addPersonDocument = personDocumentActions.add;
 export const updatePersonDocument = personDocumentActions.update;
@@ -1258,7 +1267,7 @@ export async function assignNextMemberNumber(
     const next = (row?.max ?? 0) + 1 + attempt;
     try {
       await db.update(clubMembers).set({ memberNumber: next }).where(eq(clubMembers.id, existing.id));
-      revalidatePath("/", "layout");
+      revalidateRoutes(ROUTE.personas, ROUTE.personaFicha, ROUTE.socios);
       return { message: t("memberNumberAssigned", { number: next }) };
     } catch (error) {
       if (uniqueViolationConstraint(error) === "club_members_member_number_idx") continue;
@@ -1301,7 +1310,7 @@ export async function bulkSetMember(personIds: string[], isMember: boolean): Pro
     }
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personas, ROUTE.socios);
 }
 
 const BULK_MEMBERSHIP_ROLES = ["player", "coach", "staff"] as const;
@@ -1323,7 +1332,9 @@ export async function bulkAddToTeam(
     .values(personIds.map((personId) => ({ personId, teamId, role: safeRole })))
     .onConflictDoNothing();
 
-  revalidatePath("/", "layout");
+  updateTag(INTEGRITY_ISSUES_TAG);
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidateRoutes(ROUTE.personas, ROUTE.equipos, ROUTE.equipoFicha, ROUTE.dashboard);
 }
 
 const personNoteActions = makeNoteActions({
@@ -1332,6 +1343,7 @@ const personNoteActions = makeNoteActions({
   formKey: "personId",
   namespace: "Personas",
   permission: "personas.manage",
+  routes: [ROUTE.personaFicha],
 });
 export const addPersonNote = personNoteActions.add;
 export const deletePersonNote = personNoteActions.delete;
@@ -1353,7 +1365,7 @@ export async function addPersonTag(
 
   await db.insert(personTags).values({ personId, tag }).onConflictDoNothing();
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha);
   return { message: t("tagAdded") };
 }
 
@@ -1367,6 +1379,6 @@ export async function deletePersonTag(
   const id = String(formData.get("id") ?? "");
   await db.delete(personTags).where(eq(personTags.id, id));
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha);
   return { message: t("tagDeleted") };
 }
