@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { useTranslations } from "next-intl";
 
+import { CommandPaletteTrigger } from "@/components/command-palette";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Separator } from "@/components/ui/separator";
@@ -26,6 +27,12 @@ export function AppHeader() {
         {t("headerTitle")}
       </span>
       <div className="ml-auto flex items-center gap-1">
+        {/* El botón deriva su estado de `?dialogo=`, y por tanto lee
+            `useSearchParams`: mismo motivo que el selector de idioma para
+            envolverlo en su propio límite. */}
+        <Suspense fallback={<Skeleton className="h-8 w-9 sm:w-40" />}>
+          <CommandPaletteTrigger />
+        </Suspense>
         <ThemeToggle />
         {/*
           El selector de idioma lee `usePathname()`, que en el armazón estático de
