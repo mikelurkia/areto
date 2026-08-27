@@ -818,6 +818,9 @@
     "addGuardianAction": "Tutorea gehitu",
     "guardianLabel": "Tutorea",
     "removeGuardianSr": "{index}. tutorea kendu",
+    "feeTableTitle": "{season} denboraldiko kuotak",
+    "feeTableTitleNoSeason": "Denboraldiko kuotak",
+    "feeTableHint": "Klubak zehaztuko du zenbateko zehatza taldea esleitzean.",
     "paymentSection": "Kuotaren kobrantza",
     "ibanLabel": "IBAN",
     "revealIban": "IBAN osoa erakutsi",
@@ -1099,6 +1102,23 @@
     "federationCodeLabel": "Federazio kodea",
     "federationCodePlaceholder": "Adib. 12345",
     "federationCodeShort": "Kod. {code}",
+    "playerFeeLabel": "Jokalariaren kuota",
+    "playerFeePlaceholder": "45,50",
+    "playerFeePeriodLabel": "Maiztasuna",
+    "playerFeeNotesLabel": "Kuotaren oharrak",
+    "playerFeeNotesPlaceholder": "Ekipazioa barne, anai-arreben deskontua…",
+    "playerFeeInvalid": "Kuotaren zenbatekoa ez da baliozkoa",
+    "colFee": "Kuota",
+    "feePeriod": {
+      "monthly": "Hilekoa",
+      "season": "Denboraldiko",
+      "oneoff": "Ordainketa bakarra"
+    },
+    "feePeriodShort": {
+      "monthly": "{amount} / hilean",
+      "season": "{amount} / denboraldia",
+      "oneoff": "{amount} (ordainketa bakarra)"
+    },
     "noMedicalCheckupRequired": "Ez du azterketa medikorik eskatzen",
     "rosterSheetAction": "Federazio-akta",
     "rosterSheetTitle": "Taldearen akta",

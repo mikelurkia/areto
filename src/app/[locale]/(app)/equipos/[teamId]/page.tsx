@@ -32,6 +32,7 @@ import { BackLink } from "@/components/back-link";
 import { RosterHealth } from "@/components/equipos/roster-health";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
 import { RenewTeamDialog } from "@/components/equipos/renew-team-dialog";
+import { formatCents } from "@/lib/money";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { MembershipTable } from "@/components/equipos/membership-table";
@@ -190,6 +191,11 @@ export default async function TeamDetailPage({
                 team.minBirthYear !== null && team.maxBirthYear !== null
                   ? `${team.minBirthYear}–${team.maxBirthYear}`
                   : null,
+                team.playerFeeCents !== null
+                  ? t(`feePeriodShort.${team.playerFeePeriod}`, {
+                      amount: formatCents(team.playerFeeCents, locale),
+                    })
+                  : null,
                 team.federationGroup,
                 team.federationCode
                   ? t("federationCodeShort", { code: team.federationCode })
@@ -201,6 +207,11 @@ export default async function TeamDetailPage({
                 .filter(Boolean)
                 .join(" · ")}
             </p>
+            {team.playerFeeNotes ? (
+              <p className="truncate text-xs text-muted-foreground">
+                {team.playerFeeNotes}
+              </p>
+            ) : null}
           </div>
         </div>
         <div className="flex gap-2 print:hidden">

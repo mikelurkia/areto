@@ -265,6 +265,9 @@ export default async function TemporadaDetailPage({
                         maxBirthYear: team.maxBirthYear,
                         federationGroup: team.federationGroup,
                         federationCode: team.federationCode,
+                        playerFeeCents: team.playerFeeCents,
+                        playerFeePeriod: team.playerFeePeriod,
+                        playerFeeNotes: team.playerFeeNotes,
                       }}
                     />
                     <DeleteTeamDialog id={team.id} name={team.name} />

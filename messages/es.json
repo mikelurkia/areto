@@ -818,6 +818,9 @@
     "addGuardianAction": "Añadir tutor/a",
     "guardianLabel": "Tutor/a",
     "removeGuardianSr": "Quitar tutor/a {index}",
+    "feeTableTitle": "Cuotas de la temporada {season}",
+    "feeTableTitleNoSeason": "Cuotas de la temporada",
+    "feeTableHint": "El club confirma el importe exacto al asignarte equipo.",
     "paymentSection": "Cobro de la cuota",
     "ibanLabel": "IBAN",
     "revealIban": "Mostrar el IBAN completo",
@@ -1099,6 +1102,23 @@
     "federationCodeLabel": "Código federación",
     "federationCodePlaceholder": "Ej. 12345",
     "federationCodeShort": "Cód. {code}",
+    "playerFeeLabel": "Cuota del jugador",
+    "playerFeePlaceholder": "45,50",
+    "playerFeePeriodLabel": "Periodicidad",
+    "playerFeeNotesLabel": "Notas de la cuota",
+    "playerFeeNotesPlaceholder": "Incluye equipación, descuento hermanos…",
+    "playerFeeInvalid": "El importe de la cuota no es válido",
+    "colFee": "Cuota",
+    "feePeriod": {
+      "monthly": "Mensual",
+      "season": "Por temporada",
+      "oneoff": "Pago único"
+    },
+    "feePeriodShort": {
+      "monthly": "{amount} / mes",
+      "season": "{amount} / temporada",
+      "oneoff": "{amount} (pago único)"
+    },
     "noMedicalCheckupRequired": "No exige reconocimiento médico",
     "rosterSheetAction": "Acta federativa",
     "rosterSheetTitle": "Acta de equipo",

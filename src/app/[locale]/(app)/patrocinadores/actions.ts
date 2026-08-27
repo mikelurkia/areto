@@ -22,6 +22,7 @@ import { nextInvoiceNumber } from "@/lib/club";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
 import { resizeImageToWebp } from "@/lib/image-resize";
+import { readAmountCents } from "@/lib/money";
 import { logoThumbPath } from "@/lib/sponsorship";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 
@@ -277,13 +278,6 @@ function readTier(formData: FormData): (typeof sponsorshipTier.enumValues)[numbe
     : null;
 }
 
-function readAmountCents(formData: FormData): number | null {
-  const value = String(formData.get("amount") ?? "").trim().replace(",", ".");
-  if (!value) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
-}
-
 function readAgreementStatus(
   formData: FormData,
 ): (typeof sponsorshipAgreementStatus.enumValues)[number] {
@@ -297,7 +291,7 @@ function readTermFields(formData: FormData) {
   return {
     tier: readTier(formData),
     agreementStatus: readAgreementStatus(formData),
-    totalAmountCents: readAmountCents(formData),
+    totalAmountCents: readAmountCents(formData.get("amount")),
     startsOn: readDate(formData, "startsOn"),
     endsOn: readDate(formData, "endsOn"),
     benefits: String(formData.get("benefits") ?? "").trim() || null,
@@ -491,7 +485,7 @@ function readYear(formData: FormData): number | null {
 function readPaymentFields(formData: FormData) {
   return {
     year: readYear(formData),
-    amountCents: readAmountCents(formData),
+    amountCents: readAmountCents(formData.get("amount")),
     status: readPaymentStatus(formData),
     dueDate: readDate(formData, "dueDate"),
     paidOn: readDate(formData, "paidOn"),
@@ -649,7 +643,7 @@ export async function generateAnnualities(
   const termId = String(formData.get("termId") ?? "");
   const firstYear = Number(String(formData.get("firstYear") ?? "").trim());
   const count = Number(String(formData.get("count") ?? "").trim());
-  const totalCents = readAmountCents(formData);
+  const totalCents = readAmountCents(formData.get("amount"));
 
   if (!termId) return { error: t("termNotFound") };
   if (!Number.isInteger(firstYear) || firstYear < 2000 || firstYear > 2100) {

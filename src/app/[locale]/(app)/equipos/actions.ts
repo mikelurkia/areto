@@ -1,14 +1,17 @@
 "use server";
 
 import { and, eq, inArray } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { memberships, seasons, teams } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
+import { readAmountCents } from "@/lib/money";
+import { SEASON_FEES_TAG } from "@/lib/registration-settings";
 import { TEAM_CATEGORIES, type TeamCategoryValue } from "@/components/equipos/team-categories";
 import { TEAM_GENDERS, type TeamGenderValue } from "@/components/equipos/team-genders";
+import { FEE_PERIODS, type FeePeriodValue } from "@/components/equipos/fee-periods";
 
 export type TeamState = {
   error?: string;
@@ -36,6 +39,34 @@ function readBirthYear(formData: FormData, field: string): number | null {
   return Number.isInteger(parsed) ? parsed : null;
 }
 
+function readFeePeriod(formData: FormData): FeePeriodValue {
+  const value = String(formData.get("playerFeePeriod") ?? "");
+  return (FEE_PERIODS as readonly string[]).includes(value)
+    ? (value as FeePeriodValue)
+    : "season";
+}
+
+/**
+ * Campos de la cuota del jugador, comunes a alta y edición. El importe se
+ * teclea en euros y se guarda en céntimos; vacío significa "sin cuota
+ * definida", así que solo es error un valor que no sea un número válido.
+ */
+function readPlayerFee(formData: FormData):
+  | { ok: true; cents: number | null; period: FeePeriodValue; notes: string | null }
+  | { ok: false } {
+  const raw = String(formData.get("playerFee") ?? "").trim();
+  const cents = readAmountCents(formData.get("playerFee"));
+  if (raw && (cents === null || cents < 0)) return { ok: false };
+
+  const notes = String(formData.get("playerFeeNotes") ?? "").trim();
+  return {
+    ok: true,
+    cents,
+    period: readFeePeriod(formData),
+    notes: notes || null,
+  };
+}
+
 export async function createTeam(
   _prev: TeamState,
   formData: FormData,
@@ -51,11 +82,13 @@ export async function createTeam(
   const maxBirthYear = readBirthYear(formData, "maxBirthYear");
   const federationGroup = String(formData.get("federationGroup") ?? "").trim();
   const federationCode = String(formData.get("federationCode") ?? "").trim();
+  const fee = readPlayerFee(formData);
 
   if (!name) return { error: t("nameRequired") };
   if (minBirthYear !== null && maxBirthYear !== null && minBirthYear > maxBirthYear) {
     return { error: t("birthYearRangeInvalid") };
   }
+  if (!fee.ok) return { error: t("playerFeeInvalid") };
 
   await db.insert(teams).values({
     seasonId,
@@ -66,8 +99,12 @@ export async function createTeam(
     maxBirthYear,
     federationGroup: federationGroup || null,
     federationCode: federationCode || null,
+    playerFeeCents: fee.cents,
+    playerFeePeriod: fee.period,
+    playerFeeNotes: fee.notes,
   });
 
+  updateTag(SEASON_FEES_TAG);
   revalidatePath("/", "layout");
   return { message: t("teamCreated") };
 }
@@ -87,11 +124,13 @@ export async function updateTeam(
   const maxBirthYear = readBirthYear(formData, "maxBirthYear");
   const federationGroup = String(formData.get("federationGroup") ?? "").trim();
   const federationCode = String(formData.get("federationCode") ?? "").trim();
+  const fee = readPlayerFee(formData);
 
   if (!name) return { error: t("nameRequired") };
   if (minBirthYear !== null && maxBirthYear !== null && minBirthYear > maxBirthYear) {
     return { error: t("birthYearRangeInvalid") };
   }
+  if (!fee.ok) return { error: t("playerFeeInvalid") };
 
   await db
     .update(teams)
@@ -103,9 +142,13 @@ export async function updateTeam(
       maxBirthYear,
       federationGroup: federationGroup || null,
       federationCode: federationCode || null,
+      playerFeeCents: fee.cents,
+      playerFeePeriod: fee.period,
+      playerFeeNotes: fee.notes,
     })
     .where(eq(teams.id, id));
 
+  updateTag(SEASON_FEES_TAG);
   revalidatePath("/", "layout");
   return { message: t("teamUpdated") };
 }
@@ -121,6 +164,7 @@ export async function deleteTeam(
 
   await db.delete(teams).where(eq(teams.id, id));
 
+  updateTag(SEASON_FEES_TAG);
   revalidatePath("/", "layout");
   return { message: t("teamDeleted") };
 }
@@ -173,6 +217,9 @@ export async function renewTeam(
         maxBirthYear: source.maxBirthYear,
         federationGroup: source.federationGroup,
         federationCode: source.federationCode,
+        playerFeeCents: source.playerFeeCents,
+        playerFeePeriod: source.playerFeePeriod,
+        playerFeeNotes: source.playerFeeNotes,
         previousTeamId: source.id,
       })
       .returning({ id: teams.id });
@@ -192,6 +239,7 @@ export async function renewTeam(
     }
   });
 
+  updateTag(SEASON_FEES_TAG);
   revalidatePath("/", "layout");
   return { message: t("teamRenewed", { season: targetSeason.name }) };
 }
@@ -278,6 +326,9 @@ export async function importTeamsFromSeason(
           maxBirthYear: source.maxBirthYear,
           federationGroup: source.federationGroup,
           federationCode: source.federationCode,
+          playerFeeCents: source.playerFeeCents,
+          playerFeePeriod: source.playerFeePeriod,
+          playerFeeNotes: source.playerFeeNotes,
           previousTeamId: source.id,
         })
         .returning({ id: teams.id });
@@ -301,6 +352,7 @@ export async function importTeamsFromSeason(
     }
   });
 
+  updateTag(SEASON_FEES_TAG);
   revalidatePath("/", "layout");
   return { message: t("teamsImported", { count: toImport.length }) };
 }
