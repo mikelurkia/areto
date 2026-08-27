@@ -1217,7 +1217,11 @@
     "deleteNoteSr": "Sarrera ezabatu",
     "noteAdded": "Sarrera gehitu da.",
     "noteBodyRequired": "Sarrera ezin da hutsik egon.",
-    "noteDeleted": "Sarrera ezabatu da."
+    "noteDeleted": "Sarrera ezabatu da.",
+    "searchPlaceholder": "Bilatu izenez edo mailaz...",
+    "exportCsvAction": "CSV esportatu",
+    "noResultsTitle": "Emaitzarik ez",
+    "noResultsDescription": "Ez dago bilaketarekin bat datorren talderik."
   },
   "Patrocinadores": {
     "title": "Babesleak",
@@ -1791,6 +1795,10 @@
     "noRenewalsPendingTitle": "Ez dago zeregin pendienterik",
     "noRenewalsPendingDescription": "Denboraldi honetako plantillan ez dago inor, edo denek dute izen-ematea web bidez jada baieztatuta.",
     "cancel": "Utzi",
-    "saveChanges": "Gorde aldaketak"
+    "saveChanges": "Gorde aldaketak",
+    "searchPlaceholder": "Bilatu izenez...",
+    "exportCsvAction": "CSV esportatu",
+    "noResultsTitle": "Emaitzarik ez",
+    "noResultsDescription": "Ez dago bilaketarekin bat datorren denboraldirik."
   }
 }
