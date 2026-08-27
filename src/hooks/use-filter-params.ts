@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 /**
  * Filtros de un listado guardados en la URL en vez de en `useState`.
@@ -21,11 +21,20 @@ import { useSearchParams } from "next/navigation";
  * y cuáles se omiten de la URL (los que están en su valor por defecto, para que
  * el enlace no se llene de `?estado=all`). Decláralo fuera del componente: si se
  * crea en cada render, los valores se recalculan también en cada render.
+ *
+ * `navigate: true` para los listados que YA resuelven sus filtros en el
+ * servidor (`/personas`): ahí el cambio de filtro sí tiene que llegar al
+ * servidor, así que se escribe con el router en vez de con la History API. El
+ * resto de listados sigue filtrando en memoria y no debe provocar petición
+ * alguna, que es lo que este hook evitaba deliberadamente.
  */
 export function useFilterParams<T extends Record<string, string>>(
   defaults: T,
+  options?: { navigate?: boolean },
 ): [T, (patch: Partial<T>) => void] {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const navigate = options?.navigate ?? false;
 
   const values = useMemo(
     () =>
@@ -50,13 +59,13 @@ export function useFilterParams<T extends Record<string, string>>(
       }
 
       const query = params.toString();
-      window.history.replaceState(
-        null,
-        "",
-        `${window.location.pathname}${query ? `?${query}` : ""}`,
-      );
+      const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
+      // `replace` y no `push` por el mismo motivo que `replaceState`: un filtro
+      // por pulsación no debe dejar una entrada de historial por tecla.
+      if (navigate) router.replace(url, { scroll: false });
+      else window.history.replaceState(null, "", url);
     },
-    [defaults],
+    [defaults, navigate, router],
   );
 
   return [values, setFilters];

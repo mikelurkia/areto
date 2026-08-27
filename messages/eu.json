@@ -506,6 +506,8 @@
     "privacyConsentLabel": "Datuen tratamendua (RGPD)",
     "consentSinceLabel": "{date} datan emana",
     "addGuardianPlaceholder": "Tutorea gehitu...",
+    "guardianSearchHint": "Idatzi gutxienez bi letra bilatzeko.",
+    "guardianNoResults": "Ez dago bat datorren pertsonarik.",
     "removeGuardianSr": "{name} tutore gisa kendu",
     "colNationalId": "NAN",
     "colTeam": "Taldea",

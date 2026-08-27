@@ -1,16 +1,18 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { PencilIcon, PlusIcon, UserRoundIcon, XIcon } from "lucide-react";
+import { PencilIcon, PlusIcon, UserRoundIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { createPerson, updatePerson } from "@/app/[locale]/(app)/personas/actions";
-import { isMinor } from "@/lib/age";
 import { MatchSelect } from "@/components/match-select";
 import { MaskedIbanInput } from "@/components/masked-iban";
+import {
+  GuardianPicker,
+  type GuardianOption,
+} from "@/components/personas/guardian-picker";
 import { SubmitButton } from "@/components/submit-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -25,13 +27,6 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { useDialogParam } from "@/hooks/use-dialog-param";
@@ -77,12 +72,11 @@ type Person = {
   notes: string | null;
 };
 
-type PersonOption = { id: string; firstName: string; lastName: string; birthDate: string | null };
 
 type PersonDialogProps = (
   | { mode: "create" }
   | { mode: "edit"; person: Person; photoUrl: string | null }
-) & { guardianOptions: PersonOption[] };
+);
 
 export function PersonDialog(props: PersonDialogProps) {
   const t = useTranslations("Personas");
@@ -99,16 +93,16 @@ export function PersonDialog(props: PersonDialogProps) {
     open,
     props.mode === "edit" ? props.photoUrl : null,
   );
-  const guardianOptions = props.guardianOptions.filter((p) => p.id !== person?.id);
-  const [guardianIds, setGuardianIds] = useState<string[]>(
-    props.mode === "edit" ? props.person.guardians.map((g) => g.id) : [],
+  // Los tutores se guardan como objetos y no como ids: la lista ya no se
+  // recibe entera, se busca, así que el nombre tiene que viajar con la
+  // selección para poder pintarlo.
+  const [guardians, setGuardians] = useState<GuardianOption[]>(
+    props.mode === "edit" ? props.person.guardians : [],
   );
   // Un menor no puede ser titular de un mandato SEPA: si hay tutores, el
   // principal (el primero de la lista) dispone del iban de esta persona.
-  const hasGuardians = guardianIds.length > 0;
-  const payerGuardian = hasGuardians
-    ? guardianOptions.find((o) => o.id === guardianIds[0])
-    : undefined;
+  const hasGuardians = guardians.length > 0;
+  const payerGuardian = guardians[0];
 
   // Solo al crear: si `createPerson` encontró a alguien parecido, pide
   // confirmar "vincular con esta persona" o "crear de todas formas" antes de
@@ -282,52 +276,11 @@ export function PersonDialog(props: PersonDialogProps) {
                 <FieldLabel htmlFor="person-guardian">
                   {t("guardianLabel")}
                 </FieldLabel>
-                {guardianIds.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {guardianIds.map((id) => {
-                      const g = guardianOptions.find((o) => o.id === id);
-                      if (!g) return null;
-                      const name = `${g.firstName} ${g.lastName}`;
-                      return (
-                        <Badge key={id} variant="secondary" className="gap-1 pr-1">
-                          {name}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setGuardianIds((prev) => prev.filter((x) => x !== id))
-                            }
-                            aria-label={t("removeGuardianSr", { name })}
-                            className="rounded-full hover:bg-black/10"
-                          >
-                            <XIcon className="size-3" />
-                          </button>
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                ) : null}
-                <Select
-                  value=""
-                  onValueChange={(value) => {
-                    if (value && !guardianIds.includes(value)) {
-                      setGuardianIds((prev) => [...prev, value]);
-                    }
-                  }}
-                >
-                  <SelectTrigger id="person-guardian" className="w-full">
-                    <SelectValue>{() => t("addGuardianPlaceholder")}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {guardianOptions
-                      .filter((g) => !guardianIds.includes(g.id) && !isMinor(g.birthDate))
-                      .map((g) => (
-                        <SelectItem key={g.id} value={g.id}>
-                          {g.firstName} {g.lastName}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                <input type="hidden" name="guardianIds" value={guardianIds.join(",")} />
+                <GuardianPicker
+                  value={guardians}
+                  onValueChange={setGuardians}
+                  excludePersonId={person?.id}
+                />
                 <p className="text-xs text-muted-foreground">{t("guardianMinorExcludedHint")}</p>
               </Field>
 

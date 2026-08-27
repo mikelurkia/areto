@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   DownloadIcon,
   MailIcon,
@@ -9,6 +9,7 @@ import {
   SearchIcon,
   Users,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -16,6 +17,10 @@ import {
   bulkAddToTeam,
   bulkSetMember,
 } from "@/app/[locale]/(app)/personas/actions";
+import {
+  emailsForSelection,
+  exportPersonRows,
+} from "@/app/[locale]/(app)/personas/list-actions";
 import { calculateAge, isMinor } from "@/lib/age";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { downloadCsv } from "@/lib/csv";
@@ -53,8 +58,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const PAGE_SIZE = 25;
-
 type PersonRow = {
   id: string;
   firstName: string;
@@ -90,9 +93,6 @@ type PersonRow = {
 };
 
 type TeamOption = { id: string; label: string };
-type GuardianOption = { id: string; firstName: string; lastName: string; birthDate: string | null };
-
-const EXPIRY_WINDOW_DAYS = 60;
 
 /** Equipos visibles por fila antes de resumir el resto en un «+N». */
 const MAX_TEAM_BADGES = 2;
@@ -114,24 +114,26 @@ const FILTER_DEFAULTS = {
 
 export function PersonasBrowser({
   persons,
+  total,
+  pageCount,
+  page: currentPage,
   teamOptions,
-  guardianOptions,
   tagOptions,
   canManage,
 }: {
+  /** Solo las filas de la página actual: el filtrado y el troceado los hace SQL. */
   persons: PersonRow[];
+  total: number;
+  pageCount: number;
+  page: number;
   teamOptions: TeamOption[];
-  guardianOptions: GuardianOption[];
   tagOptions: string[];
   canManage: boolean;
 }) {
   const t = useTranslations("Personas");
   const tEquipos = useTranslations("Equipos");
-  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
+  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS, { navigate: true });
   const { equipo: team, rol: role, caduca: expiry, docs, etiqueta: tag } = filters;
-  // Viene de la URL, así que puede ser cualquier cosa; más abajo se acota
-  // además al número de páginas que haya.
-  const page = Number(filters.pagina) || 1;
   const [query, setQuery] = useSearchText(filters.q, (value) =>
     setFilters({ q: value }),
   );
@@ -139,6 +141,8 @@ export function PersonasBrowser({
   const [bulkTeam, setBulkTeam] = useState("");
   const [bulkRole, setBulkRole] = useState<"player" | "coach" | "staff">("player");
   const [isBulkPending, startBulkTransition] = useTransition();
+  const [isExporting, startExportTransition] = useTransition();
+  const searchParams = useSearchParams();
 
   // Al abrir la pantalla el gesto habitual es buscar, así que el cursor ya
   // está en el filtro. `preventScroll` evita el salto de página en móvil.
@@ -147,114 +151,63 @@ export function PersonasBrowser({
     searchRef.current?.focus({ preventScroll: true });
   }, []);
 
-  const expiryCutoff = useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() + EXPIRY_WINDOW_DAYS);
-    return cutoff.toISOString().slice(0, 10);
-  }, []);
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // Ni `filtered` ni `expiryCutoff`: los diez filtros se aplican en la
+  // consulta (`src/lib/person-list.ts`), así que `persons` ya son las filas
+  // que toca pintar.
 
-  const filtered = useMemo(() => {
-    let result = persons;
-    if (query.trim()) {
-      const needle = query.trim().toLowerCase();
-      result = result.filter((p) =>
-        [`${p.firstName} ${p.lastName}`, p.email ?? "", p.nationalId ?? ""].some(
-          (haystack) => haystack.toLowerCase().includes(needle),
-        ),
-      );
-    }
-    if (team === "none") {
-      result = result.filter((p) => p.memberships.length === 0);
-    } else if (team !== "all") {
-      result = result.filter((p) => p.memberships.some((m) => m.teamId === team));
-    }
-    if (role === "member") {
-      result = result.filter((p) => p.isMember);
-    } else if (role === "player" || role === "coach" || role === "staff") {
-      result = result.filter((p) => p.memberships.some((m) => m.role === role));
-    } else if (role === "guardian") {
-      result = result.filter((p) => p.dependentsCount > 0);
-    } else if (role === "minorWithoutGuardian") {
-      result = result.filter(
-        (p) => p.birthDate !== null && isMinor(p.birthDate) && p.guardians.length === 0,
-      );
-    }
-    if (expiry === "medical") {
-      result = result.filter(
-        (p) =>
-          !p.isPastMember &&
-          p.medicalCertUntil !== null &&
-          p.medicalCertUntil <= expiryCutoff,
-      );
-    } else if (expiry === "qualification") {
-      result = result.filter(
-        (p) =>
-          !p.isPastMember &&
-          p.qualifications.some((q) => q.expiresOn !== null && q.expiresOn <= expiryCutoff),
-      );
-    }
-    if (docs === "pending") {
-      result = result.filter(
-        (p) =>
-          !p.isPastMember &&
-          (!p.photoConsent ||
-            p.medicalCertUntil === null ||
-            p.medicalCertUntil < today),
-      );
-    }
-    if (tag !== "all") {
-      result = result.filter((p) => p.tags.includes(tag));
-    }
-    return result;
-  }, [persons, query, team, role, expiry, expiryCutoff, docs, today, tag]);
-
+  // La exportación sigue significando "todo lo que casa con los filtros", no
+  // solo la página: ahora esas filas las devuelve el servidor, porque el
+  // navegador ya no tiene el resto.
   function handleExportCsv() {
-    const headers = [
-      t("colName"),
-      t("memberNumberLabel"),
-      t("colNationalId"),
-      t("colTeam"),
-      t("colGuardian"),
-      t("colEmail"),
-      t("colPhone"),
-      t("memberBadge"),
-    ];
-    const rows = filtered.map((p) => [
-      `${p.firstName} ${p.lastName}`,
-      p.memberNumber !== null ? String(p.memberNumber) : "",
-      p.nationalId ?? "",
-      p.memberships.map((m) => m.team.name).join(" / "),
-      p.guardians.map((g) => `${g.firstName} ${g.lastName}`).join(" / "),
-      p.email ?? "",
-      p.phone ?? "",
-      p.isMember ? t("memberBadge") : "",
-    ]);
-    downloadCsv("personas.csv", headers, rows);
+    startExportTransition(async () => {
+      const rows = await exportPersonRows(Object.fromEntries(searchParams));
+      const headers = [
+        t("colName"),
+        t("memberNumberLabel"),
+        t("colNationalId"),
+        t("colTeam"),
+        t("colGuardian"),
+        t("colEmail"),
+        t("colPhone"),
+        t("memberBadge"),
+      ];
+      downloadCsv(
+        "personas.csv",
+        headers,
+        rows.map((p) => [
+          `${p.firstName} ${p.lastName}`,
+          p.memberNumber !== null ? String(p.memberNumber) : "",
+          p.nationalId ?? "",
+          p.memberships.map((m) => m.team.name).join(" / "),
+          p.guardians.map((g) => `${g.firstName} ${g.lastName}`).join(" / "),
+          p.email ?? "",
+          p.phone ?? "",
+          p.isMember ? t("memberBadge") : "",
+        ]),
+      );
+    });
   }
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
-  const pagePersons = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
-  );
-
   const allPageSelected =
-    pagePersons.length > 0 && pagePersons.every((p) => selectedIds.has(p.id));
+    persons.length > 0 && persons.every((p) => selectedIds.has(p.id));
 
-  // Emails de la selección, para el envío masivo con copia oculta (BCC).
-  const bulkEmails = useMemo(
-    () =>
-      [
-        ...new Set(
-          persons
-            .filter((p) => selectedIds.has(p.id) && p.email)
-            .map((p) => p.email as string),
-        ),
-      ],
-    [persons, selectedIds],
-  );
+  // Emails de la selección, para el envío masivo con copia oculta (BCC). Se
+  // piden al servidor: la selección se conserva al cambiar de página, así que
+  // puede incluir personas que ya no están en `persons`.
+  const [fetchedEmails, setFetchedEmails] = useState<string[]>([]);
+  useEffect(() => {
+    if (selectedIds.size === 0) return;
+    let cancelled = false;
+    emailsForSelection([...selectedIds]).then((emails) => {
+      if (!cancelled) setFetchedEmails(emails);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedIds]);
+  // Sin selección la lista se vacía por derivación, no con un `setState` en el
+  // cuerpo del efecto (renders en cascada, y lo prohíbe el lint).
+  const bulkEmails = selectedIds.size === 0 ? [] : fetchedEmails;
   const bulkEmailHref = `mailto:?bcc=${encodeURIComponent(bulkEmails.join(","))}`;
 
   function toggleSelected(id: string, checked: boolean) {
@@ -269,7 +222,7 @@ export function PersonasBrowser({
   function toggleSelectAll(checked: boolean) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      pagePersons.forEach((p) => (checked ? next.add(p.id) : next.delete(p.id)));
+      persons.forEach((p) => (checked ? next.add(p.id) : next.delete(p.id)));
       return next;
     });
   }
@@ -434,7 +387,14 @@ export function PersonasBrowser({
             </SelectContent>
           </Select>
         ) : null}
-        <Button variant="outline" className="ml-auto" onClick={handleExportCsv}>
+        {/* La exportación ya va al servidor a por las filas, así que puede
+            tardar: deshabilitado mientras está en vuelo. */}
+        <Button
+          variant="outline"
+          className="ml-auto"
+          onClick={handleExportCsv}
+          disabled={isExporting}
+        >
           <DownloadIcon data-icon="inline-start" />
           {t("exportCsvAction")}
         </Button>
@@ -522,7 +482,7 @@ export function PersonasBrowser({
         </div>
       ) : null}
 
-      {filtered.length === 0 ? (
+      {total === 0 ? (
         <SectionPlaceholder
           icon={Users}
           title={t("noResultsTitle")}
@@ -556,7 +516,7 @@ export function PersonasBrowser({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pagePersons.map((person) => {
+              {persons.map((person) => {
                 const fullName = `${person.firstName} ${person.lastName}`;
                 const visibleTeams = person.memberships.slice(0, MAX_TEAM_BADGES);
                 const hiddenTeams = person.memberships.slice(MAX_TEAM_BADGES);
@@ -707,12 +667,7 @@ export function PersonasBrowser({
                     {canManage ? (
                       <TableCell>
                         <div className="flex justify-end gap-1">
-                          <PersonDialog
-                            mode="edit"
-                            person={person}
-                            photoUrl={null}
-                            guardianOptions={guardianOptions}
-                          />
+                          <PersonDialog mode="edit" person={person} photoUrl={null} />
                           <DeletePersonDialog id={person.id} name={fullName} />
                         </div>
                       </TableCell>
