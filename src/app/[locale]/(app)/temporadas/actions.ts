@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath, updateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -14,6 +14,7 @@ import {
   postgresConstraint,
 } from "@/lib/db-errors";
 import { REGISTRATION_AVAILABILITY_TAG } from "@/lib/registration-settings";
+import { revalidateAppShell } from "@/lib/revalidate";
 
 export type SeasonState = {
   error?: string;
@@ -73,7 +74,7 @@ export async function createSeason(
   }
 
   updateTag(REGISTRATION_AVAILABILITY_TAG);
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("seasonCreated") };
 }
 
@@ -109,7 +110,7 @@ export async function updateSeason(
   }
 
   updateTag(REGISTRATION_AVAILABILITY_TAG);
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("seasonUpdated") };
 }
 
@@ -132,6 +133,6 @@ export async function deleteSeason(
   }
 
   updateTag(REGISTRATION_AVAILABILITY_TAG);
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("seasonDeleted") };
 }

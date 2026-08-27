@@ -1,7 +1,6 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -25,6 +24,7 @@ import { resizeImageToWebp } from "@/lib/image-resize";
 import { readAmountCents } from "@/lib/money";
 import { logoThumbPath } from "@/lib/sponsorship";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
+import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 
 export type SponsorState = {
   error?: string;
@@ -145,7 +145,12 @@ export async function createSponsor(
     await db.update(sponsors).set({ logoPath: path }).where(eq(sponsors.id, sponsor.id));
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("sponsorCreated") };
 }
 
@@ -197,7 +202,12 @@ export async function updateSponsor(
     await db.update(sponsors).set({ logoPath: null }).where(eq(sponsors.id, id));
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("sponsorUpdated") };
 }
 
@@ -232,7 +242,12 @@ export async function quickCreateContactPerson(
       lastName: persons.lastName,
     });
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { person };
 }
 
@@ -262,7 +277,12 @@ export async function deleteSponsor(
       .map((term) => removeTermContractObject(term.contractPath!)),
   );
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("sponsorDeleted") };
 }
 
@@ -342,7 +362,12 @@ export async function addSponsorshipTerm(
       .where(eq(sponsorshipTerms.id, term.id));
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("termCreated") };
 }
 
@@ -400,7 +425,12 @@ export async function updateSponsorshipTerm(
       .where(eq(sponsorshipTerms.id, id));
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("termUpdated") };
 }
 
@@ -421,7 +451,12 @@ export async function deleteSponsorshipTerm(
   await db.delete(sponsorshipTerms).where(eq(sponsorshipTerms.id, id));
   if (existing?.contractPath) await removeTermContractObject(existing.contractPath);
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("termDeleted") };
 }
 
@@ -460,7 +495,12 @@ export async function renewSponsorshipTerm(
     notes: source.notes,
   });
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("termRenewed") };
 }
 
@@ -519,7 +559,12 @@ export async function addSponsorPayment(
     notes: fields.notes,
   });
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("paymentCreated") };
 }
 
@@ -555,7 +600,12 @@ export async function updateSponsorPayment(
     })
     .where(eq(sponsorPayments.id, id));
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("paymentUpdated") };
 }
 
@@ -569,7 +619,12 @@ export async function deleteSponsorPayment(
   const id = String(formData.get("id") ?? "");
   await db.delete(sponsorPayments).where(eq(sponsorPayments.id, id));
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("paymentDeleted") };
 }
 
@@ -588,7 +643,12 @@ export async function markSponsorPaymentPaid(
     .set({ status: "paid", paidOn: today })
     .where(eq(sponsorPayments.id, id));
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("paymentMarkedPaid") };
 }
 
@@ -621,7 +681,12 @@ export async function issueSponsorInvoice(
     .set({ invoiceNumber, invoicedOn: today.toISOString().slice(0, 10) })
     .where(eq(sponsorPayments.id, id));
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("invoiceIssued", { number: invoiceNumber }) };
 }
 
@@ -680,7 +745,12 @@ export async function generateAnnualities(
   if (rows.length === 0) return { error: t("annualitiesAllExist") };
   await db.insert(sponsorPayments).values(rows);
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("annualitiesGenerated", { count: rows.length }) };
 }
 
@@ -694,6 +764,7 @@ const sponsorNoteActions = makeNoteActions({
   formKey: "sponsorId",
   namespace: "Patrocinadores",
   permission: "patrocinadores.manage",
+  routes: [ROUTE.patrocinadorFicha],
 });
 export const addSponsorNote = sponsorNoteActions.add;
 export const deleteSponsorNote = sponsorNoteActions.delete;
@@ -705,6 +776,7 @@ const sponsorDocumentActions = makeDocumentActions({
   formKey: "sponsorId",
   namespace: "Patrocinadores",
   permission: "patrocinadores.manage",
+  routes: [ROUTE.patrocinadorFicha],
 });
 export const addSponsorDocument = sponsorDocumentActions.add;
 export const updateSponsorDocument = sponsorDocumentActions.update;
@@ -737,7 +809,12 @@ export async function addSponsorContact(
 
   await db.insert(sponsorContacts).values({ sponsorId, ...fields });
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("contactCreated") };
 }
 
@@ -754,7 +831,12 @@ export async function updateSponsorContact(
 
   await db.update(sponsorContacts).set(fields).where(eq(sponsorContacts.id, id));
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("contactUpdated") };
 }
 
@@ -768,7 +850,12 @@ export async function deleteSponsorContact(
   const id = String(formData.get("id") ?? "");
   await db.delete(sponsorContacts).where(eq(sponsorContacts.id, id));
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("contactDeleted") };
 }
 
@@ -825,6 +912,11 @@ export async function importSponsors(
     created += 1;
   }
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(
+    ROUTE.patrocinadores,
+    ROUTE.patrocinadorFicha,
+    ROUTE.patrocinadoresFacturas,
+    ROUTE.patrocinadoresMuro,
+  );
   return { message: t("importDone", { count: created }) };
 }

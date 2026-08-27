@@ -1,7 +1,7 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
-import { revalidatePath, updateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -22,6 +22,7 @@ import { requirePermission } from "@/lib/auth";
 import { DUPLICATE_PERSONS_TAG, INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { createClient } from "@/lib/supabase/server";
+import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 
 export type MergeState = {
   error?: string;
@@ -255,6 +256,6 @@ export async function mergePersons(
 
   updateTag(DUPLICATE_PERSONS_TAG);
   updateTag(INTEGRITY_ISSUES_TAG);
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha, ROUTE.personasDuplicados);
   return { message: t("mergeSuccess") };
 }

@@ -1,7 +1,6 @@
 "use server";
 
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -14,6 +13,7 @@ import {
   isPermission,
   type Permission,
 } from "@/lib/permissions";
+import { revalidateAppShell } from "@/lib/revalidate";
 
 export type RoleState = {
   error?: string;
@@ -94,7 +94,7 @@ export async function createRole(
     throw error;
   }
 
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("roleCreated") };
 }
 
@@ -141,7 +141,7 @@ export async function updateRole(
     throw error;
   }
 
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("roleUpdated") };
 }
 
@@ -239,7 +239,7 @@ export async function deleteRole(
     await db.delete(roles).where(eq(roles.id, id));
   }
 
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("roleDeleted") };
 }
 
@@ -324,6 +324,6 @@ export async function setPermissionMatrix(
   });
 
   // Un cambio de permisos altera el sidebar de todo el mundo.
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("permissionsSaved") };
 }

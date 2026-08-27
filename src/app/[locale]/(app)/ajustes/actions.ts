@@ -1,7 +1,6 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { redirect } from "@/i18n/navigation";
@@ -12,6 +11,7 @@ import { requireUser } from "@/lib/auth";
 import { getSiteUrl } from "@/lib/site-url";
 import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { revalidateAppShell } from "@/lib/revalidate";
 
 export type SettingsState = {
   error?: string;
@@ -32,7 +32,7 @@ export async function updateProfile(
     .set({ fullName: fullName || null })
     .where(eq(users.id, user.id));
 
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("profileUpdated") };
 }
 
@@ -54,7 +54,7 @@ export async function updateEmail(
   );
 
   if (error) return { error: error.message };
-  revalidatePath("/", "layout");
+  revalidateAppShell();
   return { message: t("emailChangeRequested") };
 }
 

@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath, updateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/injury-report-pdf";
 import { REGISTRATION_AVAILABILITY_TAG } from "@/lib/registration-settings";
 import { uploadFile } from "@/lib/supabase/storage";
+import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 
 export type ClubState = {
   error?: string;
@@ -65,7 +66,7 @@ export async function updateClubSettings(
   // su cambio en la siguiente petición, no una versión en caché mientras se
   // refresca por detrás.
   updateTag(CLUB_SETTINGS_TAG);
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.club);
   return { message: t("clubDataSaved") };
 }
 
@@ -97,7 +98,7 @@ export async function updateRegistrationAvailability(
 
   updateTag(CLUB_SETTINGS_TAG);
   updateTag(REGISTRATION_AVAILABILITY_TAG);
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.club);
   return { message: t("registrationSettingsSaved") };
 }
 
@@ -131,6 +132,6 @@ export async function uploadInjuryReportTemplate(
 
   await uploadFile(DOCUMENT_TEMPLATES_BUCKET, INJURY_REPORT_TEMPLATE_PATH, file);
 
-  revalidatePath("/", "layout");
+  revalidateRoutes(ROUTE.club);
   return { message: t("injuryTemplateSaved") };
 }

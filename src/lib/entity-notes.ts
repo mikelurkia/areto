@@ -2,12 +2,12 @@ import "server-only";
 
 import { eq } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
-import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import { requirePermission } from "@/lib/auth";
 import type { Permission } from "@/lib/permissions";
+import { revalidateRoutes, type AppRoute } from "@/lib/revalidate";
 
 export type NoteActionState = {
   error?: string;
@@ -35,8 +35,14 @@ export function makeNoteActions(config: {
   namespace: "Personas" | "Equipos" | "Patrocinadores";
   /** Permiso necesario para escribir en la bitácora. Lo decide cada módulo. */
   permission: Permission;
+  /**
+   * Páginas donde se ve esta bitácora, para invalidarlas al escribir. Las
+   * declara cada módulo porque la fábrica no puede saber en qué ficha se
+   * pinta la tabla que le pasan.
+   */
+  routes: readonly AppRoute[];
 }) {
-  const { table, parentIdColumn, formKey, namespace, permission } = config;
+  const { table, parentIdColumn, formKey, namespace, permission, routes } = config;
 
   async function add(
     _prev: NoteActionState,
@@ -56,7 +62,7 @@ export function makeNoteActions(config: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
-    revalidatePath("/", "layout");
+    revalidateRoutes(...routes);
     return { message: t("noteAdded") };
   }
 
@@ -70,7 +76,7 @@ export function makeNoteActions(config: {
     const id = String(formData.get("id") ?? "");
     await db.delete(table).where(eq(table.id, id));
 
-    revalidatePath("/", "layout");
+    revalidateRoutes(...routes);
     return { message: t("noteDeleted") };
   }
 
