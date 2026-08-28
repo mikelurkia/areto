@@ -6,6 +6,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { db } from "@/db";
 import { persons, memberships, personInjuryReports } from "@/db/schema";
 import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InjuryReportForm } from "@/components/personas/injury-report-form";
 import { InjuryReportFileManager } from "@/components/personas/injury-report-file-manager";
 import {
@@ -130,26 +131,18 @@ export default async function InjuryReportFederationPage({
       />
 
       {hasTemplate && !clubDataMissing && !noTeam ? null : (
-        <div className="flex flex-col gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
-          {noTeam ? (
-            <p className="flex items-start gap-2">
-              <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-              {t("injuryReportNoTeamWarning")}
-            </p>
-          ) : null}
-          {!hasTemplate ? (
-            <p className="flex items-start gap-2">
-              <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-              {t("injuryReportTemplateMissingWarning")}
-            </p>
-          ) : null}
-          {clubDataMissing ? (
-            <p className="flex items-start gap-2">
-              <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-              {t("injuryReportClubDataMissingWarning")}
-            </p>
-          ) : null}
-        </div>
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertDescription className="flex flex-col gap-2 text-foreground">
+            {noTeam ? <span>{t("injuryReportNoTeamWarning")}</span> : null}
+            {!hasTemplate ? (
+              <span>{t("injuryReportTemplateMissingWarning")}</span>
+            ) : null}
+            {clubDataMissing ? (
+              <span>{t("injuryReportClubDataMissingWarning")}</span>
+            ) : null}
+          </AlertDescription>
+        </Alert>
       )}
 
       {isNew && noTeam ? null : (

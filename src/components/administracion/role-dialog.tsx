@@ -5,6 +5,7 @@ import { PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { createRole, updateRole } from "@/app/[locale]/(app)/administracion/roles/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -198,9 +199,7 @@ export function RoleDialog(props: RoleDialogProps) {
               </div>
             </Field>
           </FieldGroup>
-          {state.error ? (
-            <p className="text-sm text-destructive">{state.error}</p>
-          ) : null}
+          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

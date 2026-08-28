@@ -5,6 +5,7 @@ import { XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { rejectRegistration } from "@/app/[locale]/(app)/inscripciones/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,9 +56,7 @@ export function RejectRegistrationDialog({
             name="rejectionReason"
             placeholder={t("rejectionReasonPlaceholder")}
           />
-          {state.error ? (
-            <p className="text-sm text-destructive">{state.error}</p>
-          ) : null}
+          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

@@ -5,6 +5,7 @@ import { PencilIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { createCourtEvent, updateCourtEvent } from "@/app/[locale]/(app)/calendario/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -239,9 +240,7 @@ export function CourtEventDialog(props: CourtEventDialogProps) {
                 defaultValue={props.mode === "edit" ? (props.event.notes ?? "") : ""}
               />
             </Field>
-            {state.error ? (
-              <p className="text-sm text-destructive">{state.error}</p>
-            ) : null}
+            <FormError message={state.error} />
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}
