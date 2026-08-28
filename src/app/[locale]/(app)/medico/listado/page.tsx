@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { ArrowLeftIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
@@ -15,11 +14,10 @@ import {
 } from "@/lib/medical-panel-rows";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
-import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
 import { PrintableSheet } from "@/components/printable-sheet";
 import { TableSkeleton } from "@/components/skeletons";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -236,10 +234,7 @@ export default async function MedicoListadoPage({
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex items-center justify-between print:hidden">
-        <Button variant="ghost" size="sm" render={<Link href="/medico" />} nativeButton={false}>
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToPanel")}
-        </Button>
+        <BackLink href="/medico" label={t("backToPanel")} />
         <PrintButton label={t("printAction")} />
       </div>
 

@@ -1,7 +1,6 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeftIcon,
   BellIcon,
   BriefcaseIcon,
   ShieldHalf,
@@ -16,6 +15,7 @@ import { seasons, teams } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import { DeleteSeasonDialog, SeasonDialog } from "@/components/temporada/season-dialog";
 import { ImportTeamsDialog } from "@/components/temporada/import-teams-dialog";
 import { TeamDialog } from "@/components/equipos/team-dialog";
@@ -126,13 +126,7 @@ export default async function TemporadaDetailPage({
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div>
-        <Link
-          href="/temporadas"
-          className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
-        >
-          <ArrowLeftIcon className="size-3.5" />
-          {t("backToSeasons")}
-        </Link>
+        <BackLink href="/temporadas" label={t("backToSeasons")} className="mb-2" />
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">

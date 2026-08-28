@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeftIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -9,7 +8,7 @@ import { hasAnyPermission, requirePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format-date";
 import { findCandidates } from "@/lib/person-matching";
 import { STATUS_VARIANT } from "@/lib/registration-status";
-import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import {
   MemberReviewForm,
   type MemberRegistrationDetail,
@@ -17,7 +16,6 @@ import {
 import { ReviewedRegistrationPanel } from "@/components/inscripciones/reviewed-registration-panel";
 import { MemberRegistrationSummary } from "@/components/inscripciones/registration-summary";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 export default async function SocioRegistrationDetailPage({
   params,
@@ -98,10 +96,7 @@ export default async function SocioRegistrationDetailPage({
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div>
-        <Button variant="ghost" size="sm" render={<Link href="/socios" />} nativeButton={false}>
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToList")}
-        </Button>
+        <BackLink href="/socios" label={t("backToList")} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4">

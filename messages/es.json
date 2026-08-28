@@ -786,6 +786,7 @@
     "memberCardTitle": "Carné de socio/a",
     "memberCardNoNumber": "Esta persona aún no tiene nº de socio. Asígnalo para generar el carné.",
     "memberCardNotMember": "Esta persona no es socia, no procede carné de socio.",
+    "memberSinceLabel": "Socio/a desde",
     "tabRegistrations": "Inscripciones ({count})",
     "registrationsSection": "Inscripciones",
     "noRegistrationsDescription": "Esta persona no tiene inscripciones registradas todavía.",
@@ -992,6 +993,13 @@
     "deleteRegistrationButton": "Borrar",
     "registrationDeleted": "Solicitud borrada.",
     "onlyRejectedCanDelete": "Solo se puede borrar una solicitud rechazada.",
+    "quickApproveAction": "Aprobar",
+    "quickApproveTitle": "¿Aprobar la solicitud de {name}?",
+    "quickApproveDescription": "Se dará de alta como socio/a nuevo/a. No se han encontrado posibles duplicados.",
+    "quickApproveButton": "Aprobar",
+    "quickRejectAction": "Rechazar",
+    "quickRejectTitle": "Rechazar la solicitud de {name}",
+    "quickRejectButton": "Rechazar",
     "notFound": "No se ha encontrado la solicitud.",
     "alreadyReviewed": "Esta solicitud ya se ha revisado.",
     "duplicatePersonFound": "Ya existe una persona con este DNI/NIE o email. Revisa las coincidencias sugeridas y vincula la solicitud a esa persona en vez de crear una nueva.",
@@ -1022,8 +1030,17 @@
     "assignNumberAction": "Asignar nº",
     "cancelMembershipAction": "Dar de baja",
     "memberCancelled": "Socio dado de baja.",
+    "bulkSelectAllSr": "Seleccionar todas las filas",
+    "bulkSelectRowSr": "Seleccionar a {name}",
+    "bulkSelectedCount": "{count} seleccionados",
+    "bulkEmailAction": "Email ({count})",
+    "bulkCancelMembershipAction": "Dar de baja",
+    "bulkMembersCancelled": "{count} socios dados de baja.",
+    "bulkClearSelection": "Cancelar selección",
     "noResultsTitle": "Sin resultados",
-    "noResultsDescription": "Ningún socio coincide con la búsqueda."
+    "noResultsDescription": "Ningún socio coincide con la búsqueda.",
+    "paginationPrevious": "Anterior",
+    "paginationNext": "Siguiente"
   },
   "Equipos": {
     "title": "Equipos",
@@ -1217,7 +1234,11 @@
     "deleteNoteSr": "Eliminar entrada",
     "noteAdded": "Entrada añadida.",
     "noteBodyRequired": "La entrada no puede estar vacía.",
-    "noteDeleted": "Entrada eliminada."
+    "noteDeleted": "Entrada eliminada.",
+    "searchPlaceholder": "Buscar por nombre o categoría...",
+    "exportCsvAction": "Exportar CSV",
+    "noResultsTitle": "Sin resultados",
+    "noResultsDescription": "Ningún equipo coincide con la búsqueda."
   },
   "Patrocinadores": {
     "title": "Patrocinadores",
@@ -1790,7 +1811,20 @@
     "noContact": "Sin contacto registrado",
     "noRenewalsPendingTitle": "Nada pendiente",
     "noRenewalsPendingDescription": "No hay nadie en la plantilla de esta temporada, o todos ya tienen la inscripción web confirmada.",
+    "bulkSelectAllSr": "Seleccionar todas las filas con email",
+    "bulkSelectRowSr": "Seleccionar a {name}",
+    "bulkSelectedCount": "{count} seleccionados",
+    "bulkReminderAction": "Avisar por email a la selección ({count})",
+    "bulkReminderEmailSubject": "Inscripción pendiente · {season}",
+    "bulkReminderEmailBody": "Hola, te escribimos desde el club. Para la temporada {season} todavía no tenemos vuestra inscripción confirmada. ¿Puedes rellenar el formulario de inscripción cuando tengas un momento? Gracias.",
+    "bulkReminderNote": "Este mensaje es genérico (no menciona nombres): para un aviso personalizado, usa el botón de email de la fila.",
+    "bulkNoEmailWarning": "{count, plural, one {# persona pendiente de aviso no tiene email registrado: avísale por WhatsApp fila a fila.} other {# personas pendientes de aviso no tienen email registrado: avísales por WhatsApp fila a fila.}}",
+    "bulkClearSelection": "Cancelar selección",
     "cancel": "Cancelar",
-    "saveChanges": "Guardar cambios"
+    "saveChanges": "Guardar cambios",
+    "searchPlaceholder": "Buscar por nombre...",
+    "exportCsvAction": "Exportar CSV",
+    "noResultsTitle": "Sin resultados",
+    "noResultsDescription": "Ninguna temporada coincide con la búsqueda."
   }
 }

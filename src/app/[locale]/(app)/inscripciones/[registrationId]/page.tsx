@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeftIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -12,12 +11,11 @@ import { personPhotoThumbPath } from "@/lib/person-photo";
 import { STATUS_VARIANT } from "@/lib/registration-status";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
-import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import { ReviewForm, type RegistrationDetail } from "@/components/inscripciones/review-form";
 import { ReviewedRegistrationPanel } from "@/components/inscripciones/reviewed-registration-panel";
 import { PlayerRegistrationSummary } from "@/components/inscripciones/registration-summary";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 const PHOTO_BUCKET = "registration-documents";
 const PERSON_PHOTO_BUCKET = "person-photos";
@@ -164,10 +162,7 @@ export default async function RegistrationDetailPage({
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div>
-        <Button variant="ghost" size="sm" render={<Link href="/inscripciones" />} nativeButton={false}>
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToList")}
-        </Button>
+        <BackLink href="/inscripciones" label={t("backToList")} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4">

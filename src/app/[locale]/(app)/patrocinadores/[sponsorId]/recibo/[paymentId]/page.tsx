@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -8,10 +7,9 @@ import { sponsorPayments } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { seasonLabel } from "@/lib/sponsorship";
-import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
 import { PrintableSheet } from "@/components/printable-sheet";
-import { Button } from "@/components/ui/button";
 
 export async function generateMetadata({
   params,
@@ -56,15 +54,7 @@ export default async function SponsorInvoicePage({
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex items-center justify-between print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href={`/patrocinadores/${sponsorId}`} />}
-          nativeButton={false}
-        >
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToSponsor")}
-        </Button>
+        <BackLink href={`/patrocinadores/${sponsorId}`} label={t("backToSponsor")} />
         <PrintButton label={t("printAction")} />
       </div>
 

@@ -5,21 +5,9 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
-import { Link } from "@/i18n/navigation";
-import {
-  DeleteSeasonDialog,
-  SeasonDialog,
-} from "@/components/temporada/season-dialog";
+import { SeasonDialog } from "@/components/temporada/season-dialog";
+import { TemporadasBrowser } from "@/components/temporada/temporadas-browser";
 import { SectionPlaceholder } from "@/components/section-placeholder";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 export async function generateMetadata({
   params,
@@ -50,8 +38,14 @@ export default async function TemporadasPage({
     },
   });
 
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
-  const fmtDate = (d: string | null) => (d ? dateFmt.format(new Date(`${d}T00:00:00`)) : null);
+  const rows = allSeasons.map((season) => ({
+    id: season.id,
+    name: season.name,
+    isCurrent: season.isCurrent,
+    startsOn: season.startsOn,
+    endsOn: season.endsOn,
+    teamsCount: season.teams.length,
+  }));
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -72,48 +66,7 @@ export default async function TemporadasPage({
           {canManage ? <SeasonDialog mode="create" /> : null}
         </SectionPlaceholder>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("colName")}</TableHead>
-              <TableHead>{t("colDates")}</TableHead>
-              <TableHead>{t("colTeams")}</TableHead>
-              {canManage ? (
-                <TableHead className="text-right">{t("colActions")}</TableHead>
-              ) : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {allSeasons.map((season) => {
-              const starts = fmtDate(season.startsOn);
-              const ends = fmtDate(season.endsOn);
-              return (
-                <TableRow key={season.id}>
-                  <TableCell className="font-medium">
-                    <Link href={`/temporadas/${season.id}`} className="hover:underline">
-                      {season.name}
-                    </Link>
-                    {season.isCurrent ? (
-                      <Badge variant="secondary" className="ml-2">
-                        {t("currentBadge")}
-                      </Badge>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>
-                    {starts || ends ? `${starts ?? "—"} – ${ends ?? "—"}` : "—"}
-                  </TableCell>
-                  <TableCell>{season.teams.length}</TableCell>
-                  {canManage ? (
-                    <TableCell className="flex justify-end gap-1">
-                      <SeasonDialog mode="edit" season={season} />
-                      <DeleteSeasonDialog id={season.id} name={season.name} />
-                    </TableCell>
-                  ) : null}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <TemporadasBrowser seasons={rows} locale={locale} canManage={canManage} />
       )}
     </div>
   );
