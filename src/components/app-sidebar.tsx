@@ -6,6 +6,7 @@ import { ChevronsUpDown, GlobeIcon, LogOut, Settings } from "lucide-react";
 
 import { logout } from "@/app/[locale]/(auth)/actions";
 import { Link, usePathname } from "@/i18n/navigation";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { isSystemRoleKey, type Permission } from "@/lib/permissions";
 import { useNavItems } from "@/components/nav-items";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -186,7 +187,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                     </SidebarMenuButton>
                   ) : (
                     <SidebarMenuButton
-                      render={<Link href={item.href} />}
+                      render={<HoverPrefetchLink href={item.href} />}
                       isActive={active}
                     >
                       <item.icon />
@@ -198,7 +199,9 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
             })}
             <SidebarMenuItem>
               <SidebarMenuButton
-                render={<Link href="/" target="_blank" rel="noreferrer noopener" />}
+                render={
+                  <HoverPrefetchLink href="/" target="_blank" rel="noreferrer noopener" />
+                }
               >
                 <GlobeIcon />
                 <span>{tNav("publicSite")}</span>

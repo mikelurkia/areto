@@ -25,7 +25,7 @@ import { calculateAge, isMinor } from "@/lib/age";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { downloadCsv } from "@/lib/csv";
 import { whatsappLink } from "@/lib/contact-links";
-import { Link } from "@/i18n/navigation";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { DeletePersonDialog } from "@/components/personas/delete-person-dialog";
 import { PersonDialog } from "@/components/personas/person-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -544,12 +544,12 @@ export function PersonasBrowser({
                             {initials(person.firstName, person.lastName)}
                           </AvatarFallback>
                         </Avatar>
-                        <Link
+                        <HoverPrefetchLink
                           href={`/personas/${person.id}`}
                           className="hover:underline"
                         >
                           {fullName}
-                        </Link>
+                        </HoverPrefetchLink>
                         {person.birthDate ? (
                           <span className="text-xs font-normal text-muted-foreground">
                             {t("ageYears", {

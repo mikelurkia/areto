@@ -21,6 +21,7 @@ import {
 } from "@/lib/medical-panel-rows";
 import { type MedicalCertStatus } from "@/lib/medical-status";
 import { Link } from "@/i18n/navigation";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -309,12 +310,12 @@ export function MedicalPanelBrowser({
               {filteredCertRows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell className="font-medium">
-                    <Link
+                    <HoverPrefetchLink
                       href={`/personas/${row.id}?tab=medico`}
                       className="hover:underline"
                     >
                       {row.firstName} {row.lastName}
-                    </Link>
+                    </HoverPrefetchLink>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
@@ -366,12 +367,12 @@ export function MedicalPanelBrowser({
                 <TableRow key={row.id}>
                   <TableCell className="font-medium">{row.occurredOn}</TableCell>
                   <TableCell>
-                    <Link
+                    <HoverPrefetchLink
                       href={`/personas/${row.personId}?tab=medico`}
                       className="hover:underline"
                     >
                       {row.personName}
-                    </Link>
+                    </HoverPrefetchLink>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
@@ -387,7 +388,7 @@ export function MedicalPanelBrowser({
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        render={<Link href={`/personas/${row.personId}/parte-lesion/${row.id}`} />}
+                        render={<HoverPrefetchLink href={`/personas/${row.personId}/parte-lesion/${row.id}`} />}
                         nativeButton={false}
                       >
                         <ClipboardListIcon />

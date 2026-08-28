@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { InboxIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { STATUS_VARIANT, type RegistrationStatus } from "@/lib/registration-status";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -123,9 +123,9 @@ export function MemberRequestsBrowser({
             {filtered.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">
-                  <Link href={`/socios/${r.id}`} className="hover:underline">
+                  <HoverPrefetchLink href={`/socios/${r.id}`} className="hover:underline">
                     {r.firstName} {r.lastName}
-                  </Link>
+                  </HoverPrefetchLink>
                 </TableCell>
                 <TableCell className="text-muted-foreground tabular-nums">
                   {r.nationalId ?? "—"}
