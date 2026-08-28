@@ -523,7 +523,7 @@
     "removePhotoLabel": "Argazkia kendu",
     "photoInvalidType": "Argazkiak JPG, PNG edo WebP formatukoa izan behar du.",
     "photoTooLarge": "Argazkiak ezin du 5 MB baino gehiago izan.",
-    "searchPlaceholder": "Bilatu izenez, emailez edo NANez...",
+    "searchPlaceholder": "Bilatu izenez, emailez, NANez edo telefonoz...",
     "filterTeamLabel": "Taldea",
     "filterTeamAll": "Talde guztiak",
     "filterTeamNone": "Talderik gabe",

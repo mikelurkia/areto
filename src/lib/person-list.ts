@@ -121,6 +121,7 @@ function personWhere(filters: PersonFilters) {
         ilike(sql`${persons.firstName} || ' ' || ${persons.lastName}`, pattern),
         ilike(persons.email, pattern),
         ilike(persons.nationalId, pattern),
+        ilike(persons.phone, pattern),
       ),
     );
   }
