@@ -7,6 +7,7 @@ import { seasons } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { SeasonDialog } from "@/components/temporada/season-dialog";
 import { TemporadasBrowser } from "@/components/temporada/temporadas-browser";
+import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 
 export async function generateMetadata({
