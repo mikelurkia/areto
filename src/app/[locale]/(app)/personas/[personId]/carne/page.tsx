@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, UserRoundIcon } from "lucide-react";
+import { UserRoundIcon } from "lucide-react";
 import { and, eq, gte, isNull, lte, or } from "drizzle-orm";
 import QRCode from "qrcode";
 import { getTranslations, setRequestLocale } from "next-intl/server";

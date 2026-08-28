@@ -15,7 +15,7 @@ import { seasons, teams } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { Link } from "@/i18n/navigation";
-import { BackLink } from "@/components/back-link";
+import { PageHeader } from "@/components/page-header";
 import { DeleteSeasonDialog, SeasonDialog } from "@/components/temporada/season-dialog";
 import { ImportTeamsDialog } from "@/components/temporada/import-teams-dialog";
 import { TeamDialog } from "@/components/equipos/team-dialog";
@@ -125,27 +125,26 @@ export default async function TemporadaDetailPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <BackLink href="/temporadas" label={t("backToSeasons")} className="mb-2" />
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight">{season.name}</h1>
-              {season.isCurrent ? <Badge variant="secondary">{t("currentBadge")}</Badge> : null}
-            </div>
-            <p className="text-muted-foreground">
-              {starts || ends ? `${starts ?? "—"} – ${ends ?? "—"} · ` : ""}
-              {t("fichaSubtitle")}
-            </p>
-          </div>
-          {canManage ? (
-            <div className="flex items-center gap-1">
+      <PageHeader
+        back={{ href: "/temporadas", label: t("backToSeasons") }}
+        title={season.name}
+        badges={
+          season.isCurrent ? (
+            <Badge variant="secondary">{t("currentBadge")}</Badge>
+          ) : null
+        }
+        description={`${
+          starts || ends ? `${starts ?? "—"} – ${ends ?? "—"} · ` : ""
+        }${t("fichaSubtitle")}`}
+        actions={
+          canManage ? (
+            <>
               <SeasonDialog mode="edit" season={season} />
               <DeleteSeasonDialog id={season.id} name={season.name} />
-            </div>
-          ) : null}
-        </div>
-      </div>
+            </>
+          ) : null
+        }
+      />
 
       {renewals.total > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4">

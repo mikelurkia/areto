@@ -11,10 +11,10 @@ import { personPhotoThumbPath } from "@/lib/person-photo";
 import { STATUS_VARIANT } from "@/lib/registration-status";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
-import { BackLink } from "@/components/back-link";
 import { ReviewForm, type RegistrationDetail } from "@/components/inscripciones/review-form";
 import { ReviewedRegistrationPanel } from "@/components/inscripciones/reviewed-registration-panel";
 import { PlayerRegistrationSummary } from "@/components/inscripciones/registration-summary";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 
 const PHOTO_BUCKET = "registration-documents";
@@ -161,14 +161,11 @@ export default async function RegistrationDetailPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <BackLink href="/inscripciones" label={t("backToList")} />
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{fullName}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
+      <PageHeader
+        back={{ href: "/inscripciones", label: t("backToList") }}
+        title={fullName}
+        meta={
+          <>
             <Badge variant="outline">{t(`kind.${registration.kind}`)}</Badge>
             <Badge variant={STATUS_VARIANT[registration.status]}>
               {t(`status.${registration.status}`)}
@@ -176,9 +173,9 @@ export default async function RegistrationDetailPage({
             <span className="text-sm text-muted-foreground">
               {t("submittedOn", { date: formatDateTime(registration.createdAt, locale) })}
             </span>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="flex flex-col gap-2">
         <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">

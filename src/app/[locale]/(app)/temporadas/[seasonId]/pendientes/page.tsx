@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, ShieldHalf } from "lucide-react";
+import { ShieldHalf } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -7,8 +7,7 @@ import { db } from "@/db";
 import { seasons } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
-import { Link } from "@/i18n/navigation";
-import { BackLink } from "@/components/back-link";
+import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { SeasonRenewalsTable } from "@/components/temporadas/season-renewals-table";
 
@@ -50,15 +49,17 @@ export default async function SeasonRenewalsPage({
   const filteredTeamName = teamFilter ? filteredRows[0]?.teamName : null;
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <div>
-        <BackLink href={`/temporadas/${season.id}`} label={t("backToSeason")} className="mb-2" />
-        <h1 className="text-2xl font-semibold tracking-tight">{t("renewalsPageTitle")}</h1>
-        <p className="text-muted-foreground">
-          {season.name}
-          {filteredTeamName ? ` · ${filteredTeamName}` : ""} · {t("renewalsPageDescription")}
-        </p>
-      </div>
+    <div className="flex flex-1 flex-col gap-6">
+      <PageHeader
+        back={{
+          href: `/temporadas/${season.id}`,
+          label: t("backToSeason"),
+        }}
+        title={t("renewalsPageTitle")}
+        description={`${season.name}${
+          filteredTeamName ? ` · ${filteredTeamName}` : ""
+        } · ${t("renewalsPageDescription")}`}
+      />
 
       {filteredRows.length === 0 ? (
         <SectionPlaceholder

@@ -28,7 +28,6 @@ import { sortRoster } from "@/lib/roster-order";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { getSignedUrls } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
-import { BackLink } from "@/components/back-link";
 import { RosterHealth } from "@/components/equipos/roster-health";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
 import { RenewTeamDialog } from "@/components/equipos/renew-team-dialog";
@@ -39,6 +38,7 @@ import { MembershipTable } from "@/components/equipos/membership-table";
 import { TeamCaptainCard } from "@/components/equipos/team-captain-card";
 import { DocumentDialog } from "@/components/document-dialog";
 import { NotesLog } from "@/components/notes-log";
+import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -175,62 +175,64 @@ export default async function TeamDetailPage({
       : t("backToTeams");
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <BackLink href={backHref} label={backLabel} iconOnly className="-ml-1" />
-          <div className="min-w-0">
-            <h1 className="truncate text-xl font-semibold tracking-tight">{team.name}</h1>
-            {/* Una sola línea de metadatos: categoría, temporada, años y datos
-                federativos, para no comerse el alto de la ficha. */}
-            <p className="truncate text-sm text-muted-foreground">
-              {[
-                team.category ? t(`category.${team.category}`) : t("categoryNone"),
-                team.gender ? t(`gender.${team.gender}`) : null,
-                team.season.name,
-                team.minBirthYear !== null && team.maxBirthYear !== null
-                  ? `${team.minBirthYear}–${team.maxBirthYear}`
-                  : null,
-                team.playerFeeCents !== null
-                  ? t(`feePeriodShort.${team.playerFeePeriod}`, {
-                      amount: formatCents(team.playerFeeCents, locale),
-                    })
-                  : null,
-                team.federationGroup,
-                team.federationCode
-                  ? t("federationCodeShort", { code: team.federationCode })
-                  : null,
-                !categoryRequiresMedicalCheckup(team.category)
-                  ? t("noMedicalCheckupRequired")
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-            {team.playerFeeNotes ? (
-              <p className="truncate text-xs text-muted-foreground">
-                {team.playerFeeNotes}
-              </p>
+    <div className="flex flex-1 flex-col gap-6">
+      {/* La descripción es una sola línea de metadatos —categoría, temporada,
+          años y datos federativos— para no comerse el alto de la ficha. */}
+      <PageHeader
+        back={{ href: backHref, label: backLabel }}
+        title={team.name}
+        description={[
+          team.category ? t(`category.${team.category}`) : t("categoryNone"),
+          team.gender ? t(`gender.${team.gender}`) : null,
+          team.season.name,
+          team.minBirthYear !== null && team.maxBirthYear !== null
+            ? `${team.minBirthYear}–${team.maxBirthYear}`
+            : null,
+          team.playerFeeCents !== null
+            ? t(`feePeriodShort.${team.playerFeePeriod}`, {
+                amount: formatCents(team.playerFeeCents, locale),
+              })
+            : null,
+          team.federationGroup,
+          team.federationCode
+            ? t("federationCodeShort", { code: team.federationCode })
+            : null,
+          !categoryRequiresMedicalCheckup(team.category)
+            ? t("noMedicalCheckupRequired")
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+        meta={
+          team.playerFeeNotes ? (
+            <span className="text-xs text-muted-foreground">
+              {team.playerFeeNotes}
+            </span>
+          ) : null
+        }
+        actions={
+          <>
+            {hasPermission(user, "equipos.acta") ? (
+              <Button
+                variant="outline"
+                size="sm"
+                render={<Link href={`/equipos/${team.id}/acta`} />}
+                nativeButton={false}
+              >
+                <ClipboardListIcon data-icon="inline-start" />
+                {t("rosterSheetAction")}
+              </Button>
             ) : null}
-          </div>
-        </div>
-        <div className="flex gap-2 print:hidden">
-          {hasPermission(user, "equipos.acta") ? (
-            <Button
-              variant="outline"
-              size="sm"
-              render={<Link href={`/equipos/${team.id}/acta`} />}
-              nativeButton={false}
-            >
-              <ClipboardListIcon data-icon="inline-start" />
-              {t("rosterSheetAction")}
-            </Button>
-          ) : null}
-          {canManage ? (
-            <RenewTeamDialog teamId={team.id} teamName={team.name} seasons={otherSeasons} />
-          ) : null}
-        </div>
-      </div>
+            {canManage ? (
+              <RenewTeamDialog
+                teamId={team.id}
+                teamName={team.name}
+                seasons={otherSeasons}
+              />
+            ) : null}
+          </>
+        }
+      />
 
       <Tabs defaultValue="plantilla">
         <TabsList>
