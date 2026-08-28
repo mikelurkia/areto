@@ -1,7 +1,8 @@
 "use client";
 
+import { StatusBadge } from "@/components/status-badge";
 import { useMemo } from "react";
-import { DownloadIcon, HandshakeIcon, SearchIcon } from "lucide-react";
+import { DownloadIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
@@ -29,7 +30,11 @@ import {
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { downloadCsv } from "@/lib/csv";
-import { SPONSORSHIP_EXPIRY_WINDOW_DAYS, sponsorshipStatus } from "@/lib/sponsorship";
+import {
+  SPONSORSHIP_EXPIRY_WINDOW_DAYS,
+  SPONSORSHIP_TONE,
+  sponsorshipStatus,
+} from "@/lib/sponsorship";
 
 type CurrentTerm = {
   tier: string | null;
@@ -203,7 +208,7 @@ export function SponsorsBrowser({
 
       {filtered.length === 0 ? (
         <SectionPlaceholder
-          icon={HandshakeIcon}
+          size="compact"
           title={t("noResultsTitle")}
           description={t("noResultsDescription")}
         />
@@ -299,14 +304,13 @@ export function SponsorsBrowser({
                       : "—"}
                   </TableCell>
                   <TableCell priority="secondary">
-                    {rowStatus === "active" ? (
-                      <Badge variant="secondary">{t("activeBadge")}</Badge>
-                    ) : rowStatus === "expiringSoon" ? (
-                      <Badge variant="warning">{t("expiringSoonBadge")}</Badge>
-                    ) : rowStatus === "expired" ? (
-                      <Badge variant="destructive">{t("expiredBadge")}</Badge>
+                    {rowStatus === "noTerm" ? (
+                      <StatusBadge tone="neutral" label={t("noTermBadge")} />
                     ) : (
-                      <Badge variant="outline">{t("noTermBadge")}</Badge>
+                      <StatusBadge
+                        tone={SPONSORSHIP_TONE[rowStatus]}
+                        label={t(`${rowStatus}Badge`)}
+                      />
                     )}
                   </TableCell>
                   {canManage ? (

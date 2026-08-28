@@ -22,6 +22,7 @@ import {
 import { type MedicalCertStatus } from "@/lib/medical-status";
 import { Link } from "@/i18n/navigation";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
+import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -297,7 +298,7 @@ export function MedicalPanelBrowser({
           {t("checkupsSection")}
         </h2>
         {filteredCertRows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("noResultsDescription")}</p>
+          <SectionPlaceholder size="compact" title={t("noResultsDescription")} />
         ) : (
           <Table>
             <TableHeader>
@@ -346,9 +347,14 @@ export function MedicalPanelBrowser({
           {t("injuryReportsSection")}
         </h2>
         {filteredInjuryRows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {injuryRows.length === 0 ? t("noInjuryReportsDescription") : t("noResultsDescription")}
-          </p>
+          <SectionPlaceholder
+            size="compact"
+            title={
+              injuryRows.length === 0
+                ? t("noInjuryReportsDescription")
+                : t("noResultsDescription")
+            }
+          />
         ) : (
           <Table>
             <TableHeader>

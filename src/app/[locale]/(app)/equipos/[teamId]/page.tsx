@@ -387,7 +387,7 @@ export default async function TeamDetailPage({
             ) : null}
           </div>
           {team.documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("noDocumentsDescription")}</p>
+            <SectionPlaceholder size="compact" title={t("noDocumentsDescription")} />
           ) : (
             <Table>
               <TableHeader>

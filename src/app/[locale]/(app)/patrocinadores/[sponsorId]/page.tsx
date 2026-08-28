@@ -1,3 +1,4 @@
+import { StatusBadge } from "@/components/status-badge";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import {
@@ -27,6 +28,7 @@ import {
   logoThumbPath,
   seasonLabel,
   seasonYearOf,
+  SPONSORSHIP_TONE,
   sponsorshipStatus,
   SPONSORSHIP_EXPIRY_WINDOW_DAYS,
 } from "@/lib/sponsorship";
@@ -51,6 +53,7 @@ import { SponsorPaymentDialog } from "@/components/patrocinadores/sponsor-paymen
 import { SponsorshipTermDialog } from "@/components/patrocinadores/sponsorship-term-dialog";
 import { StopPropagation } from "@/components/stop-propagation";
 import { PrintButton } from "@/components/print-button";
+import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -191,10 +194,10 @@ export default async function SponsorDetailPage({
     waived: "outline",
   } as const;
 
-  const agreementStatusVariant = {
-    confirmed: "secondary",
-    negotiating: "outline",
-    lost: "destructive",
+  const agreementStatusTone = {
+    confirmed: "positive",
+    negotiating: "neutral",
+    lost: "danger",
   } as const;
 
   const noteEntries = sponsor.noteEntries.map((note) => ({
@@ -396,9 +399,7 @@ export default async function SponsorDetailPage({
           </div>
 
           {sponsor.terms.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("noTermsDescription")}
-            </p>
+            <SectionPlaceholder size="compact" title={t("noTermsDescription")} />
           ) : (
             <div className="flex flex-col gap-4">
               {sponsor.terms.map((term) => {
@@ -442,24 +443,14 @@ export default async function SponsorDetailPage({
                               {t(`tier.${term.tier}`)}
                             </Badge>
                           ) : null}
-                          <Badge
-                            variant={
-                              agreementStatusVariant[term.agreementStatus]
-                            }
-                          >
-                            {t(`agreementStatus.${term.agreementStatus}`)}
-                          </Badge>
-                          {status === "active" ? (
-                            <Badge variant="secondary">
-                              {t("activeBadge")}
-                            </Badge>
-                          ) : status === "expiringSoon" ? (
-                            <Badge variant="warning">{t("expiringSoonBadge")}</Badge>
-                          ) : (
-                            <Badge variant="destructive">
-                              {t("expiredBadge")}
-                            </Badge>
-                          )}
+                          <StatusBadge
+                            tone={agreementStatusTone[term.agreementStatus]}
+                            label={t(`agreementStatus.${term.agreementStatus}`)}
+                          />
+                          <StatusBadge
+                            tone={SPONSORSHIP_TONE[status]}
+                            label={t(`${status}Badge`)}
+                          />
                         </div>
                         {term.benefits ? (
                           <p className="max-w-prose text-sm text-muted-foreground">
@@ -530,9 +521,7 @@ export default async function SponsorDetailPage({
                           ) : null}
                         </div>
                         {term.payments.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            {t("noPaymentsDescription")}
-                          </p>
+                          <SectionPlaceholder size="compact" title={t("noPaymentsDescription")} />
                         ) : (
                           <Table>
                             <TableHeader>
@@ -675,9 +664,7 @@ export default async function SponsorDetailPage({
             ) : null}
           </div>
           {sponsor.contacts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("noContactsDescription")}
-            </p>
+            <SectionPlaceholder size="compact" title={t("noContactsDescription")} />
           ) : (
             <Table>
               <TableHeader>
@@ -741,7 +728,7 @@ export default async function SponsorDetailPage({
             ) : null}
           </div>
           {sponsor.documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("noDocumentsDescription")}</p>
+            <SectionPlaceholder size="compact" title={t("noDocumentsDescription")} />
           ) : (
             <Table>
               <TableHeader>

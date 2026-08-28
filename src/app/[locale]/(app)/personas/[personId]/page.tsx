@@ -1,3 +1,4 @@
+import { StatusBadge } from "@/components/status-badge";
 import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import {
@@ -31,7 +32,7 @@ import { getBankName } from "@/lib/bank";
 import { fileTypeLabel } from "@/lib/file-type";
 import { formatDateTime } from "@/lib/format-date";
 import { personPhotoDownloadName, personPhotoThumbPath } from "@/lib/person-photo";
-import { STATUS_VARIANT } from "@/lib/registration-status";
+import { STATUS_TONE } from "@/lib/registration-status";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { Link } from "@/i18n/navigation";
@@ -56,6 +57,7 @@ import { NotesLog } from "@/components/notes-log";
 import { PersonTagsEditor } from "@/components/personas/person-tags-editor";
 import { QualificationDialog } from "@/components/personas/qualification-dialog";
 import { PrintButton } from "@/components/print-button";
+import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -798,7 +800,7 @@ export default async function PersonDetailPage({
             ) : null}
           </div>
           {seasonGroups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("noTeamsDescription")}</p>
+            <SectionPlaceholder size="compact" title={t("noTeamsDescription")} />
           ) : (
             seasonGroups.map(({ season, items }) => (
               <div key={season.id} className="flex flex-col gap-2">
@@ -847,9 +849,7 @@ export default async function PersonDetailPage({
             ) : null}
           </div>
           {person.qualifications.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("noQualificationsDescription")}
-            </p>
+            <SectionPlaceholder size="compact" title={t("noQualificationsDescription")} />
           ) : (
             <EntityFileTable
               items={person.qualifications}
@@ -915,9 +915,7 @@ export default async function PersonDetailPage({
               ) : null}
             </div>
             {person.medicalCheckups.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t("noMedicalCheckupsDescription")}
-              </p>
+              <SectionPlaceholder size="compact" title={t("noMedicalCheckupsDescription")} />
             ) : (
               <>
                 {(() => {
@@ -1015,9 +1013,7 @@ export default async function PersonDetailPage({
               ) : null}
             </div>
             {person.injuryReports.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t("noInjuryReportsDescription")}
-              </p>
+              <SectionPlaceholder size="compact" title={t("noInjuryReportsDescription")} />
             ) : (
               <EntityFileTable
                 items={person.injuryReports}
@@ -1076,7 +1072,7 @@ export default async function PersonDetailPage({
             ) : null}
           </div>
           {person.documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("noDocumentsDescription")}</p>
+            <SectionPlaceholder size="compact" title={t("noDocumentsDescription")} />
           ) : (
             <EntityFileTable
               items={person.documents}
@@ -1129,7 +1125,7 @@ export default async function PersonDetailPage({
             {t("registrationsSection")}
           </h2>
           {person.registrations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("noRegistrationsDescription")}</p>
+            <SectionPlaceholder size="compact" title={t("noRegistrationsDescription")} />
           ) : (
             <Table>
               <TableHeader>
@@ -1147,9 +1143,10 @@ export default async function PersonDetailPage({
                       <Badge variant="outline">{tInscripciones(`kind.${r.kind}` as "kind.player")}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_VARIANT[r.status]}>
-                        {tInscripciones(`status.${r.status}` as "status.pending")}
-                      </Badge>
+                      <StatusBadge
+                        tone={STATUS_TONE[r.status]}
+                        label={tInscripciones(`status.${r.status}` as "status.pending")}
+                      />
                     </TableCell>
                     <TableCell nowrap className="text-muted-foreground">
                       {formatDateTime(r.createdAt, locale)}

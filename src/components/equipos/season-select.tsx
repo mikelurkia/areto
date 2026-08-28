@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionPlaceholder } from "@/components/section-placeholder";
 import { useTranslations } from "next-intl";
 
 import {
@@ -30,7 +31,7 @@ export function SeasonSelect({
   const pathname = usePathname();
 
   if (seasons.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t("noSeasons")}</p>;
+    return <SectionPlaceholder size="compact" title={t("noSeasons")} />;
   }
 
   return (

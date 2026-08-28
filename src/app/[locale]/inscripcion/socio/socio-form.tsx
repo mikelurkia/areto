@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionPlaceholder } from "@/components/section-placeholder";
 import { useActionState, useState } from "react";
 import { CheckCircle2Icon, PlusIcon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -40,19 +41,21 @@ export function SocioForm() {
   if (state.success) {
     const code = state.registrationId?.slice(0, 8).toUpperCase();
     return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center">
-        <CheckCircle2Icon className="size-8 text-primary" />
-        <h2 className="text-lg font-semibold">{t("successTitle")}</h2>
-        <p className="max-w-md text-sm text-muted-foreground">{t("successDescription")}</p>
+      <SectionPlaceholder
+        className="py-16"
+        icon={CheckCircle2Icon}
+        title={t("successTitle")}
+        description={t("successDescription")}
+      >
         {code ? (
-          <div className="mt-2 flex flex-col items-center gap-1">
+          <>
             <p className="rounded-md bg-muted px-3 py-1.5 font-mono text-sm font-medium">
               {t("registrationCodeLabel", { code })}
             </p>
-            <p className="max-w-md text-xs text-muted-foreground">{t("registrationCodeHint")}</p>
-          </div>
+            <p className="text-xs text-muted-foreground">{t("registrationCodeHint")}</p>
+          </>
         ) : null}
-      </div>
+      </SectionPlaceholder>
     );
   }
 

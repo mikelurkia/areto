@@ -1,3 +1,5 @@
+import type { StatusTone } from "@/lib/status-tone";
+
 export const SPONSORSHIP_EXPIRY_WINDOW_DAYS = 60;
 
 /**
@@ -23,6 +25,13 @@ export function seasonYearOf(dateIso: string): number {
 }
 
 export type SponsorshipStatus = "active" | "expiringSoon" | "expired";
+
+/** Tono por estado de patrocinio, igual en el listado y en la ficha. */
+export const SPONSORSHIP_TONE: Record<SponsorshipStatus, StatusTone> = {
+  active: "positive",
+  expiringSoon: "warning",
+  expired: "danger",
+};
 
 export function sponsorshipStatus(
   endsOn: string | null,
