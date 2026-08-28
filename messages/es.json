@@ -1705,6 +1705,8 @@
     "clubFederationDelegationPlaceholder": "Gipuzkoa",
     "clubSignatoryNameLabel": "Directivo que firma los partes",
     "clubSignatoryNationalIdLabel": "DNI del directivo",
+    "clubMemberAnnualFeeLabel": "Cuota anual de socio (€)",
+    "clubMemberAnnualFeeInvalid": "La cuota tiene que ser un importe válido.",
     "saveClubData": "Guardar datos",
     "clubDataSaved": "Datos del club guardados.",
     "registrationSection": "Inscripciones",

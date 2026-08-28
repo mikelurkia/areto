@@ -23,6 +23,7 @@ type ClubSettingsValues = {
   federationDelegation: string | null;
   signatoryName: string | null;
   signatoryNationalId: string | null;
+  memberAnnualFeeCents: number;
 };
 
 export function ClubSettingsForm({ settings }: { settings: ClubSettingsValues | null }) {
@@ -126,6 +127,19 @@ export function ClubSettingsForm({ settings }: { settings: ClubSettingsValues | 
             />
           </Field>
         </div>
+        <Field>
+          <FieldLabel htmlFor="club-memberAnnualFee">
+            {t("clubMemberAnnualFeeLabel")}
+          </FieldLabel>
+          <Input
+            id="club-memberAnnualFee"
+            name="memberAnnualFee"
+            type="number"
+            step="0.01"
+            inputMode="decimal"
+            defaultValue={String((settings?.memberAnnualFeeCents ?? 2000) / 100)}
+          />
+        </Field>
         {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
         <SubmitButton className="self-start">{t("saveClubData")}</SubmitButton>
       </FieldGroup>

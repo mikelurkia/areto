@@ -1705,6 +1705,8 @@
     "clubFederationDelegationPlaceholder": "Gipuzkoa",
     "clubSignatoryNameLabel": "Parteak sinatzen dituen zuzendaritzako kidea",
     "clubSignatoryNationalIdLabel": "Zuzendaritzako kidearen NANa",
+    "clubMemberAnnualFeeLabel": "Bazkidearen urteko kuota (€)",
+    "clubMemberAnnualFeeInvalid": "Kuotak baliozko zenbatekoa izan behar du.",
     "saveClubData": "Datuak gorde",
     "clubDataSaved": "Klubaren datuak gorde dira.",
     "registrationSection": "Izen-ematea",
