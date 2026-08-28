@@ -4,7 +4,7 @@ import { and, asc, count, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { persons } from "@/db/schema";
-import { likePattern } from "@/lib/sql-text";
+import { likePattern, phoneDigitsMatch } from "@/lib/sql-text";
 
 /**
  * El listado de socios activos, resuelto en la base de datos — mismo patrón
@@ -56,7 +56,7 @@ function memberWhere(filters: MemberFilters) {
         ilike(persons.lastName, pattern),
         ilike(sql`${persons.firstName} || ' ' || ${persons.lastName}`, pattern),
         ilike(persons.email, pattern),
-        ilike(persons.phone, pattern),
+        phoneDigitsMatch(persons.phone, filters.q),
       ),
     );
   }
