@@ -2,8 +2,11 @@ import { CardSkeleton, PageHeaderSkeleton } from "@/components/skeletons";
 
 /**
  * Fallback de red para todo el grupo `(app)`: cubre las rutas que no tienen su
- * propio `loading.tsx` (vistas de impresión, pantallas en construcción...).
- * Deliberadamente neutro, porque sirve tanto para formularios como para listas.
+ * propio `loading.tsx`. Deliberadamente neutro, porque sirve tanto para
+ * formularios como para listas.
+ *
+ * Con el mapa de esqueletos completo ya no debería verse en ninguna pantalla
+ * conocida: es la red por si aparece una ruta nueva sin el suyo.
  */
 export default function Loading() {
   return (
