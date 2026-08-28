@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { UserRoundIcon } from "lucide-react";
+import { CreditCardIcon, UserRoundIcon } from "lucide-react";
 import { and, eq, gte, isNull, lte, or } from "drizzle-orm";
 import QRCode from "qrcode";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -11,6 +11,7 @@ import { hasPermission, requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getSignedUrl } from "@/lib/supabase/storage";
+import { SectionPlaceholder } from "@/components/section-placeholder";
 import { AssignMemberNumberButton } from "@/components/personas/assign-member-number-button";
 import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
@@ -91,12 +92,13 @@ export default async function MemberCardPage({
       </div>
 
       {memberNumber === null ? (
-        <div className="mx-auto flex w-full max-w-md flex-col items-center gap-3 rounded-lg border border-dashed p-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            {isMember ? t("memberCardNoNumber") : t("memberCardNotMember")}
-          </p>
+        <SectionPlaceholder
+          className="mx-auto max-w-md"
+          icon={CreditCardIcon}
+          title={isMember ? t("memberCardNoNumber") : t("memberCardNotMember")}
+        >
           {isMember && canManage ? <AssignMemberNumberButton personId={person.id} /> : null}
-        </div>
+        </SectionPlaceholder>
       ) : (
         /* Al contrario que el resto de documentos, el carné se imprime tal cual
            se ve: `print-color-adjust: exact` para que el navegador no descarte

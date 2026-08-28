@@ -1,5 +1,6 @@
 "use client";
 
+import { SectionPlaceholder } from "@/components/section-placeholder";
 import { useActionState, useState } from "react";
 import { CopyPlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -162,7 +163,7 @@ export function ImportTeamsDialog({
                     </label>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground">{t("noTeamsReadonly")}</p>
+                  <SectionPlaceholder size="compact" title={t("noTeamsReadonly")} />
                 )}
               </Card>
             </Field>

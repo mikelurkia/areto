@@ -1,3 +1,4 @@
+import { StatusBadge } from "@/components/status-badge";
 import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -8,7 +9,7 @@ import { hasPermission, requirePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format-date";
 import { findCandidates } from "@/lib/person-matching";
 import { personPhotoThumbPath } from "@/lib/person-photo";
-import { STATUS_VARIANT } from "@/lib/registration-status";
+import { STATUS_TONE } from "@/lib/registration-status";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { ReviewForm, type RegistrationDetail } from "@/components/inscripciones/review-form";
@@ -167,9 +168,10 @@ export default async function RegistrationDetailPage({
         meta={
           <>
             <Badge variant="outline">{t(`kind.${registration.kind}`)}</Badge>
-            <Badge variant={STATUS_VARIANT[registration.status]}>
-              {t(`status.${registration.status}`)}
-            </Badge>
+            <StatusBadge
+              tone={STATUS_TONE[registration.status]}
+              label={t(`status.${registration.status}`)}
+            />
             <span className="text-sm text-muted-foreground">
               {t("submittedOn", { date: formatDateTime(registration.createdAt, locale) })}
             </span>

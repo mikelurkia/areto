@@ -1,3 +1,4 @@
+import { StatusBadge } from "@/components/status-badge";
 import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -7,7 +8,7 @@ import { registrations } from "@/db/schema";
 import { hasAnyPermission, requirePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format-date";
 import { findCandidates } from "@/lib/person-matching";
-import { STATUS_VARIANT } from "@/lib/registration-status";
+import { STATUS_TONE } from "@/lib/registration-status";
 import {
   MemberReviewForm,
   type MemberRegistrationDetail,
@@ -101,9 +102,10 @@ export default async function SocioRegistrationDetailPage({
         meta={
           <>
             <Badge variant="outline">{t("kind.member")}</Badge>
-            <Badge variant={STATUS_VARIANT[registration.status]}>
-              {t(`status.${registration.status}`)}
-            </Badge>
+            <StatusBadge
+              tone={STATUS_TONE[registration.status]}
+              label={t(`status.${registration.status}`)}
+            />
             <span className="text-sm text-muted-foreground">
               {t("submittedOn", { date: formatDateTime(registration.createdAt, locale) })}
             </span>

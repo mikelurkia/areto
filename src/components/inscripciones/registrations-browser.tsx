@@ -1,13 +1,14 @@
 "use client";
 
+import { StatusBadge } from "@/components/status-badge";
 import { useMemo } from "react";
-import { DownloadIcon, InboxIcon, SearchIcon } from "lucide-react";
+import { DownloadIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { downloadCsv } from "@/lib/csv";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
-import { STATUS_VARIANT, type RegistrationStatus } from "@/lib/registration-status";
+import { STATUS_TONE, type RegistrationStatus } from "@/lib/registration-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,7 +142,7 @@ export function RegistrationsBrowser({
 
       {filtered.length === 0 ? (
         <SectionPlaceholder
-          icon={InboxIcon}
+          size="compact"
           title={t("noResultsTitle")}
           description={t("noResultsDescription")}
         />
@@ -198,7 +199,7 @@ export function RegistrationsBrowser({
                   {r.createdAt}
                 </TableCell>
                 <TableCell priority="secondary">
-                  <Badge variant={STATUS_VARIANT[r.status]}>{t(`status.${r.status}`)}</Badge>
+                  <StatusBadge tone={STATUS_TONE[r.status]} label={t(`status.${r.status}`)} />
                 </TableCell>
                 {canManage ? (
                   <TableCell className="text-right">

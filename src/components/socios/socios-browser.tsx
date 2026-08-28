@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { DownloadIcon, MailIcon, SearchIcon, UsersIcon } from "lucide-react";
+import { DownloadIcon, MailIcon, SearchIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -239,7 +239,7 @@ export function SociosBrowser({
 
       {total === 0 ? (
         <SectionPlaceholder
-          icon={UsersIcon}
+          size="compact"
           title={t("noResultsTitle")}
           description={t("noResultsDescription")}
         />

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { HandshakeIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
+import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PublicHeader } from "@/components/public/public-header";
@@ -94,10 +95,7 @@ async function SponsorWall() {
 
   if (sponsors.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center text-muted-foreground">
-        <HandshakeIcon className="size-8" />
-        <p>{t("publicWallEmpty")}</p>
-      </div>
+      <SectionPlaceholder icon={HandshakeIcon} title={t("publicWallEmpty")} />
     );
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { CalendarDaysIcon, DownloadIcon, SearchIcon } from "lucide-react";
+import { DownloadIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
@@ -98,7 +98,7 @@ export function TemporadasBrowser({
 
       {filtered.length === 0 ? (
         <SectionPlaceholder
-          icon={CalendarDaysIcon}
+          size="compact"
           title={t("noResultsTitle")}
           description={t("noResultsDescription")}
         />

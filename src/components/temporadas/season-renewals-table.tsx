@@ -5,9 +5,10 @@ import { MailIcon, MessageCircleIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { RenewalStatus, SeasonRenewalRow } from "@/lib/season-renewals";
+import type { StatusTone } from "@/lib/status-tone";
 import { mailtoBccLink, mailtoLink, whatsappLink } from "@/lib/contact-links";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -23,11 +24,11 @@ import {
 // inscripción resuelta (mismo criterio que `missingCount` en season-renewals.ts).
 const REMINDABLE_STATUSES: RenewalStatus[] = ["missing", "rejected"];
 
-const STATUS_VARIANT: Record<RenewalStatus, "secondary" | "warning" | "destructive" | "outline"> = {
-  approved: "secondary",
+const STATUS_TONE: Record<RenewalStatus, StatusTone> = {
+  approved: "positive",
   pending: "warning",
-  rejected: "destructive",
-  missing: "outline",
+  rejected: "danger",
+  missing: "neutral",
 };
 
 // "Sin inscripción" y "Rechazada" primero: son a quienes hay que avisar.
@@ -184,7 +185,10 @@ export function SeasonRenewalsTable({
                 </TableCell>
                 <TableCell priority="secondary">{row.teamName}</TableCell>
                 <TableCell priority="secondary">
-                  <Badge variant={STATUS_VARIANT[row.status]}>{t(`status${capitalize(row.status)}`)}</Badge>
+                  <StatusBadge
+                    tone={STATUS_TONE[row.status]}
+                    label={t(`status${capitalize(row.status)}`)}
+                  />
                 </TableCell>
                 <TableCell priority="tertiary">
                   {row.contactPhone || row.contactEmail ? (
