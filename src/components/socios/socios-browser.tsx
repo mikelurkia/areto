@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { DownloadIcon, MailIcon, SearchIcon } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -15,17 +15,10 @@ import {
   exportMemberRows,
 } from "@/app/[locale]/(app)/socios/list-actions";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
+import { PaginationBar } from "@/components/pagination-bar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import {
   Table,
@@ -94,6 +87,7 @@ export function SociosBrowser({
   const [isBulkPending, startBulkTransition] = useTransition();
   const [isExporting, startExportTransition] = useTransition();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   /** Exporta todas las filas que casan con la búsqueda, no solo la página
    * actual: con la paginación en servidor el navegador ya no tiene el resto. */
@@ -176,6 +170,18 @@ export function SociosBrowser({
 
   function goToPage(next: number) {
     setFilters({ pagina: String(Math.min(Math.max(1, next), pageCount)) });
+  }
+
+  /**
+   * URL de una página. El clic lo atiende `goToPage` (que reemplaza en el
+   * historial); esto es para que el enlace se pueda abrir en otra pestaña.
+   */
+  function hrefForPage(page: number) {
+    const params = new URLSearchParams(searchParams);
+    if (page === 1) params.delete("pagina");
+    else params.set("pagina", String(page));
+    const query = params.toString();
+    return `${pathname}${query ? `?${query}` : ""}`;
   }
 
   return (
@@ -328,52 +334,12 @@ export function SociosBrowser({
               ))}
             </TableBody>
           </Table>
-          {pageCount > 1 ? (
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    text={t("paginationPrevious")}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      goToPage(currentPage - 1);
-                    }}
-                    href="#"
-                    className={
-                      currentPage === 1 ? "pointer-events-none opacity-50" : undefined
-                    }
-                  />
-                </PaginationItem>
-                {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
-                  <PaginationItem key={p}>
-                    <PaginationLink
-                      href="#"
-                      isActive={p === currentPage}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        goToPage(p);
-                      }}
-                    >
-                      {p}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext
-                    text={t("paginationNext")}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      goToPage(currentPage + 1);
-                    }}
-                    href="#"
-                    className={
-                      currentPage === pageCount ? "pointer-events-none opacity-50" : undefined
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          ) : null}
+          <PaginationBar
+            page={currentPage}
+            pageCount={pageCount}
+            onPageChange={goToPage}
+            hrefFor={hrefForPage}
+          />
         </>
       )}
     </>

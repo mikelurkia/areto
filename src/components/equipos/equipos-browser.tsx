@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { DeleteTeamDialog } from "@/components/equipos/delete-team-dialog";
 import { TeamDialog } from "@/components/equipos/team-dialog";
+import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { usePagedRows } from "@/hooks/use-paged-rows";
 import { downloadCsv } from "@/lib/csv";
 import { formatCents } from "@/lib/money";
 import type { RosterHealthAlerts } from "@/lib/roster-health";
@@ -109,6 +111,8 @@ export function EquiposBrowser({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teams, query]);
 
+  const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
+
   function handleExportCsv() {
     const headers = [
       t("colName"),
@@ -177,7 +181,7 @@ export function EquiposBrowser({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((team) => {
+            {pageRows.map((team) => {
               const issues = healthIssueLines(team.alerts);
               return (
                 <TableRow key={team.id}>
@@ -265,6 +269,9 @@ export function EquiposBrowser({
           </TableBody>
         </Table>
       )}
+
+      {/* La barra no pinta nada mientras quepa todo en una página. */}
+      <PaginationBar page={page} pageCount={pageCount} onPageChange={setPage} />
     </>
   );
 }

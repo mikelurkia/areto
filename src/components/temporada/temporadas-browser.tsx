@@ -9,6 +9,7 @@ import {
   DeleteSeasonDialog,
   SeasonDialog,
 } from "@/components/temporada/season-dialog";
+import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { usePagedRows } from "@/hooks/use-paged-rows";
 import { downloadCsv } from "@/lib/csv";
 
 type SeasonRow = {
@@ -63,6 +65,8 @@ export function TemporadasBrowser({
     const needle = query.trim().toLowerCase();
     return seasons.filter((season) => season.name.toLowerCase().includes(needle));
   }, [seasons, query]);
+
+  const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
   function handleExportCsv() {
     const headers = [t("colName"), t("colDates"), t("colTeams")];
@@ -115,7 +119,7 @@ export function TemporadasBrowser({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((season) => {
+            {pageRows.map((season) => {
               const starts = fmtDate(season.startsOn);
               const ends = fmtDate(season.endsOn);
               return (
@@ -148,6 +152,9 @@ export function TemporadasBrowser({
           </TableBody>
         </Table>
       )}
+
+      {/* La barra no pinta nada mientras quepa todo en una página. */}
+      <PaginationBar page={page} pageCount={pageCount} onPageChange={setPage} />
     </>
   );
 }
