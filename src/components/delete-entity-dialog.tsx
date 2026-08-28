@@ -25,30 +25,39 @@ type EntityKey =
   | "Qualification"
   | "MedicalCheckup"
   | "InjuryReport"
-  | "InjuryReportFile";
+  | "InjuryReportFile"
+  | "Team"
+  | "Person"
+  | "Sponsor"
+  | "Season"
+  | "Member";
 
-/** Forma común de las Server Actions de borrado (documentos, titulaciones, médico, lesiones). */
+/** Forma común de las Server Actions de borrado (documentos, titulaciones, médico, lesiones...). */
 type DeleteActionState = { error?: string; message?: string };
 
 /**
  * Diálogo de confirmación de borrado genérico, compartido por documentos,
- * titulaciones, reconocimientos médicos y partes de lesión. `entityKey`
- * construye las claves de traducción (`delete${entityKey}Sr/Title/Description/
- * Button`); `values` es el objeto de interpolación que espera cada mensaje
- * (varía por entidad: `{label}`, `{title}`, `{date}`), así no hay que tocar
- * `messages/*.json` para unificar este componente.
+ * titulaciones, reconocimientos médicos, partes de lesión y las entidades
+ * principales (equipos, personas, patrocinadores, temporadas, membresías).
+ * `verb` + `entityKey` construyen las claves de traducción
+ * (`${verb}${entityKey}Sr/Title/Description/Button`, p. ej. `deleteTeamTitle`
+ * o `removeMemberTitle`); `values` es el objeto de interpolación que espera
+ * cada mensaje (varía por entidad: `{label}`, `{title}`, `{date}`, `{name}`),
+ * así no hay que tocar `messages/*.json` para unificar este componente.
  */
 export function DeleteEntityDialog({
   id,
   namespace,
   entityKey,
+  verb = "delete",
   paramKey,
   values,
   deleteAction,
 }: {
   id: string;
-  namespace: "Personas" | "Equipos" | "Patrocinadores";
+  namespace: "Personas" | "Equipos" | "Patrocinadores" | "Temporadas";
   entityKey: EntityKey;
+  verb?: "delete" | "remove";
   paramKey: string;
   values: Record<string, string>;
   deleteAction: (
@@ -69,14 +78,14 @@ export function DeleteEntityDialog({
       >
         <Trash2Icon />
         <span className="sr-only">
-          {t(`delete${entityKey}Sr` as "deleteDocumentSr", values)}
+          {t(`${verb}${entityKey}Sr` as "deleteDocumentSr", values)}
         </span>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t(`delete${entityKey}Title` as "deleteDocumentTitle", values)}</DialogTitle>
+          <DialogTitle>{t(`${verb}${entityKey}Title` as "deleteDocumentTitle", values)}</DialogTitle>
           <DialogDescription>
-            {t(`delete${entityKey}Description` as "deleteDocumentDescription")}
+            {t(`${verb}${entityKey}Description` as "deleteDocumentDescription")}
           </DialogDescription>
         </DialogHeader>
         <form action={action}>
@@ -89,7 +98,7 @@ export function DeleteEntityDialog({
               {t("cancel")}
             </DialogClose>
             <SubmitButton variant="destructive">
-              {t(`delete${entityKey}Button` as "deleteDocumentButton")}
+              {t(`${verb}${entityKey}Button` as "deleteDocumentButton")}
             </SubmitButton>
           </DialogFooter>
         </form>

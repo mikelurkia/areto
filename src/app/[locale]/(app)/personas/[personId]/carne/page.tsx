@@ -11,11 +11,10 @@ import { hasPermission, requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getSignedUrl } from "@/lib/supabase/storage";
-import { Link } from "@/i18n/navigation";
 import { AssignMemberNumberButton } from "@/components/personas/assign-member-number-button";
+import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 
 const PHOTO_BUCKET = "person-photos";
 
@@ -87,15 +86,7 @@ export default async function MemberCardPage({
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex items-center justify-between print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href={`/personas/${person.id}`} />}
-          nativeButton={false}
-        >
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToPersona")}
-        </Button>
+        <BackLink href={`/personas/${person.id}`} label={t("backToPersona")} />
         {memberNumber !== null ? <PrintButton label={t("printAction")} /> : null}
       </div>
 

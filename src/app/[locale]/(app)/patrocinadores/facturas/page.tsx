@@ -1,4 +1,3 @@
-import { ArrowLeftIcon } from "lucide-react";
 import { isNotNull } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -6,12 +5,11 @@ import { db } from "@/db";
 import { sponsorPayments } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { seasonLabel } from "@/lib/sponsorship";
-import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import {
   InvoiceRegister,
   type InvoiceRow,
 } from "@/components/patrocinadores/invoice-register";
-import { Button } from "@/components/ui/button";
 
 export async function generateMetadata({
   params,
@@ -74,15 +72,7 @@ export default async function InvoiceRegisterPage({
     */
     <div className="flex flex-1 flex-col gap-6 print:p-[14mm]">
       <div className="print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href="/patrocinadores" />}
-          nativeButton={false}
-        >
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToSponsorships")}
-        </Button>
+        <BackLink href="/patrocinadores" label={t("backToSponsorships")} />
       </div>
 
       <div>
