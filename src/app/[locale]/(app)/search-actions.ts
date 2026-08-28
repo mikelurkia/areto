@@ -5,7 +5,7 @@ import { ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { persons, teams } from "@/db/schema";
 import { hasPermission, requireUser } from "@/lib/auth";
-import { likePattern } from "@/lib/sql-text";
+import { likePattern, phoneDigitsMatch } from "@/lib/sql-text";
 
 export type SearchResult = {
   type: "person" | "team";
@@ -48,12 +48,14 @@ export async function searchEntities(query: string): Promise<SearchResult[]> {
             lastName: true,
             email: true,
             nationalId: true,
+            phone: true,
           },
           where: or(
             ilike(persons.firstName, pattern),
             ilike(persons.lastName, pattern),
             ilike(sql`${persons.firstName} || ' ' || ${persons.lastName}`, pattern),
             ilike(persons.nationalId, pattern),
+            phoneDigitsMatch(persons.phone, term),
           ),
           orderBy: (p, { asc }) => [asc(p.lastName), asc(p.firstName)],
           limit: 8,
@@ -75,7 +77,7 @@ export async function searchEntities(query: string): Promise<SearchResult[]> {
       type: "person" as const,
       id: person.id,
       label: `${person.firstName} ${person.lastName}`,
-      sublabel: person.email ?? person.nationalId,
+      sublabel: person.email ?? person.nationalId ?? person.phone,
       href: `/personas/${person.id}`,
     })),
     ...teamRows.map((team) => ({
