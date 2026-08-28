@@ -24,7 +24,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { ApproveRegistrationDialog } from "@/components/inscripciones/approve-registration-dialog";
 import { DeleteRegistrationDialog } from "@/components/inscripciones/delete-registration-dialog";
+import { RejectRegistrationDialog } from "@/components/inscripciones/reject-registration-dialog";
 
 export type MemberRequestRow = {
   id: string;
@@ -35,6 +37,8 @@ export type MemberRequestRow = {
   email: string | null;
   phone: string | null;
   createdAt: string;
+  /** Solo aplica a `status === "pending"`: sin candidatos a duplicado, ver `socios/page.tsx`. */
+  canQuickApprove: boolean;
 };
 
 /** Igual que `RegistrationsBrowser` (inscripciones de equipo) pero sin
@@ -135,6 +139,20 @@ export function MemberRequestsBrowser({
                 </TableCell>
                 {canManage ? (
                   <TableCell className="text-right">
+                    {r.status === "pending" ? (
+                      <div className="flex justify-end gap-2">
+                        {r.canQuickApprove ? (
+                          <ApproveRegistrationDialog
+                            registrationId={r.id}
+                            fullName={`${r.firstName} ${r.lastName}`}
+                          />
+                        ) : null}
+                        <RejectRegistrationDialog
+                          registrationId={r.id}
+                          fullName={`${r.firstName} ${r.lastName}`}
+                        />
+                      </div>
+                    ) : null}
                     {r.status === "rejected" ? (
                       <DeleteRegistrationDialog
                         registrationId={r.id}

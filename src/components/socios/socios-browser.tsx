@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useMemo, useState, useTransition } from "react";
-import { DownloadIcon, SearchIcon, UsersIcon } from "lucide-react";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { DownloadIcon, MailIcon, SearchIcon, UsersIcon } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -9,9 +10,22 @@ import {
   assignNextMemberNumber,
   bulkSetMember,
 } from "@/app/[locale]/(app)/personas/actions";
+import {
+  emailsForMemberSelection,
+  exportMemberRows,
+} from "@/app/[locale]/(app)/socios/list-actions";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import {
   Table,
@@ -53,49 +67,56 @@ function AssignMemberNumberButton({ personId }: { personId: string }) {
 }
 
 /** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
-const FILTER_DEFAULTS = { q: "" };
+const FILTER_DEFAULTS = { q: "", pagina: "1" };
 
 export function SociosBrowser({
   socios,
+  total,
+  pageCount,
+  page: currentPage,
   canManage,
 }: {
+  /** Solo las filas de la página actual: el filtrado y el troceado los hace SQL. */
   socios: SocioRow[];
+  total: number;
+  pageCount: number;
+  page: number;
   canManage: boolean;
 }) {
   const t = useTranslations("Socios");
-  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
+  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS, { navigate: true });
   const [query, setQuery] = useSearchText(filters.q, (value) =>
-    setFilters({ q: value }),
+    setFilters({ q: value, pagina: "1" }),
   );
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkPending, startBulkTransition] = useTransition();
+  const [isExporting, startExportTransition] = useTransition();
+  const searchParams = useSearchParams();
 
-  const filtered = useMemo(() => {
-    if (!query.trim()) return socios;
-    const needle = query.trim().toLowerCase();
-    return socios.filter((s) =>
-      [`${s.firstName} ${s.lastName}`, s.email ?? "", s.phone ?? ""].some((h) =>
-        h.toLowerCase().includes(needle),
-      ),
-    );
-  }, [socios, query]);
-
-  /** Exporta lo que se está viendo, no la tabla entera: el filtro es parte de
-   * lo que se quiere llevar a la hoja de cálculo. */
+  /** Exporta todas las filas que casan con la búsqueda, no solo la página
+   * actual: con la paginación en servidor el navegador ya no tiene el resto. */
   function handleExportCsv() {
-    const headers = [
-      t("colName"),
-      t("colMemberNumber"),
-      t("colContact"),
-      t("colJoinedAt"),
-    ];
-    const rows = filtered.map((s) => [
-      `${s.firstName} ${s.lastName}`,
-      s.memberNumber !== null ? String(s.memberNumber) : "",
-      s.email || s.phone || "",
-      s.joinedAt,
-    ]);
-    downloadCsv("socios.csv", headers, rows);
+    startExportTransition(async () => {
+      const rows = await exportMemberRows(Object.fromEntries(searchParams));
+      const headers = [
+        t("colName"),
+        t("colMemberNumber"),
+        t("colContact"),
+        t("colJoinedAt"),
+      ];
+      downloadCsv(
+        "socios.csv",
+        headers,
+        rows.map((s) => [
+          `${s.firstName} ${s.lastName}`,
+          s.memberNumber !== null ? String(s.memberNumber) : "",
+          s.email || s.phone || "",
+          s.joinedAt,
+        ]),
+      );
+    });
   }
 
   function handleCancel(personId: string) {
@@ -105,6 +126,56 @@ export function SociosBrowser({
       toast.success(t("memberCancelled"));
       setPendingCancelId(null);
     });
+  }
+
+  const allPageSelected =
+    socios.length > 0 && socios.every((s) => selectedIds.has(s.id));
+
+  function toggleSelected(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      socios.forEach((s) => (checked ? next.add(s.id) : next.delete(s.id)));
+      return next;
+    });
+  }
+
+  // Emails de la selección, para el envío masivo con copia oculta (BCC). Se
+  // piden al servidor: la selección se conserva al cambiar de página, así que
+  // puede incluir socios que ya no están en `socios`.
+  const [fetchedEmails, setFetchedEmails] = useState<string[]>([]);
+  useEffect(() => {
+    if (selectedIds.size === 0) return;
+    let cancelled = false;
+    emailsForMemberSelection([...selectedIds]).then((emails) => {
+      if (!cancelled) setFetchedEmails(emails);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedIds]);
+  const bulkEmails = selectedIds.size === 0 ? [] : fetchedEmails;
+  const bulkEmailHref = `mailto:?bcc=${encodeURIComponent(bulkEmails.join(","))}`;
+
+  function handleBulkCancel() {
+    const ids = [...selectedIds];
+    startBulkTransition(async () => {
+      await bulkSetMember(ids, false);
+      toast.success(t("bulkMembersCancelled", { count: ids.length }));
+      setSelectedIds(new Set());
+    });
+  }
+
+  function goToPage(next: number) {
+    setFilters({ pagina: String(Math.min(Math.max(1, next), pageCount)) });
   }
 
   return (
@@ -123,70 +194,174 @@ export function SociosBrowser({
           variant="outline"
           className="ml-auto"
           onClick={handleExportCsv}
-          disabled={filtered.length === 0}
+          disabled={isExporting}
         >
           <DownloadIcon data-icon="inline-start" />
           {t("exportCsvAction")}
         </Button>
       </div>
 
-      {filtered.length === 0 ? (
+      {canManage && selectedIds.size > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 p-2">
+          <span className="text-sm font-medium">
+            {t("bulkSelectedCount", { count: selectedIds.size })}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            render={<a href={bulkEmailHref} />}
+            nativeButton={false}
+            aria-disabled={bulkEmails.length === 0}
+            className={bulkEmails.length === 0 ? "pointer-events-none opacity-50" : undefined}
+          >
+            <MailIcon data-icon="inline-start" />
+            {t("bulkEmailAction", { count: bulkEmails.length })}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive"
+            disabled={isBulkPending}
+            onClick={handleBulkCancel}
+          >
+            {t("bulkCancelMembershipAction")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            {t("bulkClearSelection")}
+          </Button>
+        </div>
+      ) : null}
+
+      {total === 0 ? (
         <SectionPlaceholder
           icon={UsersIcon}
           title={t("noResultsTitle")}
           description={t("noResultsDescription")}
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("colName")}</TableHead>
-              <TableHead>{t("colMemberNumber")}</TableHead>
-              <TableHead>{t("colContact")}</TableHead>
-              <TableHead>{t("colJoinedAt")}</TableHead>
-              {canManage ? (
-                <TableHead className="text-right">{t("colActions")}</TableHead>
-              ) : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((s) => (
-              <TableRow key={s.id}>
-                <TableCell className="font-medium">
-                  <Link
-                    href={`/personas/${s.id}?from=${encodeURIComponent("/socios")}`}
-                    className="hover:underline"
-                  >
-                    {s.firstName} {s.lastName}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-muted-foreground tabular-nums">
-                  {s.memberNumber ?? "—"}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {s.email || s.phone || "—"}
-                </TableCell>
-                <TableCell className="text-muted-foreground">{s.joinedAt}</TableCell>
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
                 {canManage ? (
-                  <TableCell className="flex justify-end gap-2">
-                    {s.memberNumber === null ? (
-                      <AssignMemberNumberButton personId={s.id} />
-                    ) : null}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive"
-                      disabled={isPending && pendingCancelId === s.id}
-                      onClick={() => handleCancel(s.id)}
-                    >
-                      {t("cancelMembershipAction")}
-                    </Button>
-                  </TableCell>
+                  <TableHead className="w-8">
+                    <Checkbox
+                      checked={allPageSelected}
+                      onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+                      aria-label={t("bulkSelectAllSr")}
+                    />
+                  </TableHead>
+                ) : null}
+                <TableHead>{t("colName")}</TableHead>
+                <TableHead>{t("colMemberNumber")}</TableHead>
+                <TableHead>{t("colContact")}</TableHead>
+                <TableHead>{t("colJoinedAt")}</TableHead>
+                {canManage ? (
+                  <TableHead className="text-right">{t("colActions")}</TableHead>
                 ) : null}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {socios.map((s) => (
+                <TableRow key={s.id}>
+                  {canManage ? (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(s.id)}
+                        onCheckedChange={(checked) => toggleSelected(s.id, checked === true)}
+                        aria-label={t("bulkSelectRowSr", { name: `${s.firstName} ${s.lastName}` })}
+                      />
+                    </TableCell>
+                  ) : null}
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/personas/${s.id}?from=${encodeURIComponent("/socios")}`}
+                      className="hover:underline"
+                    >
+                      {s.firstName} {s.lastName}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground tabular-nums">
+                    {s.memberNumber ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {s.email || s.phone || "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{s.joinedAt}</TableCell>
+                  {canManage ? (
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        {s.memberNumber === null ? (
+                          <AssignMemberNumberButton personId={s.id} />
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive"
+                          disabled={isPending && pendingCancelId === s.id}
+                          onClick={() => handleCancel(s.id)}
+                        >
+                          {t("cancelMembershipAction")}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  ) : null}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {pageCount > 1 ? (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    text={t("paginationPrevious")}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goToPage(currentPage - 1);
+                    }}
+                    href="#"
+                    className={
+                      currentPage === 1 ? "pointer-events-none opacity-50" : undefined
+                    }
+                  />
+                </PaginationItem>
+                {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
+                  <PaginationItem key={p}>
+                    <PaginationLink
+                      href="#"
+                      isActive={p === currentPage}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        goToPage(p);
+                      }}
+                    >
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    text={t("paginationNext")}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goToPage(currentPage + 1);
+                    }}
+                    href="#"
+                    className={
+                      currentPage === pageCount ? "pointer-events-none opacity-50" : undefined
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          ) : null}
+        </>
       )}
     </>
   );
