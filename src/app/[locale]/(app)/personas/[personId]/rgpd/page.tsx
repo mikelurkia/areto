@@ -1,6 +1,5 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -10,10 +9,9 @@ import { requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { calculateAge } from "@/lib/age";
 import { teamSeasonLabel } from "@/lib/team-label";
-import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
 import { PrintableSheet } from "@/components/printable-sheet";
-import { Button } from "@/components/ui/button";
 
 /**
  * Todo lo que el club guarda de la persona (el informe RGPD es exhaustivo).
@@ -115,15 +113,7 @@ export default async function PersonRgpdPage({
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex items-center justify-between print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href={`/personas/${person.id}`} />}
-          nativeButton={false}
-        >
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToPersona")}
-        </Button>
+        <BackLink href={`/personas/${person.id}`} label={t("backToPersona")} />
         <PrintButton label={t("printAction")} />
       </div>
 

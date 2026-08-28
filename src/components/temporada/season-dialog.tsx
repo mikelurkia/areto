@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { PencilIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -9,6 +9,7 @@ import {
   deleteSeason,
   updateSeason,
 } from "@/app/[locale]/(app)/temporadas/actions";
+import { DeleteEntityDialog } from "@/components/delete-entity-dialog";
 import { useDialogParam } from "@/hooks/use-dialog-param";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
@@ -145,40 +146,14 @@ export function SeasonDialog(props: SeasonDialogProps) {
 }
 
 export function DeleteSeasonDialog({ id, name }: { id: string; name: string }) {
-  const t = useTranslations("Temporadas");
-  const [open, setOpen] = useDialogParam(`borrar-temporada:${id}`);
-  const [state, action] = useActionState(deleteSeason, {});
-  useActionToast(state);
-  useCloseOnActionSuccess(state, setOpen);
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={<Button variant="ghost" size="icon-sm" className="text-destructive" />}
-      >
-        <Trash2Icon />
-        <span className="sr-only">{t("deleteSeasonSr", { name })}</span>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("deleteSeasonTitle", { name })}</DialogTitle>
-          <DialogDescription>{t("deleteSeasonDescription")}</DialogDescription>
-        </DialogHeader>
-        <form action={action}>
-          <input type="hidden" name="id" value={id} />
-          {state.error ? (
-            <p className="mb-3 text-sm text-destructive">{state.error}</p>
-          ) : null}
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>
-              {t("cancel")}
-            </DialogClose>
-            <SubmitButton variant="destructive">
-              {t("deleteSeasonButton")}
-            </SubmitButton>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <DeleteEntityDialog
+      id={id}
+      namespace="Temporadas"
+      entityKey="Season"
+      paramKey="borrar-temporada"
+      values={{ name }}
+      deleteAction={deleteSeason}
+    />
   );
 }
