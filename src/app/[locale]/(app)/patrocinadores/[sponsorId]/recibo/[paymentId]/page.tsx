@@ -5,7 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { db } from "@/db";
 import { sponsorPayments } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
-import { getClubSettings } from "@/lib/club";
+import { getClubBrandingAssets, getClubSettings } from "@/lib/club";
 import { seasonLabel } from "@/lib/sponsorship";
 import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
@@ -40,6 +40,9 @@ export default async function SponsorInvoicePage({
     getClubSettings(),
   ]);
   if (!payment || payment.term.sponsor.id !== sponsorId) notFound();
+  // Aparte del `Promise.all` de arriba: por debajo dispara varias queries de
+  // Storage propias (ver CLAUDE.md sobre concurrencia de queries en páginas).
+  const { logoUrl } = await getClubBrandingAssets();
 
   const sponsor = payment.term.sponsor;
   const amount = new Intl.NumberFormat(locale, {
@@ -67,11 +70,17 @@ export default async function SponsorInvoicePage({
       <PrintableSheet>
         {/* Cabecera: título + número/fecha de factura */}
         <div className="mb-8 flex items-start justify-between">
-          <div>
-            <h1 className="text-[11pt] font-semibold tracking-tight">{t("invoiceTitle")}</h1>
-            <p className="text-[8pt] text-muted-foreground">
-              {club?.legalName ?? "Areto"}
-            </p>
+          <div className="flex items-start gap-3">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="" className="h-[28pt] w-auto object-contain" />
+            ) : null}
+            <div>
+              <h1 className="text-[11pt] font-semibold tracking-tight">{t("invoiceTitle")}</h1>
+              <p className="text-[8pt] text-muted-foreground">
+                {club?.legalName ?? "Areto"}
+              </p>
+            </div>
           </div>
           <div className="text-right text-[8pt]">
             {payment.invoiceNumber ? (
