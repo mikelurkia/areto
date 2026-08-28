@@ -1,3 +1,5 @@
+import { StatusBadge } from "@/components/status-badge";
+import { TriangleAlertIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
@@ -13,6 +15,7 @@ import type { AdminUserRow } from "@/components/administracion/user-dialog";
 import { UserRowActions } from "@/components/administracion/user-row-actions";
 import type { PersonOption } from "@/components/administracion/user-person-combobox";
 import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -152,9 +155,12 @@ export default async function UsuariosPage({
       />
 
       {!isSupabaseAdminConfigured ? (
-        <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-          {t("adminApiNotConfiguredHint")}
-        </p>
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertDescription className="text-foreground">
+            {t("adminApiNotConfiguredHint")}
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <Table>
@@ -215,11 +221,11 @@ export default async function UsuariosPage({
               </TableCell>
               <TableCell priority="secondary">
                 {row.status === "disabled" ? (
-                  <Badge variant="destructive">{t("statusDisabled")}</Badge>
+                  <StatusBadge tone="danger" label={t("statusDisabled")} />
                 ) : row.pendingInvitation || row.status === "pending" ? (
-                  <Badge variant="outline">{t("statusPending")}</Badge>
+                  <StatusBadge tone="neutral" label={t("statusPending")} />
                 ) : (
-                  <Badge variant="secondary">{t("statusActive")}</Badge>
+                  <StatusBadge tone="positive" label={t("statusActive")} />
                 )}
               </TableCell>
               <TableCell priority="tertiary" nowrap className="text-muted-foreground">

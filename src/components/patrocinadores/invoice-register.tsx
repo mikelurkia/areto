@@ -119,7 +119,7 @@ export function InvoiceRegister({
 
       {filtered.length === 0 ? (
         <SectionPlaceholder
-          icon={ReceiptTextIcon}
+          size="compact"
           title={t("noInvoicesTitle")}
           description={t("noInvoicesDescription")}
         />

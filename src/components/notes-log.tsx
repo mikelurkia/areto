@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import type { NoteActionState } from "@/lib/entity-notes";
 import { SubmitButton } from "@/components/submit-button";
 import { SubmitIconButton } from "@/components/submit-icon-button";
+import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useActionResult, useActionToast } from "@/hooks/use-action-toast";
@@ -101,7 +102,7 @@ export function NotesLog({
       ) : null}
 
       {notes.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("noNotesDescription")}</p>
+        <SectionPlaceholder size="compact" title={t("noNotesDescription")} />
       ) : (
         <div className="flex flex-col gap-3">
           {notes.map((note) => (

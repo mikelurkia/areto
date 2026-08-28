@@ -32,6 +32,7 @@ import { AlertTile } from "@/components/dashboard/alert-tile";
 import { FixtureBoard } from "@/components/dashboard/fixture-board";
 import { PageHeader } from "@/components/page-header";
 import { AlertTilesSkeleton, CardSkeleton } from "@/components/skeletons";
+import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -176,7 +177,7 @@ async function ReviewCard() {
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("noReviewDescription")}</p>
+          <SectionPlaceholder size="compact" title={t("noReviewDescription")} />
         ) : (
           rows.map((row) => (
             <div key={row.key} className="flex flex-wrap items-center gap-2 text-sm">
@@ -230,7 +231,7 @@ async function FixtureBoardSection() {
           </Link>
         ) : null}
         {fixtures.byCategory.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("noFixturesDescription")}</p>
+          <SectionPlaceholder size="compact" title={t("noFixturesDescription")} />
         ) : (
           <FixtureBoard byCategory={fixtures.byCategory} />
         )}

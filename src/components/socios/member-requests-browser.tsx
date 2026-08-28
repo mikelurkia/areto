@@ -1,12 +1,12 @@
 "use client";
 
+import { StatusBadge } from "@/components/status-badge";
 import { useMemo, useState } from "react";
-import { InboxIcon, SearchIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
-import { STATUS_VARIANT, type RegistrationStatus } from "@/lib/registration-status";
-import { Badge } from "@/components/ui/badge";
+import { STATUS_TONE, type RegistrationStatus } from "@/lib/registration-status";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -101,7 +101,7 @@ export function MemberRequestsBrowser({
 
       {filtered.length === 0 ? (
         <SectionPlaceholder
-          icon={InboxIcon}
+          size="compact"
           title={t("noResultsTitle")}
           description={t("noResultsDescription")}
         />
@@ -148,7 +148,7 @@ export function MemberRequestsBrowser({
                   {r.createdAt}
                 </TableCell>
                 <TableCell priority="secondary">
-                  <Badge variant={STATUS_VARIANT[r.status]}>{t(`status.${r.status}`)}</Badge>
+                  <StatusBadge tone={STATUS_TONE[r.status]} label={t(`status.${r.status}`)} />
                 </TableCell>
                 {canManage ? (
                   <TableCell className="text-right">

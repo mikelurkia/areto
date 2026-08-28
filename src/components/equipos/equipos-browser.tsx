@@ -6,7 +6,6 @@ import {
   CheckIcon,
   DownloadIcon,
   SearchIcon,
-  ShieldHalf,
   TriangleAlertIcon,
   UserCheckIcon,
   UserIcon,
@@ -159,7 +158,7 @@ export function EquiposBrowser({
 
       {filtered.length === 0 ? (
         <SectionPlaceholder
-          icon={ShieldHalf}
+          size="compact"
           title={t("noResultsTitle")}
           description={t("noResultsDescription")}
         />

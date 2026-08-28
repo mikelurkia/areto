@@ -7,7 +7,6 @@ import {
   MessageCircleIcon,
   PhoneIcon,
   SearchIcon,
-  Users,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -484,7 +483,7 @@ export function PersonasBrowser({
 
       {total === 0 ? (
         <SectionPlaceholder
-          icon={Users}
+          size="compact"
           title={t("noResultsTitle")}
           description={t("noResultsDescription")}
         />
