@@ -286,13 +286,13 @@ export function SociosBrowser({
                       {s.firstName} {s.lastName}
                     </HoverPrefetchLink>
                   </TableCell>
-                  <TableCell className="text-muted-foreground tabular-nums">
+                  <TableCell nowrap className="text-muted-foreground tabular-nums">
                     {s.memberNumber ?? "—"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {s.email || s.phone || "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{s.joinedAt}</TableCell>
+                  <TableCell nowrap className="text-muted-foreground">{s.joinedAt}</TableCell>
                   {canManage ? (
                     <TableCell>
                       <div className="flex justify-end gap-1">

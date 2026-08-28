@@ -140,7 +140,7 @@ export function InvoiceRegister({
           <TableBody>
             {filtered.map((inv) => (
               <TableRow key={inv.id}>
-                <TableCell className="whitespace-nowrap">
+                <TableCell nowrap>
                   {inv.invoicedOn ?? "—"}
                 </TableCell>
                 <TableCell className="font-medium">{inv.invoiceNumber}</TableCell>
@@ -155,7 +155,7 @@ export function InvoiceRegister({
                 <TableCell className="text-muted-foreground">
                   {inv.concept}
                 </TableCell>
-                <TableCell className="text-right font-medium">
+                <TableCell nowrap className="text-right font-medium">
                   {formatAmount(inv.amountCents)}
                 </TableCell>
                 <TableCell className="flex justify-end print:hidden">
@@ -181,7 +181,7 @@ export function InvoiceRegister({
               <TableCell colSpan={4} className="font-medium">
                 {t("totalInvoicedLabel")}
               </TableCell>
-              <TableCell className="text-right font-semibold">
+              <TableCell nowrap className="text-right font-semibold">
                 {formatAmount(totalCents)}
               </TableCell>
               <TableCell className="print:hidden" />

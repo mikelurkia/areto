@@ -106,10 +106,10 @@ export default async function TeamRosterSheetPage({
         ) : (
           /* Tabla de documento, no de pantalla: `table-fixed` con anchos por
              columna (el reparto automático daría de sí la columna del nombre a
-             costa de las demás) y sin el `whitespace-nowrap` que `ui/table.tsx`
-             pone por defecto, que es justo lo que ensancha la tabla más allá de
-             la hoja y saca el scroll horizontal. */
-          <Table className="table-fixed text-[8pt] [&_td]:px-[3pt] [&_td]:py-[1.5pt] [&_th]:px-[3pt] [&_th]:py-[1.5pt] [&_td]:whitespace-normal [&_th]:break-words [&_th]:whitespace-normal">
+             costa de las demás). Las celdas rompen línea salvo las atómicas —DNI y
+             fechas—, que llevan `nowrap`: lo contrario ensancha la tabla más
+             allá de la hoja y saca el scroll horizontal. */
+          <Table className="table-fixed text-[8pt] [&_td]:px-[3pt] [&_td]:py-[1.5pt] [&_th]:px-[3pt] [&_th]:py-[1.5pt] [&_th]:break-words">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[8%]">{t("colJersey")}</TableHead>
@@ -123,7 +123,7 @@ export default async function TeamRosterSheetPage({
             <TableBody>
               {ordered.map((m) => (
                 <TableRow key={m.id}>
-                  <TableCell className="align-top tabular-nums">
+                  <TableCell nowrap className="align-top tabular-nums">
                     {m.role === "player" ? (m.jerseyNumber ?? "—") : "—"}
                   </TableCell>
                   <TableCell className="align-top font-medium">
@@ -131,13 +131,13 @@ export default async function TeamRosterSheetPage({
                     {m.isCaptain ? ` (${t("captainShort")})` : ""}
                     {m.positions.includes("portero") ? ` (${t("isGoalkeeperLabel")})` : ""}
                   </TableCell>
-                  <TableCell className="align-top">{m.person.nationalId ?? "—"}</TableCell>
-                  <TableCell className="align-top">{m.person.birthDate ?? "—"}</TableCell>
+                  <TableCell nowrap className="align-top">{m.person.nationalId ?? "—"}</TableCell>
+                  <TableCell nowrap className="align-top">{m.person.birthDate ?? "—"}</TableCell>
                   <TableCell className="align-top">
                     {t(`roleOption.${m.role}`)}
                     {m.position ? ` · ${m.position}` : ""}
                   </TableCell>
-                  <TableCell className="align-top">
+                  <TableCell nowrap className="align-top">
                     {m.person.medicalCertUntil ?? "—"}
                   </TableCell>
                 </TableRow>

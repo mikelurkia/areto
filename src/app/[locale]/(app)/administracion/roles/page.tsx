@@ -142,10 +142,10 @@ export default async function RolesPage({
                     <TableCell className="text-muted-foreground">
                       {role.description ?? "—"}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell nowrap className="text-right tabular-nums">
                       {role.userAssignments.length}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                    <TableCell nowrap className="text-right tabular-nums text-muted-foreground">
                       {t("permissionCount", {
                         count: role.permissions.length,
                         total: PERMISSIONS.length,

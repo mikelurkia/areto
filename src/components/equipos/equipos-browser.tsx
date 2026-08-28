@@ -191,7 +191,7 @@ export function EquiposBrowser({
                     {team.category ? t(`category.${team.category}`) : "—"}
                     {team.gender ? ` · ${t(`gender.${team.gender}`)}` : ""}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell nowrap>
                     {team.playerFeeCents !== null
                       ? t(`feePeriodShort.${team.playerFeePeriod}`, {
                           amount: formatCents(team.playerFeeCents, locale),

@@ -265,6 +265,18 @@
   }
 
   /*
+   * Las columnas de apoyo se esconden en pantallas estrechas con `hidden`
+   * (`display: none`). En papel eso no vale: los media queries de anchura se
+   * evalúan contra la caja de la página, así que en apaisado o en otro motor
+   * podría imprimirse un acta sin columnas. Con `data-priority` la vuelta de
+   * las columnas no depende de la anchura: en impresión están siempre.
+   */
+  [data-slot="table-head"][data-priority],
+  [data-slot="table-cell"][data-priority] {
+    display: table-cell !important;
+  }
+
+  /*
    * `Card` se delimita con `ring-1` (una sombra, no un borde) y los navegadores
    * no imprimen sombras: en papel la caja desaparecía y el contenido quedaba
    * suelto. Se cambia por un borde real, que sí se imprime.

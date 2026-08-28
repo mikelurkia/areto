@@ -4,6 +4,30 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Prioridad de una columna en pantallas estrechas. La tabla no se transforma
+ * en tarjetas: simplemente esconde las columnas de apoyo, que vuelven al
+ * ensanchar la ventana y —por la regla de `@media print` de `globals.css`—
+ * siempre al imprimir, sea cual sea el tamaño del papel.
+ */
+type TablePriority = "primary" | "secondary" | "tertiary"
+
+const priorityClasses: Record<TablePriority, string> = {
+  primary: "",
+  secondary: "hidden md:table-cell",
+  tertiary: "hidden lg:table-cell",
+}
+
+/**
+ * `nowrap` es opt-in: solo para valores atómicos que se leen mal partidos
+ * (fechas, importes, documentos de identidad). Por defecto el texto rompe
+ * línea, que es lo que permite que una tabla quepa en un móvil.
+ */
+type TableCellLayoutProps = {
+  priority?: TablePriority
+  nowrap?: boolean
+}
+
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
@@ -65,12 +89,20 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   )
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+function TableHead({
+  className,
+  priority,
+  nowrap,
+  ...props
+}: React.ComponentProps<"th"> & TableCellLayoutProps) {
   return (
     <th
       data-slot="table-head"
+      data-priority={priority}
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        "h-10 px-2 text-left align-middle font-medium text-foreground [&:has([role=checkbox])]:pr-0",
+        nowrap && "whitespace-nowrap",
+        priority && priorityClasses[priority],
         className
       )}
       {...props}
@@ -78,12 +110,20 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   )
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+function TableCell({
+  className,
+  priority,
+  nowrap,
+  ...props
+}: React.ComponentProps<"td"> & TableCellLayoutProps) {
   return (
     <td
       data-slot="table-cell"
+      data-priority={priority}
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "p-2 align-middle [&:has([role=checkbox])]:pr-0",
+        nowrap && "whitespace-nowrap",
+        priority && priorityClasses[priority],
         className
       )}
       {...props}
@@ -114,3 +154,5 @@ export {
   TableCell,
   TableCaption,
 }
+
+export type { TablePriority }

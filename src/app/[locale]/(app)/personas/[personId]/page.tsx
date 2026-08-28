@@ -1139,7 +1139,7 @@ export default async function PersonDetailPage({
                         {tInscripciones(`status.${r.status}` as "status.pending")}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell nowrap className="text-muted-foreground">
                       {formatDateTime(r.createdAt, locale)}
                     </TableCell>
                     <TableCell className="text-right">
