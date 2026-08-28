@@ -12,6 +12,7 @@ import {
   type GuardianOption,
 } from "@/components/personas/guardian-picker";
 import { SubmitButton } from "@/components/submit-button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -391,11 +392,11 @@ export function PersonDialog(props: PersonDialogProps) {
               </Field>
 
               {pendingCandidates && pendingCandidates.length > 0 ? (
-                <div className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
-                  <p className="text-sm font-medium">{t("duplicateCandidatesTitle")}</p>
-                  <p className="text-sm text-muted-foreground">
+                <Alert variant="warning" className="gap-2">
+                  <AlertTitle>{t("duplicateCandidatesTitle")}</AlertTitle>
+                  <AlertDescription>
                     {t("duplicateCandidatesDescription")}
-                  </p>
+                  </AlertDescription>
                   <MatchSelect
                     name="linkPersonId"
                     candidates={pendingCandidates}
@@ -404,7 +405,7 @@ export function PersonDialog(props: PersonDialogProps) {
                     diffFields={PERSON_MATCH_DIFF_FIELDS}
                     keepPrefix="person"
                   />
-                </div>
+                </Alert>
               ) : null}
             </FieldGroup>
           </div>

@@ -117,7 +117,7 @@ async function AlertsGrid({ canSeeMedical }: { canSeeMedical: boolean }) {
   if (tiles.length === 0) {
     return (
       <Card className="flex-row items-center gap-3 px-(--card-spacing)">
-        <CheckCircle2Icon className="size-6 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+        <CheckCircle2Icon className="size-6 shrink-0 text-success" aria-hidden />
         <div className="flex flex-col">
           <span className="font-medium">{t("allClearTitle")}</span>
           <span className="text-sm text-muted-foreground">{t("allClearDescription")}</span>

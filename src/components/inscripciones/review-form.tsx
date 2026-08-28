@@ -17,6 +17,7 @@ import {
   type GuardianData,
 } from "@/components/inscripciones/guardian-review-fields";
 import { MaskedIbanInput } from "@/components/masked-iban";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -260,14 +261,18 @@ export function ReviewForm({
             <input type="hidden" name="teamId" value={teamId} />
             <p className="text-xs text-muted-foreground">{t("teamOptionalHint")}</p>
             {teamAgeMismatch && selectedTeam ? (
-              <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
-                <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
-                {t("teamAgeMismatchWarning", {
-                  min: selectedTeam.minBirthYear ?? "",
-                  max: selectedTeam.maxBirthYear ?? "",
-                  year: registration.birthDate ? registration.birthDate.slice(0, 4) : "",
-                })}
-              </p>
+              <Alert variant="warning">
+                <TriangleAlertIcon className="size-3.5" />
+                <AlertDescription className="text-xs text-foreground">
+                  {t("teamAgeMismatchWarning", {
+                    min: selectedTeam.minBirthYear ?? "",
+                    max: selectedTeam.maxBirthYear ?? "",
+                    year: registration.birthDate
+                      ? registration.birthDate.slice(0, 4)
+                      : "",
+                  })}
+                </AlertDescription>
+              </Alert>
             ) : null}
           </Field>
 

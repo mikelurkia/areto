@@ -5,6 +5,7 @@ import { Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { deleteRegistration } from "@/app/[locale]/(app)/inscripciones/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,12 +56,10 @@ export function DeleteRegistrationDialog({
           <DialogTitle>{t("deleteRegistrationTitle", { name: fullName })}</DialogTitle>
           <DialogDescription>{t("deleteRegistrationDescription")}</DialogDescription>
         </DialogHeader>
-        <form action={action}>
+        <form action={action} className="flex flex-col gap-3">
           <input type="hidden" name="id" value={registrationId} />
           {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
-          {state.error ? (
-            <p className="mb-3 text-sm text-destructive">{state.error}</p>
-          ) : null}
+          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

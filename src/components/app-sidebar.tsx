@@ -228,8 +228,9 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                     >
                       {info ? (
                         // Chip oscuro: el logo gipuzkoano es blanco (invisible
-                        // sobre fondo claro), así ambos se ven bien.
-                        <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded bg-neutral-900">
+                        // sobre fondo claro), así ambos se ven bien. `--secondary`
+                        // es el único token oscuro en los dos temas.
+                        <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded bg-secondary">
                           <Image
                             src={info.src}
                             alt=""

@@ -21,6 +21,7 @@ import {
 import type { RoleOption } from "@/components/administracion/role-dialog";
 import type { PersonOption } from "@/components/administracion/user-person-combobox";
 import { UserDialog, type AdminUserRow } from "@/components/administracion/user-dialog";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -179,12 +180,10 @@ function UserStatusDialog({ user }: { user: AdminUserRow }) {
             {activate ? t("reactivateDescription") : t("deactivateDescription")}
           </DialogDescription>
         </DialogHeader>
-        <form action={action}>
+        <form action={action} className="flex flex-col gap-3">
           <input type="hidden" name="id" value={user.id} />
           <input type="hidden" name="activate" value={String(activate)} />
-          {state.error ? (
-            <p className="mb-3 text-sm text-destructive">{state.error}</p>
-          ) : null}
+          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}
@@ -214,11 +213,9 @@ function DeleteUserDialog({ user }: { user: AdminUserRow }) {
           <DialogTitle>{t("deleteUserTitle", { email: user.email })}</DialogTitle>
           <DialogDescription>{t("deleteUserDescription")}</DialogDescription>
         </DialogHeader>
-        <form action={action}>
+        <form action={action} className="flex flex-col gap-3">
           <input type="hidden" name="id" value={user.id} />
-          {state.error ? (
-            <p className="mb-3 text-sm text-destructive">{state.error}</p>
-          ) : null}
+          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}
