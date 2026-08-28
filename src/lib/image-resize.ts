@@ -33,3 +33,30 @@ export async function resizeImageToWebp(
     .toBuffer();
   return new File([resized], file.name, { type: "image/webp" });
 }
+
+const STAMP_MAX_DIMENSION_PX = 500;
+
+/**
+ * Redimensiona (sin recortar ni ampliar) y reexporta a PNG el sello y la
+ * firma del club. A diferencia de `resizeImageToWebp`, conserva el canal
+ * alfa sin pérdida: estas dos imágenes se estampan con `pdf-lib`
+ * (`embedPng`, que no admite WebP) sobre el parte de lesión, y necesitan
+ * fondo transparente para no tapar el impreso con un rectángulo de color.
+ */
+export async function resizeImageToPng(
+  file: File,
+  maxDimension = STAMP_MAX_DIMENSION_PX,
+): Promise<File> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const resized = await sharp(buffer)
+    .rotate()
+    .resize({
+      width: maxDimension,
+      height: maxDimension,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .png()
+    .toBuffer();
+  return new File([resized], file.name, { type: "image/png" });
+}

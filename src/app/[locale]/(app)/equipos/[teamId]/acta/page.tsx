@@ -6,7 +6,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { db } from "@/db";
 import { memberships, teams } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
-import { getClubSettings } from "@/lib/club";
+import { getClubBrandingAssets, getClubSettings } from "@/lib/club";
 import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
 import { PrintableSheet } from "@/components/printable-sheet";
@@ -61,6 +61,9 @@ export default async function TeamRosterSheetPage({
     getClubSettings(),
   ]);
   if (!team) notFound();
+  // Aparte del `Promise.all` de arriba: por debajo dispara varias queries de
+  // Storage propias (ver CLAUDE.md sobre concurrencia de queries en páginas).
+  const branding = await getClubBrandingAssets();
 
   // Jugadores primero (por dorsal), luego cuerpo técnico.
   const players = teamMemberships.filter((m) => m.role === "player");
@@ -77,11 +80,17 @@ export default async function TeamRosterSheetPage({
       <PrintableSheet>
         {/* Cabecera: club + equipo + datos federativos */}
         <div className="flex items-start justify-between border-b pb-[9pt]">
-          <div>
-            <h1 className="text-[11pt] font-semibold tracking-tight">
-              {t("rosterSheetTitle")}
-            </h1>
-            <p className="text-[8pt] text-muted-foreground">{club?.legalName ?? "Areto"}</p>
+          <div className="flex items-start gap-2">
+            {branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={branding.logoUrl} alt="" className="h-[24pt] w-auto object-contain" />
+            ) : null}
+            <div>
+              <h1 className="text-[11pt] font-semibold tracking-tight">
+                {t("rosterSheetTitle")}
+              </h1>
+              <p className="text-[8pt] text-muted-foreground">{club?.legalName ?? "Areto"}</p>
+            </div>
           </div>
           <div className="text-right text-[8pt]">
             <p className="font-medium">{team.name}</p>

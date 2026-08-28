@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 
-import { updateClubSettings, type ClubState } from "@/app/[locale]/(app)/club/actions";
+import { updateClubIdentity, type ClubState } from "@/app/[locale]/(app)/club/actions";
 import { useIbanField } from "@/hooks/use-iban-field";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -12,23 +12,18 @@ import { useActionToast } from "@/hooks/use-action-toast";
 
 const initialState: ClubState = {};
 
-type ClubSettingsValues = {
+type ClubIdentityValues = {
   legalName: string | null;
   taxId: string | null;
   address: string | null;
   email: string | null;
   phone: string | null;
   iban: string | null;
-  federationCode: string | null;
-  federationDelegation: string | null;
-  signatoryName: string | null;
-  signatoryNationalId: string | null;
-  memberAnnualFeeCents: number;
 };
 
-export function ClubSettingsForm({ settings }: { settings: ClubSettingsValues | null }) {
+export function ClubIdentityForm({ settings }: { settings: ClubIdentityValues | null }) {
   const t = useTranslations("Club");
-  const [state, action] = useActionState(updateClubSettings, initialState);
+  const [state, action] = useActionState(updateClubIdentity, initialState);
   useActionToast(state);
 
   // `key` fuerza el remount de los inputs no controlados cuando cambian los
@@ -82,64 +77,6 @@ export function ClubSettingsForm({ settings }: { settings: ClubSettingsValues | 
             <Input id="club-phone" name="phone" defaultValue={settings?.phone ?? ""} />
           </Field>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel htmlFor="club-federationCode">
-              {t("clubFederationCodeLabel")}
-            </FieldLabel>
-            <Input
-              id="club-federationCode"
-              name="federationCode"
-              defaultValue={settings?.federationCode ?? "2022"}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="club-federationDelegation">
-              {t("clubFederationDelegationLabel")}
-            </FieldLabel>
-            <Input
-              id="club-federationDelegation"
-              name="federationDelegation"
-              defaultValue={settings?.federationDelegation ?? ""}
-              placeholder={t("clubFederationDelegationPlaceholder")}
-            />
-          </Field>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel htmlFor="club-signatoryName">
-              {t("clubSignatoryNameLabel")}
-            </FieldLabel>
-            <Input
-              id="club-signatoryName"
-              name="signatoryName"
-              defaultValue={settings?.signatoryName ?? ""}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="club-signatoryNationalId">
-              {t("clubSignatoryNationalIdLabel")}
-            </FieldLabel>
-            <Input
-              id="club-signatoryNationalId"
-              name="signatoryNationalId"
-              defaultValue={settings?.signatoryNationalId ?? ""}
-            />
-          </Field>
-        </div>
-        <Field>
-          <FieldLabel htmlFor="club-memberAnnualFee">
-            {t("clubMemberAnnualFeeLabel")}
-          </FieldLabel>
-          <Input
-            id="club-memberAnnualFee"
-            name="memberAnnualFee"
-            type="number"
-            step="0.01"
-            inputMode="decimal"
-            defaultValue={String((settings?.memberAnnualFeeCents ?? 2000) / 100)}
-          />
-        </Field>
         {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
         <SubmitButton className="self-start">{t("saveClubData")}</SubmitButton>
       </FieldGroup>

@@ -1016,9 +1016,8 @@ export const clubSettings = pgTable("club_settings", {
   // aprobar, no al inscribirse.
   playerRegistrationOpen: boolean("player_registration_open").notNull().default(false),
   memberRegistrationOpen: boolean("member_registration_open").notNull().default(false),
-  // Cuota anual de socio. Sin pantalla propia todavía en Ajustes del club
-  // (valor por defecto 2000 = 20€); el campo ya existe para no tener que
-  // volver a tocar el formulario público el día que se haga editable.
+  // Cuota anual de socio (valor por defecto 2000 = 20€). Editable en la
+  // pestaña "Inscripciones" de /club, junto a los dos interruptores de arriba.
   memberAnnualFeeCents: integer("member_annual_fee_cents").notNull().default(2000),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }).enableRLS();

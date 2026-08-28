@@ -8,7 +8,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { db } from "@/db";
 import { persons, seasons } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
-import { getClubSettings } from "@/lib/club";
+import { getClubBrandingAssets, getClubSettings } from "@/lib/club";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getSignedUrl } from "@/lib/supabase/storage";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -56,6 +56,9 @@ export default async function MemberCardPage({
     getClubSettings(),
   ]);
   if (!person) notFound();
+  // Aparte del `Promise.all` de arriba: por debajo dispara varias queries de
+  // Storage propias (ver CLAUDE.md sobre concurrencia de queries en páginas).
+  const { logoUrl } = await getClubBrandingAssets();
 
   const fullName = `${person.firstName} ${person.lastName}`;
   const isMember = person.clubMember?.status === "active";
@@ -105,9 +108,15 @@ export default async function MemberCardPage({
            el fondo de color de la cabecera, que es parte de la identidad. */
         <div className="mx-auto w-full max-w-sm overflow-hidden rounded-xl border shadow-sm print:[print-color-adjust:exact]">
           {/* Cabecera del club */}
-          <div className="bg-primary px-4 py-2 text-primary-foreground">
-            <p className="truncate text-sm font-semibold">{club?.legalName ?? "Areto"}</p>
-            <p className="text-xs opacity-80">{t("memberCardTitle")}</p>
+          <div className="flex items-center gap-2 bg-primary px-4 py-2 text-primary-foreground">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="" className="size-8 shrink-0 object-contain" />
+            ) : null}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{club?.legalName ?? "Areto"}</p>
+              <p className="text-xs opacity-80">{t("memberCardTitle")}</p>
+            </div>
           </div>
           <div className="flex items-center gap-4 p-4">
             <Avatar size="lg">
