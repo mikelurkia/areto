@@ -17,7 +17,7 @@ import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-catego
 import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
 import { PrintableSheet } from "@/components/printable-sheet";
-import { TableSkeleton } from "@/components/skeletons";
+import { PrintableSheetBodySkeleton } from "@/components/skeletons";
 import {
   Table,
   TableBody,
@@ -241,7 +241,8 @@ export default async function MedicoListadoPage({
       <Suspense
         fallback={
           <PrintableSheet>
-            <TableSkeleton columns={["w-40", "w-20", "w-20", "w-24", "w-16", "w-20"]} />
+            {/* Mismo relleno que el `loading.tsx` de la ruta: un parpadeo, no dos. */}
+            <PrintableSheetBodySkeleton lines={16} />
           </PrintableSheet>
         }
       >

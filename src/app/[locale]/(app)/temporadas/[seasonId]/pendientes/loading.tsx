@@ -14,6 +14,9 @@ export default function Loading() {
           "w-16",
         ]}
         rows={6}
+        // El último hueco es el del recordatorio (WhatsApp y correo), que no va
+        // alineado a la derecha como la columna de acciones de los listados.
+        actions={false}
       />
     </div>
   );

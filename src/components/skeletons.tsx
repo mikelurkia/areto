@@ -151,6 +151,36 @@ export function ProfileHeaderSkeleton({
   );
 }
 
+/**
+ * Etiqueta de sección en mayúsculas (`SectionHeading`), con su acción opcional
+ * a la derecha. Las fichas y el panel médico separan bloques con ella.
+ */
+export function SectionHeadingSkeleton({ action = false }: { action?: boolean }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4" aria-hidden>
+      <Skeleton className="h-3 w-32" />
+      {action ? <Skeleton className="h-8 w-28" /> : null}
+    </div>
+  );
+}
+
+/**
+ * Sub-navegación de sección (la de administración): enlaces sobre una línea
+ * inferior a todo el ancho. No es la misma geometría que `TabsSkeleton`, que no
+ * lleva borde.
+ */
+export function SectionNavSkeleton({ widths }: { widths: string[] }) {
+  return (
+    <div className="flex gap-1 border-b" aria-hidden>
+      {widths.map((width, i) => (
+        <div key={i} className="px-3 py-2">
+          <Skeleton className={`h-5 ${width}`} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Barra de pestañas (variante `line`, la que usan las fichas). */
 export function TabsSkeleton({ widths }: { widths: string[] }) {
   return (
@@ -205,16 +235,24 @@ export function TableSkeleton({
   rows = 8,
   lines = 1,
   leading,
+  actions = true,
 }: {
   columns: TableSkeletonColumn[];
   rows?: number;
   lines?: 1 | 2;
   /** Columna estrecha inicial: casilla de selección o foto de la fila. */
   leading?: "checkbox" | "avatar";
+  /**
+   * Si la última columna es la de acciones: se alinea a la derecha y lleva dos
+   * botones de icono. Hay tablas que no la tienen (el panel médico), y darla
+   * por supuesta descuadraba su esqueleto.
+   */
+  actions?: boolean;
 }) {
   const cols = columns.map((column) =>
     typeof column === "string" ? { width: column, priority: undefined } : column
   );
+  const actionsIndex = actions ? cols.length - 1 : -1;
   return (
     <Table aria-hidden>
       <TableHeader>
@@ -228,9 +266,9 @@ export function TableSkeleton({
             <TableHead
               key={i}
               priority={priority}
-              className={i === cols.length - 1 ? "text-right" : undefined}
+              className={i === actionsIndex ? "text-right" : undefined}
             >
-              <Skeleton className={`h-4 ${width} ${i === cols.length - 1 ? "ml-auto" : ""}`} />
+              <Skeleton className={`h-4 ${width} ${i === actionsIndex ? "ml-auto" : ""}`} />
             </TableHead>
           ))}
         </TableRow>
@@ -247,7 +285,7 @@ export function TableSkeleton({
             ) : null}
             {cols.map(({ width, priority }, i) => (
               <TableCell key={i} priority={priority}>
-                {i === cols.length - 1 ? (
+                {i === actionsIndex ? (
                   <div className="flex justify-end gap-1">
                     <Skeleton className="size-7 rounded-md" />
                     <Skeleton className="size-7 rounded-md" />
@@ -347,21 +385,113 @@ export function AlertTilesSkeleton({ tiles = 4 }: { tiles?: number }) {
   );
 }
 
-export function CardSkeleton({ lines = 3 }: { lines?: number }) {
+export function CardSkeleton({
+  lines = 3,
+  fields = false,
+}: {
+  lines?: number;
+  /**
+   * Tarjeta de formulario (ajustes, club): cada línea es una etiqueta con su
+   * campo debajo, en vez de una fila de dato con etiqueta de estado.
+   */
+  fields?: boolean;
+}) {
   return (
     <Card aria-hidden>
       <CardHeader>
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-3 w-64" />
       </CardHeader>
-      <div className="flex flex-col gap-3 px-4">
-        {Array.from({ length: lines }, (_, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <Skeleton className="h-4 flex-1" />
-            <Skeleton className="h-5 w-24 rounded-full" />
-          </div>
-        ))}
+      <div className={`flex flex-col px-4 ${fields ? "gap-4" : "gap-3"}`}>
+        {Array.from({ length: lines }, (_, i) =>
+          fields ? (
+            <div key={i} className="flex flex-col gap-1.5">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          ) : (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-5 w-24 rounded-full" />
+            </div>
+          )
+        )}
       </div>
     </Card>
+  );
+}
+
+/**
+ * Hueco de una sección vacía (`SectionPlaceholder`): caja de trazo discontinuo
+ * con icono, título, descripción y acción. Las pantallas que hoy solo muestran
+ * un "próximamente" cargan esto, no una tarjeta.
+ */
+export function SectionPlaceholderSkeleton({ action = false }: { action?: boolean }) {
+  return (
+    <div
+      className="flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-6"
+      aria-hidden
+    >
+      <div className="flex max-w-sm flex-col items-center gap-2">
+        <Skeleton className="mb-2 size-8 rounded-lg" />
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-4 w-64" />
+      </div>
+      {action ? <Skeleton className="h-8 w-28" /> : null}
+    </div>
+  );
+}
+
+/**
+ * Contenido de una hoja imprimible: la cabecera del documento y unas líneas.
+ * Se exporta aparte para las páginas que ya pintan su `PrintableSheet` real y
+ * solo suspenden el contenido: así el `loading.tsx` de la ruta y el `<Suspense>`
+ * interno rellenan la hoja igual y no hay dos parpadeos distintos.
+ */
+export function PrintableSheetBodySkeleton({ lines = 10 }: { lines?: number }) {
+  return (
+    <div className="flex flex-col gap-[9pt]" aria-hidden>
+      <div className="flex items-start justify-between gap-4 border-b pb-4">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-4 w-56" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-3">
+        {Array.from({ length: lines }, (_, i) => (
+          <Skeleton key={i} className="h-3 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Documento imprimible sobre `PrintableSheet`: la barra de "volver + imprimir" y
+ * la hoja A4 (mismo lienzo, mismos 210mm) con unas líneas de contenido.
+ *
+ * Deliberadamente sobrio: son páginas que se abren para imprimir, y un
+ * esqueleto de tabla parpadeando molesta más de lo que informa. Sin su propio
+ * `loading.tsx` caían en el fallback de tarjetas del grupo `(app)`, que era
+ * justo eso.
+ */
+export function PrintableSheetSkeleton({ lines = 10 }: { lines?: number }) {
+  return (
+    <div className="flex flex-1 flex-col gap-6" aria-hidden>
+      <div className="flex items-center justify-between">
+        <BackLinkSkeleton />
+        <Skeleton className="h-8 w-28" />
+      </div>
+      {/* Mismo lienzo y misma hoja que `PrintableSheet`, para que no salte. */}
+      <div className="-mx-4 flex justify-center overflow-x-auto bg-muted/40 p-6 md:-mx-6">
+        <div className="flex min-h-[297mm] w-[210mm] shrink-0 flex-col gap-[9pt] p-[14mm] shadow-md">
+          <PrintableSheetBodySkeleton lines={lines} />
+        </div>
+      </div>
+    </div>
   );
 }
