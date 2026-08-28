@@ -169,7 +169,7 @@ export function RegistrationsBrowser({
                     {r.firstName} {r.lastName}
                   </HoverPrefetchLink>
                 </TableCell>
-                <TableCell className="text-muted-foreground tabular-nums">
+                <TableCell nowrap className="text-muted-foreground tabular-nums">
                   {r.nationalId ?? "—"}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
@@ -183,7 +183,7 @@ export function RegistrationsBrowser({
                     {t("photosCount", { count: r.photosCount })}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{r.createdAt}</TableCell>
+                <TableCell nowrap className="text-muted-foreground">{r.createdAt}</TableCell>
                 <TableCell>
                   <Badge variant={STATUS_VARIANT[r.status]}>{t(`status.${r.status}`)}</Badge>
                 </TableCell>

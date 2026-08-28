@@ -173,10 +173,10 @@ async function MedicalListDocument({
       ) : (
         /* Tabla de documento, no de pantalla: `table-fixed` con anchos por
            columna (con siete columnas, el reparto automático se lo comen
-           «nombre» y «equipos», que concatena varios) y sin el
-           `whitespace-nowrap` que `ui/table.tsx` pone por defecto, que es lo que
+           «nombre» y «equipos», que concatena varios). Las celdas rompen línea
+           salvo las atómicas —DNI y fechas—, que llevan `nowrap`: lo contrario
            ensancha la tabla más allá de la hoja y saca el scroll horizontal. */
-        <Table className="table-fixed text-[8pt] [&_td]:px-[3pt] [&_td]:py-[1.5pt] [&_th]:px-[3pt] [&_th]:py-[1.5pt] [&_td]:whitespace-normal [&_th]:break-words [&_th]:whitespace-normal">
+        <Table className="table-fixed text-[8pt] [&_td]:px-[3pt] [&_td]:py-[1.5pt] [&_th]:px-[3pt] [&_th]:py-[1.5pt] [&_th]:break-words">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[25%]">{t("colListName")}</TableHead>
@@ -193,8 +193,8 @@ async function MedicalListDocument({
                 <TableCell className="align-top font-medium">
                   {row.lastName}, {row.firstName}
                 </TableCell>
-                <TableCell className="align-top">{row.nationalId ?? EMPTY}</TableCell>
-                <TableCell className="align-top">{fmtDate(row.birthDate)}</TableCell>
+                <TableCell nowrap className="align-top">{row.nationalId ?? EMPTY}</TableCell>
+                <TableCell nowrap className="align-top">{fmtDate(row.birthDate)}</TableCell>
                 <TableCell className="align-top">
                   {row.teams.map((tm) => tm.name).join(" / ")}
                 </TableCell>
@@ -203,7 +203,7 @@ async function MedicalListDocument({
                     .map((role) => tEquipos(`roleOption.${role}`))
                     .join(" / ")}
                 </TableCell>
-                <TableCell className="align-top">{fmtDate(row.medicalCertUntil)}</TableCell>
+                <TableCell nowrap className="align-top">{fmtDate(row.medicalCertUntil)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -288,7 +288,7 @@ export function SponsorsBrowser({
                         : null}
                     </div>
                   </TableCell>
-                  <TableCell>{formatAmount(s.currentTerm?.totalAmountCents ?? null)}</TableCell>
+                  <TableCell nowrap>{formatAmount(s.currentTerm?.totalAmountCents ?? null)}</TableCell>
                   <TableCell>
                     {s.currentTerm
                       ? `${s.currentTerm.startsOn ?? "—"} — ${

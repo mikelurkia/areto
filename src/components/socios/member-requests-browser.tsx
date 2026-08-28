@@ -127,13 +127,13 @@ export function MemberRequestsBrowser({
                     {r.firstName} {r.lastName}
                   </HoverPrefetchLink>
                 </TableCell>
-                <TableCell className="text-muted-foreground tabular-nums">
+                <TableCell nowrap className="text-muted-foreground tabular-nums">
                   {r.nationalId ?? "—"}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {r.email || r.phone || "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground">{r.createdAt}</TableCell>
+                <TableCell nowrap className="text-muted-foreground">{r.createdAt}</TableCell>
                 <TableCell>
                   <Badge variant={STATUS_VARIANT[r.status]}>{t(`status.${r.status}`)}</Badge>
                 </TableCell>

@@ -553,15 +553,15 @@ export default async function SponsorDetailPage({
                             <TableBody>
                               {term.payments.map((payment) => (
                                 <TableRow key={payment.id}>
-                                  <TableCell className="font-medium">
+                                  <TableCell nowrap className="font-medium">
                                     {payment.year
                                       ? seasonLabel(payment.year)
                                       : "—"}
                                   </TableCell>
-                                  <TableCell className="font-medium">
+                                  <TableCell nowrap className="font-medium">
                                     {formatAmount(payment.amountCents)}
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell nowrap>
                                     {payment.dueDate ?? "—"}
                                   </TableCell>
                                   <TableCell>
@@ -573,7 +573,7 @@ export default async function SponsorDetailPage({
                                       {t(`paymentStatus.${payment.status}`)}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="text-muted-foreground">
+                                  <TableCell nowrap className="text-muted-foreground">
                                     {payment.paidOn ?? "—"}
                                     {payment.method ? (
                                       <span className="block text-xs">

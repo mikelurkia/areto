@@ -222,7 +222,7 @@ export default async function UsuariosPage({
                   <Badge variant="secondary">{t("statusActive")}</Badge>
                 )}
               </TableCell>
-              <TableCell className="text-muted-foreground">
+              <TableCell nowrap className="text-muted-foreground">
                 {row.lastSignInAt
                   ? dateFmt.format(new Date(row.lastSignInAt))
                   : "—"}

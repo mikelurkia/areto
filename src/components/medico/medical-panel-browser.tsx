@@ -366,7 +366,7 @@ export function MedicalPanelBrowser({
             <TableBody>
               {filteredInjuryRows.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell className="font-medium">{row.occurredOn}</TableCell>
+                  <TableCell nowrap className="font-medium">{row.occurredOn}</TableCell>
                   <TableCell>
                     <HoverPrefetchLink
                       href={`/personas/${row.personId}?tab=medico`}

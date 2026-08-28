@@ -564,7 +564,7 @@ export function PersonasBrowser({
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground tabular-nums">
+                    <TableCell nowrap className="text-muted-foreground tabular-nums">
                       {person.nationalId ?? "—"}
                     </TableCell>
                     <TableCell>
