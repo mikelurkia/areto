@@ -13,6 +13,7 @@ import {
   DOCUMENT_TEMPLATES_BUCKET,
   INJURY_REPORT_TEMPLATE_PATH,
 } from "@/lib/injury-report-pdf";
+import { readAmountCents } from "@/lib/money";
 import { REGISTRATION_AVAILABILITY_TAG } from "@/lib/registration-settings";
 import { uploadFile } from "@/lib/supabase/storage";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
@@ -39,6 +40,11 @@ export async function updateClubSettings(
     return { error: t("clubIbanInvalid") };
   }
 
+  const memberAnnualFeeCents = readAmountCents(formData.get("memberAnnualFee"));
+  if (memberAnnualFeeCents === null || memberAnnualFeeCents < 0) {
+    return { error: t("clubMemberAnnualFeeInvalid") };
+  }
+
   const values = {
     legalName: String(formData.get("legalName") ?? "").trim() || null,
     taxId: String(formData.get("taxId") ?? "").trim() || null,
@@ -52,6 +58,7 @@ export async function updateClubSettings(
     signatoryName: String(formData.get("signatoryName") ?? "").trim() || null,
     signatoryNationalId:
       String(formData.get("signatoryNationalId") ?? "").trim() || null,
+    memberAnnualFeeCents,
     updatedAt: new Date(),
   };
 
@@ -66,6 +73,7 @@ export async function updateClubSettings(
   // su cambio en la siguiente petición, no una versión en caché mientras se
   // refresca por detrás.
   updateTag(CLUB_SETTINGS_TAG);
+  updateTag(REGISTRATION_AVAILABILITY_TAG);
   revalidateRoutes(ROUTE.club);
   return { message: t("clubDataSaved") };
 }

@@ -21,6 +21,7 @@ import {
   DOCUMENT_TEMPLATES_BUCKET,
   INJURY_REPORT_TEMPLATE_PATH,
 } from "@/lib/injury-report-pdf";
+import { formatCents } from "@/lib/money";
 import { fileExists, getSignedUrl } from "@/lib/supabase/storage";
 
 export async function generateMetadata({
@@ -92,6 +93,10 @@ export default async function ClubPage({
                 <InfoRow
                   label={t("clubSignatoryNationalIdLabel")}
                   value={clubSettings?.signatoryNationalId}
+                />
+                <InfoRow
+                  label={t("clubMemberAnnualFeeLabel")}
+                  value={formatCents(clubSettings?.memberAnnualFeeCents ?? 2000, locale)}
                 />
               </dl>
             )}
