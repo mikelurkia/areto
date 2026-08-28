@@ -7,6 +7,7 @@ import { registrations } from "@/db/schema";
 import { hasAnyPermission, hasPermission, requirePermission } from "@/lib/auth";
 import { hasActiveMemberFilters, loadMemberPage, parseMemberFilters } from "@/lib/member-list";
 import { findCandidates } from "@/lib/person-matching";
+import { PageHeader } from "@/components/page-header";
 import { MemberRequestsBrowser } from "@/components/socios/member-requests-browser";
 import { SociosBrowser } from "@/components/socios/socios-browser";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -78,10 +79,7 @@ export default async function SociosPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="text-muted-foreground">{t("subtitle")}</p>
-      </div>
+      <PageHeader title={t("title")} description={t("subtitle")} />
 
       <Tabs defaultValue="socios">
         <TabsList>

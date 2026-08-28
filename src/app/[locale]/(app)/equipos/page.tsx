@@ -9,6 +9,7 @@ import { computeRosterHealth } from "@/lib/roster-health";
 import { SeasonSelect } from "@/components/equipos/season-select";
 import { TeamDialog } from "@/components/equipos/team-dialog";
 import { EquiposBrowser } from "@/components/equipos/equipos-browser";
+import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 
 export async function generateMetadata({
@@ -93,23 +94,21 @@ export default async function EquiposPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <SeasonSelect
-            seasons={allSeasons}
-            selectedId={selectedSeason?.id ?? ""}
-          />
-          {canManage && selectedSeason ? (
-            <TeamDialog mode="create" seasonId={selectedSeason.id} />
-          ) : null}
-        </div>
-      </div>
+      <PageHeader
+        title={t("title")}
+        description={t("subtitle")}
+        actions={
+          <>
+            <SeasonSelect
+              seasons={allSeasons}
+              selectedId={selectedSeason?.id ?? ""}
+            />
+            {canManage && selectedSeason ? (
+              <TeamDialog mode="create" seasonId={selectedSeason.id} />
+            ) : null}
+          </>
+        }
+      />
 
       {!selectedSeason ? (
         <SectionPlaceholder

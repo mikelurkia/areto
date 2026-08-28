@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { findDuplicatePersonGroups } from "@/lib/person-matching";
 import { Link } from "@/i18n/navigation";
-import { BackLink } from "@/components/back-link";
+import { PageHeader } from "@/components/page-header";
 import { MergeDuplicatesDialog } from "@/components/personas/merge-duplicates-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
@@ -51,15 +51,11 @@ export default async function PersonDuplicatesPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <BackLink href="/personas" label={t("backToPersonas")} />
-      </div>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {t("duplicatesTitle")}
-        </h1>
-        <p className="text-muted-foreground">{t("duplicatesSubtitle")}</p>
-      </div>
+      <PageHeader
+        back={{ href: "/personas", label: t("backToPersonas") }}
+        title={t("duplicatesTitle")}
+        description={t("duplicatesSubtitle")}
+      />
 
       {candidates.length === 0 ? (
         <SectionPlaceholder

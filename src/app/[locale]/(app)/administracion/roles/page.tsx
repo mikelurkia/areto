@@ -16,6 +16,7 @@ import {
   type MatrixRole,
 } from "@/components/administracion/roles-permission-matrix";
 import { RolesTabs } from "@/components/administracion/roles-tabs";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -92,13 +93,11 @@ export default async function RolesPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="text-muted-foreground">{t("rolesSubtitle")}</p>
-        </div>
-        <RoleDialog mode="create" roles={options} />
-      </div>
+      <PageHeader
+        title={t("title")}
+        description={t("rolesSubtitle")}
+        actions={<RoleDialog mode="create" roles={options} />}
+      />
 
       <AdminSectionNav current="roles" canManageRoles />
 

@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { sponsorPayments } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { seasonLabel } from "@/lib/sponsorship";
-import { BackLink } from "@/components/back-link";
+import { PageHeader } from "@/components/page-header";
 import {
   InvoiceRegister,
   type InvoiceRow,
@@ -71,16 +71,11 @@ export default async function InvoiceRegisterPage({
       saldría a sangre.
     */
     <div className="flex flex-1 flex-col gap-6 print:p-[14mm]">
-      <div className="print:hidden">
-        <BackLink href="/patrocinadores" label={t("backToSponsorships")} />
-      </div>
-
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {t("invoiceRegisterTitle")}
-        </h1>
-        <p className="text-muted-foreground">{t("invoiceRegisterSubtitle")}</p>
-      </div>
+      <PageHeader
+        back={{ href: "/patrocinadores", label: t("backToSponsorships") }}
+        title={t("invoiceRegisterTitle")}
+        description={t("invoiceRegisterSubtitle")}
+      />
 
       <InvoiceRegister invoices={invoices} years={years} locale={locale} />
     </div>
