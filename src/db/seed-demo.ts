@@ -62,10 +62,8 @@ import { seasonLabel, seasonYearOf } from "../lib/sponsorship";
  *
  * Lo que NO se siembra, y por qué:
  *
- * - `events`, `attendances`, `fees`, `payments`, `announcements`: todavía no
- *   hay pantalla que las lea (`/cuotas` y `/avisos` son `SectionPlaceholder`,
- *   y `/calendario` trabaja sobre `court_events`). En producción también
- *   están a cero.
+ * - `fees`, `payments`: todavía no hay pantalla que las lea (`/cuotas` es
+ *   `SectionPlaceholder`). En producción también están a cero.
  * - `users`: su `id` tiene que ser el de un `auth.users` real; las crea el
  *   trigger `handle_new_user` al registrarse (`supabase/setup.sql`). Una fila
  *   inventada aquí no serviría para entrar.

@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import {
   isPermission,
   isSystemRoleKey,
@@ -45,7 +45,7 @@ export default async function RolesPage({
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  await requirePermission("roles.manage");
+  const current = await requirePermission("roles.manage");
   const t = await getTranslations("Administracion");
 
   const allRoles = await db.query.roles.findMany({
@@ -99,7 +99,11 @@ export default async function RolesPage({
         actions={<RoleDialog mode="create" roles={options} />}
       />
 
-      <AdminSectionNav current="roles" canManageRoles />
+      <AdminSectionNav
+        current="roles"
+        canManageRoles
+        canViewAudit={hasPermission(current, "administracion.audit.view")}
+      />
 
       {/*
         Dos pestañas y no dos secciones apiladas: la tabla y la matriz son dos
