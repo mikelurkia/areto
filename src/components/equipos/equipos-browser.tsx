@@ -1,0 +1,271 @@
+"use client";
+
+import { useMemo } from "react";
+import {
+  BriefcaseIcon,
+  CheckIcon,
+  DownloadIcon,
+  SearchIcon,
+  ShieldHalf,
+  TriangleAlertIcon,
+  UserCheckIcon,
+  UserIcon,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+
+import { Link } from "@/i18n/navigation";
+import { DeleteTeamDialog } from "@/components/equipos/delete-team-dialog";
+import { TeamDialog } from "@/components/equipos/team-dialog";
+import { SectionPlaceholder } from "@/components/section-placeholder";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { downloadCsv } from "@/lib/csv";
+import { formatCents } from "@/lib/money";
+import type { RosterHealthAlerts } from "@/lib/roster-health";
+
+type TeamRow = {
+  id: string;
+  name: string;
+  category: string | null;
+  gender: string | null;
+  minBirthYear: number | null;
+  maxBirthYear: number | null;
+  federationGroup: string | null;
+  federationCode: string | null;
+  playerFeeCents: number | null;
+  playerFeePeriod: string;
+  playerFeeNotes: string | null;
+  roster: { role: string }[];
+  alerts: RosterHealthAlerts;
+  hardCount: number;
+  softCount: number;
+};
+
+const ROLE_ICONS: Record<string, typeof UserIcon> = {
+  player: UserIcon,
+  coach: UserCheckIcon,
+  staff: BriefcaseIcon,
+};
+
+/** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
+const FILTER_DEFAULTS = { q: "" };
+
+export function EquiposBrowser({
+  teams,
+  locale,
+  canManage,
+}: {
+  teams: TeamRow[];
+  locale: string;
+  canManage: boolean;
+}) {
+  const t = useTranslations("Equipos");
+  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
+  const [query, setQuery] = useSearchText(filters.q, (value) =>
+    setFilters({ q: value }),
+  );
+
+  /** Texto (traducido) de los avisos de salud de una plantilla, para el tooltip. */
+  function healthIssueLines(alerts: RosterHealthAlerts): string[] {
+    const lines: string[] = [];
+    if (alerts.duplicateJerseys.length > 0)
+      lines.push(t("healthDuplicateJerseys", { numbers: alerts.duplicateJerseys.join(", ") }));
+    if (alerts.ageOutOfRange > 0)
+      lines.push(t("healthAgeOutOfRange", { count: alerts.ageOutOfRange }));
+    if (alerts.medicalExpired > 0)
+      lines.push(t("healthMedicalExpired", { count: alerts.medicalExpired }));
+    if (alerts.medicalExpiring > 0)
+      lines.push(t("healthMedicalExpiring", { count: alerts.medicalExpiring }));
+    if (alerts.noJersey > 0) lines.push(t("healthNoJersey", { count: alerts.noJersey }));
+    return lines;
+  }
+
+  function roleCounts(roster: { role: string }[]) {
+    return ["player", "coach", "staff"].map((role) => ({
+      role,
+      count: roster.filter((m) => m.role === role).length,
+    }));
+  }
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return teams;
+    const needle = query.trim().toLowerCase();
+    return teams.filter((team) => {
+      const categoryLabel = team.category ? t(`category.${team.category}`) : "";
+      return (
+        team.name.toLowerCase().includes(needle) ||
+        categoryLabel.toLowerCase().includes(needle)
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teams, query]);
+
+  function handleExportCsv() {
+    const headers = [
+      t("colName"),
+      t("colCategory"),
+      t("colFee"),
+      t("colRoster"),
+      t("colHealth"),
+    ];
+    const rows = filtered.map((team) => {
+      const issues = healthIssueLines(team.alerts);
+      const roster = roleCounts(team.roster)
+        .filter(({ count }) => count > 0)
+        .map(({ role, count }) => `${count} ${t(`roleOption.${role}`)}`)
+        .join(", ");
+      return [
+        team.name,
+        team.category ? t(`category.${team.category}`) : "",
+        team.playerFeeCents !== null
+          ? t(`feePeriodShort.${team.playerFeePeriod}`, {
+              amount: formatCents(team.playerFeeCents, locale),
+            })
+          : "",
+        roster,
+        issues.length > 0 ? issues.join(" · ") : t("healthAllGood"),
+      ];
+    });
+    downloadCsv("equipos.csv", headers, rows);
+  }
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            className="w-56 pl-8"
+          />
+        </div>
+        <Button variant="outline" className="ml-auto" onClick={handleExportCsv}>
+          <DownloadIcon data-icon="inline-start" />
+          {t("exportCsvAction")}
+        </Button>
+      </div>
+
+      {filtered.length === 0 ? (
+        <SectionPlaceholder
+          icon={ShieldHalf}
+          title={t("noResultsTitle")}
+          description={t("noResultsDescription")}
+        />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("colName")}</TableHead>
+              <TableHead>{t("colCategory")}</TableHead>
+              <TableHead>{t("colFee")}</TableHead>
+              <TableHead>{t("colRoster")}</TableHead>
+              <TableHead>{t("colHealth")}</TableHead>
+              {canManage ? (
+                <TableHead className="text-right">{t("colActions")}</TableHead>
+              ) : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((team) => {
+              const issues = healthIssueLines(team.alerts);
+              return (
+                <TableRow key={team.id}>
+                  <TableCell className="font-medium">
+                    <Link href={`/equipos/${team.id}`} className="hover:underline">
+                      {team.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    {team.category ? t(`category.${team.category}`) : "—"}
+                    {team.gender ? ` · ${t(`gender.${team.gender}`)}` : ""}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {team.playerFeeCents !== null
+                      ? t(`feePeriodShort.${team.playerFeePeriod}`, {
+                          amount: formatCents(team.playerFeeCents, locale),
+                        })
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {roleCounts(team.roster).map(({ role, count }) => {
+                        if (count === 0) return null;
+                        const Icon = ROLE_ICONS[role] ?? UserIcon;
+                        return (
+                          <Badge
+                            key={role}
+                            variant="secondary"
+                            className="gap-1"
+                            title={t(`roleOption.${role}`)}
+                          >
+                            <Icon className="size-3" />
+                            {count}
+                          </Badge>
+                        );
+                      })}
+                      {team.roster.length === 0 ? (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {issues.length === 0 ? (
+                      <CheckIcon
+                        className="size-4 text-muted-foreground"
+                        aria-label={t("healthAllGood")}
+                      />
+                    ) : (
+                      <Badge
+                        variant={team.hardCount > 0 ? "destructive" : "secondary"}
+                        className="gap-1"
+                        title={issues.join(" · ")}
+                      >
+                        <TriangleAlertIcon className="size-3" />
+                        {team.hardCount + team.softCount}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  {canManage ? (
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <TeamDialog
+                          mode="edit"
+                          team={{
+                            id: team.id,
+                            name: team.name,
+                            category: team.category,
+                            gender: team.gender,
+                            minBirthYear: team.minBirthYear,
+                            maxBirthYear: team.maxBirthYear,
+                            federationGroup: team.federationGroup,
+                            federationCode: team.federationCode,
+                            playerFeeCents: team.playerFeeCents,
+                            playerFeePeriod: team.playerFeePeriod,
+                            playerFeeNotes: team.playerFeeNotes,
+                          }}
+                        />
+                        <DeleteTeamDialog id={team.id} name={team.name} />
+                      </div>
+                    </TableCell>
+                  ) : null}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
+    </>
+  );
+}
