@@ -49,16 +49,70 @@ function isProtected(pathname: string) {
 }
 
 /**
+ * Peticiones de precarga del router, no navegaciones de verdad.
+ *
+ * Con Cache Components el prefetch va por segmento, así que un solo repintado
+ * del sidebar dispara del orden de 25 peticiones en paralelo (varias por
+ * destino, con distinto `_rsc`). Todas pasan por aquí.
+ */
+function isPrefetch(request: NextRequest) {
+  return (
+    request.headers.has("next-router-prefetch") ||
+    request.headers.has("next-router-segment-prefetch") ||
+    request.headers.get("purpose") === "prefetch"
+  );
+}
+
+/**
+ * Cookie de sesión de Supabase (`sb-<ref>-auth-token`, troceada en `.0`, `.1`…
+ * cuando no cabe). Solo mira que esté: no la valida ni la refresca.
+ */
+const AUTH_COOKIE = /^sb-.+-auth-token(\.\d+)?$/;
+
+function hasSessionCookie(request: NextRequest) {
+  return request.cookies.getAll().some((c) => AUTH_COOKIE.test(c.name));
+}
+
+/**
  * Enruta el idioma (next-intl) y, sobre esa misma respuesta, refresca la
  * sesión de Supabase en cada request y protege las rutas internas.
  * IMPORTANTE: no metas código entre `createServerClient` y `getClaims()`.
  * Las cookies de sesión se escriben sobre la respuesta ya generada por
  * next-intl para no perder la resolución de idioma.
+ *
+ * Los prefetch quedan fuera de ese refresco a propósito: ver `isPrefetch`.
  */
 export async function proxy(request: NextRequest) {
   const response = handleI18nRouting(request);
   if (response.status >= 300 && response.status < 400) return response;
   if (!isSupabaseConfigured) return response;
+
+  const { locale, rest: pathname } = splitLocale(request.nextUrl.pathname);
+
+  /*
+    Un prefetch no refresca la sesión. `getClaims()` renueva el token cuando
+    está a punto de caducar y rota el refresh token; con las decenas de
+    prefetch simultáneos que dispara el sidebar, esa rotación se intenta
+    muchas veces a la vez y unas peticiones acaban viendo sesión y otras no.
+    Como las dos reglas de abajo se responden entre sí (sin sesión → /login,
+    con sesión en /login → /dashboard), el resultado es una cadena de
+    redirecciones que el router no llega a resolver: el click no reacciona.
+
+    Para precargar basta con saber si hay cookie de sesión. No es una
+    comprobación de autorización —una cookie inventada solo obtiene el armazón
+    estático de la ruta— y la navegación real, que sí pasa por `getClaims()`,
+    llega un instante después; además cada página protegida vuelve a exigir
+    `requireUser`/`requirePermission` antes de consultar nada.
+  */
+  if (isPrefetch(request)) {
+    if (!hasSessionCookie(request) && isProtected(pathname)) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${locale}/login`;
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+    return response;
+  }
 
   const supabase = createServerClient(SUPABASE_URL!, SUPABASE_KEY!, {
     cookies: {
@@ -78,8 +132,6 @@ export async function proxy(request: NextRequest) {
 
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
-
-  const { locale, rest: pathname } = splitLocale(request.nextUrl.pathname);
 
   // Sin sesión en una ruta protegida → al login (recordando el destino).
   if (!user && isProtected(pathname)) {
