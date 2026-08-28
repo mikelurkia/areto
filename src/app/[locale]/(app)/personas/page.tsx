@@ -1,4 +1,4 @@
-import { Users } from "lucide-react";
+import { UsersIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { hasPermission, requirePermission } from "@/lib/auth";
@@ -79,7 +79,7 @@ export default async function PersonasPage({
           sin filtros aplicados y sin filas, no hay nada que buscar todavía. */}
       {personPage.total === 0 && !hasActiveFilters(filters) ? (
         <SectionPlaceholder
-          icon={Users}
+          icon={UsersIcon}
           title={t("emptyTitle")}
           description={t("emptyDescription")}
         />

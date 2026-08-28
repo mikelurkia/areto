@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Stethoscope } from "lucide-react";
+import { StethoscopeIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
@@ -120,7 +120,7 @@ export default async function MedicoPage({
 
       {certRows.length === 0 ? (
         <SectionPlaceholder
-          icon={Stethoscope}
+          icon={StethoscopeIcon}
           title={t("emptyTitle")}
           description={t("emptyDescription")}
         />

@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { ArrowRightIcon, HeartHandshake } from "lucide-react";
+import { ArrowRightIcon, HeartHandshakeIcon } from "lucide-react";
 
 import { PublicHeader } from "@/components/public/public-header";
 import { PublicFooter } from "@/components/public/public-footer";
@@ -67,7 +67,7 @@ export default async function Home({
               <HeroCta href="/inscripcion" tone="primary" icon={ArrowRightIcon}>
                 {t("registerAction")}
               </HeroCta>
-              <HeroCta href="/inscripcion/socio" tone="gold" icon={HeartHandshake}>
+              <HeroCta href="/inscripcion/socio" tone="gold" icon={HeartHandshakeIcon}>
                 {t("becomeMemberAction")}
               </HeroCta>
             </div>

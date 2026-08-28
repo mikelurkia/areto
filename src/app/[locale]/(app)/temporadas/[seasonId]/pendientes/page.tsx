@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ShieldHalf } from "lucide-react";
+import { ShieldHalfIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -63,7 +63,7 @@ export default async function SeasonRenewalsPage({
 
       {filteredRows.length === 0 ? (
         <SectionPlaceholder
-          icon={ShieldHalf}
+          icon={ShieldHalfIcon}
           title={t("noRenewalsPendingTitle")}
           description={t("noRenewalsPendingDescription")}
         />

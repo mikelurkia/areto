@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getRegistrationAvailability } from "@/lib/registration-settings";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
 import { PublicHeader } from "@/components/public/public-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { SocioForm } from "./socio-form";
@@ -41,15 +42,16 @@ export default async function InscripcionSocioPage({
       <div className="mx-auto w-full max-w-2xl px-6 py-10">
         {memberOpen ? (
           <>
-            <div className="mb-8">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight">{t("memberCardTitle")}</h1>
-                {seasonName ? <Badge variant="secondary">{t("seasonBadge", { season: seasonName })}</Badge> : null}
-              </div>
-              <p className="text-muted-foreground">
-                {t("memberFormSubtitle", { amount: feeAmount })}
-              </p>
-            </div>
+            <PageHeader
+              className="mb-8"
+              title={t("memberCardTitle")}
+              description={t("memberFormSubtitle", { amount: feeAmount })}
+              badges={
+                seasonName ? (
+                  <Badge variant="secondary">{t("seasonBadge", { season: seasonName })}</Badge>
+                ) : null
+              }
+            />
             <SocioForm />
           </>
         ) : (

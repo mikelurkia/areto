@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { ChevronsUpDown, GlobeIcon, LogOut, Settings } from "lucide-react";
+import { ChevronsUpDownIcon, GlobeIcon, LogOutIcon, SettingsIcon } from "lucide-react";
 
 import { logout } from "@/app/[locale]/(auth)/actions";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -270,7 +270,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                     {roleSummary}
                   </span>
                 </div>
-                <ChevronsUpDown className="ml-auto size-4" />
+                <ChevronsUpDownIcon className="ml-auto size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 className="min-w-56"
@@ -298,7 +298,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem render={<Link href="/ajustes" />}>
-                    <Settings />
+                    <SettingsIcon />
                     {t("settings")}
                   </DropdownMenuItem>
                   {/*
@@ -319,7 +319,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                         <button type="submit" className="w-full" />
                       }
                     >
-                      <LogOut />
+                      <LogOutIcon />
                       {t("logout")}
                     </DropdownMenuItem>
                   </form>

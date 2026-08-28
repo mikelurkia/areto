@@ -1,4 +1,4 @@
-import { CalendarDays } from "lucide-react";
+import { CalendarDaysIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
@@ -238,7 +238,7 @@ export default async function CalendarioPage({
         />
       ) : sortedWeekends.length === 0 ? (
         <SectionPlaceholder
-          icon={CalendarDays}
+          icon={CalendarDaysIcon}
           title={t("emptyTitle")}
           description={t("emptyDescription")}
         >

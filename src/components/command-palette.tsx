@@ -5,13 +5,13 @@ import { useTheme } from "next-themes";
 import { useLocale, useTranslations } from "next-intl";
 import {
   GlobeIcon,
-  LogOut,
+  LogOutIcon,
   MoonIcon,
   SearchIcon,
-  Settings,
-  Shirt,
+  SettingsIcon,
+  ShirtIcon,
   SunIcon,
-  Users,
+  UsersIcon,
 } from "lucide-react";
 
 import { updateLocale } from "@/app/[locale]/(app)/actions";
@@ -271,7 +271,7 @@ function PaletteBody({
                 key={recent.href}
                 result={recent}
                 query={query}
-                icon={recent.type === "team" ? <Shirt /> : <Users />}
+                icon={recent.type === "team" ? <ShirtIcon /> : <UsersIcon />}
                 onSelect={() => openResult(recent)}
               />
             ))}
@@ -285,7 +285,7 @@ function PaletteBody({
                 key={person.id}
                 result={person}
                 query={query}
-                icon={<Users />}
+                icon={<UsersIcon />}
                 onSelect={() => openResult(person)}
               />
             ))}
@@ -299,7 +299,7 @@ function PaletteBody({
                 key={team.id}
                 result={team}
                 query={query}
-                icon={<Shirt />}
+                icon={<ShirtIcon />}
                 onSelect={() => openResult(team)}
               />
             ))}
@@ -328,7 +328,7 @@ function PaletteBody({
             value={tSidebar("settings")}
             onSelect={() => run(() => router.push("/ajustes"))}
           >
-            <Settings />
+            <SettingsIcon />
             {tSidebar("settings")}
           </CommandItem>
           <CommandItem
@@ -377,7 +377,7 @@ function PaletteBody({
               })
             }
           >
-            <LogOut />
+            <LogOutIcon />
             {tSidebar("logout")}
           </CommandItem>
         </CommandGroup>
