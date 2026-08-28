@@ -8,6 +8,7 @@ import { importTeamsFromSeason } from "@/app/[locale]/(app)/equipos/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogClose,
@@ -136,7 +137,7 @@ export function ImportTeamsDialog({
 
             <Field>
               <FieldLabel>{t("selectTeamsLabel")}</FieldLabel>
-              <div className="flex flex-col gap-2 rounded-md border p-3">
+              <Card size="sm" className="gap-2 px-(--card-spacing)">
                 {source && source.teams.length > 0 ? (
                   source.teams.map((tm) => (
                     <label
@@ -163,7 +164,7 @@ export function ImportTeamsDialog({
                 ) : (
                   <p className="text-sm text-muted-foreground">{t("noTeamsReadonly")}</p>
                 )}
-              </div>
+              </Card>
             </Field>
 
             <Field orientation="horizontal">

@@ -15,6 +15,7 @@ import {
 } from "@/lib/sponsorship";
 import { Link } from "@/i18n/navigation";
 import { PageHeader } from "@/components/page-header";
+import { StatTile } from "@/components/stat-tile";
 import { ImportSponsorsDialog } from "@/components/patrocinadores/import-sponsors-dialog";
 import { SponsorsBrowser } from "@/components/patrocinadores/sponsors-browser";
 import { SponsorDialog } from "@/components/patrocinadores/sponsor-dialog";
@@ -257,32 +258,22 @@ export default async function PatrocinadoresPage({
           {t("seasonKpisHeading", { season: currentSeasonLabel })}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border p-4">
-            <p className="text-xs text-muted-foreground">
-              {t("kpiActiveSponsors")}
-            </p>
-            <p className="text-lg font-semibold">{activeSponsorsCount}</p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <p className="text-xs text-muted-foreground">{t("committedLabel")}</p>
-            <p className="text-lg font-semibold">
-              {currencyFmt.format(seasonCommittedCents / 100)}
-            </p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <p className="text-xs text-muted-foreground">{t("collectedLabel")}</p>
-            <p className="text-lg font-semibold">
-              {currencyFmt.format(seasonCollectedCents / 100)}
-            </p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <p className="text-xs text-muted-foreground">
-              {t("kpiCollectionRate")}
-            </p>
-            <p className="text-lg font-semibold">
-              {collectionRate === null ? "—" : `${collectionRate}%`}
-            </p>
-          </div>
+          <StatTile
+            label={t("kpiActiveSponsors")}
+            value={activeSponsorsCount}
+          />
+          <StatTile
+            label={t("committedLabel")}
+            value={currencyFmt.format(seasonCommittedCents / 100)}
+          />
+          <StatTile
+            label={t("collectedLabel")}
+            value={currencyFmt.format(seasonCollectedCents / 100)}
+          />
+          <StatTile
+            label={t("kpiCollectionRate")}
+            value={collectionRate === null ? "—" : `${collectionRate}%`}
+          />
         </div>
       </section>
 

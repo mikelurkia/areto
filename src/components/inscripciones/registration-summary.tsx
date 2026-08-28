@@ -6,11 +6,12 @@ import type { RegistrationDetail } from "@/components/inscripciones/review-form"
 import { InfoRow } from "@/components/info-row";
 import { MaskedIbanText } from "@/components/masked-iban";
 import { ConsentRow } from "@/components/match-select";
+import { Card } from "@/components/ui/card";
 
 async function GuardianSummary({ guardian, index }: { guardian: GuardianData; index: number }) {
   const t = await getTranslations("Inscripciones");
   return (
-    <div className="flex flex-col gap-3 rounded-lg border p-4">
+    <Card className="gap-3 px-(--card-spacing)">
       <span className="text-sm font-medium">
         {t("guardianLabel")} {index + 1}
       </span>
@@ -25,7 +26,7 @@ async function GuardianSummary({ guardian, index }: { guardian: GuardianData; in
         <InfoRow label={t("phoneLabel")} value={guardian.phone} />
         <InfoRow label={t("emailLabel")} value={guardian.email} />
       </dl>
-    </div>
+    </Card>
   );
 }
 
@@ -65,7 +66,7 @@ export async function PlayerRegistrationSummary({
 }) {
   const t = await getTranslations("Inscripciones");
   return (
-    <div className="flex flex-col gap-6 rounded-lg border p-4">
+    <Card className="gap-6 px-(--card-spacing)">
       <div className="flex flex-col gap-3">
         <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           {t("playerSection")}
@@ -104,7 +105,7 @@ export async function PlayerRegistrationSummary({
             }
           />
         </dl>
-        <div className="flex flex-col gap-2 rounded-lg border p-3">
+        <Card size="sm" className="gap-2 px-(--card-spacing)">
           <ConsentRow label={t("sepaConsentShortLabel")} granted={registration.sepaConsent} />
           <ConsentRow label={t("termsConsentShortLabel")} granted={registration.termsConsent} />
           <ConsentRow label={t("imageConsentShortLabel")} granted={registration.photoConsent} />
@@ -112,9 +113,9 @@ export async function PlayerRegistrationSummary({
             label={t("privacyConsentShortLabel")}
             granted={registration.privacyConsent}
           />
-        </div>
+        </Card>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -125,7 +126,7 @@ export async function MemberRegistrationSummary({
 }) {
   const t = await getTranslations("Inscripciones");
   return (
-    <div className="flex flex-col gap-6 rounded-lg border p-4">
+    <Card className="gap-6 px-(--card-spacing)">
       <div className="flex flex-col gap-3">
         <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           {t("memberSection")}
@@ -155,14 +156,14 @@ export async function MemberRegistrationSummary({
             value={registration.iban ? <MaskedIbanText value={registration.iban} /> : null}
           />
         </dl>
-        <div className="flex flex-col gap-2 rounded-lg border p-3">
+        <Card size="sm" className="gap-2 px-(--card-spacing)">
           <ConsentRow label={t("sepaConsentShortLabel")} granted={registration.sepaConsent} />
           <ConsentRow
             label={t("privacyConsentShortLabel")}
             granted={registration.privacyConsent}
           />
-        </div>
+        </Card>
       </div>
-    </div>
+    </Card>
   );
 }

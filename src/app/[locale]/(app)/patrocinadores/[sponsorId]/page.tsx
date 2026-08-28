@@ -32,6 +32,7 @@ import {
 } from "@/lib/sponsorship";
 import { Link } from "@/i18n/navigation";
 import { PageHeader } from "@/components/page-header";
+import { StatTile } from "@/components/stat-tile";
 import { DeleteSponsorContactDialog } from "@/components/patrocinadores/delete-sponsor-contact-dialog";
 import { DeleteSponsorDialog } from "@/components/patrocinadores/delete-sponsor-dialog";
 import { DeleteSponsorPaymentDialog } from "@/components/patrocinadores/delete-sponsor-payment-dialog";
@@ -369,30 +370,18 @@ export default async function SponsorDetailPage({
           className="flex flex-col gap-6"
         >
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">
-                {t("committedLabel")}
-              </p>
-              <p className="text-lg font-semibold">
-                {formatAmount(committedCents) ?? "—"}
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">
-                {t("collectedLabel")}
-              </p>
-              <p className="text-lg font-semibold">
-                {formatAmount(collectedCents) ?? "—"}
-              </p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground">
-                {t("pendingLabel")}
-              </p>
-              <p className="text-lg font-semibold">
-                {formatAmount(pendingCents) ?? "—"}
-              </p>
-            </div>
+            <StatTile
+              label={t("committedLabel")}
+              value={formatAmount(committedCents) ?? "—"}
+            />
+            <StatTile
+              label={t("collectedLabel")}
+              value={formatAmount(collectedCents) ?? "—"}
+            />
+            <StatTile
+              label={t("pendingLabel")}
+              value={formatAmount(pendingCents) ?? "—"}
+            />
           </div>
 
           <div className="flex items-center justify-between">

@@ -7,6 +7,7 @@ import { calculateAge } from "@/lib/age";
 import { Link, usePathname } from "@/i18n/navigation";
 import { MaskedIbanText } from "@/components/masked-iban";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
@@ -211,7 +212,7 @@ export function MatchSelect({
         </div>
       ) : null}
       {selected && (changedFields.length > 0 || photoRows.length > 0) ? (
-        <div className="flex flex-col gap-3 rounded-lg border p-3">
+        <Card size="sm" className="gap-3 px-(--card-spacing)">
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
             {t("changesDetectedTitle")}
           </p>
@@ -248,7 +249,7 @@ export function MatchSelect({
               </div>
             );
           })}
-        </div>
+        </Card>
       ) : null}
     </Field>
   );

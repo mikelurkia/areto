@@ -20,6 +20,7 @@ import { Link } from "@/i18n/navigation";
 import { Req } from "@/components/inscripciones/required-asterisk";
 import { SubmitButton } from "@/components/submit-button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card } from "@/components/ui/card";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -192,7 +193,7 @@ function FeeTable({
   const locale = useLocale();
 
   return (
-    <div className="rounded-lg border bg-muted/40 p-4">
+    <Card className="bg-muted/40 px-(--card-spacing)">
       <p className="text-sm font-medium">
         {seasonName ? t("feeTableTitle", { season: seasonName }) : t("feeTableTitleNoSeason")}
       </p>
@@ -217,7 +218,7 @@ function FeeTable({
         ))}
       </dl>
       <p className="mt-3 text-xs text-muted-foreground">{t("feeTableHint")}</p>
-    </div>
+    </Card>
   );
 }
 
@@ -551,7 +552,7 @@ export function JugadorForm({
             const postalCodeError = fieldErrors[`guardian-${i}-postalCode`];
             const existing = submitted?.guardians[i];
             return (
-              <div key={key} className="flex flex-col gap-3 rounded-lg border p-4">
+              <Card key={key} className="gap-3 px-(--card-spacing)">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">
                     {t("guardianLabel")} {i + 1}
@@ -702,7 +703,7 @@ export function JugadorForm({
                     {emailError ? <FieldError>{emailError}</FieldError> : null}
                   </Field>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </FieldGroup>

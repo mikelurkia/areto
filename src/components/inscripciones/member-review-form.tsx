@@ -15,6 +15,7 @@ import {
   type GuardianData,
 } from "@/components/inscripciones/guardian-review-fields";
 import { MaskedIbanInput } from "@/components/masked-iban";
+import { Card } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/submit-button";
@@ -143,10 +144,10 @@ export function MemberReviewForm({ registration }: { registration: MemberRegistr
             <FieldLabel htmlFor="iban">{t("ibanLabel")}</FieldLabel>
             <MaskedIbanInput id="iban" name="iban" defaultValue={registration.iban ?? ""} />
           </Field>
-          <div className="flex flex-col gap-2 rounded-lg border p-3">
+          <Card size="sm" className="gap-2 px-(--card-spacing)">
             <ConsentRow label={t("sepaConsentShortLabel")} granted={registration.sepaConsent} />
             <ConsentRow label={t("privacyConsentShortLabel")} granted={registration.privacyConsent} />
-          </div>
+          </Card>
         </FieldGroup>
 
         {editState.error ? <p className="text-sm text-destructive">{editState.error}</p> : null}
@@ -155,7 +156,7 @@ export function MemberReviewForm({ registration }: { registration: MemberRegistr
         </div>
       </form>
 
-      <div className="flex flex-col gap-6 rounded-lg border p-4">
+      <Card className="gap-6 px-(--card-spacing)">
         <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
           {t("reviewSection")}
         </h2>
@@ -205,7 +206,7 @@ export function MemberReviewForm({ registration }: { registration: MemberRegistr
             <SubmitButton variant="destructive">{t("rejectAction")}</SubmitButton>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

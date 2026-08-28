@@ -4,6 +4,7 @@ import { TriangleAlertIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 export type RosterHealthStats = {
   players: number;
@@ -79,7 +80,7 @@ export function RosterHealth({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-3 py-2">
+    <Card size="sm" className="flex-row flex-wrap items-center gap-x-4 gap-y-2 px-(--card-spacing)">
       <dl className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <Stat label={t("healthPlayers")} value={stats.players} />
         <Stat label={t("healthGoalkeepers")} value={stats.goalkeepers} />
@@ -97,6 +98,6 @@ export function RosterHealth({
       ) : (
         <p className="ml-auto text-xs text-muted-foreground">{t("healthAllGood")}</p>
       )}
-    </div>
+    </Card>
   );
 }
