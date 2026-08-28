@@ -1,19 +1,19 @@
 "use client";
 
 import {
-  Building2,
-  CalendarDays,
+  Building2Icon,
+  CalendarDaysIcon,
   ClipboardCheckIcon,
-  ClipboardList,
+  ClipboardListIcon,
   HandshakeIcon,
-  IdCard,
-  LayoutDashboard,
-  Megaphone,
-  Shirt,
-  ShieldUser,
-  Stethoscope,
-  Users,
-  Wallet,
+  IdCardIcon,
+  LayoutDashboardIcon,
+  MegaphoneIcon,
+  ShirtIcon,
+  ShieldUserIcon,
+  StethoscopeIcon,
+  UsersIcon,
+  WalletIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -22,7 +22,7 @@ import type { Permission } from "@/lib/permissions";
 export type NavItem = {
   title: string;
   href: string;
-  icon: typeof LayoutDashboard;
+  icon: typeof LayoutDashboardIcon;
   /** Para las secciones cuyo enlace no es el prefijo de la sección. */
   match?: string;
   /** Sección anunciada pero todavía sin pantalla. */
@@ -42,12 +42,12 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
   const can = (permission: Permission) => permissions.includes(permission);
 
   return [
-    { title: t("dashboard"), href: "/dashboard", icon: LayoutDashboard },
+    { title: t("dashboard"), href: "/dashboard", icon: LayoutDashboardIcon },
     ...(can("personas.view")
-      ? [{ title: t("personas"), href: "/personas", icon: Users }]
+      ? [{ title: t("personas"), href: "/personas", icon: UsersIcon }]
       : []),
     ...(can("socios.view")
-      ? [{ title: t("socios"), href: "/socios", icon: IdCard }]
+      ? [{ title: t("socios"), href: "/socios", icon: IdCardIcon }]
       : []),
     ...(can("inscripciones.view")
       ? [
@@ -59,16 +59,16 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
         ]
       : []),
     ...(can("personas.medical.view")
-      ? [{ title: t("medico"), href: "/medico", icon: Stethoscope }]
+      ? [{ title: t("medico"), href: "/medico", icon: StethoscopeIcon }]
       : []),
     ...(can("temporadas.view")
-      ? [{ title: t("temporada"), href: "/temporadas", icon: ClipboardList }]
+      ? [{ title: t("temporada"), href: "/temporadas", icon: ClipboardListIcon }]
       : []),
     ...(can("equipos.view")
-      ? [{ title: t("equipos"), href: "/equipos", icon: Shirt }]
+      ? [{ title: t("equipos"), href: "/equipos", icon: ShirtIcon }]
       : []),
     ...(can("calendario.view")
-      ? [{ title: t("calendario"), href: "/calendario", icon: CalendarDays }]
+      ? [{ title: t("calendario"), href: "/calendario", icon: CalendarDaysIcon }]
       : []),
     ...(can("patrocinadores.view")
       ? [
@@ -79,10 +79,10 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
           },
         ]
       : []),
-    { title: t("cuotas"), href: "/cuotas", icon: Wallet, disabled: true },
-    { title: t("avisos"), href: "/avisos", icon: Megaphone, disabled: true },
+    { title: t("cuotas"), href: "/cuotas", icon: WalletIcon, disabled: true },
+    { title: t("avisos"), href: "/avisos", icon: MegaphoneIcon, disabled: true },
     ...(can("club.view")
-      ? [{ title: t("club"), href: "/club", icon: Building2 }]
+      ? [{ title: t("club"), href: "/club", icon: Building2Icon }]
       : []),
     ...(can("usuarios.manage") || can("roles.manage")
       ? [
@@ -90,7 +90,7 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
             title: t("administracion"),
             href: "/administracion/usuarios",
             match: "/administracion",
-            icon: ShieldUser,
+            icon: ShieldUserIcon,
           },
         ]
       : []),

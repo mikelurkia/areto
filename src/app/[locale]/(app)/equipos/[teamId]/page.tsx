@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import {
   BellIcon,
   ClipboardListIcon,
-  ShieldHalf,
+  ShieldHalfIcon,
   TriangleAlertIcon,
   UserRoundIcon,
 } from "lucide-react";
@@ -301,7 +301,7 @@ export default async function TeamDetailPage({
 
           {teamMemberships.length === 0 ? (
             <SectionPlaceholder
-              icon={ShieldHalf}
+              icon={ShieldHalfIcon}
               title={t("emptyRosterTitle")}
               description={t("emptyRosterDescription")}
             />

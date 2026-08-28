@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import {
   BellIcon,
   BriefcaseIcon,
-  ShieldHalf,
+  ShieldHalfIcon,
   UserCheckIcon,
   UserIcon,
 } from "lucide-react";
@@ -187,7 +187,7 @@ export default async function TemporadaDetailPage({
 
       {seasonTeams.length === 0 ? (
         <SectionPlaceholder
-          icon={ShieldHalf}
+          icon={ShieldHalfIcon}
           title={t("noTeamsTitle")}
           description={canManageTeams ? t("noTeamsDescription") : t("noTeamsReadonly")}
         />

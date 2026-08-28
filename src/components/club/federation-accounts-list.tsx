@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, Copy, ExternalLink, Eye, EyeOff } from "lucide-react";
+import { CheckIcon, CopyIcon, ExternalLinkIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,9 +36,9 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       }}
     >
       {copied ? (
-        <Check className="size-3.5 text-success" />
+        <CheckIcon className="size-3.5 text-success" />
       ) : (
-        <Copy className="size-3.5" />
+        <CopyIcon className="size-3.5" />
       )}
     </Button>
   );
@@ -91,7 +91,7 @@ export function FederationAccountsList({
                 className={buttonVariants({ variant: "ghost", size: "sm" })}
               >
                 {t("federationOpen")}
-                <ExternalLink className="size-3.5" />
+                <ExternalLinkIcon className="size-3.5" />
               </a>
             </div>
             <div className="grid gap-2">
@@ -124,9 +124,9 @@ export function FederationAccountsList({
                     }
                   >
                     {isShown ? (
-                      <EyeOff className="size-3.5" />
+                      <EyeOffIcon className="size-3.5" />
                     ) : (
-                      <Eye className="size-3.5" />
+                      <EyeIcon className="size-3.5" />
                     )}
                   </Button>
                   <CopyButton

@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getRegistrationAvailability, getSeasonFeeTable } from "@/lib/registration-settings";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
 import { PublicHeader } from "@/components/public/public-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { JugadorForm } from "./jugador-form";
@@ -44,13 +45,16 @@ export default async function InscripcionJugadorPage({
       <div className="mx-auto w-full max-w-2xl px-6 py-10">
         {teamRegistrationOpen ? (
           <>
-            <div className="mb-8">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight">{t("playerCardTitle")}</h1>
-                {seasonName ? <Badge variant="secondary">{t("seasonBadge", { season: seasonName })}</Badge> : null}
-              </div>
-              <p className="text-muted-foreground">{t("playerFormSubtitle")}</p>
-            </div>
+            <PageHeader
+              className="mb-8"
+              title={t("playerCardTitle")}
+              description={t("playerFormSubtitle")}
+              badges={
+                seasonName ? (
+                  <Badge variant="secondary">{t("seasonBadge", { season: seasonName })}</Badge>
+                ) : null
+              }
+            />
             <JugadorForm feeTable={feeTable} seasonName={seasonName} />
           </>
         ) : (

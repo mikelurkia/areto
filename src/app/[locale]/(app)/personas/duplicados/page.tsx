@@ -1,4 +1,4 @@
-import { UsersRound } from "lucide-react";
+import { UsersRoundIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
@@ -59,7 +59,7 @@ export default async function PersonDuplicatesPage({
 
       {candidates.length === 0 ? (
         <SectionPlaceholder
-          icon={UsersRound}
+          icon={UsersRoundIcon}
           title={t("noDuplicatesTitle")}
           description={t("noDuplicatesDescription")}
         />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale } from "next-intl";
-import { Globe } from "lucide-react";
+import { GlobeIcon } from "lucide-react";
 
 import { updateLocale } from "@/app/[locale]/(app)/actions";
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -49,7 +49,7 @@ export function LocaleSwitcher({ className, persist }: LocaleSwitcherProps) {
           <Button variant="ghost" size="sm" className={cn("gap-1.5", className)} />
         }
       >
-        <Globe className="size-4" />
+        <GlobeIcon className="size-4" />
         <span className="hidden sm:inline">{localeNames[locale as Locale]}</span>
         <span className="sm:hidden">{localeShortNames[locale as Locale]}</span>
       </DropdownMenuTrigger>

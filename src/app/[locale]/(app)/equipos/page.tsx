@@ -1,4 +1,4 @@
-import { ShieldHalf } from "lucide-react";
+import { ShieldHalfIcon } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -112,13 +112,13 @@ export default async function EquiposPage({
 
       {!selectedSeason ? (
         <SectionPlaceholder
-          icon={ShieldHalf}
+          icon={ShieldHalfIcon}
           title={t("emptyTitle")}
           description={t("noSeasons")}
         />
       ) : rows.length === 0 ? (
         <SectionPlaceholder
-          icon={ShieldHalf}
+          icon={ShieldHalfIcon}
           title={t("emptyTitle")}
           description={t("emptyDescription")}
         />
