@@ -12,6 +12,7 @@ import type { RoleOption } from "@/components/administracion/role-dialog";
 import type { AdminUserRow } from "@/components/administracion/user-dialog";
 import { UserRowActions } from "@/components/administracion/user-row-actions";
 import type { PersonOption } from "@/components/administracion/user-person-combobox";
+import { PageHeader } from "@/components/page-header";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -132,18 +133,18 @@ export default async function UsuariosPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="text-muted-foreground">{t("usersSubtitle")}</p>
-        </div>
-        <InviteUserDialog
-          roles={roleOptions}
-          defaultRoleId={defaultRole?.id ?? null}
-          personOptions={personOptions}
-          available={isSupabaseAdminConfigured}
-        />
-      </div>
+      <PageHeader
+        title={t("title")}
+        description={t("usersSubtitle")}
+        actions={
+          <InviteUserDialog
+            roles={roleOptions}
+            defaultRoleId={defaultRole?.id ?? null}
+            personOptions={personOptions}
+            available={isSupabaseAdminConfigured}
+          />
+        }
+      />
 
       <AdminSectionNav
         current="usuarios"

@@ -10,6 +10,7 @@ import {
   parsePersonFilters,
 } from "@/lib/person-list";
 import { Link } from "@/i18n/navigation";
+import { PageHeader } from "@/components/page-header";
 import { PersonasBrowser } from "@/components/personas/personas-browser";
 import { PersonDialog } from "@/components/personas/person-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -55,26 +56,24 @@ export default async function PersonasPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        {canManage ? (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              render={<Link href="/personas/duplicados" />}
-              nativeButton={false}
-            >
-              {t("reviewDuplicatesAction")}
-            </Button>
-            <PersonDialog mode="create" />
-          </div>
-        ) : null}
-      </div>
+      <PageHeader
+        title={t("title")}
+        description={t("subtitle")}
+        actions={
+          canManage ? (
+            <>
+              <Button
+                variant="outline"
+                render={<Link href="/personas/duplicados" />}
+                nativeButton={false}
+              >
+                {t("reviewDuplicatesAction")}
+              </Button>
+              <PersonDialog mode="create" />
+            </>
+          ) : null
+        }
+      />
 
       {/* El vacío real (club sin personas) se distingue de "ningún resultado":
           sin filtros aplicados y sin filas, no hay nada que buscar todavía. */}

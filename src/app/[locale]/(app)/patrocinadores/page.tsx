@@ -14,6 +14,7 @@ import {
   SPONSORSHIP_EXPIRY_WINDOW_DAYS,
 } from "@/lib/sponsorship";
 import { Link } from "@/i18n/navigation";
+import { PageHeader } from "@/components/page-header";
 import { ImportSponsorsDialog } from "@/components/patrocinadores/import-sponsors-dialog";
 import { SponsorsBrowser } from "@/components/patrocinadores/sponsors-browser";
 import { SponsorDialog } from "@/components/patrocinadores/sponsor-dialog";
@@ -212,38 +213,44 @@ export default async function PatrocinadoresPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            render={<Link href="/patrocinadores/facturas" />}
-            nativeButton={false}
-          >
-            <ReceiptTextIcon data-icon="inline-start" />
-            {t("invoiceRegisterLink")}
-          </Button>
-          <Button
-            variant="outline"
-            render={
-              <Link href="/patrocinadores-muro" target="_blank" rel="noreferrer" />
-            }
-            nativeButton={false}
-          >
-            <ExternalLinkIcon data-icon="inline-start" />
-            {t("publicWallLink")}
-          </Button>
-          {canManage ? (
-            <>
-              <ImportSponsorsDialog />
-              <SponsorDialog mode="create" personOptions={allPersons} />
-            </>
-          ) : null}
-        </div>
-      </div>
+      {/* La cabecera entera se oculta al imprimir, no solo las acciones. */}
+      <PageHeader
+        className="print:hidden"
+        title={t("title")}
+        description={t("subtitle")}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              render={<Link href="/patrocinadores/facturas" />}
+              nativeButton={false}
+            >
+              <ReceiptTextIcon data-icon="inline-start" />
+              {t("invoiceRegisterLink")}
+            </Button>
+            <Button
+              variant="outline"
+              render={
+                <Link
+                  href="/patrocinadores-muro"
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              }
+              nativeButton={false}
+            >
+              <ExternalLinkIcon data-icon="inline-start" />
+              {t("publicWallLink")}
+            </Button>
+            {canManage ? (
+              <>
+                <ImportSponsorsDialog />
+                <SponsorDialog mode="create" personOptions={allPersons} />
+              </>
+            ) : null}
+          </>
+        }
+      />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">

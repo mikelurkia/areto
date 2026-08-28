@@ -30,6 +30,7 @@ import { loadUpcomingFixtures } from "@/lib/upcoming-fixtures";
 import { Link } from "@/i18n/navigation";
 import { AlertTile } from "@/components/dashboard/alert-tile";
 import { FixtureBoard } from "@/components/dashboard/fixture-board";
+import { PageHeader } from "@/components/page-header";
 import { AlertTilesSkeleton, CardSkeleton } from "@/components/skeletons";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -275,10 +276,7 @@ export default async function DashboardPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="text-muted-foreground">{t("subtitle")}</p>
-      </div>
+      <PageHeader title={t("title")} description={t("subtitle")} />
 
       {canSeePersonas ? (
         <>

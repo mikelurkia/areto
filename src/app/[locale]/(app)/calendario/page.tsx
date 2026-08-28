@@ -26,6 +26,7 @@ import {
 import { CalendarioViewToggle } from "@/components/calendario/calendario-view-toggle";
 import { CourtEventDialog } from "@/components/calendario/court-event-dialog";
 import { DeleteCourtEventDialog } from "@/components/calendario/delete-court-event-dialog";
+import { PageHeader } from "@/components/page-header";
 import { PrintButton } from "@/components/print-button";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
@@ -200,13 +201,13 @@ export default async function CalendarioPage({
       saldría a sangre.
     */
     <div className="flex flex-1 flex-col gap-6 print:p-[14mm]">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        {view === "list" ? <PrintButton label={t("printAction")} /> : null}
-      </div>
+      <PageHeader
+        title={t("title")}
+        description={t("subtitle")}
+        actions={
+          view === "list" ? <PrintButton label={t("printAction")} /> : null
+        }
+      />
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <CalendarioFilters

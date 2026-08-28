@@ -1,14 +1,14 @@
-import { ArrowLeftIcon, UsersRound } from "lucide-react";
+import { UsersRound } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { findDuplicatePersonGroups } from "@/lib/person-matching";
 import { Link } from "@/i18n/navigation";
+import { PageHeader } from "@/components/page-header";
 import { MergeDuplicatesDialog } from "@/components/personas/merge-duplicates-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export async function generateMetadata({
@@ -51,23 +51,11 @@ export default async function PersonDuplicatesPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href="/personas" />}
-          nativeButton={false}
-        >
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToPersonas")}
-        </Button>
-      </div>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {t("duplicatesTitle")}
-        </h1>
-        <p className="text-muted-foreground">{t("duplicatesSubtitle")}</p>
-      </div>
+      <PageHeader
+        back={{ href: "/personas", label: t("backToPersonas") }}
+        title={t("duplicatesTitle")}
+        description={t("duplicatesSubtitle")}
+      />
 
       {candidates.length === 0 ? (
         <SectionPlaceholder

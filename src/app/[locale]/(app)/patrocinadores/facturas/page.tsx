@@ -1,4 +1,3 @@
-import { ArrowLeftIcon } from "lucide-react";
 import { isNotNull } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -6,12 +5,11 @@ import { db } from "@/db";
 import { sponsorPayments } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { seasonLabel } from "@/lib/sponsorship";
-import { Link } from "@/i18n/navigation";
 import {
   InvoiceRegister,
   type InvoiceRow,
 } from "@/components/patrocinadores/invoice-register";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
 
 export async function generateMetadata({
   params,
@@ -73,24 +71,11 @@ export default async function InvoiceRegisterPage({
       saldría a sangre.
     */
     <div className="flex flex-1 flex-col gap-6 print:p-[14mm]">
-      <div className="print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href="/patrocinadores" />}
-          nativeButton={false}
-        >
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToSponsorships")}
-        </Button>
-      </div>
-
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {t("invoiceRegisterTitle")}
-        </h1>
-        <p className="text-muted-foreground">{t("invoiceRegisterSubtitle")}</p>
-      </div>
+      <PageHeader
+        back={{ href: "/patrocinadores", label: t("backToSponsorships") }}
+        title={t("invoiceRegisterTitle")}
+        description={t("invoiceRegisterSubtitle")}
+      />
 
       <InvoiceRegister invoices={invoices} years={years} locale={locale} />
     </div>

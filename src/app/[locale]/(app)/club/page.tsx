@@ -6,6 +6,7 @@ import { InjuryReportTemplateForm } from "@/components/club/injury-report-templa
 import { RegistrationAvailabilityForm } from "@/components/club/registration-availability-form";
 import { InfoRow } from "@/components/info-row";
 import { MaskedIbanText } from "@/components/masked-iban";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -54,10 +55,7 @@ export default async function ClubPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="text-muted-foreground">{t("subtitle")}</p>
-      </div>
+      <PageHeader title={t("title")} description={t("subtitle")} />
 
       <div className="grid gap-4 lg:max-w-2xl">
         <Card>
