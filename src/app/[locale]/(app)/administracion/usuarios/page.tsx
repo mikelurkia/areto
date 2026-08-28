@@ -161,10 +161,10 @@ export default async function UsuariosPage({
         <TableHeader>
           <TableRow>
             <TableHead>{t("colUser")}</TableHead>
-            <TableHead>{t("colRole")}</TableHead>
-            <TableHead>{t("colPerson")}</TableHead>
-            <TableHead>{t("colStatus")}</TableHead>
-            <TableHead>{t("colLastSignIn")}</TableHead>
+            <TableHead priority="secondary">{t("colRole")}</TableHead>
+            <TableHead priority="tertiary">{t("colPerson")}</TableHead>
+            <TableHead priority="secondary">{t("colStatus")}</TableHead>
+            <TableHead priority="tertiary">{t("colLastSignIn")}</TableHead>
             <TableHead className="w-12 text-right">{t("colActions")}</TableHead>
           </TableRow>
         </TableHeader>
@@ -188,7 +188,7 @@ export default async function UsuariosPage({
                   </div>
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell priority="secondary">
                 {row.roleLabels.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {row.roleLabels.map((label) => (
@@ -201,7 +201,7 @@ export default async function UsuariosPage({
                   <span className="text-muted-foreground">{t("noRole")}</span>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell priority="tertiary">
                 {row.personId && row.personName ? (
                   <Link
                     href={`/personas/${row.personId}`}
@@ -213,7 +213,7 @@ export default async function UsuariosPage({
                   <span className="text-muted-foreground">—</span>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell priority="secondary">
                 {row.status === "disabled" ? (
                   <Badge variant="destructive">{t("statusDisabled")}</Badge>
                 ) : row.pendingInvitation || row.status === "pending" ? (
@@ -222,7 +222,7 @@ export default async function UsuariosPage({
                   <Badge variant="secondary">{t("statusActive")}</Badge>
                 )}
               </TableCell>
-              <TableCell nowrap className="text-muted-foreground">
+              <TableCell priority="tertiary" nowrap className="text-muted-foreground">
                 {row.lastSignInAt
                   ? dateFmt.format(new Date(row.lastSignInAt))
                   : "—"}

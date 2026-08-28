@@ -117,9 +117,13 @@ export default async function RolesPage({
             <TableHeader>
               <TableRow>
                 <TableHead>{t("colRole")}</TableHead>
-                <TableHead>{t("colDescription")}</TableHead>
-                <TableHead className="text-right">{t("colUsers")}</TableHead>
-                <TableHead className="text-right">{t("colPermissions")}</TableHead>
+                <TableHead priority="tertiary">{t("colDescription")}</TableHead>
+                <TableHead priority="secondary" className="text-right">
+                  {t("colUsers")}
+                </TableHead>
+                <TableHead priority="secondary" className="text-right">
+                  {t("colPermissions")}
+                </TableHead>
                 <TableHead className="w-12 text-right">{t("colActions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -139,13 +143,17 @@ export default async function RolesPage({
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell priority="tertiary" className="text-muted-foreground">
                       {role.description ?? "—"}
                     </TableCell>
-                    <TableCell nowrap className="text-right tabular-nums">
+                    <TableCell priority="secondary" nowrap className="text-right tabular-nums">
                       {role.userAssignments.length}
                     </TableCell>
-                    <TableCell nowrap className="text-right tabular-nums text-muted-foreground">
+                    <TableCell
+                      priority="secondary"
+                      nowrap
+                      className="text-right tabular-nums text-muted-foreground"
+                    >
                       {t("permissionCount", {
                         count: role.permissions.length,
                         total: PERMISSIONS.length,

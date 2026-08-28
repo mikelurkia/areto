@@ -147,9 +147,9 @@ export function SeasonRenewalsTable({
               ) : null}
             </TableHead>
             <TableHead>{t("colName")}</TableHead>
-            <TableHead>{t("colTeam")}</TableHead>
-            <TableHead>{t("colStatus")}</TableHead>
-            <TableHead>{t("colContact")}</TableHead>
+            <TableHead priority="secondary">{t("colTeam")}</TableHead>
+            <TableHead priority="secondary">{t("colStatus")}</TableHead>
+            <TableHead priority="tertiary">{t("colContact")}</TableHead>
             <TableHead>{t("colReminder")}</TableHead>
           </TableRow>
         </TableHeader>
@@ -182,11 +182,11 @@ export function SeasonRenewalsTable({
                     {row.personName}
                   </HoverPrefetchLink>
                 </TableCell>
-                <TableCell>{row.teamName}</TableCell>
-                <TableCell>
+                <TableCell priority="secondary">{row.teamName}</TableCell>
+                <TableCell priority="secondary">
                   <Badge variant={STATUS_VARIANT[row.status]}>{t(`status${capitalize(row.status)}`)}</Badge>
                 </TableCell>
-                <TableCell>
+                <TableCell priority="tertiary">
                   {row.contactPhone || row.contactEmail ? (
                     <div className="flex flex-col text-sm">
                       <span>{row.contactName}</span>

@@ -18,7 +18,16 @@ export default function Loading() {
       <div className="flex flex-col gap-4">
         <FiltersBarSkeleton selects={2} trailing={2} />
         <TableSkeleton
-          columns={["w-36", "w-12", "w-20", "w-28", "w-16", "w-44", "w-16"]}
+          columns={[
+            "w-36",
+            { width: "w-12", priority: "tertiary" },
+            { width: "w-20", priority: "secondary" },
+            { width: "w-28", priority: "tertiary" },
+            { width: "w-16", priority: "secondary" },
+            { width: "w-44", priority: "tertiary" },
+            { width: "w-16", priority: "secondary" },
+            "w-12",
+          ]}
           rows={10}
         />
       </div>

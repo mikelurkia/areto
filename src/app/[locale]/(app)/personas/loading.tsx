@@ -13,7 +13,14 @@ export default function Loading() {
         <FiltersBarSkeleton selects={5} trailing={1} />
         <TableSkeleton
           leading="checkbox"
-          columns={["w-40", "w-16", "w-44", "w-20", "w-16"]}
+          columns={[
+            "w-40",
+            { width: "w-20", priority: "tertiary" },
+            { width: "w-24", priority: "secondary" },
+            { width: "w-44", priority: "tertiary" },
+            { width: "w-16", priority: "secondary" },
+            "w-16",
+          ]}
           rows={10}
           lines={2}
         />

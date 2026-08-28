@@ -7,7 +7,14 @@ export default function Loading() {
       {/* Equipo, local/visitante, rango de fechas. */}
       <FiltersBarSkeleton selects={2} />
       <TableSkeleton
-        columns={["w-32", "w-20", "w-32", "w-28", "w-40", "w-16"]}
+        columns={[
+          "w-32",
+          { width: "w-20", priority: "secondary" },
+          "w-32",
+          { width: "w-28", priority: "tertiary" },
+          { width: "w-40", priority: "tertiary" },
+          "w-16",
+        ]}
         rows={6}
       />
     </div>

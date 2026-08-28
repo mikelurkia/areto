@@ -34,7 +34,13 @@ export default function Loading() {
 
       <TableSkeleton
         leading="avatar"
-        columns={["w-40", "w-20", "w-10", "w-24"]}
+        columns={[
+          "w-40",
+          { width: "w-20", priority: "secondary" },
+          "w-10",
+          { width: "w-24", priority: "tertiary" },
+          "w-16",
+        ]}
         rows={12}
       />
     </div>

@@ -191,19 +191,30 @@ export function FiltersBarSkeleton({
  * Tabla con cabecera y filas de relleno. `columns` son clases de ancho, una por
  * columna; la última se alinea a la derecha porque en todos los listados es la
  * columna de acciones. `lines` a 2 para filas de dos líneas (nombre + DNI).
+ *
+ * Una columna puede declararse `{ width, priority }` para que el esqueleto se
+ * esconda en las mismas pantallas que la columna real de la tabla: si no, al
+ * llegar el contenido en un móvil el esqueleto salta de seis columnas a dos.
  */
+export type TableSkeletonColumn =
+  | string
+  | { width: string; priority?: "secondary" | "tertiary" };
+
 export function TableSkeleton({
   columns,
   rows = 8,
   lines = 1,
   leading,
 }: {
-  columns: string[];
+  columns: TableSkeletonColumn[];
   rows?: number;
   lines?: 1 | 2;
   /** Columna estrecha inicial: casilla de selección o foto de la fila. */
   leading?: "checkbox" | "avatar";
 }) {
+  const cols = columns.map((column) =>
+    typeof column === "string" ? { width: column, priority: undefined } : column
+  );
   return (
     <Table aria-hidden>
       <TableHeader>
@@ -213,9 +224,13 @@ export function TableSkeleton({
               {leading === "checkbox" ? <Skeleton className="size-4 rounded-sm" /> : null}
             </TableHead>
           ) : null}
-          {columns.map((width, i) => (
-            <TableHead key={i} className={i === columns.length - 1 ? "text-right" : undefined}>
-              <Skeleton className={`h-4 ${width} ${i === columns.length - 1 ? "ml-auto" : ""}`} />
+          {cols.map(({ width, priority }, i) => (
+            <TableHead
+              key={i}
+              priority={priority}
+              className={i === cols.length - 1 ? "text-right" : undefined}
+            >
+              <Skeleton className={`h-4 ${width} ${i === cols.length - 1 ? "ml-auto" : ""}`} />
             </TableHead>
           ))}
         </TableRow>
@@ -230,9 +245,9 @@ export function TableSkeleton({
                 />
               </TableCell>
             ) : null}
-            {columns.map((width, i) => (
-              <TableCell key={i}>
-                {i === columns.length - 1 ? (
+            {cols.map(({ width, priority }, i) => (
+              <TableCell key={i} priority={priority}>
+                {i === cols.length - 1 ? (
                   <div className="flex justify-end gap-1">
                     <Skeleton className="size-7 rounded-md" />
                     <Skeleton className="size-7 rounded-md" />
