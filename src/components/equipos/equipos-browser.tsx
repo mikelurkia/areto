@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { DeleteTeamDialog } from "@/components/equipos/delete-team-dialog";
 import { TeamDialog } from "@/components/equipos/team-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -183,9 +183,9 @@ export function EquiposBrowser({
               return (
                 <TableRow key={team.id}>
                   <TableCell className="font-medium">
-                    <Link href={`/equipos/${team.id}`} className="hover:underline">
+                    <HoverPrefetchLink href={`/equipos/${team.id}`} className="hover:underline">
                       {team.name}
-                    </Link>
+                    </HoverPrefetchLink>
                   </TableCell>
                   <TableCell>
                     {team.category ? t(`category.${team.category}`) : "—"}

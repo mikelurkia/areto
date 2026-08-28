@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 
 import type { RenewalStatus, SeasonRenewalRow } from "@/lib/season-renewals";
 import { mailtoBccLink, mailtoLink, whatsappLink } from "@/lib/contact-links";
-import { Link } from "@/i18n/navigation";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -175,12 +175,12 @@ export function SeasonRenewalsTable({
                   ) : null}
                 </TableCell>
                 <TableCell className="font-medium">
-                  <Link
+                  <HoverPrefetchLink
                     href={`/personas/${row.personId}?from=${encodeURIComponent(`/temporadas/${seasonId}/pendientes`)}&fromLabel=${encodeURIComponent(seasonName)}`}
                     className="hover:underline"
                   >
                     {row.personName}
-                  </Link>
+                  </HoverPrefetchLink>
                 </TableCell>
                 <TableCell>{row.teamName}</TableCell>
                 <TableCell>

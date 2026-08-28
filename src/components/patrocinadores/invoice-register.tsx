@@ -5,7 +5,8 @@ import { DownloadIcon, ReceiptTextIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { downloadCsv } from "@/lib/csv";
-import { Link, usePathname } from "@/i18n/navigation";
+import { usePathname } from "@/i18n/navigation";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { PrintButton } from "@/components/print-button";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Button } from "@/components/ui/button";
@@ -144,12 +145,12 @@ export function InvoiceRegister({
                 </TableCell>
                 <TableCell className="font-medium">{inv.invoiceNumber}</TableCell>
                 <TableCell>
-                  <Link
+                  <HoverPrefetchLink
                     href={`/patrocinadores/${inv.sponsorId}?from=${encodeURIComponent(pathname)}&fromLabel=${encodeURIComponent(t("invoiceRegisterLink"))}`}
                     className="hover:underline"
                   >
                     {inv.sponsorName}
-                  </Link>
+                  </HoverPrefetchLink>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {inv.concept}
@@ -162,7 +163,7 @@ export function InvoiceRegister({
                     variant="ghost"
                     size="icon-sm"
                     render={
-                      <Link
+                      <HoverPrefetchLink
                         href={`/patrocinadores/${inv.sponsorId}/recibo/${inv.id}`}
                       />
                     }

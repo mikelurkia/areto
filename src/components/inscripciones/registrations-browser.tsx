@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { downloadCsv } from "@/lib/csv";
-import { Link } from "@/i18n/navigation";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { STATUS_VARIANT, type RegistrationStatus } from "@/lib/registration-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -165,9 +165,9 @@ export function RegistrationsBrowser({
             {filtered.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">
-                  <Link href={`/inscripciones/${r.id}`} className="hover:underline">
+                  <HoverPrefetchLink href={`/inscripciones/${r.id}`} className="hover:underline">
                     {r.firstName} {r.lastName}
-                  </Link>
+                  </HoverPrefetchLink>
                 </TableCell>
                 <TableCell className="text-muted-foreground tabular-nums">
                   {r.nationalId ?? "—"}

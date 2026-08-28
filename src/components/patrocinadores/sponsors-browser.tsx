@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { DownloadIcon, HandshakeIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { DeleteSponsorDialog } from "@/components/patrocinadores/delete-sponsor-dialog";
 import { SponsorDialog } from "@/components/patrocinadores/sponsor-dialog";
 import { PrintButton } from "@/components/print-button";
@@ -232,9 +232,9 @@ export function SponsorsBrowser({
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">
                     <div className="flex flex-wrap items-center gap-1">
-                      <Link href={`/patrocinadores/${s.id}`} className="hover:underline">
+                      <HoverPrefetchLink href={`/patrocinadores/${s.id}`} className="hover:underline">
                         {s.name}
-                      </Link>
+                      </HoverPrefetchLink>
                       {s.currentTerm?.contractUrl ? (
                         <a
                           href={s.currentTerm.contractUrl}

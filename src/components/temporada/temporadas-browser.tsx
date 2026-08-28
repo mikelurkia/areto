@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { CalendarDaysIcon, DownloadIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import {
   DeleteSeasonDialog,
   SeasonDialog,
@@ -121,9 +121,9 @@ export function TemporadasBrowser({
               return (
                 <TableRow key={season.id}>
                   <TableCell className="font-medium">
-                    <Link href={`/temporadas/${season.id}`} className="hover:underline">
+                    <HoverPrefetchLink href={`/temporadas/${season.id}`} className="hover:underline">
                       {season.name}
-                    </Link>
+                    </HoverPrefetchLink>
                     {season.isCurrent ? (
                       <Badge variant="secondary" className="ml-2">
                         {t("currentBadge")}

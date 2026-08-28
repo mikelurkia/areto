@@ -14,7 +14,7 @@ import {
   emailsForMemberSelection,
   exportMemberRows,
 } from "@/app/[locale]/(app)/socios/list-actions";
-import { Link } from "@/i18n/navigation";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -279,12 +279,12 @@ export function SociosBrowser({
                     </TableCell>
                   ) : null}
                   <TableCell className="font-medium">
-                    <Link
+                    <HoverPrefetchLink
                       href={`/personas/${s.id}?from=${encodeURIComponent("/socios")}`}
                       className="hover:underline"
                     >
                       {s.firstName} {s.lastName}
-                    </Link>
+                    </HoverPrefetchLink>
                   </TableCell>
                   <TableCell className="text-muted-foreground tabular-nums">
                     {s.memberNumber ?? "—"}
