@@ -107,7 +107,7 @@ export function TemporadasBrowser({
           <TableHeader>
             <TableRow>
               <TableHead>{t("colName")}</TableHead>
-              <TableHead>{t("colDates")}</TableHead>
+              <TableHead priority="secondary">{t("colDates")}</TableHead>
               <TableHead>{t("colTeams")}</TableHead>
               {canManage ? (
                 <TableHead className="text-right">{t("colActions")}</TableHead>
@@ -130,7 +130,7 @@ export function TemporadasBrowser({
                       </Badge>
                     ) : null}
                   </TableCell>
-                  <TableCell>
+                  <TableCell priority="secondary">
                     {starts || ends ? `${starts ?? "—"} – ${ends ?? "—"}` : "—"}
                   </TableCell>
                   <TableCell>{season.teamsCount}</TableCell>

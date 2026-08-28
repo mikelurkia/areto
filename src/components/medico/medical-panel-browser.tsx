@@ -303,7 +303,7 @@ export function MedicalPanelBrowser({
             <TableHeader>
               <TableRow>
                 <TableHead>{t("colName")}</TableHead>
-                <TableHead>{t("colTeams")}</TableHead>
+                <TableHead priority="secondary">{t("colTeams")}</TableHead>
                 <TableHead>{t("colStatus")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -318,7 +318,7 @@ export function MedicalPanelBrowser({
                       {row.firstName} {row.lastName}
                     </HoverPrefetchLink>
                   </TableCell>
-                  <TableCell>
+                  <TableCell priority="secondary">
                     <div className="flex flex-wrap gap-1">
                       {row.teams.map((tm) => (
                         <Badge
@@ -355,7 +355,7 @@ export function MedicalPanelBrowser({
               <TableRow>
                 <TableHead>{t("colInjuryDate")}</TableHead>
                 <TableHead>{t("colInjuryPerson")}</TableHead>
-                <TableHead>{t("colTeams")}</TableHead>
+                <TableHead priority="secondary">{t("colTeams")}</TableHead>
                 {canManage ? (
                   <TableHead className="print:hidden">
                     <span className="sr-only">{t("colActions")}</span>
@@ -375,7 +375,7 @@ export function MedicalPanelBrowser({
                       {row.personName}
                     </HoverPrefetchLink>
                   </TableCell>
-                  <TableCell>
+                  <TableCell priority="secondary">
                     <div className="flex flex-wrap gap-1">
                       {row.teams.map((tm) => (
                         <Badge key={tm.id} variant="secondary">

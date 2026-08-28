@@ -504,10 +504,10 @@ export function PersonasBrowser({
                   </TableHead>
                 ) : null}
                 <TableHead>{t("colName")}</TableHead>
-                <TableHead>{t("colNationalId")}</TableHead>
-                <TableHead>{t("colTeam")}</TableHead>
-                <TableHead>{t("colContact")}</TableHead>
-                <TableHead>{t("colStatus")}</TableHead>
+                <TableHead priority="tertiary">{t("colNationalId")}</TableHead>
+                <TableHead priority="secondary">{t("colTeam")}</TableHead>
+                <TableHead priority="tertiary">{t("colContact")}</TableHead>
+                <TableHead priority="secondary">{t("colStatus")}</TableHead>
                 {canManage ? (
                   <TableHead className="text-right">
                     {t("colActions")}
@@ -544,30 +544,45 @@ export function PersonasBrowser({
                             {initials(person.firstName, person.lastName)}
                           </AvatarFallback>
                         </Avatar>
-                        <HoverPrefetchLink
-                          href={`/personas/${person.id}`}
-                          className="hover:underline"
-                        >
-                          {fullName}
-                        </HoverPrefetchLink>
-                        {person.birthDate ? (
-                          <span className="text-xs font-normal text-muted-foreground">
-                            {t("ageYears", {
-                              count: calculateAge(person.birthDate),
-                            })}
-                          </span>
-                        ) : null}
-                        {person.birthDate && isMinor(person.birthDate) ? (
-                          <Badge variant="outline" className="text-xs">
-                            {t("minorTag")}
-                          </Badge>
-                        ) : null}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <HoverPrefetchLink
+                              href={`/personas/${person.id}`}
+                              className="hover:underline"
+                            >
+                              {fullName}
+                            </HoverPrefetchLink>
+                            {person.birthDate ? (
+                              <span className="text-xs font-normal text-muted-foreground">
+                                {t("ageYears", {
+                                  count: calculateAge(person.birthDate),
+                                })}
+                              </span>
+                            ) : null}
+                            {person.birthDate && isMinor(person.birthDate) ? (
+                              <Badge variant="outline" className="text-xs">
+                                {t("minorTag")}
+                              </Badge>
+                            ) : null}
+                          </div>
+                          {/* El DNI tiene columna propia a partir de `lg`; por
+                              debajo baja aquí para no perderse. */}
+                          {person.nationalId ? (
+                            <span className="block text-xs font-normal text-muted-foreground tabular-nums lg:hidden">
+                              {person.nationalId}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell nowrap className="text-muted-foreground tabular-nums">
+                    <TableCell
+                      priority="tertiary"
+                      nowrap
+                      className="text-muted-foreground tabular-nums"
+                    >
                       {person.nationalId ?? "—"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell priority="secondary">
                       {person.memberships.length > 0 ? (
                         <div className="flex items-center gap-1">
                           {visibleTeams.map((m) => (
@@ -595,7 +610,7 @@ export function PersonasBrowser({
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell priority="tertiary">
                       {person.phone || person.email ? (
                         <div className="flex items-center gap-0.5">
                           {person.phone ? (
@@ -648,7 +663,7 @@ export function PersonasBrowser({
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell priority="secondary">
                       {hasStatus ? (
                         <div className="flex items-center gap-1">
                           {person.isMember ? (

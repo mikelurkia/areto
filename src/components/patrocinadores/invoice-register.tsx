@@ -127,10 +127,10 @@ export function InvoiceRegister({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("colInvoiceDate")}</TableHead>
+              <TableHead priority="secondary">{t("colInvoiceDate")}</TableHead>
               <TableHead>{t("invoiceNumberLabel")}</TableHead>
               <TableHead>{t("colSponsor")}</TableHead>
-              <TableHead>{t("conceptLabel")}</TableHead>
+              <TableHead priority="tertiary">{t("conceptLabel")}</TableHead>
               <TableHead className="text-right">{t("colAmount")}</TableHead>
               <TableHead className="text-right print:hidden">
                 {t("colActions")}
@@ -140,7 +140,7 @@ export function InvoiceRegister({
           <TableBody>
             {filtered.map((inv) => (
               <TableRow key={inv.id}>
-                <TableCell nowrap>
+                <TableCell priority="secondary" nowrap>
                   {inv.invoicedOn ?? "—"}
                 </TableCell>
                 <TableCell className="font-medium">{inv.invoiceNumber}</TableCell>
@@ -152,7 +152,7 @@ export function InvoiceRegister({
                     {inv.sponsorName}
                   </HoverPrefetchLink>
                 </TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell priority="tertiary" className="text-muted-foreground">
                   {inv.concept}
                 </TableCell>
                 <TableCell nowrap className="text-right font-medium">
@@ -178,9 +178,14 @@ export function InvoiceRegister({
           </TableBody>
           <TableFooter>
             <TableRow>
-              <TableCell colSpan={4} className="font-medium">
+              {/* Una celda por columna, sin `colSpan`: al ocultarse las de
+                  prioridad el número de celdas debe seguir cuadrando. */}
+              <TableCell priority="secondary" />
+              <TableCell className="font-medium">
                 {t("totalInvoicedLabel")}
               </TableCell>
+              <TableCell />
+              <TableCell priority="tertiary" />
               <TableCell nowrap className="text-right font-semibold">
                 {formatAmount(totalCents)}
               </TableCell>
