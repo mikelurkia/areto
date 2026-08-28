@@ -6,8 +6,10 @@ import { DownloadIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { usePagedRows } from "@/hooks/use-paged-rows";
 import { downloadCsv } from "@/lib/csv";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
+import { PaginationBar } from "@/components/pagination-bar";
 import { STATUS_TONE, type RegistrationStatus } from "@/lib/registration-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,6 +78,8 @@ export function RegistrationsBrowser({
     }
     return result;
   }, [registrations, query, status]);
+
+  const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
   /** Exporta lo que se está viendo, filtro incluido. */
   function handleExportCsv() {
@@ -163,7 +167,7 @@ export function RegistrationsBrowser({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((r) => (
+            {pageRows.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">
                   <HoverPrefetchLink href={`/inscripciones/${r.id}`} className="hover:underline">
@@ -216,6 +220,9 @@ export function RegistrationsBrowser({
           </TableBody>
         </Table>
       )}
+
+      {/* La barra no pinta nada mientras quepa todo en una página. */}
+      <PaginationBar page={page} pageCount={pageCount} onPageChange={setPage} />
     </>
   );
 }

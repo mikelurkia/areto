@@ -126,6 +126,11 @@
     "fixtureMissingPreferredDay": "Sin día confirmado",
     "fixturesPreferredDayWarning": "{count, plural, one {# partido en casa de la próxima jornada sin día confirmado} other {# partidos en casa de la próxima jornada sin día confirmado}}"
   },
+  "Pagination": {
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "page": "Página {page}"
+  },
   "Command": {
     "trigger": "Buscar…",
     "title": "Buscador",
@@ -543,8 +548,6 @@
     "sizesSection": "Tallas",
     "consentSection": "Consentimientos",
     "teamsSection": "Equipos",
-    "paginationPrevious": "Anterior",
-    "paginationNext": "Siguiente",
     "tabGeneral": "General",
     "tabFamily": "Familia",
     "tabTeams": "Equipos ({count})",
@@ -1038,9 +1041,7 @@
     "bulkMembersCancelled": "{count} socios dados de baja.",
     "bulkClearSelection": "Cancelar selección",
     "noResultsTitle": "Sin resultados",
-    "noResultsDescription": "Ningún socio coincide con la búsqueda.",
-    "paginationPrevious": "Anterior",
-    "paginationNext": "Siguiente"
+    "noResultsDescription": "Ningún socio coincide con la búsqueda."
   },
   "Equipos": {
     "title": "Equipos",

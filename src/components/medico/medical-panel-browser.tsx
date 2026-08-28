@@ -11,6 +11,7 @@ import {
 import { useTranslations } from "next-intl";
 
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { usePagedRows } from "@/hooks/use-paged-rows";
 import { downloadCsv } from "@/lib/csv";
 import {
   EMPTY_MEDICAL_PANEL_FILTERS,
@@ -22,6 +23,7 @@ import {
 import { type MedicalCertStatus } from "@/lib/medical-status";
 import { Link } from "@/i18n/navigation";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
+import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -153,6 +155,11 @@ export function MedicalPanelBrowser({
     }
     return result;
   }, [injuryRows, query, team]);
+
+  // Dos tablas, dos paginaciones: los reconocimientos son toda la plantilla del
+  // club y los partes de lesión unos pocos al año.
+  const certPage = usePagedRows(filteredCertRows);
+  const injuryPage = usePagedRows(filteredInjuryRows, 10);
 
   // Los filtros viven en estado local, así que viajan al listado imprimible
   // por la URL: es lo que le permite reproducir en servidor la misma selección
@@ -309,7 +316,7 @@ export function MedicalPanelBrowser({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCertRows.map((row) => (
+              {certPage.pageRows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell className="font-medium">
                     <HoverPrefetchLink
@@ -340,6 +347,11 @@ export function MedicalPanelBrowser({
             </TableBody>
           </Table>
         )}
+        <PaginationBar
+          page={certPage.page}
+          pageCount={certPage.pageCount}
+          onPageChange={certPage.setPage}
+        />
       </div>
 
       <div className="flex flex-col gap-3">
@@ -370,7 +382,7 @@ export function MedicalPanelBrowser({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInjuryRows.map((row) => (
+              {injuryPage.pageRows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell nowrap className="font-medium">{row.occurredOn}</TableCell>
                   <TableCell>
@@ -410,6 +422,11 @@ export function MedicalPanelBrowser({
             </TableBody>
           </Table>
         )}
+        <PaginationBar
+          page={injuryPage.page}
+          pageCount={injuryPage.pageCount}
+          onPageChange={injuryPage.setPage}
+        />
       </div>
     </div>
   );

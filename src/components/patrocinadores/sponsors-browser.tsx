@@ -206,6 +206,11 @@ export function SponsorsBrowser({
         </div>
       </div>
 
+      {/*
+        Sin paginar, a propósito: esta pantalla se imprime (`PrintButton`), y lo
+        que no está pintado no sale en el papel. Paginarla dejaría el listado
+        impreso incompleto sin avisar.
+      */}
       {filtered.length === 0 ? (
         <SectionPlaceholder
           size="compact"

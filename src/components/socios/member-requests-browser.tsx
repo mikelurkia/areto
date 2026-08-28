@@ -6,6 +6,8 @@ import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
+import { PaginationBar } from "@/components/pagination-bar";
+import { usePagedRows } from "@/hooks/use-paged-rows";
 import { STATUS_TONE, type RegistrationStatus } from "@/lib/registration-status";
 import { Input } from "@/components/ui/input";
 import {
@@ -68,6 +70,8 @@ export function MemberRequestsBrowser({
     return result;
   }, [registrations, query, status]);
 
+  const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
+
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -120,7 +124,7 @@ export function MemberRequestsBrowser({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((r) => (
+            {pageRows.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">
                   <HoverPrefetchLink href={`/socios/${r.id}`} className="hover:underline">
@@ -179,6 +183,9 @@ export function MemberRequestsBrowser({
           </TableBody>
         </Table>
       )}
+
+      {/* La barra no pinta nada mientras quepa todo en una página. */}
+      <PaginationBar page={page} pageCount={pageCount} onPageChange={setPage} />
     </>
   );
 }
