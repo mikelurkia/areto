@@ -1234,7 +1234,11 @@
     "deleteNoteSr": "Eliminar entrada",
     "noteAdded": "Entrada añadida.",
     "noteBodyRequired": "La entrada no puede estar vacía.",
-    "noteDeleted": "Entrada eliminada."
+    "noteDeleted": "Entrada eliminada.",
+    "searchPlaceholder": "Buscar por nombre o categoría...",
+    "exportCsvAction": "Exportar CSV",
+    "noResultsTitle": "Sin resultados",
+    "noResultsDescription": "Ningún equipo coincide con la búsqueda."
   },
   "Patrocinadores": {
     "title": "Patrocinadores",
@@ -1817,6 +1821,10 @@
     "bulkNoEmailWarning": "{count, plural, one {# persona pendiente de aviso no tiene email registrado: avísale por WhatsApp fila a fila.} other {# personas pendientes de aviso no tienen email registrado: avísales por WhatsApp fila a fila.}}",
     "bulkClearSelection": "Cancelar selección",
     "cancel": "Cancelar",
-    "saveChanges": "Guardar cambios"
+    "saveChanges": "Guardar cambios",
+    "searchPlaceholder": "Buscar por nombre...",
+    "exportCsvAction": "Exportar CSV",
+    "noResultsTitle": "Sin resultados",
+    "noResultsDescription": "Ninguna temporada coincide con la búsqueda."
   }
 }

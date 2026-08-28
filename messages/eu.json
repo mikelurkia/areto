@@ -1234,7 +1234,11 @@
     "deleteNoteSr": "Sarrera ezabatu",
     "noteAdded": "Sarrera gehitu da.",
     "noteBodyRequired": "Sarrera ezin da hutsik egon.",
-    "noteDeleted": "Sarrera ezabatu da."
+    "noteDeleted": "Sarrera ezabatu da.",
+    "searchPlaceholder": "Bilatu izenez edo mailaz...",
+    "exportCsvAction": "CSV esportatu",
+    "noResultsTitle": "Emaitzarik ez",
+    "noResultsDescription": "Ez dago bilaketarekin bat datorren talderik."
   },
   "Patrocinadores": {
     "title": "Babesleak",
@@ -1817,6 +1821,10 @@
     "bulkNoEmailWarning": "{count, plural, one {abisatzeko dagoen pertsona batek ez du emailik erregistratuta: abisatu WhatsAppez banan-banan.} other {abisatzeko dauden # pertsonak ez dute emailik erregistratuta: abisatu WhatsAppez banan-banan.}}",
     "bulkClearSelection": "Hautapena ezeztatu",
     "cancel": "Utzi",
-    "saveChanges": "Gorde aldaketak"
+    "saveChanges": "Gorde aldaketak",
+    "searchPlaceholder": "Bilatu izenez...",
+    "exportCsvAction": "CSV esportatu",
+    "noResultsTitle": "Emaitzarik ez",
+    "noResultsDescription": "Ez dago bilaketarekin bat datorren denboraldirik."
   }
 }
