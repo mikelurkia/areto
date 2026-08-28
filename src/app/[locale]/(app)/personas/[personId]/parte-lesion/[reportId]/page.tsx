@@ -5,7 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { persons, memberships, personInjuryReports } from "@/db/schema";
-import { BackLink } from "@/components/back-link";
+import { PageHeader } from "@/components/page-header";
 import { InjuryReportForm } from "@/components/personas/injury-report-form";
 import { InjuryReportFileManager } from "@/components/personas/injury-report-file-manager";
 import {
@@ -118,17 +118,16 @@ export default async function InjuryReportFederationPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <BackLink href={`/personas/${personId}?tab=medico`} label={t("backToPersona")} />
-
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {isNew ? t("newInjuryReportTitle") : t("injuryReportFederationTitle")}
-        </h1>
-        <p className="text-muted-foreground">
-          {person.firstName} {person.lastName}
-          {report ? ` · ${report.occurredOn}` : null}
-        </p>
-      </div>
+      <PageHeader
+        back={{
+          href: `/personas/${personId}?tab=medico`,
+          label: t("backToPersona"),
+        }}
+        title={isNew ? t("newInjuryReportTitle") : t("injuryReportFederationTitle")}
+        description={`${person.firstName} ${person.lastName}${
+          report ? ` · ${report.occurredOn}` : ""
+        }`}
+      />
 
       {hasTemplate && !clubDataMissing && !noTeam ? null : (
         <div className="flex flex-col gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">

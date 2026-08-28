@@ -1,3 +1,5 @@
+import type * as React from "react";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardHeader } from "@/components/ui/card";
 import {
@@ -21,35 +23,66 @@ import {
  * fallback de Suspense no puede esperar a nada (ni a traducciones).
  */
 
+/** Enlace "volver a…" que las fichas llevan sobre el encabezado. */
+export function BackLinkSkeleton() {
+  return <Skeleton className="h-7 w-36" aria-hidden />;
+}
+
+/**
+ * Envuelve un encabezado con su enlace "volver a…" arriba, con la misma
+ * separación que `PageHeader` pone entre los dos. Si `back` es falso no añade
+ * contenedor: así el encabezado suelto no gana un nivel de anidamiento.
+ */
+function WithBackLink({
+  back,
+  children,
+}: {
+  back: boolean;
+  children: React.ReactNode;
+}) {
+  if (!back) return children;
+  return (
+    <div className="flex flex-col gap-4">
+      <BackLinkSkeleton />
+      {children}
+    </div>
+  );
+}
+
 /** Encabezado de listado: título, subtítulo y botones de acción a la derecha. */
 export function PageHeaderSkeleton({
   actions = 0,
   titleWidth = "w-40",
+  back = false,
 }: {
   actions?: number;
   titleWidth?: string;
+  /** Las sub-páginas llevan encima el enlace "volver a…". */
+  back?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4" aria-hidden>
-      <div className="flex flex-col gap-2">
-        <Skeleton className={`h-7 ${titleWidth}`} />
-        <Skeleton className="h-4 w-64" />
-      </div>
-      {actions > 0 ? (
-        <div className="flex gap-2">
-          {Array.from({ length: actions }, (_, i) => (
-            <Skeleton key={i} className="h-8 w-28" />
-          ))}
+    <WithBackLink back={back}>
+      <div className="flex flex-wrap items-center justify-between gap-4" aria-hidden>
+        <div className="flex flex-col gap-2">
+          <Skeleton className={`h-7 ${titleWidth}`} />
+          <Skeleton className="h-4 w-64" />
         </div>
-      ) : null}
-    </div>
+        {actions > 0 ? (
+          <div className="flex gap-2">
+            {Array.from({ length: actions }, (_, i) => (
+              <Skeleton key={i} className="h-8 w-28" />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </WithBackLink>
   );
 }
 
 /**
  * Encabezado de ficha: nombre, línea de metadatos y acciones.
- * `back` añade la flecha de volver en línea (ficha de equipo) y `media` reserva
- * el hueco del logo cuadrado (ficha de patrocinador).
+ * `back` añade encima el enlace "volver a…" y `media` reserva el hueco del logo
+ * cuadrado (ficha de patrocinador).
  */
 export function DetailHeaderSkeleton({
   back = false,
@@ -63,54 +96,58 @@ export function DetailHeaderSkeleton({
   iconActions?: number;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4" aria-hidden>
-      <div className="flex min-w-0 items-center gap-4">
-        {back ? <Skeleton className="size-7 shrink-0 rounded-md" /> : null}
-        {media ? <Skeleton className="size-14 shrink-0 rounded" /> : null}
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-7 w-52" />
-          <Skeleton className="h-4 w-72" />
+    <WithBackLink back={back}>
+      <div className="flex flex-wrap items-center justify-between gap-4" aria-hidden>
+        <div className="flex min-w-0 items-center gap-4">
+          {media ? <Skeleton className="size-14 shrink-0 rounded" /> : null}
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-7 w-52" />
+            <Skeleton className="h-4 w-72" />
+          </div>
         </div>
+        {actions > 0 || iconActions > 0 ? (
+          <div className="flex items-center gap-2">
+            {Array.from({ length: actions }, (_, i) => (
+              <Skeleton key={`action-${i}`} className="h-8 w-24" />
+            ))}
+            {Array.from({ length: iconActions }, (_, i) => (
+              <Skeleton key={`icon-${i}`} className="size-7 rounded-md" />
+            ))}
+          </div>
+        ) : null}
       </div>
-      {actions > 0 || iconActions > 0 ? (
-        <div className="flex items-center gap-2">
-          {Array.from({ length: actions }, (_, i) => (
-            <Skeleton key={`action-${i}`} className="h-8 w-24" />
-          ))}
-          {Array.from({ length: iconActions }, (_, i) => (
-            <Skeleton key={`icon-${i}`} className="size-7 rounded-md" />
-          ))}
-        </div>
-      ) : null}
-    </div>
+    </WithBackLink>
   );
-}
-
-/** Enlace "volver a…" que las fichas llevan sobre el encabezado. */
-export function BackLinkSkeleton() {
-  return <Skeleton className="h-7 w-36" aria-hidden />;
 }
 
 /**
  * Encabezado de ficha con foto redonda a la izquierda (personas): avatar `lg`,
  * nombre, fila de etiquetas y acciones.
  */
-export function ProfileHeaderSkeleton({ actions = 4 }: { actions?: number }) {
+export function ProfileHeaderSkeleton({
+  actions = 4,
+  back = false,
+}: {
+  actions?: number;
+  back?: boolean;
+}) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4" aria-hidden>
-      <div className="flex items-center gap-4">
-        <Skeleton className="size-10 shrink-0 rounded-full" />
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-7 w-56" />
-          <Skeleton className="h-5 w-32 rounded-full" />
+    <WithBackLink back={back}>
+      <div className="flex flex-wrap items-center justify-between gap-4" aria-hidden>
+        <div className="flex items-center gap-4">
+          <Skeleton className="size-10 shrink-0 rounded-full" />
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-7 w-56" />
+            <Skeleton className="h-5 w-32 rounded-full" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {Array.from({ length: actions }, (_, i) => (
+            <Skeleton key={i} className="h-7 w-24" />
+          ))}
         </div>
       </div>
-      <div className="flex gap-2">
-        {Array.from({ length: actions }, (_, i) => (
-          <Skeleton key={i} className="h-7 w-24" />
-        ))}
-      </div>
-    </div>
+    </WithBackLink>
   );
 }
 

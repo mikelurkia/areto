@@ -8,13 +8,13 @@ import { hasAnyPermission, requirePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format-date";
 import { findCandidates } from "@/lib/person-matching";
 import { STATUS_VARIANT } from "@/lib/registration-status";
-import { BackLink } from "@/components/back-link";
 import {
   MemberReviewForm,
   type MemberRegistrationDetail,
 } from "@/components/inscripciones/member-review-form";
 import { ReviewedRegistrationPanel } from "@/components/inscripciones/reviewed-registration-panel";
 import { MemberRegistrationSummary } from "@/components/inscripciones/registration-summary";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 
 export default async function SocioRegistrationDetailPage({
@@ -95,14 +95,11 @@ export default async function SocioRegistrationDetailPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div>
-        <BackLink href="/socios" label={t("backToList")} />
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{fullName}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
+      <PageHeader
+        back={{ href: "/socios", label: t("backToList") }}
+        title={fullName}
+        meta={
+          <>
             <Badge variant="outline">{t("kind.member")}</Badge>
             <Badge variant={STATUS_VARIANT[registration.status]}>
               {t(`status.${registration.status}`)}
@@ -110,9 +107,9 @@ export default async function SocioRegistrationDetailPage({
             <span className="text-sm text-muted-foreground">
               {t("submittedOn", { date: formatDateTime(registration.createdAt, locale) })}
             </span>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {registration.status === "pending" ? (
         canManage ? (

@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <div className="flex flex-1 flex-col gap-6">
       <DetailHeaderSkeleton back actions={1} />
       {/* Plantilla, Documentos, Bitácora. */}
       <TabsSkeleton widths={["w-20", "w-24", "w-20"]} />

@@ -1,6 +1,5 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -8,10 +7,9 @@ import { db } from "@/db";
 import { memberships, teams } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
-import { Link } from "@/i18n/navigation";
+import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
 import { PrintableSheet } from "@/components/printable-sheet";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -72,15 +70,7 @@ export default async function TeamRosterSheetPage({
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex items-center justify-between print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href={`/equipos/${team.id}`} />}
-          nativeButton={false}
-        >
-          <ArrowLeftIcon data-icon="inline-start" />
-          {t("backToTeam")}
-        </Button>
+        <BackLink href={`/equipos/${team.id}`} label={t("backToTeam")} />
         <PrintButton label={t("printAction")} />
       </div>
 

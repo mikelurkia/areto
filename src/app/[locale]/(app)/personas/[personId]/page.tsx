@@ -35,10 +35,10 @@ import { STATUS_VARIANT } from "@/lib/registration-status";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { Link } from "@/i18n/navigation";
-import { BackLink } from "@/components/back-link";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { MembershipTable } from "@/components/equipos/membership-table";
 import { MaskedIbanText } from "@/components/masked-iban";
+import { PageHeader } from "@/components/page-header";
 import { AssignMemberNumberButton } from "@/components/personas/assign-member-number-button";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { DeleteInjuryReportDialog } from "@/components/personas/delete-injury-report-dialog";
@@ -359,12 +359,10 @@ export default async function PersonDetailPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div className="print:hidden">
-        <BackLink href={backHref} label={backLabel} />
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <PageHeader
+        back={{ href: backHref, label: backLabel }}
+        title={fullName}
+        media={
           <div className="relative">
             {photoUrl ? (
               <a
@@ -394,95 +392,96 @@ export default async function PersonDetailPage({
               </span>
             ) : null}
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{fullName}</h1>
-            <div className="mt-1 flex flex-wrap items-center gap-1">
-              {isMember ? (
-                <Badge variant="secondary">{t("memberBadge")}</Badge>
-              ) : null}
-              {[...new Set(person.memberships.map((m) => m.role))].map((role) => (
-                <Badge key={role} variant="secondary">
-                  {tEquipos(`roleOption.${role}`)}
-                </Badge>
-              ))}
-              {person.guardianOfRows.length > 0 ? (
-                <Badge variant="secondary">
-                  {t("guardianOfBadge", { count: person.guardianOfRows.length })}
-                </Badge>
-              ) : null}
-              {isMinor(person.birthDate) ? (
-                <Badge variant="outline">{t("minorTag")}</Badge>
-              ) : null}
-              {isMinorWithoutGuardian ? (
-                <Badge variant="destructive" title={t("minorWithoutGuardianWarning")}>
-                  <TriangleAlertIcon className="size-3" />
-                  {t("minorWithoutGuardianBadge")}
-                </Badge>
-              ) : null}
-              {hasMinorGuardian ? (
-                <Badge variant="destructive" title={t("minorGuardianWarning")}>
-                  <TriangleAlertIcon className="size-3" />
-                  {t("minorGuardianBadge")}
-                </Badge>
-              ) : null}
-              <PersonTagsEditor
-                personId={person.id}
-                tags={person.tags}
-                existingTags={existingTags}
-                canManage={canManage}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2 print:hidden">
-          <Button
-            variant="outline"
-            size="sm"
-            render={<Link href={`/personas/${person.id}/carne`} />}
-            nativeButton={false}
-          >
-            <CreditCardIcon data-icon="inline-start" />
-            {t("memberCardAction")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            render={<Link href={`/personas/${person.id}/rgpd`} />}
-            nativeButton={false}
-          >
-            <ShieldCheckIcon data-icon="inline-start" />
-            {t("rgpdExportAction")}
-          </Button>
-          {photoUrl ? (
+        }
+        meta={
+          <>
+            {isMember ? (
+              <Badge variant="secondary">{t("memberBadge")}</Badge>
+            ) : null}
+            {[...new Set(person.memberships.map((m) => m.role))].map((role) => (
+              <Badge key={role} variant="secondary">
+                {tEquipos(`roleOption.${role}`)}
+              </Badge>
+            ))}
+            {person.guardianOfRows.length > 0 ? (
+              <Badge variant="secondary">
+                {t("guardianOfBadge", { count: person.guardianOfRows.length })}
+              </Badge>
+            ) : null}
+            {isMinor(person.birthDate) ? (
+              <Badge variant="outline">{t("minorTag")}</Badge>
+            ) : null}
+            {isMinorWithoutGuardian ? (
+              <Badge variant="destructive" title={t("minorWithoutGuardianWarning")}>
+                <TriangleAlertIcon className="size-3" />
+                {t("minorWithoutGuardianBadge")}
+              </Badge>
+            ) : null}
+            {hasMinorGuardian ? (
+              <Badge variant="destructive" title={t("minorGuardianWarning")}>
+                <TriangleAlertIcon className="size-3" />
+                {t("minorGuardianBadge")}
+              </Badge>
+            ) : null}
+            <PersonTagsEditor
+              personId={person.id}
+              tags={person.tags}
+              existingTags={existingTags}
+              canManage={canManage}
+            />
+          </>
+        }
+        actions={
+          <>
             <Button
               variant="outline"
               size="sm"
-              render={<a href={photoDownloadUrl!} download={photoDownloadName ?? undefined} />}
+              render={<Link href={`/personas/${person.id}/carne`} />}
               nativeButton={false}
             >
-              <DownloadIcon data-icon="inline-start" />
-              {t("downloadOriginalPhotoAction")}
+              <CreditCardIcon data-icon="inline-start" />
+              {t("memberCardAction")}
             </Button>
-          ) : null}
-          <PrintButton label={t("printAction")} />
-          {canManage ? (
-            <PersonDialog
-              mode="edit"
-              person={{
-                ...person,
-                isMember,
-                memberNumber,
-                guardians: person.guardianRows.map((r) => ({
-                  id: r.guardian.id,
-                  firstName: r.guardian.firstName,
-                  lastName: r.guardian.lastName,
-                })),
-              }}
-              photoUrl={photoThumbUrl}
-            />
-          ) : null}
-        </div>
-      </div>
+            <Button
+              variant="outline"
+              size="sm"
+              render={<Link href={`/personas/${person.id}/rgpd`} />}
+              nativeButton={false}
+            >
+              <ShieldCheckIcon data-icon="inline-start" />
+              {t("rgpdExportAction")}
+            </Button>
+            {photoUrl ? (
+              <Button
+                variant="outline"
+                size="sm"
+                render={<a href={photoDownloadUrl!} download={photoDownloadName ?? undefined} />}
+                nativeButton={false}
+              >
+                <DownloadIcon data-icon="inline-start" />
+                {t("downloadOriginalPhotoAction")}
+              </Button>
+            ) : null}
+            <PrintButton label={t("printAction")} />
+            {canManage ? (
+              <PersonDialog
+                mode="edit"
+                person={{
+                  ...person,
+                  isMember,
+                  memberNumber,
+                  guardians: person.guardianRows.map((r) => ({
+                    id: r.guardian.id,
+                    firstName: r.guardian.firstName,
+                    lastName: r.guardian.lastName,
+                  })),
+                }}
+                photoUrl={photoThumbUrl}
+              />
+            ) : null}
+          </>
+        }
+      />
 
       {/* `key` fuerza a remontar si `initialTab` cambia entre navegaciones a esta
           misma ruta (p. ej. "Volver a la ficha" desde el parte de lesión con

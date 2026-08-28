@@ -27,7 +27,12 @@ export type PageHeaderProps = {
   back?: { href: string; label: string };
   /** Etiquetas en línea con el título (temporada actual, estado de la ficha). */
   badges?: React.ReactNode;
-  /** Logo o avatar cuadrado, a la izquierda del bloque de texto. */
+  /**
+   * Fila bajo el título: etiquetas de estado y fecha de envío. Va aparte de
+   * `badges` porque en las fichas son demasiadas para caber junto al nombre.
+   */
+  meta?: React.ReactNode;
+  /** Logo o avatar a la izquierda del bloque de texto; lo dimensiona quien lo pasa. */
   media?: React.ReactNode;
   /** Botones y diálogos, a la derecha. No se imprimen. */
   actions?: React.ReactNode;
@@ -42,6 +47,7 @@ export function PageHeader({
   description,
   back,
   badges,
+  meta,
   media,
   actions,
   size = "default",
@@ -50,15 +56,16 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <div className={cn("flex flex-col gap-4", className)}>
+      {/* Sin envoltorio: al imprimirse desaparece del flujo y no deja el hueco
+          del `gap` que sí dejaría un contenedor vacío. `w-fit` porque, como
+          hijo de una columna flex, si no se estiraría a todo lo ancho. */}
       {back ? (
-        <div className="print:hidden">
-          <BackLink href={back.href} label={back.label} />
-        </div>
+        <BackLink href={back.href} label={back.label} className="w-fit" />
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
-          {media ? <div className="size-14 shrink-0">{media}</div> : null}
+          {media ? <div className="shrink-0">{media}</div> : null}
           {/* `min-w-0` para que un nombre largo se recorte en vez de empujar
               las acciones fuera de la fila. */}
           <div className="min-w-0">
@@ -75,6 +82,9 @@ export function PageHeader({
             </div>
             {description ? (
               <p className="text-muted-foreground">{description}</p>
+            ) : null}
+            {meta ? (
+              <div className="mt-1 flex flex-wrap items-center gap-2">{meta}</div>
             ) : null}
           </div>
         </div>

@@ -31,7 +31,7 @@ import {
   SPONSORSHIP_EXPIRY_WINDOW_DAYS,
 } from "@/lib/sponsorship";
 import { Link } from "@/i18n/navigation";
-import { BackLink } from "@/components/back-link";
+import { PageHeader } from "@/components/page-header";
 import { DeleteSponsorContactDialog } from "@/components/patrocinadores/delete-sponsor-contact-dialog";
 import { DeleteSponsorDialog } from "@/components/patrocinadores/delete-sponsor-dialog";
 import { DeleteSponsorPaymentDialog } from "@/components/patrocinadores/delete-sponsor-payment-dialog";
@@ -212,12 +212,11 @@ export default async function SponsorDetailPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <div className="print:hidden">
-        <BackLink href={backHref} label={backLabel} />
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <PageHeader
+        back={{ href: backHref, label: backLabel }}
+        title={sponsor.name}
+        description={t("termsCount", { count: sponsor.terms.length })}
+        media={
           <div className="flex size-14 items-center justify-center rounded border bg-muted/30 p-1.5">
             {logoThumbUrl ? (
               logoUrl ? (
@@ -247,30 +246,24 @@ export default async function SponsorDetailPage({
               <HandshakeIcon className="size-5 text-muted-foreground" />
             )}
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {sponsor.name}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {t("termsCount", { count: sponsor.terms.length })}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2 print:hidden">
-          <PrintButton label={t("printAction")} />
-          {canManage ? (
-            <>
-              <SponsorDialog
-                mode="edit"
-                sponsor={sponsor}
-                logoUrl={logoThumbUrl}
-                personOptions={allPersons}
-              />
-              <DeleteSponsorDialog id={sponsor.id} name={sponsor.name} />
-            </>
-          ) : null}
-        </div>
-      </div>
+        }
+        actions={
+          <>
+            <PrintButton label={t("printAction")} />
+            {canManage ? (
+              <>
+                <SponsorDialog
+                  mode="edit"
+                  sponsor={sponsor}
+                  logoUrl={logoThumbUrl}
+                  personOptions={allPersons}
+                />
+                <DeleteSponsorDialog id={sponsor.id} name={sponsor.name} />
+              </>
+            ) : null}
+          </>
+        }
+      />
 
       <Tabs defaultValue="general">
         <TabsList>
