@@ -212,12 +212,12 @@ export function SponsorsBrowser({
           <TableHeader>
             <TableRow>
               <TableHead>{t("colSponsor")}</TableHead>
-              <TableHead>{t("logoLabel")}</TableHead>
-              <TableHead>{t("tierLabel")}</TableHead>
-              <TableHead>{t("colContact")}</TableHead>
-              <TableHead>{t("colAmount")}</TableHead>
-              <TableHead>{t("colDates")}</TableHead>
-              <TableHead>{t("colStatus")}</TableHead>
+              <TableHead priority="tertiary">{t("logoLabel")}</TableHead>
+              <TableHead priority="secondary">{t("tierLabel")}</TableHead>
+              <TableHead priority="tertiary">{t("colContact")}</TableHead>
+              <TableHead priority="secondary">{t("colAmount")}</TableHead>
+              <TableHead priority="tertiary">{t("colDates")}</TableHead>
+              <TableHead priority="secondary">{t("colStatus")}</TableHead>
               {canManage ? (
                 <TableHead className="text-right print:hidden">
                   {t("colActions")}
@@ -247,7 +247,7 @@ export function SponsorsBrowser({
                       ) : null}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell priority="tertiary">
                     {s.logoUrl ? (
                       <div className="flex h-10 w-20 items-center justify-center rounded border bg-muted/30 p-1">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -261,7 +261,7 @@ export function SponsorsBrowser({
                       <span className="text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell priority="secondary">
                     {s.currentTerm?.tier ? (
                       <Badge variant={s.currentTerm.tier === "principal" ? "gold" : "outline"}>
                         {t(`tier.${s.currentTerm.tier}`)}
@@ -270,7 +270,7 @@ export function SponsorsBrowser({
                       "—"
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell priority="tertiary">
                     <div className="flex flex-col text-sm">
                       {s.contactPerson ? (
                         <span>
@@ -288,15 +288,17 @@ export function SponsorsBrowser({
                         : null}
                     </div>
                   </TableCell>
-                  <TableCell nowrap>{formatAmount(s.currentTerm?.totalAmountCents ?? null)}</TableCell>
-                  <TableCell>
+                  <TableCell priority="secondary" nowrap>
+                    {formatAmount(s.currentTerm?.totalAmountCents ?? null)}
+                  </TableCell>
+                  <TableCell priority="tertiary">
                     {s.currentTerm
                       ? `${s.currentTerm.startsOn ?? "—"} — ${
                           s.currentTerm.endsOn ?? t("ongoing")
                         }`
                       : "—"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell priority="secondary">
                     {rowStatus === "active" ? (
                       <Badge variant="secondary">{t("activeBadge")}</Badge>
                     ) : rowStatus === "expiringSoon" ? (

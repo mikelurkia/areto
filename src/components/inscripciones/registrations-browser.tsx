@@ -150,12 +150,12 @@ export function RegistrationsBrowser({
           <TableHeader>
             <TableRow>
               <TableHead>{t("colName")}</TableHead>
-              <TableHead>{t("colNationalId")}</TableHead>
-              <TableHead>{t("colContact")}</TableHead>
-              <TableHead>{t("colGuardians")}</TableHead>
-              <TableHead>{t("colPhotos")}</TableHead>
-              <TableHead>{t("colDate")}</TableHead>
-              <TableHead>{t("colStatus")}</TableHead>
+              <TableHead priority="tertiary">{t("colNationalId")}</TableHead>
+              <TableHead priority="tertiary">{t("colContact")}</TableHead>
+              <TableHead priority="tertiary">{t("colGuardians")}</TableHead>
+              <TableHead priority="secondary">{t("colPhotos")}</TableHead>
+              <TableHead priority="secondary">{t("colDate")}</TableHead>
+              <TableHead priority="secondary">{t("colStatus")}</TableHead>
               {canManage ? (
                 <TableHead className="text-right">{t("colActions")}</TableHead>
               ) : null}
@@ -168,23 +168,36 @@ export function RegistrationsBrowser({
                   <HoverPrefetchLink href={`/inscripciones/${r.id}`} className="hover:underline">
                     {r.firstName} {r.lastName}
                   </HoverPrefetchLink>
+                  {/* El DNI tiene columna propia a partir de `lg`; por debajo
+                      baja aquí para no perderse. */}
+                  {r.nationalId ? (
+                    <span className="block text-xs font-normal text-muted-foreground tabular-nums lg:hidden">
+                      {r.nationalId}
+                    </span>
+                  ) : null}
                 </TableCell>
-                <TableCell nowrap className="text-muted-foreground tabular-nums">
+                <TableCell
+                  priority="tertiary"
+                  nowrap
+                  className="text-muted-foreground tabular-nums"
+                >
                   {r.nationalId ?? "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell priority="tertiary" className="text-muted-foreground">
                   {r.email || r.phone || "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell priority="tertiary" className="text-muted-foreground">
                   {r.guardiansCount > 0 ? r.guardiansCount : "—"}
                 </TableCell>
-                <TableCell>
+                <TableCell priority="secondary">
                   <Badge variant={r.photosCount === 3 ? "secondary" : r.photosCount === 0 ? "destructive" : "warning"}>
                     {t("photosCount", { count: r.photosCount })}
                   </Badge>
                 </TableCell>
-                <TableCell nowrap className="text-muted-foreground">{r.createdAt}</TableCell>
-                <TableCell>
+                <TableCell priority="secondary" nowrap className="text-muted-foreground">
+                  {r.createdAt}
+                </TableCell>
+                <TableCell priority="secondary">
                   <Badge variant={STATUS_VARIANT[r.status]}>{t(`status.${r.status}`)}</Badge>
                 </TableCell>
                 {canManage ? (

@@ -258,9 +258,9 @@ export function SociosBrowser({
                   </TableHead>
                 ) : null}
                 <TableHead>{t("colName")}</TableHead>
-                <TableHead>{t("colMemberNumber")}</TableHead>
-                <TableHead>{t("colContact")}</TableHead>
-                <TableHead>{t("colJoinedAt")}</TableHead>
+                <TableHead priority="secondary">{t("colMemberNumber")}</TableHead>
+                <TableHead priority="tertiary">{t("colContact")}</TableHead>
+                <TableHead priority="secondary">{t("colJoinedAt")}</TableHead>
                 {canManage ? (
                   <TableHead className="text-right">{t("colActions")}</TableHead>
                 ) : null}
@@ -285,14 +285,27 @@ export function SociosBrowser({
                     >
                       {s.firstName} {s.lastName}
                     </HoverPrefetchLink>
+                    {/* El número de socio tiene columna propia a partir de
+                        `md`; por debajo baja aquí para no perderse. */}
+                    {s.memberNumber ? (
+                      <span className="block text-xs font-normal text-muted-foreground tabular-nums md:hidden">
+                        {s.memberNumber}
+                      </span>
+                    ) : null}
                   </TableCell>
-                  <TableCell nowrap className="text-muted-foreground tabular-nums">
+                  <TableCell
+                    priority="secondary"
+                    nowrap
+                    className="text-muted-foreground tabular-nums"
+                  >
                     {s.memberNumber ?? "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell priority="tertiary" className="text-muted-foreground">
                     {s.email || s.phone || "—"}
                   </TableCell>
-                  <TableCell nowrap className="text-muted-foreground">{s.joinedAt}</TableCell>
+                  <TableCell priority="secondary" nowrap className="text-muted-foreground">
+                    {s.joinedAt}
+                  </TableCell>
                   {canManage ? (
                     <TableCell>
                       <div className="flex justify-end gap-1">

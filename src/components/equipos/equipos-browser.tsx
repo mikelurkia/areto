@@ -168,10 +168,10 @@ export function EquiposBrowser({
           <TableHeader>
             <TableRow>
               <TableHead>{t("colName")}</TableHead>
-              <TableHead>{t("colCategory")}</TableHead>
-              <TableHead>{t("colFee")}</TableHead>
-              <TableHead>{t("colRoster")}</TableHead>
-              <TableHead>{t("colHealth")}</TableHead>
+              <TableHead priority="secondary">{t("colCategory")}</TableHead>
+              <TableHead priority="tertiary">{t("colFee")}</TableHead>
+              <TableHead priority="secondary">{t("colRoster")}</TableHead>
+              <TableHead priority="tertiary">{t("colHealth")}</TableHead>
               {canManage ? (
                 <TableHead className="text-right">{t("colActions")}</TableHead>
               ) : null}
@@ -187,18 +187,18 @@ export function EquiposBrowser({
                       {team.name}
                     </HoverPrefetchLink>
                   </TableCell>
-                  <TableCell>
+                  <TableCell priority="secondary">
                     {team.category ? t(`category.${team.category}`) : "—"}
                     {team.gender ? ` · ${t(`gender.${team.gender}`)}` : ""}
                   </TableCell>
-                  <TableCell nowrap>
+                  <TableCell priority="tertiary" nowrap>
                     {team.playerFeeCents !== null
                       ? t(`feePeriodShort.${team.playerFeePeriod}`, {
                           amount: formatCents(team.playerFeeCents, locale),
                         })
                       : "—"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell priority="secondary">
                     <div className="flex flex-wrap gap-1">
                       {roleCounts(team.roster).map(({ role, count }) => {
                         if (count === 0) return null;
@@ -220,7 +220,7 @@ export function EquiposBrowser({
                       ) : null}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell priority="tertiary">
                     {issues.length === 0 ? (
                       <CheckIcon
                         className="size-4 text-muted-foreground"
