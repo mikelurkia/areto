@@ -59,6 +59,7 @@ import { PrintButton } from "@/components/print-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -201,13 +202,13 @@ function FamilySectionSkeleton() {
       {[0, 1].map((i) => (
         <div key={i} className="flex flex-col gap-2">
           <Skeleton className="h-3 w-28" />
-          <div className="flex items-center gap-3 rounded-lg border p-3">
+          <Card size="sm" className="flex-row items-center gap-3 px-(--card-spacing)">
             <Skeleton className="size-8 shrink-0 rounded-full" />
             <div className="flex flex-1 flex-col gap-1.5">
               <Skeleton className="h-4 w-44" />
               <Skeleton className="h-3 w-56" />
             </div>
-          </div>
+          </Card>
         </div>
       ))}
     </div>

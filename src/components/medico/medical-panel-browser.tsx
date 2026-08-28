@@ -24,6 +24,7 @@ import { Link } from "@/i18n/navigation";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -214,7 +215,7 @@ export function MedicalPanelBrowser({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-3 py-2 print:hidden">
+      <Card size="sm" className="flex-row flex-wrap items-center gap-x-4 gap-y-2 px-(--card-spacing) print:hidden">
         <dl className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <Stat label={t("statTotal")} value={overview.total} />
         </dl>
@@ -226,7 +227,7 @@ export function MedicalPanelBrowser({
         ) : (
           <p className="ml-auto text-xs text-muted-foreground">{t("allGood")}</p>
         )}
-      </div>
+      </Card>
 
       <div className="flex flex-wrap items-center gap-2 print:hidden">
         <div className="relative">

@@ -264,6 +264,16 @@
     white-space: normal !important;
   }
 
+  /*
+   * `Card` se delimita con `ring-1` (una sombra, no un borde) y los navegadores
+   * no imprimen sombras: en papel la caja desaparecía y el contenido quedaba
+   * suelto. Se cambia por un borde real, que sí se imprime.
+   */
+  [data-slot="card"] {
+    box-shadow: none !important;
+    border: 1px solid var(--border);
+  }
+
   /* Tablas que ocupan varias páginas: cabecera repetida y filas sin partir. */
   [data-slot="table-header"] {
     display: table-header-group;

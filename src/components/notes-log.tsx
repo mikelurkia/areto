@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import type { NoteActionState } from "@/lib/entity-notes";
 import { SubmitButton } from "@/components/submit-button";
 import { SubmitIconButton } from "@/components/submit-icon-button";
+import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useActionResult, useActionToast } from "@/hooks/use-action-toast";
 
@@ -104,7 +105,7 @@ export function NotesLog({
       ) : (
         <div className="flex flex-col gap-3">
           {notes.map((note) => (
-            <div key={note.id} className="flex gap-2 rounded-lg border p-3">
+            <Card key={note.id} size="sm" className="flex-row gap-2 px-(--card-spacing)">
               <div className="flex-1">
                 <p className="text-sm whitespace-pre-wrap">{note.body}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -119,7 +120,7 @@ export function NotesLog({
                   namespace={namespace}
                 />
               ) : null}
-            </div>
+            </Card>
           ))}
         </div>
       )}

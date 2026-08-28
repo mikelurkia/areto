@@ -12,6 +12,7 @@ import { Link } from "@/i18n/navigation";
 import { Req } from "@/components/inscripciones/required-asterisk";
 import { SubmitButton } from "@/components/submit-button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -157,7 +158,7 @@ export function SocioForm() {
           {guardianKeys.map((key, i) => {
             const existing = submitted?.guardians[i];
             return (
-              <div key={key} className="flex flex-col gap-3 rounded-lg border p-4">
+              <Card key={key} className="gap-3 px-(--card-spacing)">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">
                     {t("guardianLabel")} {i + 1}
@@ -291,7 +292,7 @@ export function SocioForm() {
                     />
                   </Field>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </FieldGroup>

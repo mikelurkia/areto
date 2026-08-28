@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { DeleteRegistrationDialog } from "@/components/inscripciones/delete-registration-dialog";
 import { ReopenRegistrationButton } from "@/components/inscripciones/reopen-registration-button";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 type Props = {
   registrationId: string;
@@ -53,7 +54,7 @@ export async function ReviewedRegistrationPanel({
   const notifyMessage = t(messageKey, { name: fullName, reason: rejectionReason ?? "" });
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border p-4 text-sm">
+    <Card className="gap-2 px-(--card-spacing) text-sm">
       {reviewer ? (
         <p>
           {t("reviewedBy", {
@@ -117,6 +118,6 @@ export async function ReviewedRegistrationPanel({
           />
         </div>
       ) : null}
-    </div>
+    </Card>
   );
 }

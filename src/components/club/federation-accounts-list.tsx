@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Check, Copy, ExternalLink, Eye, EyeOff } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 type FederationAccount = {
   id: string;
@@ -80,7 +81,7 @@ export function FederationAccountsList({
       {accounts.map((account) => {
         const isShown = shown[account.id] ?? false;
         return (
-          <div key={account.id} className="rounded-lg border p-4">
+          <Card key={account.id} className="px-(--card-spacing)">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h3 className="font-medium">{account.name}</h3>
               <a
@@ -135,7 +136,7 @@ export function FederationAccountsList({
                 </div>
               ) : null}
             </div>
-          </div>
+          </Card>
         );
       })}
     </div>

@@ -5,6 +5,7 @@ import { PlusIcon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { MatchSelect, type PersonCandidate } from "@/components/match-select";
+import { Card } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
@@ -69,7 +70,7 @@ export function GuardianEditBlock({ guardians }: { guardians: GuardianData[] }) 
       {guardianKeys.map((key, i) => {
         const existing = guardians[key];
         return (
-          <div key={key} className="flex flex-col gap-3 rounded-lg border p-4">
+          <Card key={key} className="gap-3 px-(--card-spacing)">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
                 {t("guardianLabel")} {i + 1}
@@ -131,7 +132,7 @@ export function GuardianEditBlock({ guardians }: { guardians: GuardianData[] }) 
                 <Input name="guardianEmail" defaultValue={existing?.email ?? ""} />
               </Field>
             </div>
-          </div>
+          </Card>
         );
       })}
     </FieldGroup>

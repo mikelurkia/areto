@@ -10,6 +10,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 export type FamilyMember = {
   id: string;
@@ -52,7 +53,7 @@ async function MemberCard({
   const t = await getTranslations("Personas");
   const href = `/personas/${member.id}?from=${encodeURIComponent(backTo)}&fromLabel=${encodeURIComponent(backLabel)}`;
   return (
-    <div className="flex items-center gap-3 rounded-lg border p-3">
+    <Card size="sm" className="flex-row items-center gap-3 px-(--card-spacing)">
       <Avatar>
         {member.photoUrl ? <AvatarImage src={member.photoUrl} alt="" /> : null}
         <AvatarFallback>
@@ -110,7 +111,7 @@ async function MemberCard({
       >
         <ArrowRightIcon className="size-4" />
       </Link>
-    </div>
+    </Card>
   );
 }
 

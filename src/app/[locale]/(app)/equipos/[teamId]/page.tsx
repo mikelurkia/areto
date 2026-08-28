@@ -43,6 +43,7 @@ import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -268,7 +269,7 @@ export default async function TeamDetailPage({
           ) : null}
 
           {teamWebRegistration.length > 0 ? (
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4 print:hidden">
+            <Card className="flex-row flex-wrap items-center justify-between gap-4 px-(--card-spacing) print:hidden">
               <div className="flex items-center gap-3">
                 <BellIcon className="size-5 shrink-0 text-muted-foreground" />
                 <div>
@@ -291,7 +292,7 @@ export default async function TeamDetailPage({
               >
                 {t("viewWebRegistrationAction")}
               </Button>
-            </div>
+            </Card>
           ) : null}
 
           {teamMemberships.length > 0 ? (
