@@ -523,7 +523,7 @@
     "removePhotoLabel": "Quitar foto",
     "photoInvalidType": "La foto debe ser JPG, PNG o WebP.",
     "photoTooLarge": "La foto no puede pesar más de 5 MB.",
-    "searchPlaceholder": "Buscar por nombre, email o DNI...",
+    "searchPlaceholder": "Buscar por nombre, email, DNI o teléfono...",
     "filterTeamLabel": "Equipo",
     "filterTeamAll": "Todos los equipos",
     "filterTeamNone": "Sin equipo",

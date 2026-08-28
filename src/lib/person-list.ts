@@ -5,7 +5,7 @@ import { and, asc, count, eq, ilike, inArray, isNotNull, or, sql } from "drizzle
 import { db } from "@/db";
 import { persons, seasons, teams } from "@/db/schema";
 import { isPastMember } from "@/lib/membership";
-import { likePattern } from "@/lib/sql-text";
+import { likePattern, phoneDigitsMatch } from "@/lib/sql-text";
 import { teamSeasonLabel } from "@/lib/team-label";
 
 /**
@@ -121,6 +121,7 @@ function personWhere(filters: PersonFilters) {
         ilike(sql`${persons.firstName} || ' ' || ${persons.lastName}`, pattern),
         ilike(persons.email, pattern),
         ilike(persons.nationalId, pattern),
+        phoneDigitsMatch(persons.phone, filters.q),
       ),
     );
   }
