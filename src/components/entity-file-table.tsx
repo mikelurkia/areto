@@ -13,6 +13,8 @@ export type EntityFileTableColumn<T> = {
   header: ReactNode;
   cell: (item: T) => ReactNode;
   className?: string;
+  /** Columna de apoyo que se esconde en pantallas estrechas (vuelve al imprimir). */
+  priority?: "secondary" | "tertiary";
 };
 
 /**
@@ -43,7 +45,9 @@ export function EntityFileTable<T extends { id: string }>({
       <TableHeader>
         <TableRow>
           {columns.map((column, index) => (
-            <TableHead key={index}>{column.header}</TableHead>
+            <TableHead key={index} priority={column.priority}>
+              {column.header}
+            </TableHead>
           ))}
           <TableHead>{viewFileLabel}</TableHead>
           {canManage ? (
@@ -57,7 +61,11 @@ export function EntityFileTable<T extends { id: string }>({
           return (
             <TableRow key={item.id}>
               {columns.map((column, index) => (
-                <TableCell key={index} className={column.className}>
+                <TableCell
+                  key={index}
+                  priority={column.priority}
+                  className={column.className}
+                >
                   {column.cell(item)}
                 </TableCell>
               ))}

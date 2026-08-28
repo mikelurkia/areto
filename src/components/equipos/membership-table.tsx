@@ -49,9 +49,9 @@ export function MembershipTable<T extends MembershipRow>({
       <TableHeader>
         <TableRow>
           <TableHead>{subjectHeader}</TableHead>
-          <TableHead>{t("roleLabel")}</TableHead>
+          <TableHead priority="secondary">{t("roleLabel")}</TableHead>
           <TableHead>{t("colJersey")}</TableHead>
-          <TableHead>{t("colPositions")}</TableHead>
+          <TableHead priority="tertiary">{t("colPositions")}</TableHead>
           {canManage ? (
             <TableHead className="text-right print:hidden">{t("colActions")}</TableHead>
           ) : null}
@@ -63,14 +63,14 @@ export function MembershipTable<T extends MembershipRow>({
           return (
             <TableRow key={m.id}>
               <TableCell className="font-medium">{renderSubject(m)}</TableCell>
-              <TableCell>
+              <TableCell priority="secondary">
                 {t(`roleOption.${m.role}`)}
                 {m.position ? (
                   <span className="text-muted-foreground"> · {m.position}</span>
                 ) : null}
               </TableCell>
               <TableCell>{m.jerseyNumber ?? "—"}</TableCell>
-              <TableCell>
+              <TableCell priority="tertiary">
                 {m.positions.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {m.positions.map((pos) => (

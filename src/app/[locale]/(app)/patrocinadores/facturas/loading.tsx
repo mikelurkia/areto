@@ -9,7 +9,17 @@ export default function Loading() {
     <div className="flex flex-1 flex-col gap-6">
       <PageHeaderSkeleton back actions={1} />
       <FiltersBarSkeleton selects={1} trailing={1} />
-      <TableSkeleton columns={["w-20", "w-24", "w-40", "w-48", "w-16"]} rows={8} />
+      <TableSkeleton
+        columns={[
+          { width: "w-20", priority: "secondary" },
+          "w-24",
+          "w-40",
+          { width: "w-48", priority: "tertiary" },
+          "w-16",
+          "w-12",
+        ]}
+        rows={8}
+      />
     </div>
   );
 }

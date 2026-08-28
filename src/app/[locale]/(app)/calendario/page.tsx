@@ -143,20 +143,22 @@ export default async function CalendarioPage({
     return (
       <>
         <TableCell className="font-medium">{event.team?.name ?? "—"}</TableCell>
-        <TableCell>
+        <TableCell priority="secondary">
           <Badge variant={event.isHome ? "secondary" : "outline"}>
             {event.isHome ? t("homeAway.home") : t("homeAway.away")}
           </Badge>
         </TableCell>
         <TableCell>{event.opponent ?? "—"}</TableCell>
-        <TableCell>
+        <TableCell priority="tertiary">
           {event.preferredDay ? (
             <Badge variant="outline">{t(`preferredDay.${event.preferredDay}`)}</Badge>
           ) : (
             "—"
           )}
         </TableCell>
-        <TableCell className="text-muted-foreground">{event.notes ?? "—"}</TableCell>
+        <TableCell priority="tertiary" className="text-muted-foreground">
+          {event.notes ?? "—"}
+        </TableCell>
         <TableCell className="flex justify-end gap-1 print:hidden">
           {editable ? (
             <>
@@ -257,10 +259,10 @@ export default async function CalendarioPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("colTeam")}</TableHead>
-                  <TableHead>{t("colHomeAway")}</TableHead>
+                  <TableHead priority="secondary">{t("colHomeAway")}</TableHead>
                   <TableHead>{t("colOpponent")}</TableHead>
-                  <TableHead>{t("colPreferredDay")}</TableHead>
-                  <TableHead>{t("colNotes")}</TableHead>
+                  <TableHead priority="tertiary">{t("colPreferredDay")}</TableHead>
+                  <TableHead priority="tertiary">{t("colNotes")}</TableHead>
                   <TableHead className="text-right print:hidden">{t("colActions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -282,10 +284,10 @@ export default async function CalendarioPage({
                   <TableRow>
                     <TableHead>{t("colDate")}</TableHead>
                     <TableHead>{t("colTeam")}</TableHead>
-                    <TableHead>{t("colHomeAway")}</TableHead>
+                    <TableHead priority="secondary">{t("colHomeAway")}</TableHead>
                     <TableHead>{t("colOpponent")}</TableHead>
-                    <TableHead>{t("colPreferredDay")}</TableHead>
-                    <TableHead>{t("colNotes")}</TableHead>
+                    <TableHead priority="tertiary">{t("colPreferredDay")}</TableHead>
+                    <TableHead priority="tertiary">{t("colNotes")}</TableHead>
                     <TableHead className="text-right print:hidden">{t("colActions")}</TableHead>
                   </TableRow>
                 </TableHeader>

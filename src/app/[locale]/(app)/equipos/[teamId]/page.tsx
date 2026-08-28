@@ -393,8 +393,8 @@ export default async function TeamDetailPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("documentLabelLabel")}</TableHead>
-                  <TableHead>{t("documentTypeColumn")}</TableHead>
-                  <TableHead>{t("documentNotesColumn")}</TableHead>
+                  <TableHead priority="secondary">{t("documentTypeColumn")}</TableHead>
+                  <TableHead priority="tertiary">{t("documentNotesColumn")}</TableHead>
                   <TableHead>{t("documentViewFile")}</TableHead>
                   {canManage ? (
                     <TableHead className="text-right">{t("colActions")}</TableHead>
@@ -408,10 +408,10 @@ export default async function TeamDetailPage({
                   return (
                     <TableRow key={d.id}>
                       <TableCell className="font-medium">{d.label}</TableCell>
-                      <TableCell>
+                      <TableCell priority="secondary">
                         {typeLabel ? <Badge variant="outline">{typeLabel}</Badge> : "—"}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell priority="tertiary" className="text-muted-foreground">
                         {d.notes ?? "—"}
                       </TableCell>
                       <TableCell>

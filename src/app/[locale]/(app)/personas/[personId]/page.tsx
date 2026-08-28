@@ -859,9 +859,14 @@ export default async function PersonDetailPage({
               fileUrl={(q) => qualificationFileUrls.get(q.id) ?? null}
               columns={[
                 { header: t("qualificationTitleLabel"), cell: (q) => q.title, className: "font-medium" },
-                { header: t("qualificationIssuerLabel"), cell: (q) => q.issuer ?? "—" },
+                {
+                  header: t("qualificationIssuerLabel"),
+                  cell: (q) => q.issuer ?? "—",
+                  priority: "tertiary",
+                },
                 {
                   header: t("qualificationExpiresOnLabel"),
+                  priority: "secondary",
                   cell: (q) => {
                     if (!q.expiresOn) return "—";
                     const isExpired = q.expiresOn < today;
@@ -941,9 +946,14 @@ export default async function PersonDetailPage({
                       cell: (m) => m.occurredOn,
                       className: "font-medium",
                     },
-                    { header: t("medicalCheckupIssuerLabel"), cell: (m) => m.issuer ?? "—" },
+                    {
+                      header: t("medicalCheckupIssuerLabel"),
+                      cell: (m) => m.issuer ?? "—",
+                      priority: "tertiary",
+                    },
                     {
                       header: t("medicalCheckupExpiresOnLabel"),
+                      priority: "secondary",
                       cell: (m) => {
                         if (!m.expiresOn) return "—";
                         const isExpired = m.expiresOn < today;
@@ -1078,6 +1088,7 @@ export default async function PersonDetailPage({
                 { header: t("documentLabelLabel"), cell: (d) => d.label, className: "font-medium" },
                 {
                   header: t("documentTypeColumn"),
+                  priority: "secondary",
                   cell: (d) => {
                     const typeLabel = fileTypeLabel(d.fileName ?? d.filePath);
                     return typeLabel ? <Badge variant="outline">{typeLabel}</Badge> : "—";
@@ -1087,6 +1098,7 @@ export default async function PersonDetailPage({
                   header: t("documentNotesColumn"),
                   cell: (d) => d.notes ?? "—",
                   className: "text-muted-foreground",
+                  priority: "tertiary",
                 },
               ]}
               renderActions={(d) => (

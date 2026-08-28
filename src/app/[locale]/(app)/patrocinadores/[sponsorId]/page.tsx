@@ -539,10 +539,18 @@ export default async function SponsorDetailPage({
                               <TableRow>
                                 <TableHead>{t("seasonYearLabel")}</TableHead>
                                 <TableHead>{t("colAmount")}</TableHead>
-                                <TableHead>{t("dueDateLabel")}</TableHead>
-                                <TableHead>{t("paymentStatusLabel")}</TableHead>
-                                <TableHead>{t("paidOnLabel")}</TableHead>
-                                <TableHead>{t("invoiceNumberLabel")}</TableHead>
+                                <TableHead priority="secondary">
+                                  {t("dueDateLabel")}
+                                </TableHead>
+                                <TableHead priority="secondary">
+                                  {t("paymentStatusLabel")}
+                                </TableHead>
+                                <TableHead priority="tertiary">
+                                  {t("paidOnLabel")}
+                                </TableHead>
+                                <TableHead priority="tertiary">
+                                  {t("invoiceNumberLabel")}
+                                </TableHead>
                                 {canManage ? (
                                   <TableHead className="text-right print:hidden">
                                     {t("colActions")}
@@ -561,10 +569,10 @@ export default async function SponsorDetailPage({
                                   <TableCell nowrap className="font-medium">
                                     {formatAmount(payment.amountCents)}
                                   </TableCell>
-                                  <TableCell nowrap>
+                                  <TableCell priority="secondary" nowrap>
                                     {payment.dueDate ?? "—"}
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell priority="secondary">
                                     <Badge
                                       variant={
                                         paymentStatusVariant[payment.status]
@@ -573,7 +581,11 @@ export default async function SponsorDetailPage({
                                       {t(`paymentStatus.${payment.status}`)}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell nowrap className="text-muted-foreground">
+                                  <TableCell
+                                    priority="tertiary"
+                                    nowrap
+                                    className="text-muted-foreground"
+                                  >
                                     {payment.paidOn ?? "—"}
                                     {payment.method ? (
                                       <span className="block text-xs">
@@ -586,7 +598,7 @@ export default async function SponsorDetailPage({
                                       </span>
                                     ) : null}
                                   </TableCell>
-                                  <TableCell className="text-muted-foreground">
+                                  <TableCell priority="tertiary" className="text-muted-foreground">
                                     {payment.invoiceNumber ? (
                                       <span>
                                         {payment.invoiceNumber}
@@ -671,9 +683,9 @@ export default async function SponsorDetailPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("contactNameLabel")}</TableHead>
-                  <TableHead>{t("contactRoleLabel")}</TableHead>
-                  <TableHead>{t("contactEmailLabel")}</TableHead>
-                  <TableHead>{t("contactPhoneLabel")}</TableHead>
+                  <TableHead priority="tertiary">{t("contactRoleLabel")}</TableHead>
+                  <TableHead priority="secondary">{t("contactEmailLabel")}</TableHead>
+                  <TableHead priority="secondary">{t("contactPhoneLabel")}</TableHead>
                   {canManage ? (
                     <TableHead className="text-right print:hidden">
                       {t("colActions")}
@@ -687,11 +699,11 @@ export default async function SponsorDetailPage({
                     <TableCell className="font-medium">
                       {contact.name}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell priority="tertiary" className="text-muted-foreground">
                       {contact.role ?? "—"}
                     </TableCell>
-                    <TableCell>{contact.email ?? "—"}</TableCell>
-                    <TableCell>{contact.phone ?? "—"}</TableCell>
+                    <TableCell priority="secondary">{contact.email ?? "—"}</TableCell>
+                    <TableCell priority="secondary">{contact.phone ?? "—"}</TableCell>
                     {canManage ? (
                       <TableCell className="flex justify-end gap-1 print:hidden">
                         <SponsorContactDialog mode="edit" contact={contact} />
@@ -735,8 +747,8 @@ export default async function SponsorDetailPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("documentLabelLabel")}</TableHead>
-                  <TableHead>{t("documentTypeColumn")}</TableHead>
-                  <TableHead>{t("documentNotesColumn")}</TableHead>
+                  <TableHead priority="secondary">{t("documentTypeColumn")}</TableHead>
+                  <TableHead priority="tertiary">{t("documentNotesColumn")}</TableHead>
                   <TableHead>{t("documentViewFile")}</TableHead>
                   {canManage ? (
                     <TableHead className="text-right print:hidden">
@@ -752,10 +764,10 @@ export default async function SponsorDetailPage({
                   return (
                     <TableRow key={d.id}>
                       <TableCell className="font-medium">{d.label}</TableCell>
-                      <TableCell>
+                      <TableCell priority="secondary">
                         {typeLabel ? <Badge variant="outline">{typeLabel}</Badge> : "—"}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell priority="tertiary" className="text-muted-foreground">
                         {d.notes ?? "—"}
                       </TableCell>
                       <TableCell>
