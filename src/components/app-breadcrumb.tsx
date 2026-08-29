@@ -29,7 +29,6 @@ const SECTIONS: Record<string, { key: string; href: string }> = {
   calendario: { key: "calendario", href: "/calendario" },
   patrocinadores: { key: "patrocinadores", href: "/patrocinadores" },
   cuotas: { key: "cuotas", href: "/cuotas" },
-  avisos: { key: "avisos", href: "/avisos" },
   club: { key: "club", href: "/club" },
   administracion: { key: "administracion", href: "/administracion/usuarios" },
 };

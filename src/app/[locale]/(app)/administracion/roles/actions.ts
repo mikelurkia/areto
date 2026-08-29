@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { rolePermissions, roles, userRoles, users } from "@/db/schema";
 import { countActiveAdminsAfter, permissionsOfRoles } from "@/lib/admin-guards";
 import { requirePermission } from "@/lib/auth";
+import { recordAuditEvent } from "@/lib/audit-log";
 import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import {
   ADMIN_LOCKED_PERMISSIONS,
@@ -43,7 +44,7 @@ export async function createRole(
   formData: FormData,
 ): Promise<RoleState> {
   const t = await getTranslations("Administracion");
-  await requirePermission("roles.manage");
+  const current = await requirePermission("roles.manage");
 
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -56,6 +57,7 @@ export async function createRole(
   const key = slugify(name);
   if (!key) return { error: t("roleNameInvalid") };
 
+  let createdRoleId: string | undefined;
   try {
     await db.transaction(async (tx) => {
       if (makeDefault) await clearDefault(tx);
@@ -71,6 +73,7 @@ export async function createRole(
           sortOrder: 100,
         })
         .returning({ id: roles.id });
+      createdRoleId = created?.id;
 
       if (!created || !copyFromRoleId) return;
 
@@ -94,6 +97,15 @@ export async function createRole(
     throw error;
   }
 
+  if (createdRoleId) {
+    await recordAuditEvent({
+      actorUserId: current.id,
+      action: "create",
+      entityType: "role_permissions",
+      entityId: createdRoleId,
+      metadata: { name, copyFromRoleId: copyFromRoleId || null },
+    });
+  }
   revalidateAppShell();
   return { message: t("roleCreated") };
 }
@@ -103,7 +115,7 @@ export async function updateRole(
   formData: FormData,
 ): Promise<RoleState> {
   const t = await getTranslations("Administracion");
-  await requirePermission("roles.manage");
+  const current = await requirePermission("roles.manage");
 
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -141,6 +153,13 @@ export async function updateRole(
     throw error;
   }
 
+  await recordAuditEvent({
+    actorUserId: current.id,
+    action: "update",
+    entityType: "role_permissions",
+    entityId: id,
+    metadata: { name, makeDefault },
+  });
   revalidateAppShell();
   return { message: t("roleUpdated") };
 }
@@ -150,7 +169,7 @@ export async function deleteRole(
   formData: FormData,
 ): Promise<RoleState> {
   const t = await getTranslations("Administracion");
-  await requirePermission("roles.manage");
+  const current = await requirePermission("roles.manage");
 
   const id = String(formData.get("id") ?? "");
   const reassignRoleId = String(formData.get("reassignRoleId") ?? "").trim();
@@ -239,6 +258,13 @@ export async function deleteRole(
     await db.delete(roles).where(eq(roles.id, id));
   }
 
+  await recordAuditEvent({
+    actorUserId: current.id,
+    action: "delete",
+    entityType: "role_permissions",
+    entityId: id,
+    metadata: { name: role.name, reassignRoleId: reassignRoleId || null },
+  });
   revalidateAppShell();
   return { message: t("roleDeleted") };
 }
@@ -322,6 +348,16 @@ export async function setPermissionMatrix(
       }
     }
   });
+
+  for (const [roleId, set] of next) {
+    await recordAuditEvent({
+      actorUserId: current.id,
+      action: "update",
+      entityType: "role_permissions",
+      entityId: roleId,
+      metadata: { permissions: [...set] },
+    });
+  }
 
   // Un cambio de permisos altera el sidebar de todo el mundo.
   revalidateAppShell();

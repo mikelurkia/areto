@@ -26,6 +26,8 @@ export const PERMISSIONS = [
   "personas.manage",
   "personas.medical.view",
   "personas.medical.manage",
+  "personas.banking.view",
+  "personas.banking.manage",
   // Socios
   "socios.view",
   "socios.manage",
@@ -52,6 +54,7 @@ export const PERMISSIONS = [
   // Administración de la propia aplicación
   "usuarios.manage",
   "roles.manage",
+  "administracion.audit.view",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -105,6 +108,8 @@ export const PERMISSION_MODULES: readonly {
       "personas.manage",
       "personas.medical.view",
       "personas.medical.manage",
+      "personas.banking.view",
+      "personas.banking.manage",
     ],
   },
   { key: "socios", permissions: ["socios.view", "socios.manage"] },
@@ -126,7 +131,10 @@ export const PERMISSION_MODULES: readonly {
     permissions: ["patrocinadores.view", "patrocinadores.manage"],
   },
   { key: "club", permissions: ["club.view", "club.manage"] },
-  { key: "administracion", permissions: ["usuarios.manage", "roles.manage"] },
+  {
+    key: "administracion",
+    permissions: ["usuarios.manage", "roles.manage", "administracion.audit.view"],
+  },
 ];
 
 /** Claves de los seis roles sembrados de fábrica. */

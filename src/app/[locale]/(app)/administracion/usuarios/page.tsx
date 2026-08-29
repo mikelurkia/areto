@@ -152,6 +152,7 @@ export default async function UsuariosPage({
       <AdminSectionNav
         current="usuarios"
         canManageRoles={hasPermission(current, "roles.manage")}
+        canViewAudit={hasPermission(current, "administracion.audit.view")}
       />
 
       {!isSupabaseAdminConfigured ? (

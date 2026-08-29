@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { roles, users } from "@/db/schema";
 import { countActiveAdminsAfter, rolesEscalate } from "@/lib/admin-guards";
 import { hasPermission, requirePermission, type CurrentUser } from "@/lib/auth";
+import { recordAuditEvent } from "@/lib/audit-log";
 import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import { getSiteUrl } from "@/lib/site-url";
 import { getUserRoleIds, sameRoleSet, setUserRoles } from "@/lib/user-roles";
@@ -178,6 +179,13 @@ export async function inviteUser(
     throw dbError;
   }
 
+  await recordAuditEvent({
+    actorUserId: current.id,
+    action: "create",
+    entityType: "user",
+    entityId: data.user.id,
+    metadata: { email, roleIds },
+  });
   revalidateAppShell();
   return { message: t("inviteSent", { email }) };
 }
@@ -239,6 +247,15 @@ export async function updateUser(
     throw error;
   }
 
+  if (changesRole) {
+    await recordAuditEvent({
+      actorUserId: current.id,
+      action: "update",
+      entityType: "user_role",
+      entityId: id,
+      metadata: { from: currentRoleIds, to: nextRoleIds },
+    });
+  }
   revalidateAppShell();
   return { message: t("userUpdated") };
 }
@@ -290,6 +307,13 @@ export async function toggleUserStatus(
     if (!activate) await admin.auth.admin.signOut(id, "global");
   }
 
+  await recordAuditEvent({
+    actorUserId: current.id,
+    action: "update",
+    entityType: "user",
+    entityId: id,
+    metadata: { status: activate ? "active" : "disabled" },
+  });
   revalidateAppShell();
   return { message: activate ? t("userReactivated") : t("userDeactivated") };
 }
@@ -323,6 +347,13 @@ export async function deleteUser(
   const { error } = await admin.auth.admin.deleteUser(id);
   if (error) return { error: authErrorMessage(error, t, "userDeleteFailed") };
 
+  await recordAuditEvent({
+    actorUserId: current.id,
+    action: "delete",
+    entityType: "user",
+    entityId: id,
+    metadata: { email: target.email },
+  });
   revalidateAppShell();
   return { message: t("userDeleted") };
 }

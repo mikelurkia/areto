@@ -112,6 +112,7 @@ export function PersonasBrowser({
   teamOptions,
   tagOptions,
   canManage,
+  canManageBanking,
 }: {
   /** Solo las filas de la página actual: el filtrado y el troceado los hace SQL. */
   persons: PersonRow[];
@@ -121,6 +122,7 @@ export function PersonasBrowser({
   teamOptions: TeamOption[];
   tagOptions: string[];
   canManage: boolean;
+  canManageBanking: boolean;
 }) {
   const t = useTranslations("Personas");
   const tEquipos = useTranslations("Equipos");
@@ -687,7 +689,12 @@ export function PersonasBrowser({
                     {canManage ? (
                       <TableCell>
                         <div className="flex justify-end gap-1">
-                          <PersonDialog mode="edit" person={person} photoUrl={null} />
+                          <PersonDialog
+                            mode="edit"
+                            person={person}
+                            photoUrl={null}
+                            canManageBanking={canManageBanking}
+                          />
                           <DeletePersonDialog id={person.id} name={fullName} />
                         </div>
                       </TableCell>

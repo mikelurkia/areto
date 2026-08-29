@@ -14,9 +14,11 @@ import { cn } from "@/lib/utils";
 export async function AdminSectionNav({
   current,
   canManageRoles,
+  canViewAudit,
 }: {
-  current: "usuarios" | "roles";
+  current: "usuarios" | "roles" | "auditoria";
   canManageRoles: boolean;
+  canViewAudit: boolean;
 }) {
   const t = await getTranslations("Administracion");
 
@@ -24,6 +26,9 @@ export async function AdminSectionNav({
     { key: "usuarios" as const, href: "/administracion/usuarios", label: t("navUsers") },
     ...(canManageRoles
       ? [{ key: "roles" as const, href: "/administracion/roles", label: t("navRoles") }]
+      : []),
+    ...(canViewAudit
+      ? [{ key: "auditoria" as const, href: "/administracion/auditoria", label: t("navAudit") }]
       : []),
   ];
 
