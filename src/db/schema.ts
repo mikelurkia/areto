@@ -580,6 +580,7 @@ export const memberships = pgTable(
     isCaptain: boolean("is_captain").notNull().default(false),
     position: text("position"), // cargo libre: delegado, 2º entrenador, fisio, subcapitán...
     joinedAt: date("joined_at"),
+    federationCardPath: text("federation_card_path"), // ficha federativa (bucket membership-documents)
   },
   (t) => [
     uniqueIndex("memberships_person_team_idx").on(t.personId, t.teamId),

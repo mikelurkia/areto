@@ -1245,6 +1245,10 @@
     "tabDocuments": "Documentos ({count})",
     "tabNotesLog": "Bitácora ({count})",
     "colPositions": "Puestos",
+    "federationCardLabel": "Ficha federativa",
+    "changeFederationCardSr": "Cambiar ficha federativa",
+    "federationCardRemoveFileLabel": "Quitar archivo",
+    "federationCardUpdated": "Ficha federativa actualizada.",
     "playerPositionLabel": "Puesto en pista",
     "playerPositionOption": {
       "cierre": "Cierre",

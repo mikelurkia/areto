@@ -56,6 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const PHOTO_BUCKET = "person-photos";
 const TEAM_DOCUMENTS_BUCKET = "team-documents";
+const FEDERATION_CARD_BUCKET = "membership-documents";
 
 /**
  * Ficha del equipo. En `cache()` para que `generateMetadata` y la página
@@ -134,7 +135,7 @@ export default async function TeamDetailPage({
   // mismo `Promise.all` es justo el patrón de concurrencia que causó el
   // cuelgue del dashboard — como ya está cacheada (`"use cache"`), el coste
   // real de secuenciarla solo se paga en cache-miss.
-  const [photoUrls, documentFileUrls] = await Promise.all([
+  const [photoUrls, documentFileUrls, federationCardUrls] = await Promise.all([
     // Solo hace falta el avatar en miniatura aquí; el original se ve/descarga
     // desde la ficha de cada persona.
     getSignedUrls(
@@ -144,6 +145,12 @@ export default async function TeamDetailPage({
       (m) => m.personId,
     ),
     getSignedUrls(TEAM_DOCUMENTS_BUCKET, team.documents, (d) => d.filePath, (d) => d.id),
+    getSignedUrls(
+      FEDERATION_CARD_BUCKET,
+      teamMemberships,
+      (m) => m.federationCardPath,
+      (m) => m.id,
+    ),
   ]);
   const seasonRenewals = await loadSeasonRenewals(team.seasonId);
   const teamWebRegistration = seasonRenewals.rows.filter((r) => r.teamId === team.id);
@@ -307,7 +314,10 @@ export default async function TeamDetailPage({
             />
           ) : (
             <MembershipTable
-              items={teamMemberships}
+              items={teamMemberships.map((m) => ({
+                ...m,
+                federationCardUrl: federationCardUrls.get(m.id) ?? null,
+              }))}
               canManage={canManage}
               t={t}
               subjectHeader={t("colPerson")}

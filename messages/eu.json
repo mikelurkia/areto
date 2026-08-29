@@ -1245,6 +1245,10 @@
     "tabDocuments": "Dokumentuak ({count})",
     "tabNotesLog": "Egunkaria ({count})",
     "colPositions": "Postuak",
+    "federationCardLabel": "Federazio-txartela",
+    "changeFederationCardSr": "Federazio-txartela aldatu",
+    "federationCardRemoveFileLabel": "Fitxategia kendu",
+    "federationCardUpdated": "Federazio-txartela eguneratu da.",
     "playerPositionLabel": "Pistako postua",
     "playerPositionOption": {
       "cierre": "Itxitzailea",
