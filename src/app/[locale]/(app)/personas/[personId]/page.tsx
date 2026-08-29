@@ -78,6 +78,7 @@ const QUALIFICATIONS_BUCKET = "person-qualifications";
 const DOCUMENTS_BUCKET = "person-documents";
 const MEDICAL_CHECKUPS_BUCKET = "person-medical-checkups";
 const INJURY_REPORTS_BUCKET = "person-injury-reports";
+const FEDERATION_CARD_BUCKET = "membership-documents";
 
 // Titulaciones, reconocimientos médicos, partes de lesión y DNI escaneado
 // (actions.ts) admiten hasta 10MB, el doble que el resto de subidas del
@@ -304,6 +305,7 @@ export default async function PersonDetailPage({
     documentFileUrls,
     medicalCheckupFileUrls,
     injuryReportFileUrls,
+    federationCardUrls,
   ] = await Promise.all([
     // Avatar de cabecera: solo miniatura. El original (para descargar y usar
     // en trámites federativos) se pide aparte, más abajo.
@@ -314,6 +316,12 @@ export default async function PersonDetailPage({
     getSignedUrls(DOCUMENTS_BUCKET, person.documents, (d) => d.filePath, (d) => d.id),
     getSignedUrls(MEDICAL_CHECKUPS_BUCKET, person.medicalCheckups, (m) => m.filePath, (m) => m.id),
     getSignedUrls(INJURY_REPORTS_BUCKET, person.injuryReports, (r) => r.filePath, (r) => r.id),
+    getSignedUrls(
+      FEDERATION_CARD_BUCKET,
+      person.memberships,
+      (m) => m.federationCardPath,
+      (m) => m.id,
+    ),
   ]);
   // Foto a tamaño completo: solo se pide para el enlace de "ver/descargar
   // original" (no se muestra inline en ningún sitio).
@@ -816,7 +824,10 @@ export default async function PersonDetailPage({
                   ) : null}
                 </div>
                 <MembershipTable
-                  items={items}
+                  items={items.map((m) => ({
+                    ...m,
+                    federationCardUrl: federationCardUrls.get(m.id) ?? null,
+                  }))}
                   canManage={canManage}
                   t={tEquipos}
                   subjectHeader={t("colTeam")}

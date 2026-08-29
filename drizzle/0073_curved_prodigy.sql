@@ -1,0 +1,1 @@
+ALTER TABLE "memberships" ADD COLUMN "federation_card_path" text;

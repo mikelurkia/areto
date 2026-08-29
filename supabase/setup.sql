@@ -191,6 +191,7 @@ insert into storage.buckets (id, name, public) values
   ('person-medical-checkups',  'person-medical-checkups',  false),
   ('person-injury-reports',    'person-injury-reports',    false),
   ('team-documents',           'team-documents',           false),
+  ('membership-documents',     'membership-documents',     false),
   ('sponsor-documents',        'sponsor-documents',        false),
   ('sponsorship-contracts',    'sponsorship-contracts',    false),
   ('registration-documents',   'registration-documents',   false),
@@ -245,6 +246,7 @@ begin
       ('person-medical-checkups', 'personas.medical.view', 'personas.medical.manage'),
       ('person-injury-reports',   'personas.medical.view', 'personas.medical.manage'),
       ('team-documents',          'equipos.view',          'equipos.manage'),
+      ('membership-documents',    'equipos.view',          'equipos.manage'),
       ('sponsor-documents',       'patrocinadores.view',   'patrocinadores.manage'),
       ('sponsorship-contracts',   'patrocinadores.view',   'patrocinadores.manage'),
       ('document-templates',      'club.view',             'club.manage')

@@ -13,6 +13,7 @@ import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
+import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 
 export type MembershipState = {
   error?: string;
@@ -153,12 +154,71 @@ export async function removeMembership(
 
   const id = String(formData.get("id") ?? "");
 
+  const existing = await db.query.memberships.findFirst({
+    where: eq(memberships.id, id),
+    columns: { federationCardPath: true },
+  });
+
   await db.delete(memberships).where(eq(memberships.id, id));
+  if (existing?.federationCardPath) {
+    await removeFile(FEDERATION_CARD_BUCKET, existing.federationCardPath);
+  }
 
   updateTag(INTEGRITY_ISSUES_TAG);
   updateTag(SEASON_RENEWALS_TAG);
   revalidateRoutes(ROUTE.equipoFicha, ROUTE.equipos, ROUTE.personaFicha, ROUTE.dashboard);
   return { message: t("memberRemoved") };
+}
+
+const FEDERATION_CARD_BUCKET = "membership-documents";
+const MAX_FEDERATION_CARD_BYTES = 10 * 1024 * 1024; // 10MB
+const ALLOWED_FEDERATION_CARD_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
+/** Sube o quita la ficha federativa de una membresía (persona↔equipo, y por
+ * tanto persona↔temporada). Un único archivo por membresía: subir uno nuevo
+ * sustituye al anterior, igual que el escaneo del DNI en `personas/actions.ts`. */
+export async function updateMembershipFederationCard(
+  _prev: MembershipState,
+  formData: FormData,
+): Promise<MembershipState> {
+  const t = await getTranslations("Equipos");
+  await requirePermission("equipos.manage");
+
+  const id = String(formData.get("id") ?? "");
+  const fileField = formData.get("file");
+  const file = fileField instanceof File && fileField.size > 0 ? fileField : null;
+  const shouldRemove = formData.get("removeFile") === "on";
+  if (file && !ALLOWED_FEDERATION_CARD_TYPES.includes(file.type)) {
+    return { error: t("documentFileInvalidType") };
+  }
+  if (file && file.size > MAX_FEDERATION_CARD_BYTES) {
+    return { error: t("documentFileTooLarge") };
+  }
+
+  const existing = await db.query.memberships.findFirst({
+    where: eq(memberships.id, id),
+    columns: { federationCardPath: true },
+  });
+
+  if (file) {
+    if (existing?.federationCardPath) {
+      await removeFile(FEDERATION_CARD_BUCKET, existing.federationCardPath);
+    }
+    const path = `${id}/ficha-federativa.${extensionFromMimeType(file.type)}`;
+    await uploadFile(FEDERATION_CARD_BUCKET, path, file);
+    await db.update(memberships).set({ federationCardPath: path }).where(eq(memberships.id, id));
+  } else if (shouldRemove && existing?.federationCardPath) {
+    await removeFile(FEDERATION_CARD_BUCKET, existing.federationCardPath);
+    await db.update(memberships).set({ federationCardPath: null }).where(eq(memberships.id, id));
+  }
+
+  revalidateRoutes(ROUTE.equipoFicha, ROUTE.personaFicha);
+  return { message: t("federationCardUpdated") };
 }
 
 // ---------------------------------------------------------------------------
