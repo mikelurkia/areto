@@ -43,6 +43,7 @@ import {
 } from "@/lib/injury-report-pdf";
 import { resolvePayerFields } from "@/lib/payer";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
+import { revokeMandate } from "@/lib/sepa";
 import {
   createSignedUrl,
   extensionFromMimeType,
@@ -707,6 +708,29 @@ export async function deletePerson(
   updateTag(INTEGRITY_ISSUES_TAG);
   revalidateRoutes(ROUTE.personas, ROUTE.personaFicha, ROUTE.socios, ROUTE.medico);
   return { message: t("personDeleted") };
+}
+
+/** Revoca la domiciliación SEPA activa de la persona pagadora (ficha bancaria). */
+export async function revokePersonMandate(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  const user = await requirePermission("personas.banking.manage");
+
+  const payerPersonId = String(formData.get("payerPersonId") ?? "");
+
+  await revokeMandate(payerPersonId);
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "update",
+    entityType: "sepa_mandate",
+    entityId: payerPersonId,
+    metadata: { revoked: true },
+  });
+
+  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha);
+  return { message: t("mandateRevoked") };
 }
 
 function readQualificationFields(formData: FormData) {

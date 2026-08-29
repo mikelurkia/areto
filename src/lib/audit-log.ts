@@ -12,7 +12,10 @@ export type AuditEntityType =
   | "user"
   | "user_role"
   | "role_permissions"
-  | "registration";
+  | "registration"
+  | "sepa_mandate"
+  | "sepa_charge"
+  | "sepa_remittance";
 
 type RecordAuditEventInput = {
   actorUserId: string | null;

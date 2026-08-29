@@ -44,6 +44,8 @@ export const ROUTE = {
   patrocinadorFicha: "/[locale]/patrocinadores/[sponsorId]",
   patrocinadoresFacturas: "/[locale]/patrocinadores/facturas",
   patrocinadoresMuro: "/[locale]/patrocinadores-muro",
+  cuotas: "/[locale]/cuotas",
+  cuotaFicha: "/[locale]/cuotas/[remittanceId]",
   medico: "/[locale]/medico",
   medicoListado: "/[locale]/medico/listado",
   calendario: "/[locale]/calendario",

@@ -78,7 +78,9 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
           },
         ]
       : []),
-    { title: t("cuotas"), href: "/cuotas", icon: WalletIcon, disabled: true },
+    ...(can("cuotas.view")
+      ? [{ title: t("cuotas"), href: "/cuotas", icon: WalletIcon }]
+      : []),
     ...(can("club.view")
       ? [{ title: t("club"), href: "/club", icon: Building2Icon }]
       : []),

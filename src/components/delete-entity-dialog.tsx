@@ -31,7 +31,9 @@ type EntityKey =
   | "Person"
   | "Sponsor"
   | "Season"
-  | "Member";
+  | "Member"
+  | "Remittance"
+  | "Charge";
 
 /** Forma común de las Server Actions de borrado (documentos, titulaciones, médico, lesiones...). */
 type DeleteActionState = { error?: string; message?: string };
@@ -56,7 +58,7 @@ export function DeleteEntityDialog({
   deleteAction,
 }: {
   id: string;
-  namespace: "Personas" | "Equipos" | "Patrocinadores" | "Temporadas";
+  namespace: "Personas" | "Equipos" | "Patrocinadores" | "Temporadas" | "Cuotas";
   entityKey: EntityKey;
   verb?: "delete" | "remove";
   paramKey: string;

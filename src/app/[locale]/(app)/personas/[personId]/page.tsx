@@ -53,6 +53,7 @@ import { MedicalCheckupDialog } from "@/components/personas/medical-checkup-dial
 import { PersonDialog } from "@/components/personas/person-dialog";
 import { PersonIdScanDialog } from "@/components/personas/person-id-scan-dialog";
 import { PersonPhotoDialog } from "@/components/personas/person-photo-dialog";
+import { RevokeMandateDialog } from "@/components/personas/revoke-mandate-dialog";
 import { NotesLog } from "@/components/notes-log";
 import { PersonTagsEditor } from "@/components/personas/person-tags-editor";
 import { QualificationDialog } from "@/components/personas/qualification-dialog";
@@ -271,6 +272,16 @@ export default async function PersonDetailPage({
   // patrón de concurrencia que ya coló el dashboard (ver `src/db/index.ts`).
   const person = await getPerson(personId);
   if (!person) notFound();
+
+  // Mandato SEPA de la persona pagadora efectiva (el tutor si lo hay): el más
+  // reciente, sea cual sea su estado, para que un mandato revocado siga visible.
+  const effectivePayerId = person.payerPerson?.id ?? person.id;
+  const mandate = canViewBanking
+    ? await db.query.sepaMandates.findFirst({
+        where: (sepaMandates, { eq }) => eq(sepaMandates.payerPersonId, effectivePayerId),
+        orderBy: (sepaMandates, { desc }) => [desc(sepaMandates.createdAt)],
+      })
+    : null;
 
   // Segunda tanda: todo lo que no depende de la propia ficha. Los equipos se
   // traen completos y se filtran en memoria (son pocas filas), así esta consulta
@@ -633,6 +644,21 @@ export default async function PersonDetailPage({
                 ) : null}
                 {canViewBanking && !person.payerPerson && getBankName(person.iban) ? (
                   <InfoRow label={t("bankLabel")} value={getBankName(person.iban)} />
+                ) : null}
+                {canViewBanking && mandate ? (
+                  <InfoRow
+                    label={t("mandateLabel")}
+                    value={
+                      mandate.status === "active"
+                        ? t("mandateActiveValue", { rum: mandate.rum })
+                        : t("mandateRevokedValue", { rum: mandate.rum })
+                    }
+                  />
+                ) : null}
+                {canManageBanking && mandate?.status === "active" ? (
+                  <div className="pt-1">
+                    <RevokeMandateDialog payerPersonId={effectivePayerId} />
+                  </div>
                 ) : null}
               </dl>
             </div>

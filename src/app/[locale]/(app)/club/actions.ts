@@ -67,6 +67,7 @@ export async function updateClubIdentity(
     email: String(formData.get("email") ?? "").trim() || null,
     phone: String(formData.get("phone") ?? "").trim() || null,
     iban,
+    sepaCreditorId: String(formData.get("sepaCreditorId") ?? "").trim() || null,
     updatedAt: new Date(),
   });
   return { message: t("clubDataSaved") };
