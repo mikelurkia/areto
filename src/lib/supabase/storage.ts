@@ -136,6 +136,27 @@ export async function getSignedUrls<T>(
 }
 
 /**
+ * URL firmada de verdad, con caducidad corta, para un destinatario sin sesión
+ * en la app (p.ej. el tutor de un jugador al que se le manda un enlace por
+ * correo). A diferencia de `getSignedUrl`, que sirve la ruta estable del
+ * proxy autenticado, esta sí hace una llamada de red a Storage y expira sola.
+ * Con la clave de servicio, igual que `getPublicUrl`, para no depender de la
+ * sesión de quien la genera.
+ */
+export async function createSignedUrl(
+  bucket: string,
+  path: string,
+  expiresInSeconds: number,
+): Promise<string | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, expiresInSeconds);
+  if (error || !data) return null;
+  return data.signedUrl;
+}
+
+/**
  * URL pública y estable de un objeto en un bucket público (p.ej. logos de
  * patrocinador, en `sponsorship-logos`). No expira y el navegador la cachea
  * entre visitas sin pasar por nuestro servidor.

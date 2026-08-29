@@ -27,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type SearchParams = { team?: string; status?: string; q?: string };
+type SearchParams = { team?: string; status?: string; q?: string; tipo?: string };
 
 export async function generateMetadata({
   params,
@@ -43,12 +43,65 @@ export async function generateMetadata({
 const EMPTY = "—";
 
 /**
- * El documento en sí. Va en su propio componente para poder darle un
- * `<Suspense>`: depende del reloj de la petición (el estado de cada certificado
- * se calcula contra "hoy") y de los filtros de la URL, así que no se puede
- * prerenderizar.
+ * Cabecera común a las dos variantes del documento: qué es, de qué club y con
+ * qué filtros se sacó. Compartida y no duplicada en cada variante para que un
+ * ajuste de estilo (o el CSS de impresión) no pueda divergir entre las dos.
  */
-async function MedicalListDocument({
+function ListHeader({
+  title,
+  club,
+  currentSeason,
+  teamLabel,
+  statusLabel,
+  query,
+  generatedOn,
+  t,
+}: {
+  title: string;
+  club: { legalName: string | null } | null;
+  currentSeason: { name: string } | null;
+  teamLabel: string;
+  statusLabel: string | null;
+  query: string;
+  generatedOn: string;
+  t: Awaited<ReturnType<typeof getTranslations<"Medico">>>;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-6 border-b pb-[9pt]">
+      <div>
+        <h1 className="text-[11pt] font-semibold tracking-tight">{title}</h1>
+        <p className="text-[8pt] text-muted-foreground">{club?.legalName ?? "Areto"}</p>
+      </div>
+      <div className="text-right text-[8pt]">
+        {currentSeason ? <p className="font-medium">{currentSeason.name}</p> : null}
+        <p className="text-muted-foreground">
+          {t("filterTeamLabel")}: {teamLabel}
+        </p>
+        {statusLabel ? (
+          <p className="text-muted-foreground">
+            {t("filterStatusLabel")}: {statusLabel}
+          </p>
+        ) : null}
+        {query.trim() ? (
+          <p className="text-muted-foreground">
+            {t("listSearchLabel")}: {query.trim()}
+          </p>
+        ) : null}
+        <p className="mt-1 text-[7pt] text-muted-foreground">
+          {t("listGeneratedOn", { date: generatedOn })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Documento de certificados. Va en su propio componente para poder darle un
+ * `<Suspense>`: depende del reloj de la petición (el estado de cada
+ * certificado se calcula contra "hoy") y de los filtros de la URL, así que no
+ * se puede prerenderizar.
+ */
+async function CertificatesListDocument({
   locale,
   searchParams,
 }: {
@@ -143,30 +196,16 @@ async function MedicalListDocument({
 
   return (
     <PrintableSheet>
-      {/* Cabecera: qué documento es, de qué club y con qué filtros se sacó */}
-      <div className="flex items-start justify-between gap-6 border-b pb-[9pt]">
-        <div>
-          <h1 className="text-[11pt] font-semibold tracking-tight">{t("listTitle")}</h1>
-          <p className="text-[8pt] text-muted-foreground">{club?.legalName ?? "Areto"}</p>
-        </div>
-        <div className="text-right text-[8pt]">
-          {currentSeason ? <p className="font-medium">{currentSeason.name}</p> : null}
-          <p className="text-muted-foreground">
-            {t("filterTeamLabel")}: {teamLabel}
-          </p>
-          <p className="text-muted-foreground">
-            {t("filterStatusLabel")}: {statusLabel}
-          </p>
-          {filters.query.trim() ? (
-            <p className="text-muted-foreground">
-              {t("listSearchLabel")}: {filters.query.trim()}
-            </p>
-          ) : null}
-          <p className="mt-1 text-[7pt] text-muted-foreground">
-            {t("listGeneratedOn", { date: dateFmt.format(new Date()) })}
-          </p>
-        </div>
-      </div>
+      <ListHeader
+        title={t("listTitle")}
+        club={club}
+        currentSeason={currentSeason}
+        teamLabel={teamLabel}
+        statusLabel={statusLabel}
+        query={filters.query}
+        generatedOn={dateFmt.format(new Date())}
+        t={t}
+      />
 
       {listed.length === 0 ? (
         <p className="text-[8pt] text-muted-foreground">{t("noResultsDescription")}</p>
@@ -214,9 +253,147 @@ async function MedicalListDocument({
 }
 
 /**
- * Listado imprimible de reconocimientos médicos: el panel filtra y esta página
- * saca el documento con los datos que pide el centro médico (DNI y fecha de
- * nacimiento incluidos), listo para imprimir o guardar como PDF.
+ * Documento de partes de lesión: mismas columnas que la pestaña de partes en
+ * pantalla (fecha, persona, equipos), no las del impreso federativo completo
+ * — ese ya tiene su propio documento por parte
+ * (`personas/[personId]/parte-lesion/[reportId]`).
+ */
+async function InjuryReportsListDocument({
+  locale,
+  searchParams,
+}: {
+  locale: string;
+  searchParams: Promise<SearchParams>;
+}) {
+  await connection();
+
+  const [{ team, q }, allPersons, allTeams, club, t] = await Promise.all([
+    searchParams,
+    db.query.persons.findMany({
+      columns: { id: true, firstName: true, lastName: true },
+      with: {
+        memberships: {
+          columns: {},
+          with: {
+            team: {
+              columns: { id: true, name: true },
+              with: { season: { columns: { isCurrent: true } } },
+            },
+          },
+        },
+        injuryReports: {
+          columns: { id: true, occurredOn: true },
+          orderBy: (r, { desc }) => [desc(r.occurredOn)],
+        },
+      },
+    }),
+    db.query.teams.findMany({ with: { season: true } }),
+    getClubSettings(),
+    getTranslations("Medico"),
+  ]);
+
+  const query = q ?? "";
+  const selectedTeam = team && team !== "all" ? team : "all";
+
+  let rows = allPersons
+    .filter((p) => p.memberships.some((m) => m.team.season.isCurrent))
+    .flatMap((p) =>
+      p.injuryReports.map((r) => ({
+        id: r.id,
+        personName: `${p.firstName} ${p.lastName}`,
+        occurredOn: r.occurredOn,
+        teams: p.memberships
+          .filter((m) => m.team.season.isCurrent)
+          .map((m) => ({ id: m.team.id, name: m.team.name })),
+      })),
+    );
+  const needle = query.trim().toLowerCase();
+  if (needle) rows = rows.filter((r) => r.personName.toLowerCase().includes(needle));
+  if (selectedTeam !== "all") rows = rows.filter((r) => r.teams.some((tm) => tm.id === selectedTeam));
+  rows.sort((a, b) => b.occurredOn.localeCompare(a.occurredOn));
+
+  const dateFmt = new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+  const currentSeason = allTeams.find((tm) => tm.season.isCurrent)?.season ?? null;
+  const selectedTeamRow = allTeams.find((tm) => tm.id === selectedTeam);
+  const teamLabel = selectedTeamRow
+    ? teamSeasonLabel(selectedTeamRow, selectedTeamRow.season)
+    : t("filterTeamAll");
+
+  return (
+    <PrintableSheet>
+      <ListHeader
+        title={t("injuryReportsSection")}
+        club={club}
+        currentSeason={currentSeason}
+        teamLabel={teamLabel}
+        statusLabel={null}
+        query={query}
+        generatedOn={dateFmt.format(new Date())}
+        t={t}
+      />
+
+      {rows.length === 0 ? (
+        <p className="text-[8pt] text-muted-foreground">{t("noResultsDescription")}</p>
+      ) : (
+        <Table className="table-fixed text-[8pt] [&_td]:px-[3pt] [&_td]:py-[1.5pt] [&_th]:px-[3pt] [&_th]:py-[1.5pt] [&_th]:break-words">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[15%]">{t("colInjuryDate")}</TableHead>
+              <TableHead className="w-[35%]">{t("colInjuryPerson")}</TableHead>
+              <TableHead className="w-[50%]">{t("colTeams")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell nowrap className="align-top">
+                  {dateFmt.format(new Date(row.occurredOn))}
+                </TableCell>
+                <TableCell className="align-top font-medium">{row.personName}</TableCell>
+                <TableCell className="align-top">
+                  {row.teams.map((tm) => tm.name).join(" / ")}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </PrintableSheet>
+  );
+}
+
+/**
+ * Elige el documento según `?tipo=`. En su propio componente, y no en la
+ * página, para que decidir el tipo no obligue a leer `searchParams` fuera del
+ * `<Suspense>` de abajo: eso bloquearía el prerender de toda la ruta en vez
+ * de solo el documento (ver `next-prerender-current-time`).
+ */
+async function MedicalListDocument({
+  locale,
+  searchParams,
+}: {
+  locale: string;
+  searchParams: Promise<SearchParams>;
+}) {
+  const { tipo } = await searchParams;
+  return tipo === "partes" ? (
+    <InjuryReportsListDocument locale={locale} searchParams={searchParams} />
+  ) : (
+    <CertificatesListDocument locale={locale} searchParams={searchParams} />
+  );
+}
+
+/**
+ * Listado imprimible del panel médico: el panel filtra y esta página saca el
+ * documento con los datos que pide cada trámite, listo para imprimir o
+ * guardar como PDF. `tipo=partes` saca los partes de lesión; por defecto (o
+ * `tipo=certificados`) saca los reconocimientos médicos, con DNI y fecha de
+ * nacimiento incluidos, que es lo que pide el centro médico.
  */
 export default async function MedicoListadoPage({
   params,
