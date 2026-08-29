@@ -256,6 +256,8 @@ export default async function PersonDetailPage({
   const canManage = hasPermission(user, "personas.manage");
   const canViewMedical = hasPermission(user, "personas.medical.view");
   const canManageMedical = hasPermission(user, "personas.medical.manage");
+  const canViewBanking = hasPermission(user, "personas.banking.view");
+  const canManageBanking = hasPermission(user, "personas.banking.manage");
   const requestedTab = PERSON_TABS.find((value) => value === tab) ?? "general";
   const initialTab = requestedTab === "medico" && !canViewMedical ? "general" : requestedTab;
   const t = await getTranslations("Personas");
@@ -480,6 +482,7 @@ export default async function PersonDetailPage({
                   })),
                 }}
                 photoUrl={photoThumbUrl}
+                canManageBanking={canManageBanking}
               />
             ) : null}
           </>
@@ -603,22 +606,24 @@ export default async function PersonDetailPage({
                     ) : null)
                   }
                 />
-                <InfoRow
-                  label={person.payerPerson ? t("paidByLabel") : t("ibanLabel")}
-                  value={
-                    person.payerPerson ? (
-                      <Link
-                        href={`/personas/${person.payerPerson.id}`}
-                        className="text-primary hover:underline"
-                      >
-                        {person.payerPerson.firstName} {person.payerPerson.lastName}
-                      </Link>
-                    ) : person.iban ? (
-                      <MaskedIbanText value={person.iban} />
-                    ) : null
-                  }
-                />
-                {!person.payerPerson && getBankName(person.iban) ? (
+                {canViewBanking ? (
+                  <InfoRow
+                    label={person.payerPerson ? t("paidByLabel") : t("ibanLabel")}
+                    value={
+                      person.payerPerson ? (
+                        <Link
+                          href={`/personas/${person.payerPerson.id}`}
+                          className="text-primary hover:underline"
+                        >
+                          {person.payerPerson.firstName} {person.payerPerson.lastName}
+                        </Link>
+                      ) : person.iban ? (
+                        <MaskedIbanText value={person.iban} />
+                      ) : null
+                    }
+                  />
+                ) : null}
+                {canViewBanking && !person.payerPerson && getBankName(person.iban) ? (
                   <InfoRow label={t("bankLabel")} value={getBankName(person.iban)} />
                 ) : null}
               </dl>

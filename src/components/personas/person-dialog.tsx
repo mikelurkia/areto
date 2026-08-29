@@ -75,8 +75,8 @@ type Person = {
 
 
 type PersonDialogProps = (
-  | { mode: "create" }
-  | { mode: "edit"; person: Person; photoUrl: string | null }
+  | { mode: "create"; canManageBanking: boolean }
+  | { mode: "edit"; person: Person; photoUrl: string | null; canManageBanking: boolean }
 );
 
 export function PersonDialog(props: PersonDialogProps) {
@@ -285,30 +285,39 @@ export function PersonDialog(props: PersonDialogProps) {
                 <p className="text-xs text-muted-foreground">{t("guardianMinorExcludedHint")}</p>
               </Field>
 
-              <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("feeCollectionSection")}
-              </h2>
-              {hasGuardians ? (
-                <Field>
-                  <FieldLabel>{t("ibanLabel")}</FieldLabel>
-                  <p className="text-sm text-muted-foreground">
-                    {payerGuardian
-                      ? t("ibanHandledByGuardian", {
-                          name: `${payerGuardian.firstName} ${payerGuardian.lastName}`,
-                        })
-                      : t("ibanHandledByGuardianGeneric")}
-                  </p>
-                </Field>
+              {hasGuardians || props.canManageBanking ? (
+                <>
+                  <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                    {t("feeCollectionSection")}
+                  </h2>
+                  {hasGuardians ? (
+                    <Field>
+                      <FieldLabel>{t("ibanLabel")}</FieldLabel>
+                      <p className="text-sm text-muted-foreground">
+                        {payerGuardian
+                          ? t("ibanHandledByGuardian", {
+                              name: `${payerGuardian.firstName} ${payerGuardian.lastName}`,
+                            })
+                          : t("ibanHandledByGuardianGeneric")}
+                      </p>
+                    </Field>
+                  ) : (
+                    <Field>
+                      <FieldLabel htmlFor="person-iban">{t("ibanLabel")}</FieldLabel>
+                      <MaskedIbanInput
+                        id="person-iban"
+                        name="iban"
+                        defaultValue={person?.iban ?? ""}
+                        placeholder={t("ibanPlaceholder")}
+                      />
+                    </Field>
+                  )}
+                </>
               ) : (
-                <Field>
-                  <FieldLabel htmlFor="person-iban">{t("ibanLabel")}</FieldLabel>
-                  <MaskedIbanInput
-                    id="person-iban"
-                    name="iban"
-                    defaultValue={person?.iban ?? ""}
-                    placeholder={t("ibanPlaceholder")}
-                  />
-                </Field>
+                // Sin `personas.banking.manage`: el campo no se pinta, pero se
+                // conserva el IBAN actual como oculto — si no, guardar el resto
+                // de la ficha lo borraría (`readPersonFields` lee "" si falta).
+                <input type="hidden" name="iban" value={person?.iban ?? ""} />
               )}
               <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 {t("sportsDataSection")}
