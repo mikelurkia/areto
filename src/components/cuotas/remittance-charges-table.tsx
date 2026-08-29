@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { DeleteChargeDialog } from "@/components/cuotas/delete-charge-dialog";
 import { MarkChargeCollectedButton } from "@/components/cuotas/mark-charge-collected-button";
 import { MarkChargeReturnedDialog } from "@/components/cuotas/mark-charge-returned-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -90,6 +91,7 @@ export function RemittanceChargesTable({
                 <>
                   <MarkChargeCollectedButton id={charge.id} />
                   <MarkChargeReturnedDialog id={charge.id} />
+                  <DeleteChargeDialog id={charge.id} subject={charge.subjectName} />
                 </>
               ) : null}
             </TableCell>

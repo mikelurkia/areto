@@ -8,6 +8,8 @@ import { PageHeader, SectionHeading } from "@/components/page-header";
 import { StatTile } from "@/components/stat-tile";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { CreateRemittanceDialog } from "@/components/cuotas/create-remittance-dialog";
+import { DeletePendingChargesDialog } from "@/components/cuotas/delete-pending-charges-dialog";
+import { DeleteRemittanceDialog } from "@/components/cuotas/delete-remittance-dialog";
 import { DownloadRemittanceXmlButton } from "@/components/cuotas/download-remittance-xml-button";
 import { GenerateMemberChargesButton } from "@/components/cuotas/generate-member-charges-button";
 import { GeneratePlayerChargesDialog } from "@/components/cuotas/generate-player-charges-dialog";
@@ -78,7 +80,7 @@ export default async function CuotasPage({
 
   const pendingGroups = new Map<
     string,
-    { subject: string; periodKey: string; count: number; amountCents: number }
+    { subject: string; periodKey: string; count: number; amountCents: number; ids: string[] }
   >();
   for (const charge of unassignedCharges) {
     const subject = charge.kind === "player" ? (charge.membership?.team?.name ?? "—") : t("kindMember");
@@ -88,9 +90,11 @@ export default async function CuotasPage({
       periodKey: charge.periodKey,
       count: 0,
       amountCents: 0,
+      ids: [] as string[],
     };
     group.count += 1;
     group.amountCents += charge.amountCents;
+    group.ids.push(charge.id);
     pendingGroups.set(key, group);
   }
   const pendingGroupRows = [...pendingGroups.values()].sort((a, b) =>
@@ -129,6 +133,9 @@ export default async function CuotasPage({
                 <TableHead priority="secondary">{t("colPeriod")}</TableHead>
                 <TableHead className="text-right">{t("colChargeCount")}</TableHead>
                 <TableHead className="text-right">{t("colAmount")}</TableHead>
+                {canManage ? (
+                  <TableHead className="text-right">{t("colActions")}</TableHead>
+                ) : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -140,6 +147,15 @@ export default async function CuotasPage({
                   <TableCell nowrap className="text-right font-medium">
                     {currencyFmt.format(group.amountCents / 100)}
                   </TableCell>
+                  {canManage ? (
+                    <TableCell className="flex justify-end">
+                      <DeletePendingChargesDialog
+                        ids={group.ids}
+                        subject={group.subject}
+                        periodKey={group.periodKey}
+                      />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               ))}
             </TableBody>
@@ -185,8 +201,11 @@ export default async function CuotasPage({
                   <TableCell nowrap className="text-right font-medium">
                     {currencyFmt.format(total / 100)}
                   </TableCell>
-                  <TableCell className="flex justify-end">
+                  <TableCell className="flex justify-end gap-1">
                     <DownloadRemittanceXmlButton remittanceId={remittance.id} />
+                    {canManage ? (
+                      <DeleteRemittanceDialog id={remittance.id} messageId={remittance.messageId} />
+                    ) : null}
                   </TableCell>
                 </TableRow>
               );

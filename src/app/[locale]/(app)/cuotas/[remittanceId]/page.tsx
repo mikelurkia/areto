@@ -7,6 +7,7 @@ import { sepaRemittances } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { StatTile } from "@/components/stat-tile";
+import { DeleteRemittanceDialog } from "@/components/cuotas/delete-remittance-dialog";
 import { DownloadRemittanceXmlButton } from "@/components/cuotas/download-remittance-xml-button";
 import { MarkRemittanceCollectedButton } from "@/components/cuotas/mark-remittance-collected-button";
 import {
@@ -91,6 +92,9 @@ export default async function RemittanceDetailPage({
             <DownloadRemittanceXmlButton remittanceId={remittance.id} />
             {canManage && pendingCount > 0 ? (
               <MarkRemittanceCollectedButton remittanceId={remittance.id} />
+            ) : null}
+            {canManage ? (
+              <DeleteRemittanceDialog id={remittance.id} messageId={remittance.messageId} />
             ) : null}
           </>
         }

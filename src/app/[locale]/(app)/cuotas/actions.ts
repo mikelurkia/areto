@@ -401,6 +401,104 @@ export async function markRemittanceCollected(
   return { message: t("remittanceMarkedCollected") };
 }
 
+/**
+ * Borra una remesa entera. El cargo es el hecho contable y sobrevive
+ * (`onDelete: "set null"` en `sepaCharges.remittanceId`) — vuelve a quedar
+ * suelto con el estado que tuviera, listo para entrar en otra remesa si
+ * seguía `pending`.
+ */
+export async function deleteRemittance(
+  _prev: CuotasState,
+  formData: FormData,
+): Promise<CuotasState> {
+  const t = await getTranslations("Cuotas");
+  const user = await requirePermission("cuotas.manage");
+
+  const id = String(formData.get("id") ?? "");
+  const remittance = await db.query.sepaRemittances.findFirst({
+    where: eq(sepaRemittances.id, id),
+    columns: { messageId: true },
+  });
+  if (!remittance) return { error: t("remittanceNotFound") };
+
+  await db.delete(sepaRemittances).where(eq(sepaRemittances.id, id));
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "delete",
+    entityType: "sepa_remittance",
+    entityId: id,
+    metadata: { messageId: remittance.messageId },
+  });
+
+  revalidateRoutes(ROUTE.cuotas, ROUTE.cuotaFicha);
+  return { message: t("remittanceDeleted") };
+}
+
+/** Borra un cargo suelto, solo si sigue `pending` (uno ya cobrado o devuelto es histórico). */
+export async function deleteCharge(
+  _prev: CuotasState,
+  formData: FormData,
+): Promise<CuotasState> {
+  const t = await getTranslations("Cuotas");
+  const user = await requirePermission("cuotas.manage");
+
+  const id = String(formData.get("id") ?? "");
+  const charge = await db.query.sepaCharges.findFirst({
+    where: eq(sepaCharges.id, id),
+    columns: { status: true },
+  });
+  if (!charge) return { error: t("remittanceNotFound") };
+  if (charge.status !== "pending") return { error: t("chargeNotPending") };
+
+  await db.delete(sepaCharges).where(eq(sepaCharges.id, id));
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "delete",
+    entityType: "sepa_charge",
+    entityId: id,
+    metadata: {},
+  });
+
+  revalidateRoutes(ROUTE.cuotas, ROUTE.cuotaFicha);
+  return { message: t("chargeDeleted") };
+}
+
+/** Borra en bloque los cargos `pending` sueltos (sin remesa) de un grupo de la tabla de pendientes. */
+export async function deletePendingCharges(
+  _prev: CuotasState,
+  formData: FormData,
+): Promise<CuotasState> {
+  const t = await getTranslations("Cuotas");
+  const user = await requirePermission("cuotas.manage");
+
+  const ids = formData.getAll("id").map(String).filter(Boolean);
+  if (ids.length === 0) return { error: t("remittanceNotFound") };
+
+  const deleted = await db
+    .delete(sepaCharges)
+    .where(
+      and(
+        inArray(sepaCharges.id, ids),
+        eq(sepaCharges.status, "pending"),
+        isNull(sepaCharges.remittanceId),
+      ),
+    )
+    .returning({ id: sepaCharges.id });
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "delete",
+    entityType: "sepa_charge",
+    entityId: ids[0],
+    metadata: { count: deleted.length },
+  });
+
+  revalidateRoutes(ROUTE.cuotas, ROUTE.cuotaFicha);
+  return { message: t("pendingChargesDeleted", { count: deleted.length }) };
+}
+
 /** Reconstruye y devuelve el XML pain.008 de una remesa ya generada. */
 export async function getRemittanceXml(
   remittanceId: string,
