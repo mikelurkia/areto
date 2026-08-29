@@ -6,7 +6,6 @@ import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import {
-  attendances,
   clubMembers,
   memberships,
   payments,
@@ -185,27 +184,6 @@ export async function mergePersons(
       .update(payments)
       .set({ personId: primaryId })
       .where(eq(payments.personId, duplicateId));
-
-    // Asistencias: mismo criterio que las fichas de equipo (índice único por evento+persona).
-    const dupAttendances = await tx.query.attendances.findMany({
-      where: eq(attendances.personId, duplicateId),
-    });
-    for (const a of dupAttendances) {
-      const clash = await tx.query.attendances.findFirst({
-        where: and(
-          eq(attendances.personId, primaryId),
-          eq(attendances.eventId, a.eventId),
-        ),
-      });
-      if (clash) {
-        await tx.delete(attendances).where(eq(attendances.id, a.id));
-      } else {
-        await tx
-          .update(attendances)
-          .set({ personId: primaryId })
-          .where(eq(attendances.id, a.id));
-      }
-    }
 
     // Cuenta de la app (login) ligada al duplicado, si la tuviera.
     await tx

@@ -15,6 +15,7 @@ import {
   registrations,
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
+import { recordAuditEvent } from "@/lib/audit-log";
 import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { isValidIban } from "@/lib/iban";
 import { resizeImageToWebp } from "@/lib/image-resize";
@@ -540,6 +541,13 @@ export async function approveRegistration(
     await db.update(persons).set({ idBackPath: targetPath }).where(eq(persons.id, personId));
   }
 
+  await recordAuditEvent({
+    actorUserId: reviewer.id,
+    action: "approve",
+    entityType: "registration",
+    entityId: id,
+    metadata: { personId, kind: registration.kind },
+  });
   updateTag(INTEGRITY_ISSUES_TAG);
   updateTag(SEASON_RENEWALS_TAG);
   revalidateRoutes(
@@ -576,6 +584,13 @@ export async function rejectRegistration(
     .set({ status: "rejected", reviewedBy: reviewer.id, reviewedAt: new Date(), rejectionReason })
     .where(eq(registrations.id, id));
 
+  await recordAuditEvent({
+    actorUserId: reviewer.id,
+    action: "reject",
+    entityType: "registration",
+    entityId: id,
+    metadata: { kind: registration.kind, rejectionReason },
+  });
   updateTag(SEASON_RENEWALS_TAG);
   revalidateRoutes(
     ROUTE.inscripciones,

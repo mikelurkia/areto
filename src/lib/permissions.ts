@@ -54,6 +54,7 @@ export const PERMISSIONS = [
   // Administración de la propia aplicación
   "usuarios.manage",
   "roles.manage",
+  "administracion.audit.view",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -130,7 +131,10 @@ export const PERMISSION_MODULES: readonly {
     permissions: ["patrocinadores.view", "patrocinadores.manage"],
   },
   { key: "club", permissions: ["club.view", "club.manage"] },
-  { key: "administracion", permissions: ["usuarios.manage", "roles.manage"] },
+  {
+    key: "administracion",
+    permissions: ["usuarios.manage", "roles.manage", "administracion.audit.view"],
+  },
 ];
 
 /** Claves de los seis roles sembrados de fábrica. */
