@@ -9,6 +9,7 @@ import {
   type PersonState,
 } from "@/app/[locale]/(app)/personas/actions";
 import { DeleteInjuryReportFileDialog } from "@/components/personas/delete-injury-report-file-dialog";
+import { SendInjuryReportDialog } from "@/components/personas/send-injury-report-dialog";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,9 +39,13 @@ const initialState: PersonState = {};
 export function InjuryReportFileManager({
   reportId,
   fileUrl,
+  person,
+  guardians,
 }: {
   reportId: string;
   fileUrl: string | null;
+  person: { name: string; email: string | null };
+  guardians: { id: string; name: string; email: string | null }[];
 }) {
   const t = useTranslations("Personas");
 
@@ -56,6 +61,9 @@ export function InjuryReportFileManager({
           <PaperclipIcon className="size-3.5" />
           {t("injuryReportViewFile")}
         </a>
+      ) : null}
+      {fileUrl ? (
+        <SendInjuryReportDialog reportId={reportId} person={person} guardians={guardians} />
       ) : null}
       <UploadCustomInjuryReportFileLink reportId={reportId} hasFile={fileUrl !== null} />
       {fileUrl ? <DeleteInjuryReportFileDialog id={reportId} /> : null}

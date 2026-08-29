@@ -34,6 +34,7 @@ import { resizeImageToWebp } from "@/lib/image-resize";
 import { findCandidates } from "@/lib/person-matching";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getClubSettings } from "@/lib/club";
+import { mailtoLink } from "@/lib/contact-links";
 import {
   DOCUMENT_TEMPLATES_BUCKET,
   INJURY_REPORT_TEMPLATE_PATH,
@@ -42,6 +43,7 @@ import {
 import { resolvePayerFields } from "@/lib/payer";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 import {
+  createSignedUrl,
   extensionFromMimeType,
   fileExists,
   getSignedUrl,
@@ -71,6 +73,13 @@ export type PersonState = {
    * aquí en vez de redirigir ellas.
    */
   redirectTo?: string;
+  /**
+   * `mailto:` que el cliente tiene que abrir tras procesar el resto del
+   * estado (ver `download`/`redirectTo`, mismo mecanismo): el servidor no
+   * puede abrir el cliente de correo del usuario, así que deja dicho a dónde
+   * ir. Lo usa el envío del parte de lesión a la persona o a su tutor/a.
+   */
+  mailto?: string;
 };
 
 const PHOTO_BUCKET = "person-photos";
@@ -125,6 +134,13 @@ async function removeQualificationFileObject(path: string) {
 
 const MEDICAL_CHECKUPS_BUCKET = "person-medical-checkups";
 const INJURY_REPORTS_BUCKET = "person-injury-reports";
+/** Caducidad del enlace firmado que se manda por correo: horas de sobra para
+ * que el destinatario, sin cuenta en la app, lo abra, sin dejar la ventana de
+ * exposición de un documento médico abierta una semana. */
+const SEND_INJURY_REPORT_LINK_EXPIRY_SECONDS = 60 * 60 * 48;
+/** Prefijo del valor de `recipient` en el formulario de envío cuando el
+ * destinatario elegido es un tutor/a y no la propia persona. */
+const RECIPIENT_GUARDIAN_PREFIX = "guardian:";
 const MAX_MEDICAL_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MEDICAL_FILE_TYPES = [
   "application/pdf",
@@ -1223,6 +1239,76 @@ export async function deleteInjuryReportFile(
 
   revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado);
   return { message: t("injuryReportFileDeleted") };
+}
+
+/**
+ * Manda el fichero del parte a la persona o a su tutor/a por correo. No hay
+ * proveedor de email en el servidor (ver `mailtoLink`): la acción solo firma
+ * un enlace de descarga que funciona sin sesión y deja el `mailto:` para que
+ * lo abra el cliente (ver `PersonState.mailto`), con el propio correo del
+ * usuario como remitente.
+ */
+export async function sendInjuryReportByEmail(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  await requirePermission("personas.medical.manage");
+
+  const id = String(formData.get("id") ?? "");
+  const recipient = String(formData.get("recipient") ?? "");
+
+  const report = await db.query.personInjuryReports.findFirst({
+    where: eq(personInjuryReports.id, id),
+    columns: { personId: true, occurredOn: true, filePath: true },
+    with: { person: { columns: { firstName: true, lastName: true, email: true } } },
+  });
+  if (!report) return { error: t("injuryReportNotFound") };
+  if (!report.filePath) return { error: t("sendInjuryReportNoFileError") };
+
+  let recipientName: string;
+  let recipientEmail: string | null;
+  if (recipient.startsWith(RECIPIENT_GUARDIAN_PREFIX)) {
+    const guardianId = recipient.slice(RECIPIENT_GUARDIAN_PREFIX.length);
+    const guardianRow = await db.query.personGuardians.findFirst({
+      where: and(
+        eq(personGuardians.personId, report.personId),
+        eq(personGuardians.guardianId, guardianId),
+      ),
+      with: { guardian: { columns: { firstName: true, lastName: true, email: true } } },
+    });
+    if (!guardianRow) return { error: t("sendInjuryReportNoRecipientError") };
+    recipientName = `${guardianRow.guardian.firstName} ${guardianRow.guardian.lastName}`;
+    recipientEmail = guardianRow.guardian.email;
+  } else {
+    if (recipient !== "person") return { error: t("sendInjuryReportNoRecipientError") };
+    recipientName = `${report.person.firstName} ${report.person.lastName}`;
+    recipientEmail = report.person.email;
+  }
+  if (!recipientEmail) return { error: t("sendInjuryReportNoEmailError") };
+
+  const url = await createSignedUrl(
+    INJURY_REPORTS_BUCKET,
+    report.filePath,
+    SEND_INJURY_REPORT_LINK_EXPIRY_SECONDS,
+  );
+  if (!url) return { error: t("sendInjuryReportLinkError") };
+
+  const club = await getClubSettings();
+  const personName = `${report.person.firstName} ${report.person.lastName}`;
+  const subject = t("sendInjuryReportSubject", { name: personName });
+  const body = t("sendInjuryReportBody", {
+    recipientName,
+    name: personName,
+    date: report.occurredOn,
+    club: club?.legalName ?? "Areto",
+    url,
+  });
+
+  return {
+    message: t("sendInjuryReportSent"),
+    mailto: mailtoLink(recipientEmail, subject, body),
+  };
 }
 
 const personDocumentActions = makeDocumentActions({

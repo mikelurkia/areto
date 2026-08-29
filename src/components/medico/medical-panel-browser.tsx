@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { usePagedRows } from "@/hooks/use-paged-rows";
+import { useTabParam } from "@/hooks/use-tab-param";
 import { downloadCsv } from "@/lib/csv";
 import {
   EMPTY_MEDICAL_PANEL_FILTERS,
@@ -36,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -98,6 +100,9 @@ function StatusBadge({
 /** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
 const FILTER_DEFAULTS = { q: "", equipo: "all", estado: "all" };
 
+/** Primera vista = la de por defecto, la que no deja parámetro en la URL. */
+const VIEWS = ["certificados", "partes"] as const;
+
 export function MedicalPanelBrowser({
   certRows,
   injuryRows,
@@ -114,6 +119,7 @@ export function MedicalPanelBrowser({
   // El panel de alertas enlaza aquí con el filtro ya puesto
   // (`/medico?estado=needsUpdate`); ahora esa misma URL es la que manda mientras
   // se navega, no solo la semilla del estado inicial.
+  const [view, setView] = useTabParam("vista", VIEWS);
   const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
   const { equipo: team } = filters;
   // El valor viene de la URL, así que puede ser cualquier cosa.
@@ -163,10 +169,12 @@ export function MedicalPanelBrowser({
 
   // Los filtros viven en estado local, así que viajan al listado imprimible
   // por la URL: es lo que le permite reproducir en servidor la misma selección
-  // que hay en pantalla. Los valores neutros no se escriben.
+  // que hay en pantalla. Los valores neutros no se escriben. "estado" solo
+  // pinta algo en el listado de certificados: en partes se omite.
   const exportParams = new URLSearchParams();
+  if (view === "partes") exportParams.set("tipo", "partes");
   if (team !== "all") exportParams.set("team", team);
-  if (status !== "all") exportParams.set("status", status);
+  if (view === "certificados" && status !== "all") exportParams.set("status", status);
   if (query.trim()) exportParams.set("q", query.trim());
   const printListHref = exportParams.size
     ? `/medico/listado?${exportParams}`
@@ -196,6 +204,16 @@ export function MedicalPanelBrowser({
       t(`filterStatus.${row.status}`),
     ]);
     downloadCsv("reconocimientos-medicos.csv", headers, rows);
+  }
+
+  function handleExportInjuryCsv() {
+    const headers = [t("colInjuryDate"), t("colInjuryPerson"), t("colTeams")];
+    const rows = filteredInjuryRows.map((row) => [
+      row.occurredOn,
+      row.personName,
+      row.teams.map((tm) => tm.name).join(" / "),
+    ]);
+    downloadCsv("partes-lesion.csv", headers, rows);
   }
 
   const alertBadges: React.ReactNode[] = [];
@@ -266,24 +284,26 @@ export function MedicalPanelBrowser({
             ))}
           </SelectContent>
         </Select>
-        <Select value={status} onValueChange={(v) => setFilters({ estado: v ?? "all" })}>
-          <SelectTrigger aria-label={t("filterStatusLabel")}>
-            <SelectValue>
-              {(value: string) =>
-                value === "all" ? t("filterStatusAll") : t(`filterStatus.${value}` as "filterStatus.expired")
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filterStatusAll")}</SelectItem>
-            <SelectItem value="needsUpdate">{t("filterStatus.needsUpdate")}</SelectItem>
-            <SelectItem value="expired">{t("filterStatus.expired")}</SelectItem>
-            <SelectItem value="expiring">{t("filterStatus.expiring")}</SelectItem>
-            <SelectItem value="missing">{t("filterStatus.missing")}</SelectItem>
-            <SelectItem value="ok">{t("filterStatus.ok")}</SelectItem>
-            <SelectItem value="exempt">{t("filterStatus.exempt")}</SelectItem>
-          </SelectContent>
-        </Select>
+        {view === "certificados" ? (
+          <Select value={status} onValueChange={(v) => setFilters({ estado: v ?? "all" })}>
+            <SelectTrigger aria-label={t("filterStatusLabel")}>
+              <SelectValue>
+                {(value: string) =>
+                  value === "all" ? t("filterStatusAll") : t(`filterStatus.${value}` as "filterStatus.expired")
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("filterStatusAll")}</SelectItem>
+              <SelectItem value="needsUpdate">{t("filterStatus.needsUpdate")}</SelectItem>
+              <SelectItem value="expired">{t("filterStatus.expired")}</SelectItem>
+              <SelectItem value="expiring">{t("filterStatus.expiring")}</SelectItem>
+              <SelectItem value="missing">{t("filterStatus.missing")}</SelectItem>
+              <SelectItem value="ok">{t("filterStatus.ok")}</SelectItem>
+              <SelectItem value="exempt">{t("filterStatus.exempt")}</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : null}
         <div className="ml-auto flex flex-wrap gap-2">
           <Button
             variant="outline"
@@ -293,96 +313,100 @@ export function MedicalPanelBrowser({
             <FileTextIcon data-icon="inline-start" />
             {t("printListAction")}
           </Button>
-          <Button variant="outline" onClick={handleExportCsv}>
+          <Button
+            variant="outline"
+            onClick={view === "certificados" ? handleExportCsv : handleExportInjuryCsv}
+          >
             <DownloadIcon data-icon="inline-start" />
             {t("exportCsvAction")}
           </Button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("checkupsSection")}
-        </h2>
-        {filteredCertRows.length === 0 ? (
-          <SectionPlaceholder size="compact" title={t("noResultsDescription")} />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("colName")}</TableHead>
-                <TableHead priority="secondary">{t("colTeams")}</TableHead>
-                <TableHead>{t("colStatus")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {certPage.pageRows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-medium">
-                    <HoverPrefetchLink
-                      href={`/personas/${row.id}?tab=medico`}
-                      className="hover:underline"
-                    >
-                      {row.firstName} {row.lastName}
-                    </HoverPrefetchLink>
-                  </TableCell>
-                  <TableCell priority="secondary">
-                    <div className="flex flex-wrap gap-1">
-                      {row.teams.map((tm) => (
-                        <Badge
-                          key={tm.id}
-                          variant="secondary"
-                          title={tEquipos(`roleOption.${tm.role}` as "roleOption.player")}
+      <Tabs value={view} onValueChange={(v) => setView(v as (typeof VIEWS)[number])}>
+        <TabsList>
+          <TabsTrigger value="certificados">{t("tabCertificados")}</TabsTrigger>
+          <TabsTrigger value="partes">{t("tabPartes")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="certificados">
+          <div className="flex flex-col gap-3">
+            {filteredCertRows.length === 0 ? (
+              <SectionPlaceholder size="compact" title={t("noResultsDescription")} />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("colName")}</TableHead>
+                    <TableHead priority="secondary">{t("colTeams")}</TableHead>
+                    <TableHead>{t("colStatus")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {certPage.pageRows.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="font-medium">
+                        <HoverPrefetchLink
+                          href={`/personas/${row.id}?tab=medico`}
+                          className="hover:underline"
                         >
-                          {tm.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={row.status} date={row.medicalCertUntil} t={t} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-        <PaginationBar
-          page={certPage.page}
-          pageCount={certPage.pageCount}
-          onPageChange={certPage.setPage}
-        />
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("injuryReportsSection")}
-        </h2>
-        {filteredInjuryRows.length === 0 ? (
-          <SectionPlaceholder
-            size="compact"
-            title={
-              injuryRows.length === 0
-                ? t("noInjuryReportsDescription")
-                : t("noResultsDescription")
-            }
-          />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("colInjuryDate")}</TableHead>
-                <TableHead>{t("colInjuryPerson")}</TableHead>
-                <TableHead priority="secondary">{t("colTeams")}</TableHead>
-                {canManage ? (
-                  <TableHead className="print:hidden">
-                    <span className="sr-only">{t("colActions")}</span>
-                  </TableHead>
-                ) : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {injuryPage.pageRows.map((row) => (
+                          {row.firstName} {row.lastName}
+                        </HoverPrefetchLink>
+                      </TableCell>
+                      <TableCell priority="secondary">
+                        <div className="flex flex-wrap gap-1">
+                          {row.teams.map((tm) => (
+                            <Badge
+                              key={tm.id}
+                              variant="secondary"
+                              title={tEquipos(`roleOption.${tm.role}` as "roleOption.player")}
+                            >
+                              {tm.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={row.status} date={row.medicalCertUntil} t={t} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            <PaginationBar
+              page={certPage.page}
+              pageCount={certPage.pageCount}
+              onPageChange={certPage.setPage}
+            />
+          </div>
+        </TabsContent>
+        <TabsContent value="partes">
+          <div className="flex flex-col gap-3">
+            {filteredInjuryRows.length === 0 ? (
+              <SectionPlaceholder
+                size="compact"
+                title={
+                  injuryRows.length === 0
+                    ? t("noInjuryReportsDescription")
+                    : t("noResultsDescription")
+                }
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("colInjuryDate")}</TableHead>
+                    <TableHead>{t("colInjuryPerson")}</TableHead>
+                    <TableHead priority="secondary">{t("colTeams")}</TableHead>
+                    {canManage ? (
+                      <TableHead className="print:hidden">
+                        <span className="sr-only">{t("colActions")}</span>
+                      </TableHead>
+                    ) : null}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {injuryPage.pageRows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell nowrap className="font-medium">{row.occurredOn}</TableCell>
                   <TableCell>
@@ -419,15 +443,17 @@ export function MedicalPanelBrowser({
                   ) : null}
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
-        )}
-        <PaginationBar
-          page={injuryPage.page}
-          pageCount={injuryPage.pageCount}
-          onPageChange={injuryPage.setPage}
-        />
-      </div>
+                </TableBody>
+              </Table>
+            )}
+            <PaginationBar
+              page={injuryPage.page}
+              pageCount={injuryPage.pageCount}
+              onPageChange={injuryPage.setPage}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { persons, memberships, personInjuryReports } from "@/db/schema";
+import { persons, memberships, personGuardians, personInjuryReports } from "@/db/schema";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InjuryReportForm } from "@/components/personas/injury-report-form";
@@ -57,7 +57,7 @@ export default async function InjuryReportFederationPage({
 
   const person = await db.query.persons.findFirst({
     where: eq(persons.id, personId),
-    columns: { firstName: true, lastName: true },
+    columns: { firstName: true, lastName: true, email: true },
   });
   if (!person) notFound();
 
@@ -73,7 +73,7 @@ export default async function InjuryReportFederationPage({
       })) ?? null);
   if (!isNew && !report) notFound();
 
-  const [personMemberships, club, hasTemplate, fileUrl] = await Promise.all([
+  const [personMemberships, club, hasTemplate, fileUrl, guardianRows] = await Promise.all([
     db.query.memberships.findMany({
       where: eq(memberships.personId, personId),
       columns: {},
@@ -87,6 +87,11 @@ export default async function InjuryReportFederationPage({
     getClubSettings(),
     fileExists(DOCUMENT_TEMPLATES_BUCKET, INJURY_REPORT_TEMPLATE_PATH),
     report ? getSignedUrl(INJURY_REPORTS_BUCKET, report.filePath) : Promise.resolve(null),
+    db.query.personGuardians.findMany({
+      where: eq(personGuardians.personId, personId),
+      columns: { guardianId: true },
+      with: { guardian: { columns: { firstName: true, lastName: true, email: true } } },
+    }),
   ]);
 
   // Sin estos datos del club el impreso sale con la cabecera a medias, y la
@@ -179,7 +184,16 @@ export default async function InjuryReportFederationPage({
                 />
               )}
               {report ? (
-                <InjuryReportFileManager reportId={report.id} fileUrl={fileUrl} />
+                <InjuryReportFileManager
+                  reportId={report.id}
+                  fileUrl={fileUrl}
+                  person={{ name: `${person.firstName} ${person.lastName}`, email: person.email }}
+                  guardians={guardianRows.map((row) => ({
+                    id: row.guardianId,
+                    name: `${row.guardian.firstName} ${row.guardian.lastName}`,
+                    email: row.guardian.email,
+                  }))}
+                />
               ) : null}
             </CardContent>
           </Card>
