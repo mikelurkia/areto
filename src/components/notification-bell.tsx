@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -61,29 +62,31 @@ export function NotificationBell() {
         </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-72">
-        <DropdownMenuLabel>{t("notificationsTitle")}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {!items || items.length === 0 ? (
-          <div className="px-2 py-3 text-sm text-muted-foreground">
-            {t("notificationsEmpty")}
-          </div>
-        ) : (
-          items.map((item) => (
-            <DropdownMenuItem key={item.key} render={<Link href={item.href} />}>
-              <div className="flex w-full flex-col gap-0.5 py-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="flex-1">{item.label}</span>
-                  <Badge variant={item.tone === "danger" ? "destructive" : "warning"}>
-                    {item.count}
-                  </Badge>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{t("notificationsTitle")}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {!items || items.length === 0 ? (
+            <div className="px-2 py-3 text-sm text-muted-foreground">
+              {t("notificationsEmpty")}
+            </div>
+          ) : (
+            items.map((item) => (
+              <DropdownMenuItem key={item.key} render={<Link href={item.href} />}>
+                <div className="flex w-full flex-col gap-0.5 py-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1">{item.label}</span>
+                    <Badge variant={item.tone === "danger" ? "destructive" : "warning"}>
+                      {item.count}
+                    </Badge>
+                  </div>
+                  {item.hint ? (
+                    <span className="text-xs text-muted-foreground">{item.hint}</span>
+                  ) : null}
                 </div>
-                {item.hint ? (
-                  <span className="text-xs text-muted-foreground">{item.hint}</span>
-                ) : null}
-              </div>
-            </DropdownMenuItem>
-          ))
-        )}
+              </DropdownMenuItem>
+            ))
+          )}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
