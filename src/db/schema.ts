@@ -4,6 +4,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -84,16 +85,6 @@ export const userStatus = pgEnum("user_status", ["pending", "active", "disabled"
 
 /** Idioma de interfaz preferido del usuario (debe coincidir con src/i18n/routing.ts). */
 export const userLocale = pgEnum("user_locale", ["eu", "es"]);
-
-export const eventType = pgEnum("event_type", ["training", "match"]);
-
-export const attendanceStatus = pgEnum("attendance_status", [
-  "called", // convocado
-  "confirmed", // confirma asistencia
-  "declined", // no disponible
-  "attended", // asistió
-  "absent", // no asistió
-]);
 
 /**
  * Tipo de petición de cancha. Hoy solo "match" (partido); pensado para poder
@@ -733,54 +724,10 @@ export const userRoles = pgTable(
   ],
 ).enableRLS();
 
-// ---------------------------------------------------------------------------
-// Calendario: eventos (entrenamientos / partidos) y asistencia
-// ---------------------------------------------------------------------------
-
-export const events = pgTable(
-  "events",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    teamId: uuid("team_id")
-      .notNull()
-      .references(() => teams.id, { onDelete: "cascade" }),
-    type: eventType("type").notNull(),
-    title: text("title"),
-    location: text("location"),
-    opponent: text("opponent"), // solo partidos
-    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
-    endsAt: timestamp("ends_at", { withTimezone: true }),
-    notes: text("notes"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    index("events_team_idx").on(t.teamId),
-    index("events_starts_at_idx").on(t.startsAt),
-  ],
-).enableRLS();
-
-export const attendances = pgTable(
-  "attendances",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    eventId: uuid("event_id")
-      .notNull()
-      .references(() => events.id, { onDelete: "cascade" }),
-    personId: uuid("person_id")
-      .notNull()
-      .references(() => persons.id, { onDelete: "cascade" }),
-    status: attendanceStatus("status").notNull().default("called"),
-  },
-  (t) => [
-    uniqueIndex("attendances_event_person_idx").on(t.eventId, t.personId),
-    index("attendances_person_idx").on(t.personId),
-  ],
-).enableRLS();
-
 /**
  * Petición de horario de cancha, para organizar cuándo se juega cada partido
- * (no lleva resultados ni asistencia, a diferencia de `events`: solo sirve
- * para acordar día/hora con quien organiza los horarios del polideportivo).
+ * (no lleva resultados ni asistencia, no hay entidad de convocatoria: solo
+ * sirve para acordar día/hora con quien organiza los horarios del polideportivo).
  * Se agrupa por fin de semana (`weekendOf`, cualquier fecha de ese fin de
  * semana) y no por fecha/hora exacta, porque esa es precisamente la parte que
  * está por decidir. `teamId` y `title` son nullable pensando en futuros
@@ -1055,17 +1002,33 @@ export const invoiceCounters = pgTable("invoice_counters", {
 }).enableRLS();
 
 // ---------------------------------------------------------------------------
-// Comunicación / portal público: avisos
+// Auditoría: acciones sensibles (médico, bancario, usuarios/roles, inscripciones)
 // ---------------------------------------------------------------------------
 
-export const announcements = pgTable("announcements", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  title: text("title").notNull(),
-  body: text("body").notNull(),
-  published: boolean("published").notNull().default(false),
-  publishedAt: timestamp("published_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
+export const auditAction = pgEnum("audit_action", [
+  "create",
+  "update",
+  "delete",
+  "approve",
+  "reject",
+]);
+
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    action: auditAction("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("audit_log_entity_idx").on(t.entityType, t.entityId),
+    index("audit_log_created_at_idx").on(t.createdAt),
+  ],
+).enableRLS();
 
 // ---------------------------------------------------------------------------
 // Inscripciones: formulario público de alta de equipo (jugador o cuerpo
@@ -1295,7 +1258,6 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
   }),
   renewedAsTeams: many(teams, { relationName: "teamRenewal" }),
   memberships: many(memberships),
-  events: many(events),
   courtEvents: many(courtEvents),
   documents: many(teamDocuments),
   noteEntries: many(teamNotes),
@@ -1402,14 +1364,13 @@ export const membershipsRelations = relations(memberships, ({ one }) => ({
   team: one(teams, { fields: [memberships.teamId], references: [teams.id] }),
 }));
 
-export const eventsRelations = relations(events, ({ one, many }) => ({
-  team: one(teams, { fields: [events.teamId], references: [teams.id] }),
-  attendances: many(attendances),
-}));
-
 export const courtEventsRelations = relations(courtEvents, ({ one }) => ({
   team: one(teams, { fields: [courtEvents.teamId], references: [teams.id] }),
   createdBy: one(users, { fields: [courtEvents.createdByUserId], references: [users.id] }),
+}));
+
+export const auditLogRelations = relations(auditLog, ({ one }) => ({
+  actor: one(users, { fields: [auditLog.actorUserId], references: [users.id] }),
 }));
 
 export const feesRelations = relations(fees, ({ one, many }) => ({

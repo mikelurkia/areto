@@ -7,7 +7,6 @@
     "calendario": "Calendario · Areto",
     "patrocinadores": "Patrocinadores · Areto",
     "cuotas": "Cuotas · Areto",
-    "avisos": "Avisos · Areto",
     "login": "Acceso · Areto",
     "authError": "Error de autenticación · Areto",
     "ajustes": "Ajustes · Areto",
@@ -18,6 +17,7 @@
     "medico": "Panel médico · Areto",
     "usuarios": "Usuarios · Areto",
     "roles": "Roles · Areto",
+    "auditoria": "Auditoría · Areto",
     "contrasena": "Contraseña · Areto",
     "accesoRevocado": "Acceso desactivado · Areto",
     "accesoNoAutorizado": "Acceso no autorizado · Areto",
@@ -60,7 +60,6 @@
     "calendario": "Calendario",
     "patrocinadores": "Patrocinadores",
     "cuotas": "Cuotas",
-    "avisos": "Avisos",
     "temporada": "Temporadas",
     "club": "Club",
     "inscripciones": "Inscripciones",
@@ -153,6 +152,33 @@
     "rolesSubtitle": "Roles del club y qué puede hacer cada uno.",
     "navUsers": "Usuarios",
     "navRoles": "Roles",
+    "navAudit": "Auditoría",
+    "auditSubtitle": "Quién ha hecho qué en los módulos sensibles: médico, bancario, usuarios y roles, inscripciones.",
+    "auditColDate": "Fecha",
+    "auditColActor": "Quién",
+    "auditColAction": "Acción",
+    "auditColEntity": "Sobre qué",
+    "auditActorUnknown": "Cuenta eliminada",
+    "auditFilterEntityAll": "Todos los tipos",
+    "auditFilterActionAll": "Todas las acciones",
+    "auditNoResultsTitle": "Sin actividad todavía",
+    "auditNoResultsDescription": "Aquí aparecerán los cambios en datos médicos, bancarios, usuarios, roles e inscripciones.",
+    "auditAction": {
+      "create": "Alta",
+      "update": "Edición",
+      "delete": "Borrado",
+      "approve": "Aprobación",
+      "reject": "Rechazo"
+    },
+    "auditEntityType": {
+      "person_medical_checkup": "Reconocimiento médico",
+      "person_injury_report": "Parte de lesión",
+      "person_banking": "Datos bancarios",
+      "user": "Usuario",
+      "user_role": "Rol de usuario",
+      "role_permissions": "Rol / permisos",
+      "registration": "Inscripción"
+    },
     "cancel": "Cancelar",
     "save": "Guardar",
     "colUser": "Usuario",
@@ -324,7 +350,8 @@
       "club_view": "Ver los datos del club",
       "club_manage": "Editar los datos del club",
       "usuarios_manage": "Gestionar usuarios",
-      "roles_manage": "Gestionar roles y permisos"
+      "roles_manage": "Gestionar roles y permisos",
+      "administracion_audit_view": "Ver el registro de auditoría"
     },
     "permissionHints": {
       "personas_view": "Abrir el listado y la ficha de cualquier persona.",
@@ -348,7 +375,8 @@
       "club_view": "Ver los datos del club y los accesos federativos.",
       "club_manage": "Editar los datos del club y su configuración.",
       "usuarios_manage": "Invitar, editar, desactivar y eliminar cuentas, y asignarles rol.",
-      "roles_manage": "Crear roles y decidir qué permisos tiene cada uno."
+      "roles_manage": "Crear roles y decidir qué permisos tiene cada uno.",
+      "administracion_audit_view": "Consultar quién ha hecho qué en los módulos sensibles (médico, bancario, usuarios y roles, inscripciones)."
     },
     "defaultRoleRequired": "Marca antes otro rol como predeterminado: las cuentas nuevas necesitan uno.",
     "emailSendFailed": "No se ha podido enviar el correo. Lo más probable es que falte configurar un SMTP propio en Supabase: el servidor por defecto solo entrega a direcciones del equipo del proyecto.",
@@ -1594,13 +1622,6 @@
     "emptyTitle": "Sin cuotas todavía",
     "emptyDescription": "Define cuotas por temporada y controla los pagos. Integración con Stripe en fase posterior.",
     "action": "Crear cuota"
-  },
-  "Avisos": {
-    "title": "Avisos",
-    "subtitle": "Comunicados del club que pueden publicarse en el portal público.",
-    "emptyTitle": "Sin avisos todavía",
-    "emptyDescription": "Redacta comunicados y decide cuáles se muestran en la web pública.",
-    "action": "Redactar aviso"
   },
   "Login": {
     "email": "Email",

@@ -22,6 +22,7 @@ import {
   pitchSurface,
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
+import { recordAuditEvent } from "@/lib/audit-log";
 import { nextConsentAt, stampConsent } from "@/lib/consent";
 import { DUPLICATE_PERSONS_TAG, INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
@@ -333,7 +334,7 @@ export async function createPerson(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requirePermission("personas.manage");
+  const user = await requirePermission("personas.manage");
 
   // El usuario ya vio los candidatos (ver más abajo) y decidió vincular con
   // uno existente: a partir de aquí es una edición normal, mismo camino que
@@ -449,6 +450,14 @@ export async function createPerson(
     await db.update(persons).set({ photoPath: path }).where(eq(persons.id, personId));
   }
   await replaceGuardians(personId, guardianIds);
+  if (payer.iban) {
+    await recordAuditEvent({
+      actorUserId: user.id,
+      action: "create",
+      entityType: "person_banking",
+      entityId: personId,
+    });
+  }
 
   updateTag(DUPLICATE_PERSONS_TAG);
   updateTag(INTEGRITY_ISSUES_TAG);
@@ -461,7 +470,7 @@ export async function updatePerson(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requirePermission("personas.manage");
+  const user = await requirePermission("personas.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readPersonFields(formData);
@@ -490,6 +499,7 @@ export async function updatePerson(
       photoConsentAt: true,
       sepaConsent: true,
       sepaConsentAt: true,
+      iban: true,
     },
   });
 
@@ -554,6 +564,14 @@ export async function updatePerson(
     await db.update(persons).set({ photoPath: null }).where(eq(persons.id, id));
   }
   await replaceGuardians(id, guardianIds);
+  if (existing && existing.iban !== payer.iban) {
+    await recordAuditEvent({
+      actorUserId: user.id,
+      action: "update",
+      entityType: "person_banking",
+      entityId: id,
+    });
+  }
 
   updateTag(DUPLICATE_PERSONS_TAG);
   updateTag(INTEGRITY_ISSUES_TAG);
@@ -830,7 +848,7 @@ export async function addMedicalCheckup(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requirePermission("personas.medical.manage");
+  const user = await requirePermission("personas.medical.manage");
 
   const personId = String(formData.get("personId") ?? "");
   const fields = readMedicalCheckupFields(formData);
@@ -863,6 +881,13 @@ export async function addMedicalCheckup(
   }
 
   await recomputeMedicalCertUntil(personId);
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "create",
+    entityType: "person_medical_checkup",
+    entityId: checkup.id,
+    metadata: { personId },
+  });
   updateTag(INTEGRITY_ISSUES_TAG);
   revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado, ROUTE.dashboard);
   return { message: t("medicalCheckupAdded") };
@@ -873,7 +898,7 @@ export async function updateMedicalCheckup(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requirePermission("personas.medical.manage");
+  const user = await requirePermission("personas.medical.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readMedicalCheckupFields(formData);
@@ -918,6 +943,13 @@ export async function updateMedicalCheckup(
   }
 
   await recomputeMedicalCertUntil(existing.personId);
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "update",
+    entityType: "person_medical_checkup",
+    entityId: id,
+    metadata: { personId: existing.personId },
+  });
   updateTag(INTEGRITY_ISSUES_TAG);
   revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado, ROUTE.dashboard);
   return { message: t("medicalCheckupUpdated") };
@@ -928,7 +960,7 @@ export async function deleteMedicalCheckup(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requirePermission("personas.medical.manage");
+  const user = await requirePermission("personas.medical.manage");
 
   const id = String(formData.get("id") ?? "");
 
@@ -940,6 +972,13 @@ export async function deleteMedicalCheckup(
   await db.delete(personMedicalCheckups).where(eq(personMedicalCheckups.id, id));
   if (existing?.filePath) await removeMedicalCheckupFileObject(existing.filePath);
   if (existing) await recomputeMedicalCertUntil(existing.personId);
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "delete",
+    entityType: "person_medical_checkup",
+    entityId: id,
+    metadata: existing ? { personId: existing.personId } : undefined,
+  });
 
   updateTag(INTEGRITY_ISSUES_TAG);
   revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado, ROUTE.dashboard);
@@ -951,7 +990,7 @@ export async function deleteInjuryReport(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requirePermission("personas.medical.manage");
+  const user = await requirePermission("personas.medical.manage");
 
   const id = String(formData.get("id") ?? "");
 
@@ -962,6 +1001,12 @@ export async function deleteInjuryReport(
 
   await db.delete(personInjuryReports).where(eq(personInjuryReports.id, id));
   if (existing?.filePath) await removeInjuryReportFileObject(existing.filePath);
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "delete",
+    entityType: "person_injury_report",
+    entityId: id,
+  });
 
   revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado);
   return { message: t("injuryReportDeleted") };
@@ -1015,7 +1060,7 @@ export async function saveInjuryReportAndGenerate(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requirePermission("personas.medical.manage");
+  const user = await requirePermission("personas.medical.manage");
 
   const id = String(formData.get("id") ?? "");
   const notes = String(formData.get("notes") ?? "").trim();
@@ -1152,6 +1197,13 @@ export async function saveInjuryReportAndGenerate(
     }
   }
 
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: id ? "update" : "create",
+    entityType: "person_injury_report",
+    entityId: reportId,
+    metadata: { personId },
+  });
   revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado);
 
   return {
@@ -1170,7 +1222,7 @@ export async function uploadInjuryReportCustomFile(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requirePermission("personas.medical.manage");
+  const user = await requirePermission("personas.medical.manage");
 
   const id = String(formData.get("id") ?? "");
   const file = readMedicalFile(formData);
@@ -1194,6 +1246,13 @@ export async function uploadInjuryReportCustomFile(
     .update(personInjuryReports)
     .set({ filePath: path })
     .where(eq(personInjuryReports.id, id));
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "update",
+    entityType: "person_injury_report",
+    entityId: id,
+    metadata: { personId: existing.personId, file: "replaced" },
+  });
 
   revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado);
   return { message: t("injuryReportFileUploaded") };
@@ -1205,7 +1264,7 @@ export async function deleteInjuryReportFile(
   formData: FormData,
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
-  await requirePermission("personas.medical.manage");
+  const user = await requirePermission("personas.medical.manage");
 
   const id = String(formData.get("id") ?? "");
   const existing = await db.query.personInjuryReports.findFirst({
@@ -1220,6 +1279,13 @@ export async function deleteInjuryReportFile(
     .update(personInjuryReports)
     .set({ filePath: null })
     .where(eq(personInjuryReports.id, id));
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "update",
+    entityType: "person_injury_report",
+    entityId: id,
+    metadata: { file: "removed" },
+  });
 
   revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado);
   return { message: t("injuryReportFileDeleted") };

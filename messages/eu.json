@@ -7,7 +7,6 @@
     "calendario": "Egutegia · Areto",
     "patrocinadores": "Babesleak · Areto",
     "cuotas": "Kuotak · Areto",
-    "avisos": "Oharrak · Areto",
     "login": "Sarrera · Areto",
     "authError": "Autentifikazio errorea · Areto",
     "ajustes": "Ezarpenak · Areto",
@@ -18,6 +17,7 @@
     "medico": "Panel medikoa · Areto",
     "usuarios": "Erabiltzaileak · Areto",
     "roles": "Rolak · Areto",
+    "auditoria": "Auditoria · Areto",
     "contrasena": "Pasahitza · Areto",
     "accesoRevocado": "Sarbidea desaktibatuta · Areto",
     "accesoNoAutorizado": "Baimenik gabeko sarbidea · Areto",
@@ -60,7 +60,6 @@
     "calendario": "Egutegia",
     "patrocinadores": "Babesleak",
     "cuotas": "Kuotak",
-    "avisos": "Oharrak",
     "temporada": "Denboraldiak",
     "club": "Kluba",
     "inscripciones": "Izen-emateak",
@@ -153,6 +152,33 @@
     "rolesSubtitle": "Klubaren rolak eta bakoitzak zer egin dezakeen.",
     "navUsers": "Erabiltzaileak",
     "navRoles": "Rolak",
+    "navAudit": "Auditoria",
+    "auditSubtitle": "Nork zer egin duen modulu sentikorretan: medikua, bankukoa, erabiltzaileak eta rolak, izen-emateak.",
+    "auditColDate": "Data",
+    "auditColActor": "Nork",
+    "auditColAction": "Ekintza",
+    "auditColEntity": "Zeri buruz",
+    "auditActorUnknown": "Ezabatutako kontua",
+    "auditFilterEntityAll": "Mota guztiak",
+    "auditFilterActionAll": "Ekintza guztiak",
+    "auditNoResultsTitle": "Oraindik jarduerarik ez",
+    "auditNoResultsDescription": "Hemen agertuko dira datu medikoetan, bankukoetan, erabiltzaileetan, roletan eta izen-emateetan egindako aldaketak.",
+    "auditAction": {
+      "create": "Alta",
+      "update": "Edizioa",
+      "delete": "Ezabatzea",
+      "approve": "Onarpena",
+      "reject": "Ezespena"
+    },
+    "auditEntityType": {
+      "person_medical_checkup": "Azterketa medikoa",
+      "person_injury_report": "Lesio-parte",
+      "person_banking": "Datu bankarioak",
+      "user": "Erabiltzailea",
+      "user_role": "Erabiltzailearen rola",
+      "role_permissions": "Rola / baimenak",
+      "registration": "Izen-ematea"
+    },
     "cancel": "Utzi",
     "save": "Gorde",
     "colUser": "Erabiltzailea",
@@ -324,7 +350,8 @@
       "club_view": "Ikusi klubaren datuak",
       "club_manage": "Editatu klubaren datuak",
       "usuarios_manage": "Kudeatu erabiltzaileak",
-      "roles_manage": "Kudeatu rolak eta baimenak"
+      "roles_manage": "Kudeatu rolak eta baimenak",
+      "administracion_audit_view": "Ikusi auditoria-erregistroa"
     },
     "permissionHints": {
       "personas_view": "Edozein pertsonaren zerrenda eta fitxa irekitzea.",
@@ -348,7 +375,8 @@
       "club_view": "Klubaren datuak eta federazio-sarbideak ikustea.",
       "club_manage": "Klubaren datuak eta konfigurazioa editatzea.",
       "usuarios_manage": "Kontuak gonbidatu, editatu, desaktibatu eta ezabatzea, eta rola esleitzea.",
-      "roles_manage": "Rolak sortu eta bakoitzak zein baimen duen erabakitzea."
+      "roles_manage": "Rolak sortu eta bakoitzak zein baimen duen erabakitzea.",
+      "administracion_audit_view": "Modulu sentikorretan (medikua, bankukoa, erabiltzaileak eta rolak, izen-emateak) nork zer egin duen kontsultatzea."
     },
     "defaultRoleRequired": "Markatu lehenago beste rol bat lehenetsi gisa: kontu berriek bat behar dute.",
     "emailSendFailed": "Ezin izan da mezua bidali. Litekeena da Supabasen SMTP propio bat konfiguratzea falta izatea: lehenetsitako zerbitzariak proiektuko taldeko helbideetara baino ez du bidaltzen.",
@@ -1594,13 +1622,6 @@
     "emptyTitle": "Oraindik kuotarik ez",
     "emptyDescription": "Definitu kuotak denboraldika eta kontrolatu ordainketak. Stripe-rekiko integrazioa hurrengo fase batean.",
     "action": "Kuota sortu"
-  },
-  "Avisos": {
-    "title": "Oharrak",
-    "subtitle": "Klubaren jakinarazpenak, atari publikoan argitara daitezkeenak.",
-    "emptyTitle": "Oraindik oharrik ez",
-    "emptyDescription": "Idatzi jakinarazpenak eta erabaki zeintzuk erakutsi webgune publikoan.",
-    "action": "Oharra idatzi"
   },
   "Login": {
     "email": "Emaila",

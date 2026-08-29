@@ -8,7 +8,6 @@ import {
   HandshakeIcon,
   IdCardIcon,
   LayoutDashboardIcon,
-  MegaphoneIcon,
   ShirtIcon,
   ShieldUserIcon,
   StethoscopeIcon,
@@ -80,7 +79,6 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
         ]
       : []),
     { title: t("cuotas"), href: "/cuotas", icon: WalletIcon, disabled: true },
-    { title: t("avisos"), href: "/avisos", icon: MegaphoneIcon, disabled: true },
     ...(can("club.view")
       ? [{ title: t("club"), href: "/club", icon: Building2Icon }]
       : []),
