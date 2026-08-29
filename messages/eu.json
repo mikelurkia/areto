@@ -88,6 +88,9 @@
   },
   "AppLayout": {
     "headerTitle": "Klubaren kudeaketa",
+    "notificationsSr": "Jakinarazpenak",
+    "notificationsTitle": "Jakinarazpenak",
+    "notificationsEmpty": "Oraingoz ez dago ezer zain.",
     "themeToggleSr": "Aldatu itxura",
     "themeLight": "Argia",
     "themeDark": "Iluna",
