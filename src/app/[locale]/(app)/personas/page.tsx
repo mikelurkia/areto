@@ -43,6 +43,7 @@ export default async function PersonasPage({
   const user = await requirePermission("personas.view");
   const t = await getTranslations("Personas");
   const canManage = hasPermission(user, "personas.manage");
+  const canManageBanking = hasPermission(user, "personas.banking.manage");
 
   // Los filtros viven en la URL y se resuelven en SQL: de la tabla `persons`
   // solo suben las 25 filas de la página. El diálogo de alta ya no recibe la
@@ -69,7 +70,7 @@ export default async function PersonasPage({
               >
                 {t("reviewDuplicatesAction")}
               </Button>
-              <PersonDialog mode="create" />
+              <PersonDialog mode="create" canManageBanking={canManageBanking} />
             </>
           ) : null
         }
@@ -92,6 +93,7 @@ export default async function PersonasPage({
           teamOptions={teamOptions}
           tagOptions={tagOptions}
           canManage={canManage}
+          canManageBanking={canManageBanking}
         />
       )}
     </div>

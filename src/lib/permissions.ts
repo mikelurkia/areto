@@ -26,6 +26,8 @@ export const PERMISSIONS = [
   "personas.manage",
   "personas.medical.view",
   "personas.medical.manage",
+  "personas.banking.view",
+  "personas.banking.manage",
   // Socios
   "socios.view",
   "socios.manage",
@@ -106,6 +108,8 @@ export const PERMISSION_MODULES: readonly {
       "personas.manage",
       "personas.medical.view",
       "personas.medical.manage",
+      "personas.banking.view",
+      "personas.banking.manage",
     ],
   },
   { key: "socios", permissions: ["socios.view", "socios.manage"] },
