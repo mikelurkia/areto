@@ -48,6 +48,9 @@ export const PERMISSIONS = [
   // Patrocinadores
   "patrocinadores.view",
   "patrocinadores.manage",
+  // Cuotas (remesas SEPA)
+  "cuotas.view",
+  "cuotas.manage",
   // Club
   "club.view",
   "club.manage",
@@ -88,6 +91,7 @@ export type PermissionModuleKey =
   | "temporadas"
   | "calendario"
   | "patrocinadores"
+  | "cuotas"
   | "club"
   | "administracion";
 
@@ -130,6 +134,7 @@ export const PERMISSION_MODULES: readonly {
     key: "patrocinadores",
     permissions: ["patrocinadores.view", "patrocinadores.manage"],
   },
+  { key: "cuotas", permissions: ["cuotas.view", "cuotas.manage"] },
   { key: "club", permissions: ["club.view", "club.manage"] },
   {
     key: "administracion",

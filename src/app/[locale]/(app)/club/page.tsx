@@ -81,6 +81,10 @@ export default async function ClubPage({
               label={t("clubIbanLabel")}
               value={clubSettings?.iban ? <MaskedIbanText value={clubSettings.iban} /> : null}
             />
+            <InfoRow
+              label={t("clubSepaCreditorIdLabel")}
+              value={clubSettings?.sepaCreditorId}
+            />
             <InfoRow label={t("clubAddressLabel")} value={clubSettings?.address} />
             <InfoRow label={t("clubEmailLabel")} value={clubSettings?.email} />
             <InfoRow label={t("clubPhoneLabel")} value={clubSettings?.phone} />

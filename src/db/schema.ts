@@ -1,6 +1,7 @@
 import {
   type AnyPgColumn,
   boolean,
+  check,
   date,
   index,
   integer,
@@ -967,6 +968,10 @@ export const clubSettings = pgTable("club_settings", {
   // Cuota anual de socio (valor por defecto 2000 = 20€). Editable en la
   // pestaña "Inscripciones" de /club, junto a los dos interruptores de arriba.
   memberAnnualFeeCents: integer("member_annual_fee_cents").notNull().default(2000),
+  // Identificador de Acreedor SEPA (ICS/AT-02, p.ej. "ES23000B12345678"): lo
+  // exige el `CdtrSchmeId` de cualquier remesa de domiciliación. Sin él, la
+  // generación de remesas SEPA queda bloqueada (ver `cuotas`).
+  sepaCreditorId: text("sepa_creditor_id"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }).enableRLS();
 
@@ -1145,6 +1150,145 @@ export const registrationSubmissionErrors = pgTable("registration_submission_err
   detail: text("detail"), // stack trace si lo hay
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }).enableRLS();
+
+// ---------------------------------------------------------------------------
+// Remesas SEPA: domiciliación de cuotas de jugador y de socio. Primera
+// aproximación al apartado económico, deliberadamente sin balances ni
+// presupuestos (ver plan `sepa-remesas`). Un cargo (`sepaCharges`) es el
+// hecho contable — sobrevive a su remesa; una remesa (`sepaRemittances`) es
+// el lote presentado al banco, que genera el XML pain.008.001.02.
+// ---------------------------------------------------------------------------
+
+export const sepaChargeStatus = pgEnum("sepa_charge_status", [
+  "pending",
+  "collected",
+  "returned",
+]);
+export const sepaMandateStatus = pgEnum("sepa_mandate_status", ["active", "revoked"]);
+export const sepaSequenceType = pgEnum("sepa_sequence_type", ["FRST", "RCUR"]);
+export const sepaRemittanceKind = pgEnum("sepa_remittance_kind", ["player", "member"]);
+
+/**
+ * Contador de RUM (Referencia Única de Mandato), fila única incrementada
+ * atómicamente (mismo patrón UPSERT que `invoiceCounters`). No lleva año: a
+ * diferencia de la numeración de facturas, el RUM es un identificador SEPA
+ * que no debe reutilizarse ni reiniciarse nunca.
+ */
+export const sepaMandateCounter = pgTable("sepa_mandate_counter", {
+  id: integer("id").primaryKey().default(1),
+  lastNumber: integer("last_number").notNull().default(0),
+}).enableRLS();
+
+/**
+ * Mandato de domiciliación SEPA, una fila por persona PAGADORA (no por
+ * jugador/socio: un tutor que paga por dos hijos reutiliza un único
+ * mandato en ambos cargos). El RUM no se deriva nunca de datos mutables
+ * (nombre, IBAN) — debe sobrevivir a cambios de esos datos.
+ */
+export const sepaMandates = pgTable(
+  "sepa_mandates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    payerPersonId: uuid("payer_person_id")
+      .notNull()
+      .references(() => persons.id, { onDelete: "restrict" }),
+    rum: text("rum").notNull(),
+    signedOn: date("signed_on").notNull(),
+    status: sepaMandateStatus("status").notNull().default("active"),
+    revokedOn: date("revoked_on"),
+    ibanSnapshot: text("iban_snapshot").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("sepa_mandates_rum_idx").on(t.rum),
+    uniqueIndex("sepa_mandates_active_payer_idx")
+      .on(t.payerPersonId)
+      .where(sql`${t.status} = 'active'`),
+  ],
+).enableRLS();
+
+/**
+ * Un lote presentado al banco: un XML pain.008 = una fila aquí. `teamId` solo
+ * se rellena en remesas `kind="player"` de un equipo concreto; las de socios
+ * lo dejan null. `periodKey` agrupa qué cargos entraron: `"season"` para
+ * cuotas no mensuales, `"YYYY-MM"` para una remesa mensual.
+ */
+export const sepaRemittances = pgTable(
+  "sepa_remittances",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: sepaRemittanceKind("kind").notNull(),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => seasons.id, { onDelete: "restrict" }),
+    teamId: uuid("team_id").references(() => teams.id, { onDelete: "restrict" }),
+    periodKey: text("period_key").notNull(),
+    messageId: text("message_id").notNull(),
+    collectionDate: date("collection_date").notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+    generatedByUserId: uuid("generated_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [uniqueIndex("sepa_remittances_message_id_idx").on(t.messageId)],
+).enableRLS();
+
+/**
+ * Un cargo = una persona cobrada en un periodo. Tabla única para jugador y
+ * socio (no dos tablas separadas): comparten estado, mandato, importe,
+ * remesa y auditoría, y así una futura vista mixta no necesita UNION.
+ * Exactamente uno de `membershipId`/`clubMemberId` debe estar informado
+ * (según `kind`) — impuesto por el `check` de abajo y reforzado en las
+ * acciones de generación.
+ */
+export const sepaCharges = pgTable(
+  "sepa_charges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // `set null`: el cargo es el hecho contable, sobrevive si se borra el lote.
+    remittanceId: uuid("remittance_id").references(() => sepaRemittances.id, {
+      onDelete: "set null",
+    }),
+    kind: sepaRemittanceKind("kind").notNull(),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => seasons.id, { onDelete: "restrict" }),
+    membershipId: uuid("membership_id").references(() => memberships.id, {
+      onDelete: "restrict",
+    }),
+    clubMemberId: uuid("club_member_id").references(() => clubMembers.id, {
+      onDelete: "restrict",
+    }),
+    payerPersonId: uuid("payer_person_id")
+      .notNull()
+      .references(() => persons.id, { onDelete: "restrict" }),
+    mandateId: uuid("mandate_id")
+      .notNull()
+      .references(() => sepaMandates.id, { onDelete: "restrict" }),
+    periodKey: text("period_key").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    status: sepaChargeStatus("status").notNull().default("pending"),
+    sequenceType: sepaSequenceType("sequence_type").notNull(),
+    collectedOn: date("collected_on"),
+    returnedOn: date("returned_on"),
+    returnReason: text("return_reason"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("sepa_charges_membership_period_idx")
+      .on(t.membershipId, t.seasonId, t.periodKey)
+      .where(sql`${t.membershipId} is not null`),
+    uniqueIndex("sepa_charges_club_member_period_idx")
+      .on(t.clubMemberId, t.seasonId, t.periodKey)
+      .where(sql`${t.clubMemberId} is not null`),
+    index("sepa_charges_remittance_idx").on(t.remittanceId),
+    check(
+      "sepa_charges_membership_xor_club_member",
+      sql`(${t.membershipId} is not null) <> (${t.clubMemberId} is not null)`,
+    ),
+  ],
+).enableRLS();
 
 // ---------------------------------------------------------------------------
 // Relaciones (para consultas relacionales de Drizzle)
@@ -1406,4 +1550,37 @@ export const registrationGuardiansRelations = relations(registrationGuardians, (
     fields: [registrationGuardians.matchedPersonId],
     references: [persons.id],
   }),
+}));
+
+export const sepaMandatesRelations = relations(sepaMandates, ({ one, many }) => ({
+  payer: one(persons, { fields: [sepaMandates.payerPersonId], references: [persons.id] }),
+  charges: many(sepaCharges),
+}));
+
+export const sepaRemittancesRelations = relations(sepaRemittances, ({ one, many }) => ({
+  season: one(seasons, { fields: [sepaRemittances.seasonId], references: [seasons.id] }),
+  team: one(teams, { fields: [sepaRemittances.teamId], references: [teams.id] }),
+  generatedBy: one(users, {
+    fields: [sepaRemittances.generatedByUserId],
+    references: [users.id],
+  }),
+  charges: many(sepaCharges),
+}));
+
+export const sepaChargesRelations = relations(sepaCharges, ({ one }) => ({
+  remittance: one(sepaRemittances, {
+    fields: [sepaCharges.remittanceId],
+    references: [sepaRemittances.id],
+  }),
+  season: one(seasons, { fields: [sepaCharges.seasonId], references: [seasons.id] }),
+  membership: one(memberships, {
+    fields: [sepaCharges.membershipId],
+    references: [memberships.id],
+  }),
+  clubMember: one(clubMembers, {
+    fields: [sepaCharges.clubMemberId],
+    references: [clubMembers.id],
+  }),
+  payer: one(persons, { fields: [sepaCharges.payerPersonId], references: [persons.id] }),
+  mandate: one(sepaMandates, { fields: [sepaCharges.mandateId], references: [sepaMandates.id] }),
 }));

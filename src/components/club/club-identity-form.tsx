@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { updateClubIdentity, type ClubState } from "@/app/[locale]/(app)/club/actions";
 import { useIbanField } from "@/hooks/use-iban-field";
 import { SubmitButton } from "@/components/submit-button";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useActionToast } from "@/hooks/use-action-toast";
 
@@ -19,6 +19,7 @@ type ClubIdentityValues = {
   email: string | null;
   phone: string | null;
   iban: string | null;
+  sepaCreditorId: string | null;
 };
 
 export function ClubIdentityForm({ settings }: { settings: ClubIdentityValues | null }) {
@@ -54,6 +55,16 @@ export function ClubIdentityForm({ settings }: { settings: ClubIdentityValues | 
             <Input id="club-iban" name="iban" {...iban} />
           </Field>
         </div>
+        <Field>
+          <FieldLabel htmlFor="club-sepaCreditorId">{t("clubSepaCreditorIdLabel")}</FieldLabel>
+          <Input
+            id="club-sepaCreditorId"
+            name="sepaCreditorId"
+            defaultValue={settings?.sepaCreditorId ?? ""}
+            placeholder={t("clubSepaCreditorIdPlaceholder")}
+          />
+          <FieldDescription>{t("clubSepaCreditorIdHint")}</FieldDescription>
+        </Field>
         <Field>
           <FieldLabel htmlFor="club-address">{t("clubAddressLabel")}</FieldLabel>
           <Input
