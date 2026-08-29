@@ -87,6 +87,9 @@
   },
   "AppLayout": {
     "headerTitle": "Gestión del club",
+    "notificationsSr": "Notificaciones",
+    "notificationsTitle": "Notificaciones",
+    "notificationsEmpty": "Nada pendiente por ahora.",
     "themeToggleSr": "Cambiar tema",
     "themeLight": "Claro",
     "themeDark": "Oscuro",

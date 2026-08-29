@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { AppBreadcrumb } from "@/components/app-breadcrumb";
 import { CommandPaletteTrigger } from "@/components/command-palette";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -43,6 +44,7 @@ export function AppHeader() {
         <Suspense fallback={<Skeleton className="h-8 w-9 sm:w-40" />}>
           <CommandPaletteTrigger />
         </Suspense>
+        <NotificationBell />
         <ThemeToggle />
         {/*
           El selector de idioma lee `usePathname()`, que en el armazón estático de
