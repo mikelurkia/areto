@@ -15,13 +15,13 @@ de esquema sin migración generada no llega a ninguna parte (y el CI lo para).
 
 | Comando | Qué hace | Cuándo |
 |---------|----------|--------|
-| `npm run db:generate` | Compara `schema.ts` con el historial y escribe el `.sql` de la diferencia. No toca ninguna base de datos. | Siempre que cambie el esquema |
-| `npm run db:migrate` | Aplica las migraciones pendientes a la base de datos de `DATABASE_URL` | En local, en el CI y en producción |
-| `npm run db:check` | Valida la coherencia del historial (colisiones de índice) | Lo corre el CI; útil en local tras un rebase |
-| `npm run db:push` | Empuja `schema.ts` directo a la base de datos **sin dejar migración** | Solo prototipos desechables; ver la trampa |
-| `npm run db:studio` | Explorador visual de la base de datos | Para mirar datos |
-| `npm run db:seed` | Datos iniciales (temporada y equipos de ejemplo) | Tras crear o vaciar `areto-dev` |
-| `npm run db:seed:demo` | Juego de datos completo inventado (plantillas, socios, patrocinadores, calendario, inscripciones). Idempotente: cada pasada borra lo de la anterior. `-- --clean` solo borra | Para probar pantallas con datos de verdad delante |
+| `pnpm run db:generate` | Compara `schema.ts` con el historial y escribe el `.sql` de la diferencia. No toca ninguna base de datos. | Siempre que cambie el esquema |
+| `pnpm run db:migrate` | Aplica las migraciones pendientes a la base de datos de `DATABASE_URL` | En local, en el CI y en producción |
+| `pnpm run db:check` | Valida la coherencia del historial (colisiones de índice) | Lo corre el CI; útil en local tras un rebase |
+| `pnpm run db:push` | Empuja `schema.ts` directo a la base de datos **sin dejar migración** | Solo prototipos desechables; ver la trampa |
+| `pnpm run db:studio` | Explorador visual de la base de datos | Para mirar datos |
+| `pnpm run db:seed` | Datos iniciales (temporada y equipos de ejemplo) | Tras crear o vaciar `areto-dev` |
+| `pnpm run db:seed:demo` | Juego de datos completo inventado (plantillas, socios, patrocinadores, calendario, inscripciones). Idempotente: cada pasada borra lo de la anterior. `-- --clean` solo borra | Para probar pantallas con datos de verdad delante |
 
 ## La trampa de `db:push`
 
@@ -85,9 +85,9 @@ git fetch origin
 git rebase origin/main          # o: git merge main
 git rm drizzle/00XX_mi-migracion.sql
 git checkout origin/main -- drizzle/meta   # descarta el meta/ propio
-npm run db:generate                        # regenera con el número siguiente
-npm run db:check
-npm run db:migrate
+pnpm run db:generate                        # regenera con el número siguiente
+pnpm run db:check
+pnpm run db:migrate
 ```
 
 Revisa el `.sql` nuevo antes de commitear: al regenerar sobre un esquema base

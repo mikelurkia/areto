@@ -35,21 +35,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      - run: npm run lint
+      - run: pnpm run lint
 
-      - run: npm run typecheck
+      - run: pnpm run typecheck
 
       # Historial de migraciones coherente: detecta sobre todo dos ramas que
       # generaron su migración en paralelo y colisionan en el mismo índice de
       # `drizzle/meta/_journal.json`.
-      - run: npm run db:check
+      - run: pnpm run db:check
 
       # Sin esto, olvidar `db:generate` tras tocar `src/db/schema.ts` no lo
       # detecta nada: typecheck y build corren contra areto-dev, que puede
@@ -63,10 +65,10 @@ jobs:
           # `< /dev/null`: drizzle-kit pregunta de forma interactiva cuando
           # cree detectar un renombrado de columna. Sin stdin cerrado, el paso
           # se quedaría colgado hasta agotar el tiempo del job.
-          timeout 120 npm run db:generate < /dev/null
+          timeout 120 pnpm run db:generate < /dev/null
 
           if [ -n "$(git status --porcelain drizzle/)" ]; then
-            echo "::error::Hay cambios en src/db/schema.ts sin migración generada. Ejecuta 'npm run db:generate' en local, revisa el .sql y commitéalo."
+            echo "::error::Hay cambios en src/db/schema.ts sin migración generada. Ejecuta 'pnpm run db:generate' en local, revisa el .sql y commitéalo."
             git status --short drizzle/
             exit 1
           fi
@@ -116,9 +118,9 @@ jobs:
       # Aplica cualquier migración pendiente de esta PR contra la BD de
       # desarrollo compartida — valida que la migración aplica limpiamente
       # antes de intentar el build.
-      - run: npm run db:migrate
+      - run: pnpm run db:migrate
 
       # cacheComponents:true dispara consultas reales en build time (PPR),
       # así que este paso necesita la DATABASE_URL de arriba para funcionar
       # y es el único sitio que detecta datos dinámicos fuera de Suspense.
-      - run: npm run build
+      - run: pnpm run build
