@@ -9,6 +9,7 @@ import {
   memberships,
   persons,
   sepaCharges,
+  sepaChargeReturns,
   sepaRemittances,
 } from "@/db/schema";
 import { recordAuditEvent } from "@/lib/audit-log";
@@ -62,8 +63,10 @@ async function nextRemittanceMessageId(): Promise<string> {
  * Genera los cargos `pending` que falten para un equipo/temporada: uno por
  * jugador (la exención de plantilla es, literalmente, filtrar por
  * `role = "player"`) y por cada `periodKey` que corresponda (uno si la cuota
- * es de temporada/puntual, uno por mes si es mensual). Idempotente: solo
- * inserta las combinaciones que aún no existen.
+ * es de temporada/puntual, uno por mes si es mensual, uno o dos —
+ * `periodKey` `"1"`/`"2"`, al 50%— si es en plazos, según el
+ * `installmentsCount` de cada membership). Idempotente: solo inserta las
+ * combinaciones que aún no existen.
  */
 export async function generatePlayerCharges(
   _prev: CuotasState,
@@ -82,13 +85,14 @@ export async function generatePlayerCharges(
   if (!team) return { error: t("teamNotFound") };
   if (team.playerFeeCents === null) return { error: t("feeNotConfigured") };
 
-  const periodKeys =
-    team.playerFeePeriod === "monthly"
-      ? team.season?.startsOn && team.season?.endsOn
-        ? monthlyPeriodKeys(team.season.startsOn, team.season.endsOn)
-        : []
-      : ["season"];
-  if (periodKeys.length === 0) return { error: t("seasonDatesMissing") };
+  const isMonthly = team.playerFeePeriod === "monthly";
+  const isInstallments = team.playerFeePeriod === "installments";
+
+  const monthlyKeys =
+    isMonthly && team.season?.startsOn && team.season?.endsOn
+      ? monthlyPeriodKeys(team.season.startsOn, team.season.endsOn)
+      : [];
+  if (isMonthly && monthlyKeys.length === 0) return { error: t("seasonDatesMissing") };
 
   const teamMemberships = await db.query.memberships.findMany({
     where: and(eq(memberships.teamId, teamId), eq(memberships.role, "player")),
@@ -115,16 +119,56 @@ export async function generatePlayerCharges(
   });
   const existingKeys = new Set(existing.map((c) => `${c.membershipId}:${c.periodKey}`));
 
-  const toGenerate = teamMemberships.flatMap((membership) =>
-    periodKeys
-      .filter((periodKey) => !existingKeys.has(`${membership.id}:${periodKey}`))
-      .map((periodKey) => ({ membership, periodKey })),
-  );
-  if (toGenerate.length === 0) return { error: t("playerChargesAllExist") };
+  /**
+   * Plazos + importe de una membership. `null` cuando el equipo cobra en
+   * plazos pero la membership no tiene `installmentsCount` informado: se
+   * omite (cuenta como `skipped`) en vez de bloquear al resto del equipo.
+   */
+  function chargesFor(
+    membership: (typeof teamMemberships)[number],
+  ): { periodKey: string; amountCents: number }[] | null {
+    const feeCents = team!.playerFeeCents!;
+    if (isMonthly) {
+      return monthlyKeys.map((periodKey) => ({ periodKey, amountCents: feeCents }));
+    }
+    if (isInstallments) {
+      if (membership.installmentsCount === 1) {
+        return [{ periodKey: "1", amountCents: feeCents }];
+      }
+      if (membership.installmentsCount === 2) {
+        const first = Math.floor(feeCents / 2);
+        return [
+          { periodKey: "1", amountCents: first },
+          { periodKey: "2", amountCents: feeCents - first },
+        ];
+      }
+      return null;
+    }
+    return [{ periodKey: "season", amountCents: feeCents }];
+  }
 
   let skipped = 0;
+  const toGenerate: {
+    membership: (typeof teamMemberships)[number];
+    periodKey: string;
+    amountCents: number;
+  }[] = [];
+  for (const membership of teamMemberships) {
+    const plan = chargesFor(membership);
+    if (plan === null) {
+      skipped += 1;
+      continue;
+    }
+    for (const { periodKey, amountCents } of plan) {
+      if (!existingKeys.has(`${membership.id}:${periodKey}`)) {
+        toGenerate.push({ membership, periodKey, amountCents });
+      }
+    }
+  }
+  if (toGenerate.length === 0) return { error: t("playerChargesAllExist") };
+
   const rows: (typeof sepaCharges.$inferInsert)[] = [];
-  for (const { membership, periodKey } of toGenerate) {
+  for (const { membership, periodKey, amountCents } of toGenerate) {
     const payerId = payerIdOf(membership.person);
     const payer = payerById.get(payerId);
     if (!payer?.iban || !payer.sepaConsent) {
@@ -144,7 +188,7 @@ export async function generatePlayerCharges(
       payerPersonId: payer.id,
       mandateId: mandate.id,
       periodKey,
-      amountCents: team.playerFeeCents!,
+      amountCents,
       sequenceType,
     });
   }
@@ -348,6 +392,22 @@ export async function updateChargeStatus(
   const returnReason = String(formData.get("returnReason") ?? "").trim() || null;
   const today = new Date().toISOString().slice(0, 10);
 
+  if (status === "returned") {
+    // La fila se reutiliza (ver comentario más abajo) y su `remittanceId` se
+    // va a anular, así que hay que guardar la remesa de origen antes de
+    // perderla, o no quedaría traza de qué remesa se devolvió.
+    const current = await db.query.sepaCharges.findFirst({
+      where: eq(sepaCharges.id, id),
+      columns: { remittanceId: true },
+    });
+    await db.insert(sepaChargeReturns).values({
+      chargeId: id,
+      remittanceId: current?.remittanceId ?? null,
+      returnedOn: today,
+      returnReason,
+    });
+  }
+
   await db
     .update(sepaCharges)
     .set(
@@ -369,7 +429,7 @@ export async function updateChargeStatus(
     metadata: { status, returnReason },
   });
 
-  revalidateRoutes(ROUTE.cuotas, ROUTE.cuotaFicha);
+  revalidateRoutes(ROUTE.cuotas, ROUTE.cuotaFicha, ROUTE.personaFicha);
   return { message: status === "collected" ? t("chargeMarkedCollected") : t("chargeMarkedReturned") };
 }
 

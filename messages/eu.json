@@ -601,6 +601,9 @@
     "tabGeneral": "Orokorra",
     "tabFamily": "Familia",
     "tabTeams": "Taldeak ({count})",
+    "tabCuotas": "Kuotak",
+    "cuotasSection": "Kuotak",
+    "noCuotasDescription": "Pertsona honek ez du SEPA kargu-hartzerik erregistratuta.",
     "editGuardianHint": "Tutorea aldatzeko, erabili goiko editatzeko botoia.",
     "noTeamsDescription": "Pertsona hau ez dago oraindik talde batean ere.",
     "reviewDuplicatesAction": "Bikoiztuak berrikusi",
@@ -1181,6 +1184,11 @@
     },
     "jerseyNumberLabel": "Dortsala",
     "isGoalkeeperLabel": "Atezaina",
+    "installmentsCountLabel": "Zenbat zatitan",
+    "installmentsCountOption": {
+      "1": "Zati 1",
+      "2": "2 zatitan"
+    },
     "memberAdded": "Pertsona plantillara gehitu da.",
     "memberUpdated": "Fitxa eguneratu da.",
     "memberRemoved": "Pertsona plantillatik kendu da.",
@@ -1214,12 +1222,14 @@
     "feePeriod": {
       "monthly": "Hilekoa",
       "season": "Denboraldiko",
-      "oneoff": "Ordainketa bakarra"
+      "oneoff": "Ordainketa bakarra",
+      "installments": "2 zatitan"
     },
     "feePeriodShort": {
       "monthly": "{amount} / hilean",
       "season": "{amount} / denboraldia",
-      "oneoff": "{amount} (ordainketa bakarra)"
+      "oneoff": "{amount} (ordainketa bakarra)",
+      "installments": "{amount} (2 zatitan)"
     },
     "noMedicalCheckupRequired": "Ez du azterketa medikorik eskatzen",
     "rosterSheetAction": "Federazio-akta",
@@ -1693,6 +1703,12 @@
     "colRum": "RUM",
     "colStatus": "Egoera",
     "colPeriod": "Aldia",
+    "colRemittance": "Mezua",
+    "noRemittanceValue": "Mezurik gabe",
+    "returnedFromLabel": "{messageId} mezutik itzulita",
+    "returnedFromNoRemittanceLabel": "Itzulita (mezua jadanik ezabatuta)",
+    "expandGroupSr": "{subject}, {periodKey} taldearen xehetasuna ikusi",
+    "collapseGroupSr": "{subject}, {periodKey} taldearen xehetasuna ezkutatu",
     "pendingChargesHeading": "Mezu batean elkartu gabeko kargu-hartzeak",
     "noChargesTitle": "Kargu-hartzerik ez",
     "noChargesDescription": "Mezu honek ez du kargu-hartzerik.",

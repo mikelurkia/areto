@@ -46,6 +46,12 @@ function readJerseyNumber(formData: FormData) {
   return Number.isInteger(parsed) ? parsed : null;
 }
 
+/** `null` cuando el equipo no está en modo "2 plazos" y el campo no se envía. */
+function readInstallmentsCount(formData: FormData) {
+  const value = String(formData.get("installmentsCount") ?? "").trim();
+  return value === "2" ? 2 : value === "1" ? 1 : null;
+}
+
 export async function addMembership(
   _prev: MembershipState,
   formData: FormData,
@@ -65,6 +71,7 @@ export async function addMembership(
       jerseyNumber: readJerseyNumber(formData),
       positions: readPositions(formData),
       position: String(formData.get("position") ?? "").trim() || null,
+      installmentsCount: readInstallmentsCount(formData),
     });
   } catch (error) {
     if (isPostgresError(error, UNIQUE_VIOLATION)) {
@@ -96,6 +103,7 @@ export async function updateMembership(
       jerseyNumber: readJerseyNumber(formData),
       positions: readPositions(formData),
       position: String(formData.get("position") ?? "").trim() || null,
+      installmentsCount: readInstallmentsCount(formData),
     })
     .where(eq(memberships.id, id));
 
