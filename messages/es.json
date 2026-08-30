@@ -72,7 +72,10 @@
     "federationVasca": "Federación Vasca"
   },
   "Sidebar": {
-    "groupLabel": "Gestión",
+    "groupPersonas": "Personas",
+    "groupDeportivo": "Deportivo",
+    "groupEconomico": "Económico",
+    "groupClub": "Club",
     "logout": "Cerrar sesión",
     "settings": "Ajustes",
     "roles": {

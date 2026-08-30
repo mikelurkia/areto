@@ -18,6 +18,8 @@ import { useTranslations } from "next-intl";
 
 import type { Permission } from "@/lib/permissions";
 
+export type NavGroup = "personas" | "deportivo" | "economico" | "club";
+
 export type NavItem = {
   title: string;
   href: string;
@@ -26,6 +28,8 @@ export type NavItem = {
   match?: string;
   /** Sección anunciada pero todavía sin pantalla. */
   disabled?: boolean;
+  /** Bloque temático del menú lateral; sin valor, el item va suelto (p. ej. "Panel"). */
+  group?: NavGroup;
 };
 
 /**
@@ -43,10 +47,24 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
   return [
     { title: t("dashboard"), href: "/dashboard", icon: LayoutDashboardIcon },
     ...(can("personas.view")
-      ? [{ title: t("personas"), href: "/personas", icon: UsersIcon }]
+      ? [
+          {
+            title: t("personas"),
+            href: "/personas",
+            icon: UsersIcon,
+            group: "personas" as const,
+          },
+        ]
       : []),
     ...(can("socios.view")
-      ? [{ title: t("socios"), href: "/socios", icon: IdCardIcon }]
+      ? [
+          {
+            title: t("socios"),
+            href: "/socios",
+            icon: IdCardIcon,
+            group: "personas" as const,
+          },
+        ]
       : []),
     ...(can("inscripciones.view")
       ? [
@@ -54,20 +72,49 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
             title: t("inscripciones"),
             href: "/inscripciones",
             icon: ClipboardCheckIcon,
+            group: "personas" as const,
           },
         ]
       : []),
     ...(can("personas.medical.view")
-      ? [{ title: t("medico"), href: "/medico", icon: StethoscopeIcon }]
+      ? [
+          {
+            title: t("medico"),
+            href: "/medico",
+            icon: StethoscopeIcon,
+            group: "personas" as const,
+          },
+        ]
       : []),
     ...(can("temporadas.view")
-      ? [{ title: t("temporada"), href: "/temporadas", icon: ClipboardListIcon }]
+      ? [
+          {
+            title: t("temporada"),
+            href: "/temporadas",
+            icon: ClipboardListIcon,
+            group: "deportivo" as const,
+          },
+        ]
       : []),
     ...(can("equipos.view")
-      ? [{ title: t("equipos"), href: "/equipos", icon: ShirtIcon }]
+      ? [
+          {
+            title: t("equipos"),
+            href: "/equipos",
+            icon: ShirtIcon,
+            group: "deportivo" as const,
+          },
+        ]
       : []),
     ...(can("calendario.view")
-      ? [{ title: t("calendario"), href: "/calendario", icon: CalendarDaysIcon }]
+      ? [
+          {
+            title: t("calendario"),
+            href: "/calendario",
+            icon: CalendarDaysIcon,
+            group: "deportivo" as const,
+          },
+        ]
       : []),
     ...(can("patrocinadores.view")
       ? [
@@ -75,14 +122,29 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
             title: t("patrocinadores"),
             href: "/patrocinadores",
             icon: HandshakeIcon,
+            group: "economico" as const,
           },
         ]
       : []),
     ...(can("cuotas.view")
-      ? [{ title: t("cuotas"), href: "/cuotas", icon: WalletIcon }]
+      ? [
+          {
+            title: t("cuotas"),
+            href: "/cuotas",
+            icon: WalletIcon,
+            group: "economico" as const,
+          },
+        ]
       : []),
     ...(can("club.view")
-      ? [{ title: t("club"), href: "/club", icon: Building2Icon }]
+      ? [
+          {
+            title: t("club"),
+            href: "/club",
+            icon: Building2Icon,
+            group: "club" as const,
+          },
+        ]
       : []),
     ...(can("usuarios.manage") || can("roles.manage")
       ? [
@@ -91,6 +153,7 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
             href: "/administracion/usuarios",
             match: "/administracion",
             icon: ShieldUserIcon,
+            group: "club" as const,
           },
         ]
       : []),
