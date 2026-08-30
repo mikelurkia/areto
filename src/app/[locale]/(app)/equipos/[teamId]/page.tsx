@@ -271,6 +271,7 @@ export default async function TeamDetailPage({
                 mode="create"
                 teamId={team.id}
                 availablePersons={availablePersons}
+                installmentsMode={team.playerFeePeriod === "installments"}
               />
             </div>
           ) : null}
@@ -317,6 +318,7 @@ export default async function TeamDetailPage({
               items={teamMemberships.map((m) => ({
                 ...m,
                 federationCardUrl: federationCardUrls.get(m.id) ?? null,
+                installmentsMode: team.playerFeePeriod === "installments",
               }))}
               canManage={canManage}
               t={t}

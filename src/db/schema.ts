@@ -101,6 +101,7 @@ export const feePeriod = pgEnum("fee_period", [
   "monthly",
   "season",
   "oneoff",
+  "installments",
 ]);
 
 export const paymentStatus = pgEnum("payment_status", [
@@ -582,6 +583,8 @@ export const memberships = pgTable(
     position: text("position"), // cargo libre: delegado, 2º entrenador, fisio, subcapitán...
     joinedAt: date("joined_at"),
     federationCardPath: text("federation_card_path"), // ficha federativa (bucket membership-documents)
+    /** Nº de plazos (1 o 2) elegido para la cuota; solo aplica si el equipo está en playerFeePeriod="installments". */
+    installmentsCount: integer("installments_count"),
   },
   (t) => [
     uniqueIndex("memberships_person_team_idx").on(t.personId, t.teamId),
@@ -1283,11 +1286,36 @@ export const sepaCharges = pgTable(
       .on(t.clubMemberId, t.seasonId, t.periodKey)
       .where(sql`${t.clubMemberId} is not null`),
     index("sepa_charges_remittance_idx").on(t.remittanceId),
+    index("sepa_charges_payer_idx").on(t.payerPersonId),
     check(
       "sepa_charges_membership_xor_club_member",
       sql`(${t.membershipId} is not null) <> (${t.clubMemberId} is not null)`,
     ),
   ],
+).enableRLS();
+
+/**
+ * Historial de devoluciones de un cargo. `sepaCharges` reutiliza la misma
+ * fila al devolverse (el índice único por periodo impide crear una fila
+ * nueva) y anula su `remittanceId` para poder volver a entrar en otra
+ * remesa — sin esta tabla se perdería qué remesa originó cada devolución.
+ */
+export const sepaChargeReturns = pgTable(
+  "sepa_charge_returns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    chargeId: uuid("charge_id")
+      .notNull()
+      .references(() => sepaCharges.id, { onDelete: "cascade" }),
+    // `set null`: la fila de devolución sobrevive si se borra la remesa.
+    remittanceId: uuid("remittance_id").references(() => sepaRemittances.id, {
+      onDelete: "set null",
+    }),
+    returnedOn: date("returned_on").notNull(),
+    returnReason: text("return_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("sepa_charge_returns_charge_idx").on(t.chargeId)],
 ).enableRLS();
 
 // ---------------------------------------------------------------------------
@@ -1567,7 +1595,7 @@ export const sepaRemittancesRelations = relations(sepaRemittances, ({ one, many 
   charges: many(sepaCharges),
 }));
 
-export const sepaChargesRelations = relations(sepaCharges, ({ one }) => ({
+export const sepaChargesRelations = relations(sepaCharges, ({ one, many }) => ({
   remittance: one(sepaRemittances, {
     fields: [sepaCharges.remittanceId],
     references: [sepaRemittances.id],
@@ -1583,4 +1611,13 @@ export const sepaChargesRelations = relations(sepaCharges, ({ one }) => ({
   }),
   payer: one(persons, { fields: [sepaCharges.payerPersonId], references: [persons.id] }),
   mandate: one(sepaMandates, { fields: [sepaCharges.mandateId], references: [sepaMandates.id] }),
+  returns: many(sepaChargeReturns),
+}));
+
+export const sepaChargeReturnsRelations = relations(sepaChargeReturns, ({ one }) => ({
+  charge: one(sepaCharges, { fields: [sepaChargeReturns.chargeId], references: [sepaCharges.id] }),
+  remittance: one(sepaRemittances, {
+    fields: [sepaChargeReturns.remittanceId],
+    references: [sepaRemittances.id],
+  }),
 }));

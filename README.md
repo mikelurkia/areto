@@ -59,7 +59,7 @@ esquema y recetas para cuando algo falla) vive en
 
 1. Instala dependencias:
    ```bash
-   npm install
+   pnpm install
    ```
 2. Crea un proyecto en [Supabase](https://supabase.com) llamado, por ejemplo,
    `areto-dev` (nunca reutilices el de producción para desarrollo local) y
@@ -70,20 +70,20 @@ esquema y recetas para cuando algo falla) vive en
    ```
 3. Crea el esquema en la base de datos y siembra datos iniciales:
    ```bash
-   npm run db:push
-   npm run db:seed
+   pnpm run db:push
+   pnpm run db:seed
    ```
    Con eso la app arranca, pero casi todas las pantallas salen vacías. Para
    trabajar con un club entero inventado (plantillas, socios, patrocinadores,
    calendario, inscripciones) siembra además el juego de demostración:
    ```bash
-   npm run db:seed:demo
+   pnpm run db:seed:demo
    ```
 4. Configura la autenticación (ver [Autenticación](#autenticación) más abajo):
    ejecuta `supabase/setup.sql` en el SQL Editor de Supabase.
 5. Arranca el servidor de desarrollo:
    ```bash
-   npm run dev
+   pnpm run dev
    ```
    Abre <http://localhost:3000>.
 
@@ -118,9 +118,9 @@ tráfico al pooler, con `scripts/dev-route-supabase.ps1`:
 ```powershell
 # 1. Conecta el hotspot (sin desconectar el cable corporativo).
 # 2. En PowerShell COMO ADMINISTRADOR, en la raíz del repo:
-npm run dev:route
+pnpm run dev:route
 # 3. En tu terminal habitual:
-npm run dev
+pnpm run dev
 ```
 
 El script crea rutas `/32` hacia las IPs actuales del pooler por el adaptador
@@ -128,7 +128,7 @@ Wi-Fi, así que el resto del tráfico —incluida la red interna— sigue salien
 el cable. Detalles a tener en cuenta:
 
 - Las IPs del pooler son de un balanceador de AWS y **rotan**. Si vuelve el
-  `CONNECT_TIMEOUT`, lo primero es re-ejecutar `npm run dev:route`.
+  `CONNECT_TIMEOUT`, lo primero es re-ejecutar `pnpm run dev:route`.
 - Reconectar el hotspot cambia el gateway → re-ejecutar.
 - `postgres-js` reutiliza la conexión entre recargas, así que las rutas deben
   estar puestas **antes** de arrancar `next dev`; si no, reinicia el servidor.
@@ -167,7 +167,7 @@ comprueba `requireUser` en cada petición.
 
 ### Puesta en marcha del proyecto Supabase
 
-1. **Migraciones primero**: `npm run db:migrate` (crea `roles`,
+1. **Migraciones primero**: `pnpm run db:migrate` (crea `roles`,
    `role_permissions` y siembra los cuatro roles de fábrica).
 2. **Esquema de auth**: ejecuta `supabase/setup.sql` en el SQL Editor. Crea el
    trigger que genera el perfil al registrarse, publica
@@ -192,19 +192,19 @@ comprueba `requireUser` en cada petición.
 
 | Script            | Descripción                                            |
 | ----------------- | ------------------------------------------------------ |
-| `npm run dev`     | Servidor de desarrollo                                 |
-| `npm run build`   | Build de producción                                    |
-| `npm run db:generate` | Genera archivos de migración SQL desde el esquema  |
-| `npm run db:migrate`  | Aplica las migraciones                             |
-| `npm run db:check`    | Valida el historial de migraciones (colisiones)    |
-| `npm run db:push`     | Empuja el esquema directamente (rápido en dev)     |
-| `npm run db:studio`   | Abre Drizzle Studio (explorador de la BD)          |
-| `npm run db:seed`     | Datos iniciales (temporada y equipos de ejemplo)   |
-| `npm run db:seed:demo` | Juego de datos completo inventado, para desarrollo |
+| `pnpm run dev`     | Servidor de desarrollo                                 |
+| `pnpm run build`   | Build de producción                                    |
+| `pnpm run db:generate` | Genera archivos de migración SQL desde el esquema  |
+| `pnpm run db:migrate`  | Aplica las migraciones                             |
+| `pnpm run db:check`    | Valida el historial de migraciones (colisiones)    |
+| `pnpm run db:push`     | Empuja el esquema directamente (rápido en dev)     |
+| `pnpm run db:studio`   | Abre Drizzle Studio (explorador de la BD)          |
+| `pnpm run db:seed`     | Datos iniciales (temporada y equipos de ejemplo)   |
+| `pnpm run db:seed:demo` | Juego de datos completo inventado, para desarrollo |
 
 ### Datos de demostración
 
-`npm run db:seed:demo` llena `areto-dev` con un club entero inventado —dos
+`pnpm run db:seed:demo` llena `areto-dev` con un club entero inventado —dos
 temporadas, seis equipos, 116 personas con sus tutores, 39 socios, 14
 patrocinadores con sus facturas, la temporada de cancha y once inscripciones—
 para poder ver las pantallas con datos delante en vez de vacías.
@@ -216,7 +216,7 @@ reservado `.test`, que no resuelve.
 
 - Cada fila lleva un id determinista, así que el seed reconoce lo suyo: correrlo
   dos veces deja exactamente el mismo estado y no duplica nada.
-- `npm run db:seed:demo -- --clean` borra lo que sembró y no siembra nada.
+- `pnpm run db:seed:demo -- --clean` borra lo que sembró y no siembra nada.
 - Corta si la base de datos tiene más de 25 fichas que no son del seed (eso son
   datos de verdad, no un entorno de pruebas). `-- --force` se lo salta.
 - Siembra cinco incoherencias a propósito (fichas sin DNI, dorsales duplicados,

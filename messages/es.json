@@ -604,6 +604,9 @@
     "tabGeneral": "General",
     "tabFamily": "Familia",
     "tabTeams": "Equipos ({count})",
+    "tabCuotas": "Cuotas",
+    "cuotasSection": "Cuotas",
+    "noCuotasDescription": "Esta persona no tiene cargos SEPA registrados.",
     "editGuardianHint": "Para cambiar el tutor/a, usa el botón de editar de arriba.",
     "noTeamsDescription": "Esta persona no está en ningún equipo todavía.",
     "reviewDuplicatesAction": "Revisar duplicados",
@@ -1184,6 +1187,11 @@
     },
     "jerseyNumberLabel": "Dorsal",
     "isGoalkeeperLabel": "Portero/a",
+    "installmentsCountLabel": "Nº de plazos",
+    "installmentsCountOption": {
+      "1": "1 plazo",
+      "2": "2 plazos"
+    },
     "memberAdded": "Persona añadida a la plantilla.",
     "memberUpdated": "Ficha actualizada.",
     "memberRemoved": "Persona eliminada de la plantilla.",
@@ -1217,12 +1225,14 @@
     "feePeriod": {
       "monthly": "Mensual",
       "season": "Por temporada",
-      "oneoff": "Pago único"
+      "oneoff": "Pago único",
+      "installments": "En 2 plazos"
     },
     "feePeriodShort": {
       "monthly": "{amount} / mes",
       "season": "{amount} / temporada",
-      "oneoff": "{amount} (pago único)"
+      "oneoff": "{amount} (pago único)",
+      "installments": "{amount} (en 2 plazos)"
     },
     "noMedicalCheckupRequired": "No exige reconocimiento médico",
     "rosterSheetAction": "Acta federativa",
@@ -1696,6 +1706,12 @@
     "colRum": "RUM",
     "colStatus": "Estado",
     "colPeriod": "Periodo",
+    "colRemittance": "Remesa",
+    "noRemittanceValue": "Sin remesa",
+    "returnedFromLabel": "Devuelto de la remesa {messageId}",
+    "returnedFromNoRemittanceLabel": "Devuelto (remesa ya borrada)",
+    "expandGroupSr": "Ver el desglose de {subject}, {periodKey}",
+    "collapseGroupSr": "Ocultar el desglose de {subject}, {periodKey}",
     "pendingChargesHeading": "Cargos pendientes de agrupar en una remesa",
     "noChargesTitle": "Sin cargos",
     "noChargesDescription": "Esta remesa no tiene cargos asociados.",

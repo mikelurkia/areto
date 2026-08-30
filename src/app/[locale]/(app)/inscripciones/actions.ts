@@ -472,7 +472,14 @@ export async function approveRegistration(
       if (teamId) {
         await tx
           .insert(memberships)
-          .values({ personId, teamId, role: membershipRole })
+          .values({
+            personId,
+            teamId,
+            role: membershipRole,
+            // Informativo en origen; solo tiene efecto si el equipo cobra la
+            // cuota de jugador en 2 plazos (ver `generatePlayerCharges`).
+            installmentsCount: registration.installmentsChosen,
+          })
           .onConflictDoNothing();
       } else if (registration.kind === "member") {
         // Alta de socio: sin equipo, cuelga de `club_members` en vez de `memberships`.
