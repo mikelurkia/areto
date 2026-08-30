@@ -101,6 +101,7 @@ export const feePeriod = pgEnum("fee_period", [
   "monthly",
   "season",
   "oneoff",
+  "installments",
 ]);
 
 export const paymentStatus = pgEnum("payment_status", [
@@ -582,6 +583,8 @@ export const memberships = pgTable(
     position: text("position"), // cargo libre: delegado, 2º entrenador, fisio, subcapitán...
     joinedAt: date("joined_at"),
     federationCardPath: text("federation_card_path"), // ficha federativa (bucket membership-documents)
+    /** Nº de plazos (1 o 2) elegido para la cuota; solo aplica si el equipo está en playerFeePeriod="installments". */
+    installmentsCount: integer("installments_count"),
   },
   (t) => [
     uniqueIndex("memberships_person_team_idx").on(t.personId, t.teamId),

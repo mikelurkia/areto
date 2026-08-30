@@ -925,6 +925,7 @@ export default async function PersonDetailPage({
                   items={items.map((m) => ({
                     ...m,
                     federationCardUrl: federationCardUrls.get(m.id) ?? null,
+                    installmentsMode: m.team.playerFeePeriod === "installments",
                   }))}
                   canManage={canManage}
                   t={tEquipos}

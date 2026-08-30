@@ -22,6 +22,9 @@ type MembershipRow = {
   positions: string[];
   isCaptain: boolean;
   federationCardUrl: string | null;
+  installmentsCount: number | null;
+  /** Si el equipo de esta fila cobra la cuota de jugador en 2 plazos. */
+  installmentsMode: boolean;
 };
 
 type Translate = (key: string, values?: Record<string, string | number | Date>) => string;
@@ -123,7 +126,9 @@ export function MembershipTable<T extends MembershipRow>({
                       jerseyNumber: m.jerseyNumber,
                       positions: m.positions,
                       position: m.position,
+                      installmentsCount: m.installmentsCount,
                     }}
+                    installmentsMode={m.installmentsMode}
                   />
                   <DeleteMembershipDialog id={m.id} name={name} />
                 </TableCell>

@@ -53,9 +53,10 @@ type Membership = {
   jerseyNumber: number | null;
   positions: string[];
   position: string | null;
+  installmentsCount: number | null;
 };
 
-type MembershipDialogProps =
+type MembershipDialogProps = (
   | { mode: "create"; teamId: string; availablePersons: PersonOption[] }
   | {
       mode: "create-person";
@@ -63,7 +64,16 @@ type MembershipDialogProps =
       personName: string;
       availableTeams: TeamOption[];
     }
-  | { mode: "edit"; membership: Membership };
+  | { mode: "edit"; membership: Membership }
+) & {
+  /**
+   * Si el equipo cobra la cuota de jugador en 2 plazos: solo entonces se
+   * muestra el selector de plazos. En `create-person` no se conoce el
+   * equipo hasta elegirlo en el propio formulario, así que ahí no se ofrece
+   * — se completa después editando la membresía ya creada.
+   */
+  installmentsMode?: boolean;
+};
 
 export function MembershipDialog(props: MembershipDialogProps) {
   const t = useTranslations("Equipos");
@@ -224,6 +234,31 @@ export function MembershipDialog(props: MembershipDialogProps) {
                 placeholder={t("positionPlaceholder")}
               />
             </Field>
+            {props.mode !== "create-person" && props.installmentsMode ? (
+              <Field>
+                <FieldLabel htmlFor="membership-installments">
+                  {t("installmentsCountLabel")}
+                </FieldLabel>
+                <Select
+                  name="installmentsCount"
+                  defaultValue={String(membership?.installmentsCount ?? 1)}
+                >
+                  <SelectTrigger id="membership-installments" className="w-full">
+                    <SelectValue>
+                      {(value: string) => t(`installmentsCountOption.${value}`)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">
+                      {t("installmentsCountOption.1")}
+                    </SelectItem>
+                    <SelectItem value="2">
+                      {t("installmentsCountOption.2")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            ) : null}
             {state.error ? (
               <p className="text-sm text-destructive">{state.error}</p>
             ) : null}
