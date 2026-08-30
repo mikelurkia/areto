@@ -19,7 +19,7 @@ import { StatTile } from "@/components/stat-tile";
 import { ImportSponsorsDialog } from "@/components/patrocinadores/import-sponsors-dialog";
 import { SponsorsBrowser } from "@/components/patrocinadores/sponsors-browser";
 import { SponsorDialog } from "@/components/patrocinadores/sponsor-dialog";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,9 +28,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { type ChartConfig } from "@/components/ui/chart";
+import { TierBreakdownChart } from "@/components/patrocinadores/tier-breakdown-chart";
+import { YearlyComparisonChart } from "@/components/patrocinadores/yearly-comparison-chart";
 
 const LOGO_BUCKET = "sponsorship-logos";
 const CONTRACT_BUCKET = "sponsorship-contracts";
+// La comparativa por temporada solo muestra las últimas N: crece cada año y
+// sin límite era ruido puro (ver análisis del módulo).
+const YEARLY_CHART_SEASONS = 6;
+// Orden categórico fijo (regla de la skill dataviz): nunca reordenar por
+// valor, para que el color siga identificando siempre al mismo nivel.
+const TIER_CHART_ORDER = ["principal", "colaborador", "publicidad", "none"] as const;
+const TIER_CHART_COLORS: Record<(typeof TIER_CHART_ORDER)[number], string> = {
+  principal: "var(--chart-1)",
+  colaborador: "var(--chart-2)",
+  publicidad: "var(--chart-3)",
+  none: "var(--chart-4)",
+};
 
 export async function generateMetadata({
   params,
@@ -75,28 +90,57 @@ export default async function PatrocinadoresPage({
   // El reloj, después de las consultas (ver next-prerender-current-time).
   const today = new Date().toISOString().slice(0, 10);
 
-  // Bandeja de vencidos: cobros con vencimiento pasado y aún sin cobrar.
-  const overduePayments = allSponsors
-    .flatMap((s) =>
-      s.terms.flatMap((term) =>
-        term.payments
-          .filter(
-            (p) =>
-              p.status !== "paid" &&
-              p.status !== "waived" &&
-              p.dueDate !== null &&
-              p.dueDate < today,
-          )
-          .map((p) => ({
-            id: p.id,
-            sponsorId: s.id,
-            sponsorName: s.name,
-            amountCents: p.amountCents,
-            dueDate: p.dueDate!,
-          })),
-      ),
-    )
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  // Próximos vencimientos: cobros vencidos/por vencer y acuerdos por vencer,
+  // unificados en una sola línea temporal (antes eran dos vistas separadas:
+  // la bandeja de cobros aquí y el badge de cada acuerdo en la ficha).
+  const upcomingWindowCutoff = new Date();
+  upcomingWindowCutoff.setDate(
+    upcomingWindowCutoff.getDate() + SPONSORSHIP_EXPIRY_WINDOW_DAYS,
+  );
+  const upcomingCutoff = upcomingWindowCutoff.toISOString().slice(0, 10);
+
+  type UpcomingItem = {
+    id: string;
+    kind: "paymentOverdue" | "paymentDue" | "termEnding";
+    sponsorId: string;
+    sponsorName: string;
+    date: string;
+    amountCents: number | null;
+  };
+  const upcomingItems: UpcomingItem[] = [];
+  for (const s of allSponsors) {
+    for (const term of s.terms) {
+      for (const p of term.payments) {
+        if (p.status === "paid" || p.status === "waived" || p.dueDate === null) {
+          continue;
+        }
+        if (p.dueDate > upcomingCutoff) continue;
+        upcomingItems.push({
+          id: `payment-${p.id}`,
+          kind: p.dueDate < today ? "paymentOverdue" : "paymentDue",
+          sponsorId: s.id,
+          sponsorName: s.name,
+          date: p.dueDate,
+          amountCents: p.amountCents,
+        });
+      }
+      if (
+        term.endsOn !== null &&
+        term.endsOn >= today &&
+        term.endsOn <= upcomingCutoff
+      ) {
+        upcomingItems.push({
+          id: `term-${term.id}`,
+          kind: "termEnding",
+          sponsorId: s.id,
+          sponsorName: s.name,
+          date: term.endsOn,
+          amountCents: null,
+        });
+      }
+    }
+  }
+  upcomingItems.sort((a, b) => a.date.localeCompare(b.date));
 
   // Comparativa por temporada: comprometido vs. cobrado de las anualidades.
   const yearMap = new Map<string, { committedCents: number; collectedCents: number }>();
@@ -114,13 +158,26 @@ export default async function PatrocinadoresPage({
   const yearSummary = [...yearMap.entries()]
     .map(([year, v]) => ({ year, ...v }))
     .sort((a, b) => b.year.localeCompare(a.year));
+  // Gráfico: solo las últimas N temporadas (la tabla no tenía límite y crecía
+  // sin fin), en orden cronológico para leer la tendencia de izquierda a
+  // derecha.
+  const yearlyChartData = yearSummary
+    .slice(0, YEARLY_CHART_SEASONS)
+    .reverse()
+    .map((row) => ({
+      year: row.year,
+      committed: row.committedCents / 100,
+      collected: row.collectedCents / 100,
+    }));
+  const yearlyChartConfig = {
+    committed: { label: t("committedLabel"), color: "var(--chart-1)" },
+    collected: { label: t("collectedLabel"), color: "var(--chart-2)" },
+  } satisfies ChartConfig;
 
   // KPIs de la temporada actual (sep–ago) y desglose por nivel.
   const currentSeasonYear = seasonYearOf(today);
   const currentSeasonLabel = seasonLabel(currentSeasonYear);
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() + SPONSORSHIP_EXPIRY_WINDOW_DAYS);
-  const cutoff = cutoffDate.toISOString().slice(0, 10);
+  const cutoff = upcomingCutoff;
 
   let seasonCommittedCents = 0;
   let seasonCollectedCents = 0;
@@ -161,9 +218,24 @@ export default async function PatrocinadoresPage({
         : 0;
     tierAgg.set(key, entry);
   }
-  const tierBreakdown = (["principal", "colaborador", "publicidad", "none"] as const)
-    .filter((key) => tierAgg.has(key))
-    .map((key) => ({ key, ...tierAgg.get(key)! }));
+  const tierBreakdown = TIER_CHART_ORDER.filter((key) => tierAgg.has(key)).map(
+    (key) => ({ key, ...tierAgg.get(key)! }),
+  );
+  const tierChartData = tierBreakdown.map((row) => ({
+    key: row.key,
+    label: row.key === "none" ? t("tierNone") : t(`tier.${row.key}`),
+    amount: row.amountCents / 100,
+    fill: TIER_CHART_COLORS[row.key],
+  }));
+  const tierChartConfig = Object.fromEntries(
+    TIER_CHART_ORDER.map((key) => [
+      key,
+      {
+        label: key === "none" ? t("tierNone") : t(`tier.${key}`),
+        color: TIER_CHART_COLORS[key],
+      },
+    ]),
+  ) satisfies ChartConfig;
   const withContract = [...currentTermBySponsor.values()].filter(
     (term) => term?.contractPath,
   );
@@ -277,28 +349,42 @@ export default async function PatrocinadoresPage({
         </div>
       </section>
 
-      {overduePayments.length > 0 ? (
+      {upcomingItems.length > 0 ? (
         <Card className="print:hidden">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <TriangleAlertIcon className="size-4" />
-              {t("overdueSection")}
+              {t("upcomingSection")}
             </CardTitle>
-            <CardDescription>{t("overdueSectionHint")}</CardDescription>
+            <CardDescription>
+              {t("upcomingSectionHint", { days: SPONSORSHIP_EXPIRY_WINDOW_DAYS })}
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
-            {overduePayments.map((p) => (
-              <div key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
+            {upcomingItems.map((item) => (
+              <div key={item.id} className="flex flex-wrap items-center gap-2 text-sm">
                 <Link
-                  href={`/patrocinadores/${p.sponsorId}`}
+                  href={`/patrocinadores/${item.sponsorId}`}
                   className="font-medium hover:underline"
                 >
-                  {p.sponsorName}
+                  {item.sponsorName}
                 </Link>
-                <span className="font-medium">{currencyFmt.format(p.amountCents / 100)}</span>
-                <Badge variant="destructive" className="ml-auto">
-                  {t("overdueSince", { date: p.dueDate })}
-                </Badge>
+                {item.amountCents !== null ? (
+                  <span className="font-medium">
+                    {currencyFmt.format(item.amountCents / 100)}
+                  </span>
+                ) : null}
+                <StatusBadge
+                  tone={item.kind === "paymentOverdue" ? "danger" : "warning"}
+                  label={t(`upcomingKind.${item.kind}`)}
+                  className="ml-auto"
+                />
+                <span className="text-xs text-muted-foreground">
+                  {t(
+                    item.kind === "paymentOverdue" ? "overdueSince" : "dueOn",
+                    { date: item.date },
+                  )}
+                </span>
               </div>
             ))}
           </CardContent>
@@ -313,60 +399,36 @@ export default async function PatrocinadoresPage({
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {tierBreakdown.length > 0 ? (
-          <Card>
+        {tierChartData.length > 0 ? (
+          <Card className="print:hidden">
             <CardHeader>
               <CardTitle className="text-base">
                 {t("tierBreakdownSection")}
               </CardTitle>
               <CardDescription>{t("tierBreakdownHint")}</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-1.5">
-              <div className="grid grid-cols-3 border-b pb-1 text-xs text-muted-foreground">
-                <span>{t("tierLabel")}</span>
-                <span className="text-right">{t("kpiActiveSponsors")}</span>
-                <span className="text-right">{t("committedLabel")}</span>
-              </div>
-              {tierBreakdown.map((row) => (
-                <div key={row.key} className="grid grid-cols-3 text-sm">
-                  <span className="font-medium">
-                    {row.key === "none" ? t("tierNone") : t(`tier.${row.key}`)}
-                  </span>
-                  <span className="text-right text-muted-foreground">
-                    {row.count}
-                  </span>
-                  <span className="text-right">
-                    {currencyFmt.format(row.amountCents / 100)}
-                  </span>
-                </div>
-              ))}
+            <CardContent>
+              <TierBreakdownChart
+                data={tierChartData}
+                config={tierChartConfig}
+                locale={locale}
+              />
             </CardContent>
           </Card>
         ) : null}
 
-        {yearSummary.length > 0 ? (
-          <Card>
+        {yearlyChartData.length > 0 ? (
+          <Card className="print:hidden">
             <CardHeader>
               <CardTitle className="text-base">{t("yearlyComparisonSection")}</CardTitle>
               <CardDescription>{t("yearlyComparisonHint")}</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-1.5">
-              <div className="grid grid-cols-3 border-b pb-1 text-xs text-muted-foreground">
-                <span>{t("yearLabel")}</span>
-                <span className="text-right">{t("committedLabel")}</span>
-                <span className="text-right">{t("collectedLabel")}</span>
-              </div>
-              {yearSummary.map((row) => (
-                <div key={row.year} className="grid grid-cols-3 text-sm">
-                  <span className="font-medium">{row.year}</span>
-                  <span className="text-right">
-                    {currencyFmt.format(row.committedCents / 100)}
-                  </span>
-                  <span className="text-right text-muted-foreground">
-                    {currencyFmt.format(row.collectedCents / 100)}
-                  </span>
-                </div>
-              ))}
+            <CardContent>
+              <YearlyComparisonChart
+                data={yearlyChartData}
+                config={yearlyChartConfig}
+                locale={locale}
+              />
             </CardContent>
           </Card>
         ) : null}

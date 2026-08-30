@@ -56,6 +56,7 @@ import { PrintButton } from "@/components/print-button";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress, ProgressValue } from "@/components/ui/progress";
 import {
   Collapsible,
   CollapsibleContent,
@@ -419,6 +420,22 @@ export default async function SponsorDetailPage({
                 const singleTermOptions = [
                   { id: term.id, label: termLabel(term) },
                 ];
+                // Progreso de cobro del acuerdo: solo tiene sentido si ya
+                // hay anualidades generadas (si no, no hay nada que progrese).
+                const termTotalCents =
+                  term.payments.length > 0
+                    ? term.payments.reduce((s, p) => s + p.amountCents, 0)
+                    : null;
+                const termCollectedCents = term.payments
+                  .filter((p) => p.status === "paid")
+                  .reduce((s, p) => s + p.amountCents, 0);
+                const termProgressPct =
+                  termTotalCents && termTotalCents > 0
+                    ? Math.min(
+                        100,
+                        Math.round((termCollectedCents / termTotalCents) * 100),
+                      )
+                    : null;
                 return (
                   <Collapsible
                     key={term.id}
@@ -452,6 +469,19 @@ export default async function SponsorDetailPage({
                             label={t(`${status}Badge`)}
                           />
                         </div>
+                        {termProgressPct !== null ? (
+                          <Progress
+                            value={termProgressPct}
+                            className="max-w-xs"
+                            aria-label={t("collectedLabel")}
+                          >
+                            <ProgressValue className="text-xs">
+                              {() =>
+                                `${formatAmount(termCollectedCents)} / ${formatAmount(termTotalCents)}`
+                              }
+                            </ProgressValue>
+                          </Progress>
+                        ) : null}
                         {term.benefits ? (
                           <p className="max-w-prose text-sm text-muted-foreground">
                             {term.benefits}
