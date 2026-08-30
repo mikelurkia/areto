@@ -180,7 +180,10 @@
       "user": "Erabiltzailea",
       "user_role": "Erabiltzailearen rola",
       "role_permissions": "Rola / baimenak",
-      "registration": "Izen-ematea"
+      "registration": "Izen-ematea",
+      "sepa_mandate": "SEPA agindua",
+      "sepa_charge": "SEPA ordainagiria",
+      "sepa_remittance": "SEPA igorpena"
     },
     "cancel": "Utzi",
     "save": "Gorde",

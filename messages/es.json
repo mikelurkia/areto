@@ -180,7 +180,10 @@
       "user": "Usuario",
       "user_role": "Rol de usuario",
       "role_permissions": "Rol / permisos",
-      "registration": "Inscripción"
+      "registration": "Inscripción",
+      "sepa_mandate": "Mandato SEPA",
+      "sepa_charge": "Recibo SEPA",
+      "sepa_remittance": "Remesa SEPA"
     },
     "cancel": "Cancelar",
     "save": "Guardar",
