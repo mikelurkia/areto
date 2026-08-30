@@ -72,7 +72,10 @@
     "federationVasca": "Euskadiko Federazioa"
   },
   "Sidebar": {
-    "groupLabel": "Kudeaketa",
+    "groupPersonas": "Pertsonak",
+    "groupDeportivo": "Kirola",
+    "groupEconomico": "Ekonomia",
+    "groupClub": "Kluba",
     "logout": "Saioa itxi",
     "settings": "Ezarpenak",
     "roles": {

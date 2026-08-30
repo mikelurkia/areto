@@ -8,7 +8,7 @@ import { logout } from "@/app/[locale]/(auth)/actions";
 import { Link, usePathname } from "@/i18n/navigation";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { isSystemRoleKey, type Permission } from "@/lib/permissions";
-import { useNavItems } from "@/components/nav-items";
+import { useNavItems, type NavGroup, type NavItem } from "@/components/nav-items";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -117,6 +117,14 @@ const FEDERATION_INFO: Record<
   },
 };
 
+/** Orden y etiqueta de cada bloque temático del menú principal. */
+const NAV_GROUPS: { group: NavGroup; labelKey: "groupPersonas" | "groupDeportivo" | "groupEconomico" | "groupClub" }[] = [
+  { group: "personas", labelKey: "groupPersonas" },
+  { group: "deportivo", labelKey: "groupDeportivo" },
+  { group: "economico", labelKey: "groupEconomico" },
+  { group: "club", labelKey: "groupClub" },
+];
+
 function federationInfo(url: string) {
   try {
     const host = new URL(url).hostname.replace(/^www\./, "");
@@ -168,35 +176,56 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
   const roleLabel = roleLabels.join(" · ");
 
   const nav = useNavItems(user.permissions);
+  const looseItems = nav.filter((item) => !item.group);
+  const itemsByGroup = new Map<NavGroup, NavItem[]>();
+  for (const item of nav) {
+    if (!item.group) continue;
+    itemsByGroup.set(item.group, [...(itemsByGroup.get(item.group) ?? []), item]);
+  }
+
+  const renderNavItem = (item: NavItem) => {
+    const base = item.match ?? item.href;
+    const active = pathname === base || pathname.startsWith(`${base}/`);
+    return (
+      <SidebarMenuItem key={item.href}>
+        {item.disabled ? (
+          <SidebarMenuButton disabled>
+            <item.icon />
+            <span>{item.title}</span>
+          </SidebarMenuButton>
+        ) : (
+          <SidebarMenuButton
+            render={<HoverPrefetchLink href={item.href} />}
+            isActive={active}
+          >
+            <item.icon />
+            <span>{item.title}</span>
+          </SidebarMenuButton>
+        )}
+      </SidebarMenuItem>
+    );
+  };
 
   return (
     <>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>{t("groupLabel")}</SidebarGroupLabel>
+          <SidebarMenu>{looseItems.map(renderNavItem)}</SidebarMenu>
+        </SidebarGroup>
+
+        {NAV_GROUPS.map(({ group, labelKey }) => {
+          const items = itemsByGroup.get(group);
+          if (!items || items.length === 0) return null;
+          return (
+            <SidebarGroup key={group}>
+              <SidebarGroupLabel>{t(labelKey)}</SidebarGroupLabel>
+              <SidebarMenu>{items.map(renderNavItem)}</SidebarMenu>
+            </SidebarGroup>
+          );
+        })}
+
+        <SidebarGroup>
           <SidebarMenu>
-            {nav.map((item) => {
-              const base = item.match ?? item.href;
-              const active = pathname === base || pathname.startsWith(`${base}/`);
-              return (
-                <SidebarMenuItem key={item.href}>
-                  {item.disabled ? (
-                    <SidebarMenuButton disabled>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  ) : (
-                    <SidebarMenuButton
-                      render={<HoverPrefetchLink href={item.href} />}
-                      isActive={active}
-                    >
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  )}
-                </SidebarMenuItem>
-              );
-            })}
             <SidebarMenuItem>
               <SidebarMenuButton
                 render={
