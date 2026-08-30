@@ -2,6 +2,7 @@
   "name": "areto",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.24.0",
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
     "dev": "next dev",
