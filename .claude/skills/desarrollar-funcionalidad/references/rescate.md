@@ -28,9 +28,9 @@ crearla: `git switch -c mi-rama` se los lleva consigo. No hace falta stash.
 Tocaste `src/db/schema.ts` sin generar la migración:
 
 ```bash
-npm run db:generate
+pnpm run db:generate
 # revisa el .sql generado
-npm run db:migrate
+pnpm run db:migrate
 git add drizzle
 git commit -m "Genera la migración de …"
 ```
@@ -46,12 +46,12 @@ el esquema».
 Lo más probable: `areto-dev` quedó desincronizada por un `db:push` anterior, así
 que la migración intenta crear algo que ya existe. Opciones, de menos a más:
 
-1. Mirar con `npm run db:studio` qué hay de más o de menos y decidir.
+1. Mirar con `pnpm run db:studio` qué hay de más o de menos y decidir.
 2. Aplicar a mano en el SQL Editor de Supabase (**solo en `areto-dev`**) el
    estado que la migración espera encontrar, y volver a lanzar `db:migrate`.
 3. Si esa base de datos no tiene nada que valga la pena, vaciarla y reconstruir
-   desde el historial: `npm run db:migrate` sobre el esquema limpio y
-   `npm run db:seed`.
+   desde el historial: `pnpm run db:migrate` sobre el esquema limpio y
+   `pnpm run db:seed`.
 
 Nunca se edita un `.sql` ya mergeado para cuadrarlo con la base de datos: puede
 estar aplicado en producción. Se corrige con una migración nueva encima.

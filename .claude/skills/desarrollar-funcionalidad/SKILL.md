@@ -40,16 +40,16 @@ una toque `src/db/schema.ts` (ver `references/migraciones.md`).
 
 ## El ciclo
 
-1. **Trabajar en local.** `npm run dev`. En la red corporativa de ULMA, antes:
-   `npm run dev:route` en un PowerShell como administrador con el hotspot
+1. **Trabajar en local.** `pnpm run dev`. En la red corporativa de ULMA, antes:
+   `pnpm run dev:route` en un PowerShell como administrador con el hotspot
    conectado (el puerto 6543 del pooler está filtrado; el README lo detalla).
-   Los datos son de `areto-dev`: se pueden romper, `npm run db:seed` resiembra.
+   Los datos son de `areto-dev`: se pueden romper, `pnpm run db:seed` resiembra.
 
 2. **Si el cambio toca el esquema**, y solo entonces:
 
    ```bash
-   npm run db:generate    # escribe drizzle/00XX_*.sql desde schema.ts
-   npm run db:migrate     # lo aplica a areto-dev
+   pnpm run db:generate    # escribe drizzle/00XX_*.sql desde schema.ts
+   pnpm run db:migrate     # lo aplica a areto-dev
    ```
 
    Lee el `.sql` generado antes de seguir y decide si es expand o contract
@@ -59,9 +59,9 @@ una toque `src/db/schema.ts` (ver `references/migraciones.md`).
 3. **Comprobar antes de subir.** Las tres, en este orden:
 
    ```bash
-   npm run lint
-   npm run typecheck
-   npm run build
+   pnpm run lint
+   pnpm run typecheck
+   pnpm run build
    ```
 
    `build` no es opcional: con `cacheComponents: true` es el único que detecta
@@ -100,7 +100,7 @@ sí. El detalle y un ejemplo real del repo, en `references/migraciones.md`.
 
 | Falla | Qué significa y qué hacer |
 |-------|---------------------------|
-| Comprobar que el esquema y las migraciones están sincronizados | Tocaste `schema.ts` sin generar la migración: `npm run db:generate`, revisa el `.sql`, commitéalo |
+| Comprobar que el esquema y las migraciones están sincronizados | Tocaste `schema.ts` sin generar la migración: `pnpm run db:generate`, revisa el `.sql`, commitéalo |
 | `db:check` | Historial incoherente, casi siempre dos ramas que generaron migración en paralelo → `references/rescate.md` |
 | Aviso de SQL destructivo (no bloquea) | Comprueba que ya no queda código usando lo que se borra; si queda, parte el PR en expand + contract |
 | `build` | Suele ser una lectura de datos dinámicos fuera de `<Suspense>` (ver la sección de Cache Components en `CLAUDE.md`) |

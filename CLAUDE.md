@@ -12,7 +12,7 @@ Uso actual, deliberado — línea base a mantener, no a ampliar por defecto:
 - No añadas `"use cache"` a una función nueva salvo que haya una razón
   concreta: el dato lo piden varias vistas, cambia poco, o el cómputo es caro.
   Si es solo "por si acaso", mejor déjala dinámica con `connection()`.
-- Verifica siempre con `npm run build` tras tocar `"use cache"` o cualquier
+- Verifica siempre con `pnpm run build` tras tocar `"use cache"` o cualquier
   lectura de datos nueva en una página — es la única forma fiable de detectar
   errores de Cache Components (`tsc`/`eslint`/`next dev` no los señalan igual).
 - No adoptar más funcionalidades experimentales de Next.js además de las ya
@@ -63,7 +63,7 @@ Y tres invariantes:
 Cuatro de estas convenciones las vigila ESLint (colores crudos, `dark:` con
 color a mano, cabecera a mano e iconos de lucide sin sufijo `Icon`): están en
 `eslint.config.mjs`, comentadas una por una. Entran como `error` y el árbol está
-limpio, así que si `npm run lint` señala una, es nueva. La solución es usar el
+limpio, así que si `pnpm run lint` señala una, es nueva. La solución es usar el
 componente, no un `eslint-disable`. Un componente recién traído del registry de
 shadcn puede llegar con colores crudos: se mapean a tokens al añadirlo.
 
@@ -75,7 +75,7 @@ Invariantes, sin excepciones:
 - Crea la rama (`feat/…`, `fix/…`, `chore/…`) **antes del primer commit**; si al
   arrancar una tarea la rama actual es `main`, eso es lo primero que haces.
 - Un cambio en `src/db/schema.ts` va siempre con su migración generada
-  (`npm run db:generate`) en el mismo PR: al mergear se aplica sola a
+  (`pnpm run db:generate`) en el mismo PR: al mergear se aplica sola a
   producción.
 - Solo una rama abierta a la vez toca el esquema (dos generarían el mismo
   número de migración).
@@ -104,7 +104,7 @@ hasta 744k):
 - **`Grep`/`Glob` antes que `Read` completo**, y `offset`/`limit` cuando ya se
   sabe la zona. `src/db/schema.ts` y `messages/*.json` son grandes y se releen
   con demasiada frecuencia.
-- **Salidas de comandos acotadas.** `npm run build` y `npm run lint` solo cuando
+- **Salidas de comandos acotadas.** `pnpm run build` y `pnpm run lint` solo cuando
   toca verificar de verdad, filtrando la salida (`| tail -40`,
   `2>&1 | grep -E "error|warn"`).
 - **Sin `cd` al proyecto en cada comando**: el cwd ya es el del proyecto.

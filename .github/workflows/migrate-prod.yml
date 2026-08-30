@@ -52,12 +52,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       # `drizzle-kit migrate` se traga los errores de conexión: ante una cadena
       # mal formada muere en un segundo con `exit code 1` y sin una sola línea
@@ -66,4 +68,4 @@ jobs:
       - name: Comprobar la conexión antes de migrar
         run: node scripts/check-db-connection.mjs
 
-      - run: npm run db:migrate
+      - run: pnpm run db:migrate
