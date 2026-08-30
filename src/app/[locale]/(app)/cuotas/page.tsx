@@ -8,11 +8,11 @@ import { PageHeader, SectionHeading } from "@/components/page-header";
 import { StatTile } from "@/components/stat-tile";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { CreateRemittanceDialog } from "@/components/cuotas/create-remittance-dialog";
-import { DeletePendingChargesDialog } from "@/components/cuotas/delete-pending-charges-dialog";
 import { DeleteRemittanceDialog } from "@/components/cuotas/delete-remittance-dialog";
 import { DownloadRemittanceXmlButton } from "@/components/cuotas/download-remittance-xml-button";
 import { GenerateMemberChargesButton } from "@/components/cuotas/generate-member-charges-button";
 import { GeneratePlayerChargesDialog } from "@/components/cuotas/generate-player-charges-dialog";
+import { PendingChargeGroupCard } from "@/components/cuotas/pending-charge-group-card";
 import {
   Table,
   TableBody,
@@ -65,7 +65,10 @@ export default async function CuotasPage({
     db.query.sepaCharges.findMany({
       where: (sepaCharges, { and, eq, isNull }) =>
         and(eq(sepaCharges.status, "pending"), isNull(sepaCharges.remittanceId)),
-      with: { membership: { with: { team: true } } },
+      with: {
+        membership: { with: { team: true, person: true } },
+        clubMember: { with: { person: true } },
+      },
     }),
   ]);
 
@@ -80,21 +83,32 @@ export default async function CuotasPage({
 
   const pendingGroups = new Map<
     string,
-    { subject: string; periodKey: string; count: number; amountCents: number; ids: string[] }
+    {
+      subject: string;
+      periodKey: string;
+      amountCents: number;
+      rows: { id: string; personName: string; amountCents: number }[];
+    }
   >();
   for (const charge of unassignedCharges) {
     const subject = charge.kind === "player" ? (charge.membership?.team?.name ?? "—") : t("kindMember");
+    const personName =
+      charge.kind === "player"
+        ? charge.membership
+          ? `${charge.membership.person.firstName} ${charge.membership.person.lastName}`
+          : "—"
+        : charge.clubMember
+          ? `${charge.clubMember.person.firstName} ${charge.clubMember.person.lastName}`
+          : "—";
     const key = `${charge.kind}:${subject}:${charge.periodKey}`;
     const group = pendingGroups.get(key) ?? {
       subject,
       periodKey: charge.periodKey,
-      count: 0,
       amountCents: 0,
-      ids: [] as string[],
+      rows: [] as { id: string; personName: string; amountCents: number }[],
     };
-    group.count += 1;
     group.amountCents += charge.amountCents;
-    group.ids.push(charge.id);
+    group.rows.push({ id: charge.id, personName, amountCents: charge.amountCents });
     pendingGroups.set(key, group);
   }
   const pendingGroupRows = [...pendingGroups.values()].sort((a, b) =>
@@ -126,40 +140,20 @@ export default async function CuotasPage({
       {pendingGroupRows.length > 0 ? (
         <div className="flex flex-col gap-3">
           <SectionHeading title={t("pendingChargesHeading")} />
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("colSubject")}</TableHead>
-                <TableHead priority="secondary">{t("colPeriod")}</TableHead>
-                <TableHead className="text-right">{t("colChargeCount")}</TableHead>
-                <TableHead className="text-right">{t("colAmount")}</TableHead>
-                {canManage ? (
-                  <TableHead className="text-right">{t("colActions")}</TableHead>
-                ) : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pendingGroupRows.map((group) => (
-                <TableRow key={`${group.subject}:${group.periodKey}`}>
-                  <TableCell className="font-medium">{group.subject}</TableCell>
-                  <TableCell priority="secondary">{group.periodKey}</TableCell>
-                  <TableCell className="text-right">{group.count}</TableCell>
-                  <TableCell nowrap className="text-right font-medium">
-                    {currencyFmt.format(group.amountCents / 100)}
-                  </TableCell>
-                  {canManage ? (
-                    <TableCell className="flex justify-end">
-                      <DeletePendingChargesDialog
-                        ids={group.ids}
-                        subject={group.subject}
-                        periodKey={group.periodKey}
-                      />
-                    </TableCell>
-                  ) : null}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="flex flex-col gap-2">
+            {pendingGroupRows.map((group) => (
+              <PendingChargeGroupCard
+                key={`${group.subject}:${group.periodKey}`}
+                subject={group.subject}
+                periodKey={group.periodKey}
+                amountCents={group.amountCents}
+                rows={group.rows}
+                canManage={canManage}
+                locale={locale}
+                t={t}
+              />
+            ))}
+          </div>
         </div>
       ) : null}
 

@@ -9,6 +9,7 @@ import {
   memberships,
   persons,
   sepaCharges,
+  sepaChargeReturns,
   sepaRemittances,
 } from "@/db/schema";
 import { recordAuditEvent } from "@/lib/audit-log";
@@ -348,6 +349,22 @@ export async function updateChargeStatus(
   const returnReason = String(formData.get("returnReason") ?? "").trim() || null;
   const today = new Date().toISOString().slice(0, 10);
 
+  if (status === "returned") {
+    // La fila se reutiliza (ver comentario más abajo) y su `remittanceId` se
+    // va a anular, así que hay que guardar la remesa de origen antes de
+    // perderla, o no quedaría traza de qué remesa se devolvió.
+    const current = await db.query.sepaCharges.findFirst({
+      where: eq(sepaCharges.id, id),
+      columns: { remittanceId: true },
+    });
+    await db.insert(sepaChargeReturns).values({
+      chargeId: id,
+      remittanceId: current?.remittanceId ?? null,
+      returnedOn: today,
+      returnReason,
+    });
+  }
+
   await db
     .update(sepaCharges)
     .set(
@@ -369,7 +386,7 @@ export async function updateChargeStatus(
     metadata: { status, returnReason },
   });
 
-  revalidateRoutes(ROUTE.cuotas, ROUTE.cuotaFicha);
+  revalidateRoutes(ROUTE.cuotas, ROUTE.cuotaFicha, ROUTE.personaFicha);
   return { message: status === "collected" ? t("chargeMarkedCollected") : t("chargeMarkedReturned") };
 }
 

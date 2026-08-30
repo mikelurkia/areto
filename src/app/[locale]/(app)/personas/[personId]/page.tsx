@@ -13,11 +13,11 @@ import {
   TriangleAlertIcon,
   UserRoundIcon,
 } from "lucide-react";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, or } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { personGuardians, personTags, persons } from "@/db/schema";
+import { personGuardians, personTags, persons, sepaCharges } from "@/db/schema";
 import {
   addPersonDocument,
   addPersonNote,
@@ -51,6 +51,7 @@ import { FamilyPanel, type FamilyMember } from "@/components/personas/family-pan
 import { InfoRow } from "@/components/info-row";
 import { MedicalCheckupDialog } from "@/components/personas/medical-checkup-dialog";
 import { PersonDialog } from "@/components/personas/person-dialog";
+import { PersonCuotasTable } from "@/components/personas/person-cuotas-table";
 import { PersonIdScanDialog } from "@/components/personas/person-id-scan-dialog";
 import { PersonPhotoDialog } from "@/components/personas/person-photo-dialog";
 import { RevokeMandateDialog } from "@/components/personas/revoke-mandate-dialog";
@@ -219,6 +220,67 @@ function FamilySectionSkeleton() {
   );
 }
 
+/**
+ * Cargos SEPA de la persona: como pagadora (`payerPersonId`) y/o como sujeto
+ * cobrado (sus membresías de jugador o su ficha de socio). Aparte del resto
+ * de la ficha, con su propio <Suspense>, porque trae relaciones anidadas
+ * (remesa, historial de devoluciones) además de los cargos en sí.
+ */
+async function CuotasSection({
+  personId,
+  membershipIds,
+  clubMemberId,
+  locale,
+  t,
+}: {
+  personId: string;
+  membershipIds: string[];
+  clubMemberId: string | null;
+  locale: string;
+  t: Awaited<ReturnType<typeof getTranslations<"Cuotas">>>;
+}) {
+  const conditions = [eq(sepaCharges.payerPersonId, personId)];
+  if (membershipIds.length > 0) conditions.push(inArray(sepaCharges.membershipId, membershipIds));
+  if (clubMemberId) conditions.push(eq(sepaCharges.clubMemberId, clubMemberId));
+
+  const charges = await db.query.sepaCharges.findMany({
+    where: or(...conditions),
+    with: {
+      remittance: { columns: { id: true, messageId: true } },
+      membership: { with: { team: true } },
+      returns: {
+        orderBy: (r, { desc }) => [desc(r.createdAt)],
+        with: { remittance: { columns: { id: true, messageId: true } } },
+      },
+    },
+    orderBy: (charge, { desc }) => [desc(charge.createdAt)],
+  });
+
+  const rows = charges.map((charge) => ({
+    id: charge.id,
+    periodKey: charge.periodKey,
+    subjectName: charge.kind === "player" ? (charge.membership?.team?.name ?? "—") : t("kindMember"),
+    amountCents: charge.amountCents,
+    status: charge.status,
+    collectedOn: charge.collectedOn,
+    returnedOn: charge.returnedOn,
+    returnReason: charge.returnReason,
+    remittance: charge.remittance,
+    returns: charge.returns,
+  }));
+
+  return <PersonCuotasTable charges={rows} locale={locale} />;
+}
+
+function CuotasSectionSkeleton() {
+  return (
+    <div className="flex flex-col gap-2" aria-hidden>
+      <Skeleton className="h-3 w-28" />
+      <Skeleton className="h-24 w-full" />
+    </div>
+  );
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -235,6 +297,7 @@ const PERSON_TABS = [
   "general",
   "familia",
   "equipos",
+  "cuotas",
   "titulaciones",
   "medico",
   "documentos",
@@ -260,9 +323,15 @@ export default async function PersonDetailPage({
   const canManageMedical = hasPermission(user, "personas.medical.manage");
   const canViewBanking = hasPermission(user, "personas.banking.view");
   const canManageBanking = hasPermission(user, "personas.banking.manage");
+  const canViewCuotas = hasPermission(user, "cuotas.view");
   const requestedTab = PERSON_TABS.find((value) => value === tab) ?? "general";
-  const initialTab = requestedTab === "medico" && !canViewMedical ? "general" : requestedTab;
+  const initialTab =
+    (requestedTab === "medico" && !canViewMedical) ||
+    (requestedTab === "cuotas" && !canViewCuotas)
+      ? "general"
+      : requestedTab;
   const t = await getTranslations("Personas");
+  const tCuotas = await getTranslations("Cuotas");
   const tEquipos = await getTranslations("Equipos");
   const tInscripciones = await getTranslations("Inscripciones");
 
@@ -520,6 +589,9 @@ export default async function PersonDetailPage({
           <TabsTrigger value="equipos">
             {t("tabTeams", { count: person.memberships.length })}
           </TabsTrigger>
+          {canViewCuotas ? (
+            <TabsTrigger value="cuotas">{t("tabCuotas")}</TabsTrigger>
+          ) : null}
           <TabsTrigger value="titulaciones">
             {t("tabQualifications", { count: person.qualifications.length })}
           </TabsTrigger>
@@ -878,6 +950,23 @@ export default async function PersonDetailPage({
             ))
           )}
         </TabsContent>
+
+        {canViewCuotas ? (
+          <TabsContent value="cuotas" keepMounted className="flex flex-col gap-4">
+            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              {t("cuotasSection")}
+            </h2>
+            <Suspense fallback={<CuotasSectionSkeleton />}>
+              <CuotasSection
+                personId={person.id}
+                membershipIds={person.memberships.map((m) => m.id)}
+                clubMemberId={person.clubMember?.id ?? null}
+                locale={locale}
+                t={tCuotas}
+              />
+            </Suspense>
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="titulaciones" keepMounted className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
