@@ -1558,9 +1558,15 @@
     "importPlaceholder": "Ulma; 1400; colaborador\nCoinbroker; 1500; principal",
     "importEmpty": "Ez dago daturik inportatzeko.",
     "importDone": "{count} babesle inportatu dira.",
-    "overdueSection": "Kobrantza iraungiak",
-    "overdueSectionHint": "Mugaeguna igarota duten eta oraindik kobratu gabeko epeak.",
+    "upcomingSection": "Hurrengo mugaegunak",
+    "upcomingSectionHint": "Hurrengo {days} egunetan iraungiko diren kobrantzak eta babesletzak.",
+    "upcomingKind": {
+      "paymentOverdue": "Kobrantza iraungia",
+      "paymentDue": "Iraungitzear dagoen kobrantza",
+      "termEnding": "Iraungitzear dagoen babesletza"
+    },
     "overdueSince": "{date}(e)an iraungi zen",
+    "dueOn": "{date}(e)an iraungiko da",
     "yearlyComparisonSection": "Urtez urteko konparaketa",
     "yearlyComparisonHint": "Konprometitua eta kobratua babesletzaren hasiera-urtearen arabera.",
     "yearLabel": "Urtea",

@@ -1558,9 +1558,15 @@
     "importPlaceholder": "Ulma; 1400; colaborador\nCoinbroker; 1500; principal",
     "importEmpty": "No hay datos para importar.",
     "importDone": "{count} patrocinadores importados.",
-    "overdueSection": "Cobros vencidos",
-    "overdueSectionHint": "Plazos con vencimiento pasado que siguen sin cobrar.",
+    "upcomingSection": "Próximos vencimientos",
+    "upcomingSectionHint": "Cobros pendientes y patrocinios que vencen en los próximos {days} días.",
+    "upcomingKind": {
+      "paymentOverdue": "Cobro vencido",
+      "paymentDue": "Cobro por vencer",
+      "termEnding": "Patrocinio por vencer"
+    },
     "overdueSince": "Venció el {date}",
+    "dueOn": "Vence el {date}",
     "yearlyComparisonSection": "Comparativa por año",
     "yearlyComparisonHint": "Comprometido y cobrado por año de inicio del patrocinio.",
     "yearLabel": "Año",
