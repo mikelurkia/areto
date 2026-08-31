@@ -23,21 +23,20 @@ import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { getSignedUrls } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
 import { RosterHealth } from "@/components/equipos/roster-health";
-import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
 import { RenewTeamDialog } from "@/components/equipos/renew-team-dialog";
 import { TeamContactExportDialog } from "@/components/equipos/team-contact-export-dialog";
-import { formatCents } from "@/lib/money";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { RosterTable } from "@/components/equipos/roster-table";
 import { TeamCaptainCard } from "@/components/equipos/team-captain-card";
+import { TeamForm } from "@/components/equipos/team-form";
 import { DocumentDialog } from "@/components/document-dialog";
 import { NotesLog } from "@/components/notes-log";
 import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -178,8 +177,8 @@ export default async function TeamDetailPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      {/* La descripción es una sola línea de metadatos —categoría, temporada,
-          años y datos federativos— para no comerse el alto de la ficha. */}
+      {/* Solo lo mínimo identificativo: el resto de la configuración vive en
+          la pestaña "Configuración". */}
       <PageHeader
         back={{ href: backHref, label: backLabel }}
         title={team.name}
@@ -187,31 +186,9 @@ export default async function TeamDetailPage({
           team.category ? t(`category.${team.category}`) : t("categoryNone"),
           team.gender ? t(`gender.${team.gender}`) : null,
           team.season.name,
-          team.minBirthYear !== null && team.maxBirthYear !== null
-            ? `${team.minBirthYear}–${team.maxBirthYear}`
-            : null,
-          team.playerFeeCents !== null
-            ? t(`feePeriodShort.${team.playerFeePeriod}`, {
-                amount: formatCents(team.playerFeeCents, locale),
-              })
-            : null,
-          team.federationGroup,
-          team.federationCode
-            ? t("federationCodeShort", { code: team.federationCode })
-            : null,
-          !categoryRequiresMedicalCheckup(team.category)
-            ? t("noMedicalCheckupRequired")
-            : null,
         ]
           .filter(Boolean)
           .join(" · ")}
-        meta={
-          team.playerFeeNotes ? (
-            <span className="text-xs text-muted-foreground">
-              {team.playerFeeNotes}
-            </span>
-          ) : null
-        }
         actions={
           <>
             {hasPermission(user, "equipos.acta") ? (
@@ -258,6 +235,9 @@ export default async function TeamDetailPage({
           <TabsTrigger value="bitacora">
             {t("tabNotesLog", { count: team.noteEntries.length })}
           </TabsTrigger>
+          {canManage ? (
+            <TabsTrigger value="configuracion">{t("tabConfiguration")}</TabsTrigger>
+          ) : null}
         </TabsList>
 
         <TabsContent value="plantilla" keepMounted className="flex flex-col gap-3">
@@ -482,6 +462,31 @@ export default async function TeamDetailPage({
             }))}
           />
         </TabsContent>
+
+        {canManage ? (
+          <TabsContent value="configuracion" keepMounted>
+            <Card>
+              <CardContent>
+                <TeamForm
+                  mode="edit"
+                  team={{
+                    id: team.id,
+                    name: team.name,
+                    category: team.category,
+                    gender: team.gender,
+                    minBirthYear: team.minBirthYear,
+                    maxBirthYear: team.maxBirthYear,
+                    federationGroup: team.federationGroup,
+                    federationCode: team.federationCode,
+                    playerFeeCents: team.playerFeeCents,
+                    playerFeePeriod: team.playerFeePeriod,
+                    playerFeeNotes: team.playerFeeNotes,
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   );
