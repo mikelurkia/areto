@@ -198,33 +198,3 @@ export function buildContactExport(
 
   return { headers, rows };
 }
-
-/**
- * El mismo contenido, en `.xlsx`.
- *
- * Todas las celdas van como texto a propósito: en cuanto Excel decide el tipo
- * por su cuenta, un código postal pierde el cero inicial, un DNI que solo
- * lleva dígitos se convierte en número y una fecha se reinterpreta según el
- * idioma de quien abre el fichero. Aquí lo que sale es exactamente lo que hay
- * en la base de datos.
- *
- * El generador se importa dinámicamente porque solo hace falta cuando alguien
- * pide el Excel: así no lastra el arranque de las demás rutas.
- */
-export async function buildContactWorkbook(
-  headers: readonly string[],
-  rows: readonly string[][],
-): Promise<Buffer> {
-  const { default: writeXlsxFile } = await import("write-excel-file/node");
-
-  const sheet = [
-    headers.map((value) => ({ value, type: String, fontWeight: "bold" as const })),
-    ...rows.map((row) => row.map((value) => ({ value, type: String }))),
-  ];
-
-  // Anchos aproximados para no abrir el fichero con las diez columnas
-  // colapsadas; el orden es el de `buildContactExport`.
-  const columns = [24, 28, 16, 14, 34, 14, 22, 30, 18, 28].map((width) => ({ width }));
-
-  return writeXlsxFile(sheet, { columns }).toBuffer();
-}

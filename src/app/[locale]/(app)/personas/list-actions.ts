@@ -6,7 +6,6 @@ import { requirePermission } from "@/lib/auth";
 import {
   CONTACT_EXPORT_BASENAME,
   buildContactExport,
-  buildContactWorkbook,
   loadContactPersons,
 } from "@/lib/contact-export";
 import {
@@ -90,28 +89,5 @@ export async function exportContactRows(
     await loadContactPersons(toContactScope(scope)),
     t,
   );
-  return { filename: `${CONTACT_EXPORT_BASENAME}.csv`, headers, rows };
-}
-
-/**
- * Lo mismo en `.xlsx`. El fichero se genera en el servidor y viaja en base64:
- * así el generador de Excel no entra en el bundle del navegador. Es el mismo
- * camino que ya usa la descarga del XML de remesas.
- */
-export async function exportContactWorkbook(
-  scope: ContactActionScope,
-): Promise<{ filename: string; base64: string; rowCount: number }> {
-  await requirePermission("personas.view");
-  const t = await getTranslations("Personas");
-  const { headers, rows } = buildContactExport(
-    await loadContactPersons(toContactScope(scope)),
-    t,
-  );
-  const buffer = await buildContactWorkbook(headers, rows);
-  return {
-    filename: `${CONTACT_EXPORT_BASENAME}.xlsx`,
-    base64: buffer.toString("base64"),
-    // Para que quien lo pide pueda avisar de "no hay nadie" sin decodificar el fichero.
-    rowCount: rows.length,
-  };
+  return { filename: CONTACT_EXPORT_BASENAME, headers, rows };
 }

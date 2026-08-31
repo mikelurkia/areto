@@ -132,6 +132,14 @@
     "fixtureMissingPreferredDay": "Sin día confirmado",
     "fixturesPreferredDayWarning": "{count, plural, one {# partido en casa de la próxima jornada sin día confirmado} other {# partidos en casa de la próxima jornada sin día confirmado}}"
   },
+  "Export": {
+    "action": "Exportar",
+    "csv": "CSV",
+    "xlsx": "Excel (.xlsx)",
+    "print": "Imprimir",
+    "empty": "No hay nada que exportar con estos filtros.",
+    "error": "No se ha podido generar el fichero. Inténtalo de nuevo."
+  },
   "Pagination": {
     "previous": "Anterior",
     "next": "Siguiente",

@@ -132,6 +132,14 @@
     "fixtureMissingPreferredDay": "Egunik baieztatu gabe",
     "fixturesPreferredDayWarning": "{count, plural, one {hurrengo jardunaldiko etxeko partida # egun baieztatu gabe} other {hurrengo jardunaldiko etxeko # partida egun baieztatu gabe}}"
   },
+  "Export": {
+    "action": "Esportatu",
+    "csv": "CSV",
+    "xlsx": "Excel (.xlsx)",
+    "print": "Inprimatu",
+    "empty": "Iragazki hauekin ez dago zer esportaturik.",
+    "error": "Ezin izan da fitxategia sortu. Saiatu berriro."
+  },
   "Pagination": {
     "previous": "Aurrekoa",
     "next": "Hurrengoa",

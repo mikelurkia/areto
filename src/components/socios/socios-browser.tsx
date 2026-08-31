@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { DownloadIcon, MailIcon, SearchIcon } from "lucide-react";
+import { MailIcon, SearchIcon } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/table";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
-import { downloadCsv } from "@/lib/csv";
+import { ExportMenu } from "@/components/export-menu";
 
 export type SocioRow = {
   id: string;
@@ -85,32 +85,22 @@ export function SociosBrowser({
   const [isPending, startTransition] = useTransition();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkPending, startBulkTransition] = useTransition();
-  const [isExporting, startExportTransition] = useTransition();
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
   /** Exporta todas las filas que casan con la búsqueda, no solo la página
    * actual: con la paginación en servidor el navegador ya no tiene el resto. */
-  function handleExportCsv() {
-    startExportTransition(async () => {
-      const rows = await exportMemberRows(Object.fromEntries(searchParams));
-      const headers = [
-        t("colName"),
-        t("colMemberNumber"),
-        t("colContact"),
-        t("colJoinedAt"),
-      ];
-      downloadCsv(
-        "socios.csv",
-        headers,
-        rows.map((s) => [
-          `${s.firstName} ${s.lastName}`,
-          s.memberNumber !== null ? String(s.memberNumber) : "",
-          s.email || s.phone || "",
-          s.joinedAt,
-        ]),
-      );
-    });
+  async function exportData() {
+    const rows = await exportMemberRows(Object.fromEntries(searchParams));
+    return {
+      headers: [t("colName"), t("colMemberNumber"), t("colContact"), t("colJoinedAt")],
+      rows: rows.map((s) => [
+        `${s.firstName} ${s.lastName}`,
+        s.memberNumber !== null ? String(s.memberNumber) : "",
+        s.email || s.phone || "",
+        s.joinedAt,
+      ]),
+    };
   }
 
   function handleCancel(personId: string) {
@@ -196,15 +186,9 @@ export function SociosBrowser({
             className="pl-8"
           />
         </div>
-        <Button
-          variant="outline"
-          className="ml-auto"
-          onClick={handleExportCsv}
-          disabled={isExporting}
-        >
-          <DownloadIcon data-icon="inline-start" />
-          {t("exportCsvAction")}
-        </Button>
+        <div className="ml-auto">
+          <ExportMenu filename="socios" getData={exportData} />
+        </div>
       </div>
 
       {canManage && selectedIds.size > 0 ? (

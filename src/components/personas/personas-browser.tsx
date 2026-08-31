@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
-  DownloadIcon,
   MailIcon,
   MessageCircleIcon,
   PhoneIcon,
@@ -22,11 +21,11 @@ import {
 } from "@/app/[locale]/(app)/personas/list-actions";
 import { calculateAge, isMinor } from "@/lib/age";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
-import { downloadCsv } from "@/lib/csv";
 import { whatsappLink } from "@/lib/contact-links";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
+import { ExportMenu } from "@/components/export-menu";
 import { PaginationBar } from "@/components/pagination-bar";
-import { ContactExportMenu } from "@/components/personas/contact-export";
+import { ContactExportItems } from "@/components/personas/contact-export";
 import { DeletePersonDialog } from "@/components/personas/delete-person-dialog";
 import { PersonDialog } from "@/components/personas/person-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -136,7 +135,6 @@ export function PersonasBrowser({
   const [bulkTeam, setBulkTeam] = useState("");
   const [bulkRole, setBulkRole] = useState<"player" | "coach" | "staff">("player");
   const [isBulkPending, startBulkTransition] = useTransition();
-  const [isExporting, startExportTransition] = useTransition();
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
@@ -154,10 +152,10 @@ export function PersonasBrowser({
   // La exportación sigue significando "todo lo que casa con los filtros", no
   // solo la página: ahora esas filas las devuelve el servidor, porque el
   // navegador ya no tiene el resto.
-  function handleExportCsv() {
-    startExportTransition(async () => {
-      const rows = await exportPersonRows(Object.fromEntries(searchParams));
-      const headers = [
+  async function exportData() {
+    const rows = await exportPersonRows(Object.fromEntries(searchParams));
+    return {
+      headers: [
         t("colName"),
         t("memberNumberLabel"),
         t("colNationalId"),
@@ -166,22 +164,18 @@ export function PersonasBrowser({
         t("colEmail"),
         t("colPhone"),
         t("memberBadge"),
-      ];
-      downloadCsv(
-        "personas.csv",
-        headers,
-        rows.map((p) => [
-          `${p.firstName} ${p.lastName}`,
-          p.memberNumber !== null ? String(p.memberNumber) : "",
-          p.nationalId ?? "",
-          p.memberships.map((m) => m.team.name).join(" / "),
-          p.guardians.map((g) => `${g.firstName} ${g.lastName}`).join(" / "),
-          p.email ?? "",
-          p.phone ?? "",
-          p.isMember ? t("memberBadge") : "",
-        ]),
-      );
-    });
+      ],
+      rows: rows.map((p) => [
+        `${p.firstName} ${p.lastName}`,
+        p.memberNumber !== null ? String(p.memberNumber) : "",
+        p.nationalId ?? "",
+        p.memberships.map((m) => m.team.name).join(" / "),
+        p.guardians.map((g) => `${g.firstName} ${g.lastName}`).join(" / "),
+        p.email ?? "",
+        p.phone ?? "",
+        p.isMember ? t("memberBadge") : "",
+      ]),
+    };
   }
 
   /**
@@ -408,21 +402,21 @@ export function PersonasBrowser({
         ) : null}
         {/* La exportación ya va al servidor a por las filas, así que puede
             tardar: deshabilitado mientras está en vuelo. */}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={handleExportCsv} disabled={isExporting}>
-            <DownloadIcon data-icon="inline-start" />
-            {t("exportCsvAction")}
-          </Button>
-          {/* Fuera de la barra de acciones masivas a propósito: aquella pide
-              `canManage` y esta descarga se resuelve con permiso de lectura. */}
-          <ContactExportMenu
-            getScope={contactExportScope}
-            scopeLabel={
-              selectedIds.size > 0
-                ? t("contactExportScopeSelected", { count: selectedIds.size })
-                : t("contactExportScopeFiltered")
-            }
-          />
+        <div className="ml-auto">
+          {/* Un solo menú con los dos juegos de datos de esta pantalla: el
+              listado tal cual y los datos de contacto. Fuera de la barra de
+              acciones masivas a propósito: aquella pide `canManage` y esto se
+              resuelve con permiso de lectura. */}
+          <ExportMenu filename="personas" getData={exportData}>
+            <ContactExportItems
+              getScope={contactExportScope}
+              scopeLabel={
+                selectedIds.size > 0
+                  ? t("contactExportScopeSelected", { count: selectedIds.size })
+                  : t("contactExportScopeFiltered")
+              }
+            />
+          </ExportMenu>
         </div>
       </div>
 
