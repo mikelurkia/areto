@@ -39,7 +39,7 @@ import { Link } from "@/i18n/navigation";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { MembershipTable } from "@/components/equipos/membership-table";
 import { MaskedIbanText } from "@/components/masked-iban";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader, SectionHeading } from "@/components/page-header";
 import { AssignMemberNumberButton } from "@/components/personas/assign-member-number-button";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { DeleteInjuryReportDialog } from "@/components/personas/delete-injury-report-dialog";
@@ -616,10 +616,8 @@ export default async function PersonDetailPage({
         <TabsContent value="general" keepMounted className="flex flex-col gap-6">
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("contactSection")}
-              </h2>
-              <dl className="grid grid-cols-2 gap-3">
+              <SectionHeading title={t("contactSection")} />
+              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <InfoRow label={t("emailLabel")} value={person.email} />
                 <InfoRow label={t("phoneLabel")} value={person.phone} />
                 <InfoRow label={t("addressLabel")} value={person.address} />
@@ -672,20 +670,16 @@ export default async function PersonDetailPage({
             </div>
 
             <div className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("personalDataSection")}
-              </h2>
-              <dl className="grid grid-cols-2 gap-3">
+              <SectionHeading title={t("personalDataSection")} />
+              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <InfoRow label={t("birthDateLabel")} value={person.birthDate} />
                 <InfoRow label={t("nationalIdLabel")} value={person.nationalId} />
               </dl>
             </div>
 
             <div className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("memberSection")}
-              </h2>
-              <dl className="grid grid-cols-2 gap-3">
+              <SectionHeading title={t("memberSection")} />
+              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <InfoRow
                   label={t("memberNumberLabel")}
                   value={
@@ -736,10 +730,8 @@ export default async function PersonDetailPage({
             </div>
 
             <div className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("idDocumentsSection")}
-              </h2>
-              <dl className="grid grid-cols-2 gap-3">
+              <SectionHeading title={t("idDocumentsSection")} />
+              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <InfoRow
                   label={t("idFrontLabel")}
                   value={
@@ -800,10 +792,8 @@ export default async function PersonDetailPage({
             </div>
 
             <div className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("sizesSection")}
-              </h2>
-              <dl className="grid grid-cols-3 gap-3">
+              <SectionHeading title={t("sizesSection")} />
+              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <InfoRow label={t("shirtSizeLabel")} value={person.shirtSize} />
                 <InfoRow label={t("pantsSizeLabel")} value={person.pantsSize} />
                 <InfoRow label={t("shoeSizeLabel")} value={person.shoeSize} />
@@ -811,9 +801,7 @@ export default async function PersonDetailPage({
             </div>
 
             <div className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("consentSection")}
-              </h2>
+              <SectionHeading title={t("consentSection")} />
               <div className="flex flex-wrap gap-1">
                 {person.photoConsent ? (
                   <Badge
@@ -872,9 +860,7 @@ export default async function PersonDetailPage({
 
             {person.notes ? (
               <div className="flex flex-col gap-3 sm:col-span-2">
-                <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  {t("notesLabel")}
-                </h2>
+                <SectionHeading title={t("notesLabel")} />
                 <p className="text-sm whitespace-pre-wrap">{person.notes}</p>
               </div>
             ) : null}
@@ -895,21 +881,19 @@ export default async function PersonDetailPage({
         </TabsContent>
 
         <TabsContent value="equipos" keepMounted className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              {t("teamsSection")}
-            </h2>
-            {canManage && availableTeamOptions.length > 0 ? (
-              <span className="print:hidden">
+          <SectionHeading
+            title={t("teamsSection")}
+            actions={
+              canManage && availableTeamOptions.length > 0 ? (
                 <MembershipDialog
                   mode="create-person"
                   personId={person.id}
                   personName={fullName}
                   availableTeams={availableTeamOptions}
                 />
-              </span>
-            ) : null}
-          </div>
+              ) : null
+            }
+          />
           {seasonGroups.length === 0 ? (
             <SectionPlaceholder size="compact" title={t("noTeamsDescription")} />
           ) : (
@@ -954,9 +938,7 @@ export default async function PersonDetailPage({
 
         {canViewCuotas ? (
           <TabsContent value="cuotas" keepMounted className="flex flex-col gap-4">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              {t("cuotasSection")}
-            </h2>
+            <SectionHeading title={t("cuotasSection")} />
             <Suspense fallback={<CuotasSectionSkeleton />}>
               <CuotasSection
                 personId={person.id}
@@ -970,16 +952,14 @@ export default async function PersonDetailPage({
         ) : null}
 
         <TabsContent value="titulaciones" keepMounted className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              {t("qualificationsSection")}
-            </h2>
-            {canManage ? (
-              <span className="print:hidden">
+          <SectionHeading
+            title={t("qualificationsSection")}
+            actions={
+              canManage ? (
                 <QualificationDialog mode="create" personId={person.id} />
-              </span>
-            ) : null}
-          </div>
+              ) : null
+            }
+          />
           {person.qualifications.length === 0 ? (
             <SectionPlaceholder size="compact" title={t("noQualificationsDescription")} />
           ) : (
@@ -1036,16 +1016,14 @@ export default async function PersonDetailPage({
         {canViewMedical ? (
           <TabsContent value="medico" keepMounted className="flex flex-col gap-6">
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("medicalCheckupsSection")}
-              </h2>
-              {canManageMedical ? (
-                <span className="print:hidden">
+            <SectionHeading
+              title={t("medicalCheckupsSection")}
+              actions={
+                canManageMedical ? (
                   <MedicalCheckupDialog mode="create" personId={person.id} />
-                </span>
-              ) : null}
-            </div>
+                ) : null
+              }
+            />
             {person.medicalCheckups.length === 0 ? (
               <SectionPlaceholder size="compact" title={t("noMedicalCheckupsDescription")} />
             ) : (
@@ -1119,16 +1097,14 @@ export default async function PersonDetailPage({
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("injuryReportsSection")}
-              </h2>
-              {canManageMedical ? (
-                <span className="print:hidden">
-                  {/* Sin ficha en ningún equipo no hay parte que tramitar: lo
-                      cubre la licencia federativa del jugador con su equipo
-                      (ver la página del parte, que rechaza el alta igual). */}
-                  {person.memberships.length === 0 ? (
+            <SectionHeading
+              title={t("injuryReportsSection")}
+              actions={
+                canManageMedical ? (
+                  /* Sin ficha en ningún equipo no hay parte que tramitar: lo
+                     cubre la licencia federativa del jugador con su equipo
+                     (ver la página del parte, que rechaza el alta igual). */
+                  person.memberships.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
                       {t("injuryReportNoTeamHint")}
                     </p>
@@ -1140,10 +1116,10 @@ export default async function PersonDetailPage({
                       <PlusIcon data-icon="inline-start" />
                       {t("addInjuryReportAction")}
                     </Button>
-                  )}
-                </span>
-              ) : null}
-            </div>
+                  )
+                ) : null
+              }
+            />
             {person.injuryReports.length === 0 ? (
               <SectionPlaceholder size="compact" title={t("noInjuryReportsDescription")} />
             ) : (
@@ -1185,12 +1161,10 @@ export default async function PersonDetailPage({
         ) : null}
 
         <TabsContent value="documentos" keepMounted className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              {t("documentsSection")}
-            </h2>
-            {canManage ? (
-              <span className="print:hidden">
+          <SectionHeading
+            title={t("documentsSection")}
+            actions={
+              canManage ? (
                 <DocumentDialog
                   mode="create"
                   parentId={person.id}
@@ -1200,9 +1174,9 @@ export default async function PersonDetailPage({
                   addAction={addPersonDocument}
                   updateAction={updatePersonDocument}
                 />
-              </span>
-            ) : null}
-          </div>
+              ) : null
+            }
+          />
           {person.documents.length === 0 ? (
             <SectionPlaceholder size="compact" title={t("noDocumentsDescription")} />
           ) : (
@@ -1253,9 +1227,7 @@ export default async function PersonDetailPage({
         </TabsContent>
 
         <TabsContent value="inscripciones" keepMounted className="flex flex-col gap-4">
-          <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("registrationsSection")}
-          </h2>
+          <SectionHeading title={t("registrationsSection")} />
           {person.registrations.length === 0 ? (
             <SectionPlaceholder size="compact" title={t("noRegistrationsDescription")} />
           ) : (
@@ -1299,9 +1271,7 @@ export default async function PersonDetailPage({
         </TabsContent>
 
         <TabsContent value="bitacora" keepMounted className="flex flex-col gap-4">
-          <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("notesLogSection")}
-          </h2>
+          <SectionHeading title={t("notesLogSection")} />
           <NotesLog
             parentId={person.id}
             formKey="personId"

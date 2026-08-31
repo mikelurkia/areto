@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 /**
@@ -27,14 +34,20 @@ import { useRouter, useSearchParams } from "next/navigation";
  * servidor, así que se escribe con el router en vez de con la History API. El
  * resto de listados sigue filtrando en memoria y no debe provocar petición
  * alguna, que es lo que este hook evitaba deliberadamente.
+ *
+ * El tercer elemento de la tupla dice si ese viaje está en vuelo. Solo tiene
+ * sentido con `navigate: true`: en los demás la escritura es síncrona y no hay
+ * nada que esperar, así que sale siempre `false`. Sin él, entre teclear y ver
+ * filas nuevas quedaba la tabla anterior quieta en pantalla sin señal alguna.
  */
 export function useFilterParams<T extends Record<string, string>>(
   defaults: T,
   options?: { navigate?: boolean },
-): [T, (patch: Partial<T>) => void] {
+): [T, (patch: Partial<T>) => void, boolean] {
   const searchParams = useSearchParams();
   const router = useRouter();
   const navigate = options?.navigate ?? false;
+  const [isPending, startTransition] = useTransition();
 
   const values = useMemo(
     () =>
@@ -62,13 +75,34 @@ export function useFilterParams<T extends Record<string, string>>(
       const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
       // `replace` y no `push` por el mismo motivo que `replaceState`: un filtro
       // por pulsación no debe dejar una entrada de historial por tecla.
-      if (navigate) router.replace(url, { scroll: false });
+      // Dentro de una transición para poder decir que el listado se está
+      // recargando; el `replaceState` no la necesita porque no espera a nadie.
+      if (navigate) startTransition(() => router.replace(url, { scroll: false }));
       else window.history.replaceState(null, "", url);
     },
     [defaults, navigate, router],
   );
 
-  return [values, setFilters];
+  return [values, setFilters, isPending];
+}
+
+/**
+ * ¿Hay algún filtro puesto? Equivalente en cliente de `hasActiveFilters` de
+ * `person-list.ts`, que responde a lo mismo en servidor para distinguir "el
+ * club no tiene personas" de "esta búsqueda no devuelve nada". Aquí sirve para
+ * lo otro: enseñar «limpiar filtros» solo cuando hay algo que limpiar.
+ *
+ * `pagina` no cuenta: estar en la página 3 no es un filtro, y ofrecer
+ * "limpiar" por haber pasado de página sería ruido.
+ */
+export function hasActiveFilters<T extends Record<string, string>>(
+  values: T,
+  defaults: T,
+  ignore: readonly (keyof T)[] = ["pagina" as keyof T],
+): boolean {
+  return Object.keys(defaults).some(
+    (key) => !ignore.includes(key) && values[key] !== defaults[key],
+  );
 }
 
 /** Margen entre la última tecla y la escritura en la URL. */

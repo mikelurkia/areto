@@ -6,6 +6,7 @@ import { requirePermission } from "@/lib/auth";
 import { getClubSettings } from "@/lib/club";
 import { loadContactPersons, resolveContactFields } from "@/lib/contact-export";
 import { parsePersonFilters } from "@/lib/person-list";
+import { EMPTY } from "@/components/empty-value";
 import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
 import { PrintableSheet } from "@/components/printable-sheet";
@@ -30,9 +31,6 @@ import {
  */
 
 type SearchParams = Record<string, string | string[] | undefined>;
-
-/** Sin dato, una raya: igual que el acta federativa y el listado médico. */
-const EMPTY = "—";
 
 function firstValue(searchParams: SearchParams, key: string): string {
   const value = searchParams[key];

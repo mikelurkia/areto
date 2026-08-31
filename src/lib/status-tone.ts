@@ -14,3 +14,16 @@ export const TONE_VARIANT: Record<StatusTone, "outline" | "success" | "warning" 
   danger: "destructive",
   highlight: "gold",
 };
+
+/**
+ * Color de un icono suelto por tono, para cuando el estado no viste un badge
+ * sino un icono a secas —la columna de avisos del listado de personas—. Mismo
+ * criterio que `ui/alert.tsx`, donde el color va en el icono y no en el texto.
+ */
+export const TONE_ICON: Record<StatusTone, string> = {
+  neutral: "text-muted-foreground",
+  positive: "text-success",
+  warning: "text-warning",
+  danger: "text-destructive",
+  highlight: "text-gold",
+};

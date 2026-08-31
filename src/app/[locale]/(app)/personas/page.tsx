@@ -9,12 +9,16 @@ import {
   loadPersonTagOptions,
   parsePersonFilters,
 } from "@/lib/person-list";
+import { personPhotoThumbPath } from "@/lib/person-photo";
+import { getSignedUrls } from "@/lib/supabase/storage";
 import { Link } from "@/i18n/navigation";
 import { PageHeader } from "@/components/page-header";
 import { PersonasBrowser } from "@/components/personas/personas-browser";
 import { PersonDialog } from "@/components/personas/person-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Button } from "@/components/ui/button";
+
+const PHOTO_BUCKET = "person-photos";
 
 export async function generateMetadata({
   params,
@@ -55,6 +59,16 @@ export default async function PersonasPage({
     loadPersonTagOptions(),
   ]);
 
+  // La miniatura, igual que en la plantilla de equipo: `getSignedUrls` solo
+  // arma rutas del proxy autenticado, así que las 25 de la página no cuestan
+  // ninguna llamada a Storage.
+  const photoUrls = await getSignedUrls(
+    PHOTO_BUCKET,
+    personPage.rows,
+    (p) => (p.photoPath ? personPhotoThumbPath(p.photoPath) : null),
+    (p) => p.id,
+  );
+
   return (
     <div className="flex flex-1 flex-col gap-6">
       <PageHeader
@@ -87,6 +101,7 @@ export default async function PersonasPage({
       ) : (
         <PersonasBrowser
           persons={personPage.rows}
+          photoUrls={Object.fromEntries(photoUrls)}
           total={personPage.total}
           pageCount={personPage.pageCount}
           page={personPage.page}

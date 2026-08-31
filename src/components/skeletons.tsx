@@ -202,7 +202,7 @@ export function FiltersBarSkeleton({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2" aria-hidden>
-      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-8 w-full sm:w-56" />
       {Array.from({ length: selects }, (_, i) => (
         <Skeleton key={i} className="h-8 w-36" />
       ))}

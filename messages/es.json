@@ -581,6 +581,7 @@
     "removeGuardianSr": "Quitar a {name} como tutor/a",
     "colNationalId": "DNI",
     "colTeam": "Equipo",
+    "colAlerts": "Avisos",
     "colGuardian": "Tutor/a",
     "photoLabel": "Foto",
     "viewOriginalPhotoAction": "Ver foto original",
@@ -589,6 +590,9 @@
     "photoInvalidType": "La foto debe ser JPG, PNG o WebP.",
     "photoTooLarge": "La foto no puede pesar más de 5 MB.",
     "searchPlaceholder": "Buscar por nombre, email, DNI o teléfono...",
+    "searchClear": "Borrar la búsqueda",
+    "resultsCount": "{count, plural, =0 {Ninguna persona} one {# persona} other {# personas}}",
+    "clearFilters": "Limpiar filtros",
     "filterTeamLabel": "Equipo",
     "filterTeamAll": "Todos los equipos",
     "filterTeamNone": "Sin equipo",
@@ -903,7 +907,15 @@
     "tabRegistrations": "Inscripciones ({count})",
     "registrationsSection": "Inscripciones",
     "noRegistrationsDescription": "Esta persona no tiene inscripciones registradas todavía.",
-    "viewRegistrationAction": "Ver solicitud"
+    "viewRegistrationAction": "Ver solicitud",
+    "alert": {
+      "minorWithoutGuardian": "Sin tutor",
+      "medicalMissing": "Sin reconocimiento",
+      "medicalExpired": "Reconocimiento caducado",
+      "medicalSoon": "Reconocimiento por caducar",
+      "qualificationSoon": "Titulación por caducar",
+      "photoConsentMissing": "Sin consentimiento de imagen"
+    }
   },
   "Inscripciones": {
     "title": "Inscripciones",
