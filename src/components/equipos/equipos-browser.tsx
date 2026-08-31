@@ -13,7 +13,6 @@ import { useTranslations } from "next-intl";
 
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { DeleteTeamDialog } from "@/components/equipos/delete-team-dialog";
-import { TeamDialog } from "@/components/equipos/team-dialog";
 import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
@@ -37,13 +36,8 @@ type TeamRow = {
   name: string;
   category: string | null;
   gender: string | null;
-  minBirthYear: number | null;
-  maxBirthYear: number | null;
-  federationGroup: string | null;
-  federationCode: string | null;
   playerFeeCents: number | null;
   playerFeePeriod: string;
-  playerFeeNotes: string | null;
   roster: { role: string }[];
   alerts: RosterHealthAlerts;
   hardCount: number;
@@ -240,22 +234,6 @@ export function EquiposBrowser({
                   {canManage ? (
                     <TableCell>
                       <div className="flex justify-end gap-1">
-                        <TeamDialog
-                          mode="edit"
-                          team={{
-                            id: team.id,
-                            name: team.name,
-                            category: team.category,
-                            gender: team.gender,
-                            minBirthYear: team.minBirthYear,
-                            maxBirthYear: team.maxBirthYear,
-                            federationGroup: team.federationGroup,
-                            federationCode: team.federationCode,
-                            playerFeeCents: team.playerFeeCents,
-                            playerFeePeriod: team.playerFeePeriod,
-                            playerFeeNotes: team.playerFeeNotes,
-                          }}
-                        />
                         <DeleteTeamDialog id={team.id} name={team.name} />
                       </div>
                     </TableCell>

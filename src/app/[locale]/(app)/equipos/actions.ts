@@ -2,8 +2,9 @@
 
 import { and, eq, inArray } from "drizzle-orm";
 import { updateTag } from "next/cache";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
+import { redirect } from "@/i18n/navigation";
 import { db } from "@/db";
 import { memberships, seasons, teams } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
@@ -92,24 +93,27 @@ export async function createTeam(
   }
   if (!fee.ok) return { error: t("playerFeeInvalid") };
 
-  await db.insert(teams).values({
-    seasonId,
-    name,
-    category,
-    gender,
-    minBirthYear,
-    maxBirthYear,
-    federationGroup: federationGroup || null,
-    federationCode: federationCode || null,
-    playerFeeCents: fee.cents,
-    playerFeePeriod: fee.period,
-    playerFeeNotes: fee.notes,
-  });
+  const [newTeam] = await db
+    .insert(teams)
+    .values({
+      seasonId,
+      name,
+      category,
+      gender,
+      minBirthYear,
+      maxBirthYear,
+      federationGroup: federationGroup || null,
+      federationCode: federationCode || null,
+      playerFeeCents: fee.cents,
+      playerFeePeriod: fee.period,
+      playerFeeNotes: fee.notes,
+    })
+    .returning({ id: teams.id });
 
   updateTag(SEASON_FEES_TAG);
   updateTag(SEASON_RENEWALS_TAG);
   revalidateRoutes(ROUTE.equipos, ROUTE.equipoFicha, ROUTE.dashboard);
-  return { message: t("teamCreated") };
+  return redirect({ href: `/equipos/${newTeam.id}`, locale: await getLocale() });
 }
 
 export async function updateTeam(

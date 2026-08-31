@@ -1,4 +1,4 @@
-import { ShieldHalfIcon } from "lucide-react";
+import { PlusIcon, ShieldHalfIcon } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -6,11 +6,12 @@ import { db } from "@/db";
 import { seasons, teams } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { computeRosterHealth } from "@/lib/roster-health";
+import { Link } from "@/i18n/navigation";
 import { SeasonSelect } from "@/components/equipos/season-select";
-import { TeamDialog } from "@/components/equipos/team-dialog";
 import { EquiposBrowser } from "@/components/equipos/equipos-browser";
 import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { Button } from "@/components/ui/button";
 
 export async function generateMetadata({
   params,
@@ -78,13 +79,8 @@ export default async function EquiposPage({
       name: team.name,
       category: team.category,
       gender: team.gender,
-      minBirthYear: team.minBirthYear,
-      maxBirthYear: team.maxBirthYear,
-      federationGroup: team.federationGroup,
-      federationCode: team.federationCode,
       playerFeeCents: team.playerFeeCents,
       playerFeePeriod: team.playerFeePeriod,
-      playerFeeNotes: team.playerFeeNotes,
       roster: team.memberships.map((m) => ({ role: m.role })),
       alerts,
       hardCount,
@@ -104,7 +100,13 @@ export default async function EquiposPage({
               selectedId={selectedSeason?.id ?? ""}
             />
             {canManage && selectedSeason ? (
-              <TeamDialog mode="create" seasonId={selectedSeason.id} />
+              <Button
+                render={<Link href={`/equipos/nuevo?season=${selectedSeason.id}`} />}
+                nativeButton={false}
+              >
+                <PlusIcon data-icon="inline-start" />
+                {t("action")}
+              </Button>
             ) : null}
           </>
         }
