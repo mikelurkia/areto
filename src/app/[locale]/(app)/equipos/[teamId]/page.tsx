@@ -1,12 +1,6 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import {
-  BellIcon,
-  ClipboardListIcon,
-  ShieldHalfIcon,
-  TriangleAlertIcon,
-  UserRoundIcon,
-} from "lucide-react";
+import { BellIcon, ClipboardListIcon, ShieldHalfIcon } from "lucide-react";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -35,13 +29,12 @@ import { TeamContactExportDialog } from "@/components/equipos/team-contact-expor
 import { formatCents } from "@/lib/money";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
-import { MembershipTable } from "@/components/equipos/membership-table";
+import { RosterTable } from "@/components/equipos/roster-table";
 import { TeamCaptainCard } from "@/components/equipos/team-captain-card";
 import { DocumentDialog } from "@/components/document-dialog";
 import { NotesLog } from "@/components/notes-log";
 import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -268,39 +261,17 @@ export default async function TeamDetailPage({
         </TabsList>
 
         <TabsContent value="plantilla" keepMounted className="flex flex-col gap-3">
-          {/* Capitán y alta de miembro comparten fila: son las dos acciones de
-              plantilla y así no ocupan dos bloques distintos. */}
-          {canManage ? (
-            <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
-              {captainOptions.length > 0 ? (
-                <TeamCaptainCard
-                  teamId={team.id}
-                  players={captainOptions}
-                  captainMembershipId={captainMembershipId}
-                />
-              ) : null}
-              <MembershipDialog
-                mode="create"
-                teamId={team.id}
-                availablePersons={availablePersons}
-                installmentsMode={team.playerFeePeriod === "installments"}
-              />
-            </div>
-          ) : null}
-
-          {teamWebRegistration.length > 0 ? (
+          {teamWebRegistrationMissing > 0 ? (
             <Card className="flex-row flex-wrap items-center justify-between gap-4 px-(--card-spacing) print:hidden">
               <div className="flex items-center gap-3">
                 <BellIcon className="size-5 shrink-0 text-muted-foreground" />
                 <div>
                   <p className="font-medium">{t("webRegistrationSectionTitle")}</p>
                   <p className="text-sm text-muted-foreground">
-                    {teamWebRegistrationMissing > 0
-                      ? t("webRegistrationSummary", {
-                          missing: teamWebRegistrationMissing,
-                          total: teamWebRegistration.length,
-                        })
-                      : t("webRegistrationAllDone")}
+                    {t("webRegistrationSummary", {
+                      missing: teamWebRegistrationMissing,
+                      total: teamWebRegistration.length,
+                    })}
                   </p>
                 </div>
               </div>
@@ -320,75 +291,88 @@ export default async function TeamDetailPage({
           ) : null}
 
           {teamMemberships.length === 0 ? (
-            <SectionPlaceholder
-              icon={ShieldHalfIcon}
-              title={t("emptyRosterTitle")}
-              description={t("emptyRosterDescription")}
-            />
+            <>
+              {canManage ? (
+                <div className="flex flex-wrap items-center gap-2 print:hidden">
+                  <MembershipDialog
+                    mode="create"
+                    teamId={team.id}
+                    availablePersons={availablePersons}
+                    installmentsMode={team.playerFeePeriod === "installments"}
+                  />
+                </div>
+              ) : null}
+              <SectionPlaceholder
+                icon={ShieldHalfIcon}
+                title={t("emptyRosterTitle")}
+                description={t("emptyRosterDescription")}
+              />
+            </>
           ) : (
-            <MembershipTable
-              items={teamMemberships.map((m) => ({
-                ...m,
-                federationCardUrl: federationCardUrls.get(m.id) ?? null,
-                installmentsMode: team.playerFeePeriod === "installments",
-              }))}
+            <RosterTable
+              teamId={team.id}
+              teamName={team.name}
               canManage={canManage}
-              t={t}
-              subjectHeader={t("colPerson")}
-              nameFor={(m) => `${m.person.firstName} ${m.person.lastName}`}
-              renderSubject={(m) => {
-                const photoUrl = photoUrls.get(m.personId) ?? null;
-                const personName = `${m.person.firstName} ${m.person.lastName}`;
+              requiresCheckup={categoryRequiresMedicalCheckup(team.category)}
+              installmentsMode={team.playerFeePeriod === "installments"}
+              minBirthYear={team.minBirthYear}
+              maxBirthYear={team.maxBirthYear}
+              headerActions={
+                canManage ? (
+                  <>
+                    {captainOptions.length > 0 ? (
+                      <TeamCaptainCard
+                        teamId={team.id}
+                        players={captainOptions}
+                        captainMembershipId={captainMembershipId}
+                      />
+                    ) : null}
+                    <MembershipDialog
+                      mode="create"
+                      teamId={team.id}
+                      availablePersons={availablePersons}
+                      installmentsMode={team.playerFeePeriod === "installments"}
+                    />
+                  </>
+                ) : null
+              }
+              items={teamMemberships.map((m) => {
                 const birthYear = m.person.birthDate
                   ? Number(m.person.birthDate.slice(0, 4))
                   : null;
-                const ageOutOfRange =
-                  m.role === "player" &&
-                  birthYear !== null &&
-                  team.minBirthYear !== null &&
-                  team.maxBirthYear !== null &&
-                  (birthYear < team.minBirthYear || birthYear > team.maxBirthYear);
                 const webRegistrationStatus = webRegistrationStatusByPersonId.get(m.personId);
-                const webRegistrationMissing =
-                  webRegistrationStatus === "missing" || webRegistrationStatus === "rejected";
-                return (
-                  <div className="flex items-center gap-2">
-                    <Avatar size="sm">
-                      {photoUrl ? <AvatarImage src={photoUrl} alt="" /> : null}
-                      <AvatarFallback>
-                        <UserRoundIcon className="size-3" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <Link
-                      href={`/personas/${m.personId}?from=${encodeURIComponent(`/equipos/${team.id}`)}&fromLabel=${encodeURIComponent(team.name)}`}
-                      className="hover:underline"
-                    >
-                      {personName}
-                    </Link>
-                    {m.isCaptain ? (
-                      <Badge variant="outline" title={t("captainLabel")}>
-                        {t("captainShort")}
-                      </Badge>
-                    ) : null}
-                    {webRegistrationMissing ? (
-                      <Badge variant="destructive" title={t("webRegistrationMissingLabel")}>
-                        {t("webRegistrationMissingShort")}
-                      </Badge>
-                    ) : null}
-                    {ageOutOfRange ? (
-                      <span
-                        title={t("ageOutOfRangeLabel", {
-                          year: birthYear!,
-                          min: team.minBirthYear!,
-                          max: team.maxBirthYear!,
-                        })}
-                      >
-                        <TriangleAlertIcon className="size-4 text-destructive" />
-                      </span>
-                    ) : null}
-                  </div>
-                );
-              }}
+                return {
+                  id: m.id,
+                  personId: m.personId,
+                  name: `${m.person.firstName} ${m.person.lastName}`,
+                  photoUrl: photoUrls.get(m.personId) ?? null,
+                  role: m.role,
+                  position: m.position,
+                  jerseyNumber: m.jerseyNumber,
+                  positions: m.positions,
+                  isCaptain: m.isCaptain,
+                  birthYear,
+                  ageOutOfRange:
+                    m.role === "player" &&
+                    birthYear !== null &&
+                    team.minBirthYear !== null &&
+                    team.maxBirthYear !== null &&
+                    (birthYear < team.minBirthYear || birthYear > team.maxBirthYear),
+                  webRegistrationMissing:
+                    webRegistrationStatus === "missing" || webRegistrationStatus === "rejected",
+                  federationCardUrl: federationCardUrls.get(m.id) ?? null,
+                  installmentsCount: m.installmentsCount,
+                  medicalCertUntil: m.person.medicalCertUntil,
+                  shirtSize: m.person.shirtSize,
+                  pantsSize: m.person.pantsSize,
+                  shoeSize: m.person.shoeSize,
+                  nationalId: m.person.nationalId,
+                  phone: m.person.phone,
+                  address: m.person.address,
+                  city: m.person.city,
+                  postalCode: m.person.postalCode,
+                };
+              })}
             />
           )}
         </TabsContent>
