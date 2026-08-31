@@ -21,7 +21,8 @@
     "contrasena": "Contraseña · Areto",
     "accesoRevocado": "Acceso desactivado · Areto",
     "accesoNoAutorizado": "Acceso no autorizado · Areto",
-    "medicoListado": "Reconocimientos médicos · Areto"
+    "medicoListado": "Reconocimientos médicos · Areto",
+    "personasContactos": "Datos de contacto · Areto"
   },
   "Landing": {
     "brand": "Aloña Mendi",
@@ -655,6 +656,14 @@
     "contactOfPhone": "{name} (teléfono)",
     "contactOfBoth": "{name} (correo y teléfono)",
     "contactExportError": "No se ha podido generar el fichero. Inténtalo de nuevo.",
+    "contactExportPrint": "Imprimir",
+    "contactColName": "Nombre y apellidos",
+    "contactPrintTitle": "Datos de contacto",
+    "contactPrintCount": "{count, plural, one {# persona} other {# personas}}",
+    "contactPrintGeneratedOn": "Generado el {date}",
+    "contactPrintGuardianNote": "* Dato del tutor/a principal, no de la persona.",
+    "contactPrintBack": "Volver a personas",
+    "contactPrintAction": "Imprimir",
     "bulkSelectAllSr": "Seleccionar todas las filas de esta página",
     "bulkSelectRowSr": "Seleccionar a {name}",
     "bulkSelectedCount": "{count} seleccionadas",
@@ -1269,6 +1278,7 @@
     "contactExportSelectedCount": "{count} seleccionados",
     "contactExportCsv": "Descargar CSV",
     "contactExportXlsx": "Descargar Excel",
+    "contactExportPrint": "Imprimir",
     "rosterSheetTitle": "Acta de equipo",
     "rosterSheetColName": "Apellidos, nombre",
     "rosterSheetColNationalId": "DNI/NIE",

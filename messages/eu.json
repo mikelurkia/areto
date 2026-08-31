@@ -21,7 +21,8 @@
     "contrasena": "Pasahitza · Areto",
     "accesoRevocado": "Sarbidea desaktibatuta · Areto",
     "accesoNoAutorizado": "Baimenik gabeko sarbidea · Areto",
-    "medicoListado": "Azterketa medikoak · Areto"
+    "medicoListado": "Azterketa medikoak · Areto",
+    "personasContactos": "Harremanetarako datuak · Areto"
   },
   "Landing": {
     "brand": "Aloña Mendi",
@@ -655,6 +656,14 @@
     "contactOfPhone": "{name} (telefonoa)",
     "contactOfBoth": "{name} (helbide elektronikoa eta telefonoa)",
     "contactExportError": "Ezin izan da fitxategia sortu. Saiatu berriro.",
+    "contactExportPrint": "Inprimatu",
+    "contactColName": "Izen-abizenak",
+    "contactPrintTitle": "Harremanetarako datuak",
+    "contactPrintCount": "{count, plural, one {pertsona #} other {# pertsona}}",
+    "contactPrintGeneratedOn": "{date}(e)an sortua",
+    "contactPrintGuardianNote": "* Tutore nagusiaren datua, ez pertsonarena.",
+    "contactPrintBack": "Pertsonetara itzuli",
+    "contactPrintAction": "Inprimatu",
     "bulkSelectAllSr": "Hautatu orrialde honetako lerro guztiak",
     "bulkSelectRowSr": "{name} hautatu",
     "bulkSelectedCount": "{count} hautatuta",
@@ -1269,6 +1278,7 @@
     "contactExportSelectedCount": "{count} hautatuta",
     "contactExportCsv": "CSV deskargatu",
     "contactExportXlsx": "Excel deskargatu",
+    "contactExportPrint": "Inprimatu",
     "rosterSheetTitle": "Taldearen akta",
     "rosterSheetColName": "Abizenak, izena",
     "rosterSheetColNationalId": "NAN/AIZ",

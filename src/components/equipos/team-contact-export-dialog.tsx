@@ -1,10 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { ContactIcon, FileSpreadsheetIcon, FileTextIcon, Loader2Icon } from "lucide-react";
+import {
+  ContactIcon,
+  FileSpreadsheetIcon,
+  FileTextIcon,
+  Loader2Icon,
+  PrinterIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { useContactExport } from "@/components/personas/contact-export";
+import {
+  contactPrintHref,
+  useContactExport,
+} from "@/components/personas/contact-export";
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -60,9 +70,8 @@ export function TeamContactExportDialog({
     .filter((m) => !excluded.has(m.personId))
     .map((m) => m.personId);
 
-  const { pending, exportCsv, exportXlsx } = useContactExport(() => ({
-    ids: selectedIds,
-  }));
+  const scope = { ids: selectedIds };
+  const { running, pending, exportCsv, exportXlsx } = useContactExport(() => scope);
 
   if (roster.length === 0) return null;
 
@@ -86,7 +95,7 @@ export function TeamContactExportDialog({
         <ContactIcon data-icon="inline-start" />
         {t("contactExportAction")}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t("contactExportTitle")}</DialogTitle>
           <DialogDescription>{t("contactExportDescription")}</DialogDescription>
@@ -133,13 +142,26 @@ export function TeamContactExportDialog({
           <span className="text-muted-foreground text-sm">
             {t("contactExportSelectedCount", { count: selectedIds.length })}
           </span>
-          <div className="flex flex-wrap gap-2">
+          {/* `flex-nowrap`: los tres van en una línea, que es lo que el ancho
+              del diálogo permite ahora. */}
+          <div className="flex flex-nowrap gap-2">
+            <Button
+              variant="outline"
+              render={<Link href={contactPrintHref(scope)} />}
+              nativeButton={false}
+              aria-disabled={selectedIds.length === 0}
+              className={selectedIds.length === 0 ? "pointer-events-none opacity-50" : undefined}
+            >
+              <PrinterIcon data-icon="inline-start" />
+              {t("contactExportPrint")}
+            </Button>
             <Button
               variant="outline"
               onClick={exportCsv}
               disabled={pending || selectedIds.length === 0}
             >
-              {pending ? (
+              {/* El spinner solo en el botón que se ha pulsado. */}
+              {running === "csv" ? (
                 <Loader2Icon className="animate-spin" data-icon="inline-start" />
               ) : (
                 <FileTextIcon data-icon="inline-start" />
@@ -147,7 +169,7 @@ export function TeamContactExportDialog({
               {t("contactExportCsv")}
             </Button>
             <Button onClick={exportXlsx} disabled={pending || selectedIds.length === 0}>
-              {pending ? (
+              {running === "xlsx" ? (
                 <Loader2Icon className="animate-spin" data-icon="inline-start" />
               ) : (
                 <FileSpreadsheetIcon data-icon="inline-start" />
