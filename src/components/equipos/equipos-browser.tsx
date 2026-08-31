@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import {
   BriefcaseIcon,
   CheckIcon,
-  DownloadIcon,
   SearchIcon,
   TriangleAlertIcon,
   UserCheckIcon,
@@ -18,7 +17,6 @@ import { TeamDialog } from "@/components/equipos/team-dialog";
 import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -30,7 +28,7 @@ import {
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { usePagedRows } from "@/hooks/use-paged-rows";
-import { downloadCsv } from "@/lib/csv";
+import { ExportMenu } from "@/components/export-menu";
 import { formatCents } from "@/lib/money";
 import type { RosterHealthAlerts } from "@/lib/roster-health";
 
@@ -113,7 +111,7 @@ export function EquiposBrowser({
 
   const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
-  function handleExportCsv() {
+  function exportData() {
     const headers = [
       t("colName"),
       t("colCategory"),
@@ -139,7 +137,7 @@ export function EquiposBrowser({
         issues.length > 0 ? issues.join(" · ") : t("healthAllGood"),
       ];
     });
-    downloadCsv("equipos.csv", headers, rows);
+    return { headers, rows };
   }
 
   return (
@@ -154,10 +152,9 @@ export function EquiposBrowser({
             className="w-56 pl-8"
           />
         </div>
-        <Button variant="outline" className="ml-auto" onClick={handleExportCsv}>
-          <DownloadIcon data-icon="inline-start" />
-          {t("exportCsvAction")}
-        </Button>
+        <div className="ml-auto">
+          <ExportMenu filename="equipos" getData={exportData} />
+        </div>
       </div>
 
       {filtered.length === 0 ? (

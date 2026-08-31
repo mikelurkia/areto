@@ -2,16 +2,14 @@
 
 import { StatusBadge } from "@/components/status-badge";
 import { useMemo } from "react";
-import { DownloadIcon, SearchIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { DeleteSponsorDialog } from "@/components/patrocinadores/delete-sponsor-dialog";
 import { SponsorDialog } from "@/components/patrocinadores/sponsor-dialog";
-import { PrintButton } from "@/components/print-button";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -29,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
-import { downloadCsv } from "@/lib/csv";
+import { ExportMenu } from "@/components/export-menu";
 import {
   SPONSORSHIP_EXPIRY_WINDOW_DAYS,
   SPONSORSHIP_TONE,
@@ -121,7 +119,7 @@ export function SponsorsBrowser({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sponsors, query, status, tier, today, cutoff]);
 
-  function handleExportCsv() {
+  function exportData() {
     const headers = [
       t("colSponsor"),
       t("tierLabel"),
@@ -142,7 +140,7 @@ export function SponsorsBrowser({
       s.currentTerm?.startsOn ?? "",
       s.currentTerm?.endsOn ?? "",
     ]);
-    downloadCsv("patrocinadores.csv", headers, rows);
+    return { headers, rows };
   }
 
   return (
@@ -197,17 +195,19 @@ export function SponsorsBrowser({
             <SelectItem value="none">{t("filterTierNone")}</SelectItem>
           </SelectContent>
         </Select>
-        <div className="ml-auto flex gap-2">
-          <PrintButton label={t("printAction")} />
-          <Button variant="outline" onClick={handleExportCsv}>
-            <DownloadIcon data-icon="inline-start" />
-            {t("exportCsvAction")}
-          </Button>
+        <div className="ml-auto">
+          {/* Esta pantalla *es* el documento (tiene sus bloques `print:`), así
+              que imprimir es imprimirla, no ir a otra ruta. */}
+          <ExportMenu
+            filename="patrocinadores"
+            getData={exportData}
+            onPrint={() => window.print()}
+          />
         </div>
       </div>
 
       {/*
-        Sin paginar, a propósito: esta pantalla se imprime (`PrintButton`), y lo
+        Sin paginar, a propósito: esta pantalla se imprime (`ExportMenu`), y lo
         que no está pintado no sale en el papel. Paginarla dejaría el listado
         impreso incompleto sin avisar.
       */}

@@ -31,6 +31,7 @@ import { Link } from "@/i18n/navigation";
 import { RosterHealth } from "@/components/equipos/roster-health";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
 import { RenewTeamDialog } from "@/components/equipos/renew-team-dialog";
+import { TeamContactExportDialog } from "@/components/equipos/team-contact-export-dialog";
 import { formatCents } from "@/lib/money";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
@@ -230,6 +231,17 @@ export default async function TeamDetailPage({
                 <ClipboardListIcon data-icon="inline-start" />
                 {t("rosterSheetAction")}
               </Button>
+            ) : null}
+            {hasPermission(user, "personas.view") ? (
+              <TeamContactExportDialog
+                teamId={team.id}
+                roster={teamMemberships.map((m) => ({
+                  personId: m.personId,
+                  name: `${m.person.firstName} ${m.person.lastName}`,
+                  role: m.role,
+                  jerseyNumber: m.jerseyNumber,
+                }))}
+              />
             ) : null}
             {canManage ? (
               <RenewTeamDialog

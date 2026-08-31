@@ -3,17 +3,15 @@
 import { useMemo } from "react";
 import {
   ClipboardListIcon,
-  DownloadIcon,
-  FileTextIcon,
   SearchIcon,
   TriangleAlertIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { ExportMenu } from "@/components/export-menu";
 import { usePagedRows } from "@/hooks/use-paged-rows";
 import { useTabParam } from "@/hooks/use-tab-param";
-import { downloadCsv } from "@/lib/csv";
 import {
   EMPTY_MEDICAL_PANEL_FILTERS,
   filterMedicalPanelRows,
@@ -22,7 +20,6 @@ import {
   type MedicalPanelRow,
 } from "@/lib/medical-panel-rows";
 import { type MedicalCertStatus } from "@/lib/medical-status";
-import { Link } from "@/i18n/navigation";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -180,7 +177,7 @@ export function MedicalPanelBrowser({
     ? `/medico/listado?${exportParams}`
     : "/medico/listado";
 
-  function handleExportCsv() {
+  function certificatesData() {
     const headers = [
       t("colListName"),
       t("colNationalId"),
@@ -203,17 +200,17 @@ export function MedicalPanelBrowser({
       row.medicalCertUntil ?? "",
       t(`filterStatus.${row.status}`),
     ]);
-    downloadCsv("reconocimientos-medicos.csv", headers, rows);
+    return { headers, rows };
   }
 
-  function handleExportInjuryCsv() {
+  function injuryData() {
     const headers = [t("colInjuryDate"), t("colInjuryPerson"), t("colTeams")];
     const rows = filteredInjuryRows.map((row) => [
       row.occurredOn,
       row.personName,
       row.teams.map((tm) => tm.name).join(" / "),
     ]);
-    downloadCsv("partes-lesion.csv", headers, rows);
+    return { headers, rows };
   }
 
   const alertBadges: React.ReactNode[] = [];
@@ -304,22 +301,17 @@ export function MedicalPanelBrowser({
             </SelectContent>
           </Select>
         ) : null}
-        <div className="ml-auto flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            render={<Link href={printListHref} />}
-            nativeButton={false}
-          >
-            <FileTextIcon data-icon="inline-start" />
-            {t("printListAction")}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={view === "certificados" ? handleExportCsv : handleExportInjuryCsv}
-          >
-            <DownloadIcon data-icon="inline-start" />
-            {t("exportCsvAction")}
-          </Button>
+        <div className="ml-auto">
+          {/* Un solo menú para las dos pestañas: exporta e imprime lo que se
+              está viendo, y el listado imprimible ya recibe estos mismos
+              filtros por la URL. */}
+          <ExportMenu
+            filename={
+              view === "certificados" ? "reconocimientos-medicos" : "partes-lesion"
+            }
+            getData={view === "certificados" ? certificatesData : injuryData}
+            printHref={printListHref}
+          />
         </div>
       </div>
 

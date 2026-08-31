@@ -108,8 +108,13 @@ const isMinorSql = sql`(
     and ${persons.birthDate} > current_date - interval '18 years'
   )`;
 
-/** La condición `WHERE` que corresponde a los filtros. */
-function personWhere(filters: PersonFilters) {
+/**
+ * La condición `WHERE` que corresponde a los filtros. Exportada porque la
+ * exportación de datos de contacto (`src/lib/contact-export.ts`) hace su
+ * propia consulta —con otras columnas— pero tiene que respetar exactamente
+ * los mismos filtros que la persona ve aplicados en pantalla.
+ */
+export function personWhere(filters: PersonFilters) {
   const parts: (ReturnType<typeof sql> | undefined)[] = [];
 
   if (filters.q) {

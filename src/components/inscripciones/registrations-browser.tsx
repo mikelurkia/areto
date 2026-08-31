@@ -2,17 +2,16 @@
 
 import { StatusBadge } from "@/components/status-badge";
 import { useMemo } from "react";
-import { DownloadIcon, SearchIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { usePagedRows } from "@/hooks/use-paged-rows";
-import { downloadCsv } from "@/lib/csv";
+import { ExportMenu } from "@/components/export-menu";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { PaginationBar } from "@/components/pagination-bar";
 import { STATUS_TONE, type RegistrationStatus } from "@/lib/registration-status";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -82,7 +81,7 @@ export function RegistrationsBrowser({
   const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
   /** Exporta lo que se está viendo, filtro incluido. */
-  function handleExportCsv() {
+  function exportData() {
     const headers = [
       t("colName"),
       t("colNationalId"),
@@ -101,7 +100,7 @@ export function RegistrationsBrowser({
       r.createdAt,
       t(`status.${r.status}`),
     ]);
-    downloadCsv("inscripciones.csv", headers, rows);
+    return { headers, rows };
   }
 
   return (
@@ -133,15 +132,9 @@ export function RegistrationsBrowser({
             <SelectItem value="rejected">{t("status.rejected")}</SelectItem>
           </SelectContent>
         </Select>
-        <Button
-          variant="outline"
-          className="ml-auto"
-          onClick={handleExportCsv}
-          disabled={filtered.length === 0}
-        >
-          <DownloadIcon data-icon="inline-start" />
-          {t("exportCsvAction")}
-        </Button>
+        <div className="ml-auto">
+          <ExportMenu filename="inscripciones" getData={exportData} />
+        </div>
       </div>
 
       {filtered.length === 0 ? (

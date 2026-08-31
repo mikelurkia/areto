@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { DownloadIcon, SearchIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
@@ -12,7 +12,6 @@ import {
 import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -24,7 +23,7 @@ import {
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { usePagedRows } from "@/hooks/use-paged-rows";
-import { downloadCsv } from "@/lib/csv";
+import { ExportMenu } from "@/components/export-menu";
 
 type SeasonRow = {
   id: string;
@@ -68,7 +67,7 @@ export function TemporadasBrowser({
 
   const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
-  function handleExportCsv() {
+  function exportData() {
     const headers = [t("colName"), t("colDates"), t("colTeams")];
     const rows = filtered.map((season) => {
       const starts = fmtDate(season.startsOn);
@@ -79,7 +78,7 @@ export function TemporadasBrowser({
         String(season.teamsCount),
       ];
     });
-    downloadCsv("temporadas.csv", headers, rows);
+    return { headers, rows };
   }
 
   return (
@@ -94,10 +93,9 @@ export function TemporadasBrowser({
             className="w-56 pl-8"
           />
         </div>
-        <Button variant="outline" className="ml-auto" onClick={handleExportCsv}>
-          <DownloadIcon data-icon="inline-start" />
-          {t("exportCsvAction")}
-        </Button>
+        <div className="ml-auto">
+          <ExportMenu filename="temporadas" getData={exportData} />
+        </div>
       </div>
 
       {filtered.length === 0 ? (

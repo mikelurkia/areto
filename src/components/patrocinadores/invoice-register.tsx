@@ -1,13 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { DownloadIcon, ReceiptTextIcon } from "lucide-react";
+import { ReceiptTextIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { downloadCsv } from "@/lib/csv";
 import { usePathname } from "@/i18n/navigation";
+import { ExportMenu } from "@/components/export-menu";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
-import { PrintButton } from "@/components/print-button";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,7 +66,7 @@ export function InvoiceRegister({
     [filtered],
   );
 
-  function handleExportCsv() {
+  function exportData() {
     const headers = [
       t("colInvoiceDate"),
       t("invoiceNumberLabel"),
@@ -82,7 +81,7 @@ export function InvoiceRegister({
       inv.concept,
       formatAmount(inv.amountCents),
     ]);
-    downloadCsv(`libro-facturas${year === "all" ? "" : `-${year}`}.csv`, headers, rows);
+    return { headers, rows };
   }
 
   return (
@@ -108,17 +107,17 @@ export function InvoiceRegister({
         <span className="text-sm text-muted-foreground">
           {t("invoiceCount", { count: filtered.length })}
         </span>
-        <div className="ml-auto flex gap-2">
-          <PrintButton label={t("printAction")} />
-          <Button variant="outline" onClick={handleExportCsv}>
-            <DownloadIcon data-icon="inline-start" />
-            {t("exportCsvAction")}
-          </Button>
+        <div className="ml-auto">
+          <ExportMenu
+            filename={`libro-facturas${year === "all" ? "" : `-${year}`}`}
+            getData={exportData}
+            onPrint={() => window.print()}
+          />
         </div>
       </div>
 
       {/*
-        Sin paginar, a propósito: esta pantalla se imprime (`PrintButton`), y lo
+        Sin paginar, a propósito: esta pantalla se imprime (`ExportMenu`), y lo
         que no está pintado no sale en el papel. Paginarla dejaría el listado
         impreso incompleto sin avisar.
       */}
