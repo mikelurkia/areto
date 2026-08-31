@@ -1,6 +1,14 @@
 "use server";
 
+import { getTranslations } from "next-intl/server";
+
 import { requirePermission } from "@/lib/auth";
+import {
+  CONTACT_EXPORT_BASENAME,
+  buildContactExport,
+  buildContactWorkbook,
+  loadContactPersons,
+} from "@/lib/contact-export";
 import {
   type GuardianCandidate,
   type PersonListRow,
@@ -9,6 +17,22 @@ import {
   parsePersonFilters,
   searchGuardianCandidates,
 } from "@/lib/person-list";
+
+/**
+ * A quién exporta la pantalla: la selección de la tabla (que puede abarcar
+ * varias páginas) o todo lo que casa con los filtros de la URL. Los filtros
+ * viajan como los `searchParams` en crudo porque es lo que el navegador tiene
+ * a mano; se parsean aquí, en servidor.
+ */
+type ContactActionScope =
+  | { ids: string[] }
+  | { searchParams: Record<string, string> };
+
+function toContactScope(scope: ContactActionScope) {
+  return "ids" in scope
+    ? { ids: scope.ids }
+    : { filters: parsePersonFilters(scope.searchParams) };
+}
 
 /**
  * Lecturas que la pantalla de personas necesita bajo demanda, desde que el
@@ -47,4 +71,47 @@ export async function findGuardianCandidates(
 ): Promise<GuardianCandidate[]> {
   await requirePermission("personas.manage");
   return searchGuardianCandidates(query, excludePersonId);
+}
+
+/**
+ * Datos de contacto para mandar fuera del club, en CSV.
+ *
+ * El ámbito es explícito y no implícito: o unas personas concretas (la
+ * selección de la tabla, que puede abarcar varias páginas) o todo lo que casa
+ * con los filtros de la URL. Devuelve cabeceras y celdas ya construidas para
+ * que `downloadCsv` no tenga que saber nada de las columnas.
+ */
+export async function exportContactRows(
+  scope: ContactActionScope,
+): Promise<{ filename: string; headers: string[]; rows: string[][] }> {
+  await requirePermission("personas.view");
+  const t = await getTranslations("Personas");
+  const { headers, rows } = buildContactExport(
+    await loadContactPersons(toContactScope(scope)),
+    t,
+  );
+  return { filename: `${CONTACT_EXPORT_BASENAME}.csv`, headers, rows };
+}
+
+/**
+ * Lo mismo en `.xlsx`. El fichero se genera en el servidor y viaja en base64:
+ * así el generador de Excel no entra en el bundle del navegador. Es el mismo
+ * camino que ya usa la descarga del XML de remesas.
+ */
+export async function exportContactWorkbook(
+  scope: ContactActionScope,
+): Promise<{ filename: string; base64: string; rowCount: number }> {
+  await requirePermission("personas.view");
+  const t = await getTranslations("Personas");
+  const { headers, rows } = buildContactExport(
+    await loadContactPersons(toContactScope(scope)),
+    t,
+  );
+  const buffer = await buildContactWorkbook(headers, rows);
+  return {
+    filename: `${CONTACT_EXPORT_BASENAME}.xlsx`,
+    base64: buffer.toString("base64"),
+    // Para que quien lo pide pueda avisar de "no hay nadie" sin decodificar el fichero.
+    rowCount: rows.length,
+  };
 }

@@ -26,6 +26,7 @@ import { downloadCsv } from "@/lib/csv";
 import { whatsappLink } from "@/lib/contact-links";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { PaginationBar } from "@/components/pagination-bar";
+import { ContactExportMenu } from "@/components/personas/contact-export";
 import { DeletePersonDialog } from "@/components/personas/delete-person-dialog";
 import { PersonDialog } from "@/components/personas/person-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -181,6 +182,17 @@ export function PersonasBrowser({
         ]),
       );
     });
+  }
+
+  /**
+   * A quién exporta el menú de datos de contacto: si hay filas marcadas, esas;
+   * si no, todo lo que casa con los filtros. Se calcula al pulsar y no al
+   * pintar, porque para entonces la selección puede ser otra.
+   */
+  function contactExportScope() {
+    return selectedIds.size > 0
+      ? { ids: [...selectedIds] }
+      : { searchParams: Object.fromEntries(searchParams) };
   }
 
   const allPageSelected =
@@ -396,15 +408,22 @@ export function PersonasBrowser({
         ) : null}
         {/* La exportación ya va al servidor a por las filas, así que puede
             tardar: deshabilitado mientras está en vuelo. */}
-        <Button
-          variant="outline"
-          className="ml-auto"
-          onClick={handleExportCsv}
-          disabled={isExporting}
-        >
-          <DownloadIcon data-icon="inline-start" />
-          {t("exportCsvAction")}
-        </Button>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={handleExportCsv} disabled={isExporting}>
+            <DownloadIcon data-icon="inline-start" />
+            {t("exportCsvAction")}
+          </Button>
+          {/* Fuera de la barra de acciones masivas a propósito: aquella pide
+              `canManage` y esta descarga se resuelve con permiso de lectura. */}
+          <ContactExportMenu
+            getScope={contactExportScope}
+            scopeLabel={
+              selectedIds.size > 0
+                ? t("contactExportScopeSelected", { count: selectedIds.size })
+                : t("contactExportScopeFiltered")
+            }
+          />
+        </div>
       </div>
 
       {canManage && selectedIds.size > 0 ? (
