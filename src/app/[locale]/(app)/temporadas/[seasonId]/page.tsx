@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   BellIcon,
   BriefcaseIcon,
+  PlusIcon,
   ShieldHalfIcon,
   UserCheckIcon,
   UserIcon,
@@ -18,7 +19,6 @@ import { Link } from "@/i18n/navigation";
 import { PageHeader } from "@/components/page-header";
 import { DeleteSeasonDialog, SeasonDialog } from "@/components/temporada/season-dialog";
 import { ImportTeamsDialog } from "@/components/temporada/import-teams-dialog";
-import { TeamDialog } from "@/components/equipos/team-dialog";
 import { DeleteTeamDialog } from "@/components/equipos/delete-team-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
@@ -180,7 +180,13 @@ export default async function TemporadaDetailPage({
             {sourceSeasons.length > 0 ? (
               <ImportTeamsDialog targetSeasonId={season.id} sourceSeasons={sourceSeasons} />
             ) : null}
-            <TeamDialog mode="create" seasonId={season.id} />
+            <Button
+              render={<Link href={`/equipos/nuevo?season=${season.id}`} />}
+              nativeButton={false}
+            >
+              <PlusIcon data-icon="inline-start" />
+              {tEquipos("action")}
+            </Button>
           </div>
         ) : null}
       </div>
@@ -248,22 +254,6 @@ export default async function TemporadaDetailPage({
                 </TableCell>
                 {canManageTeams ? (
                   <TableCell className="flex justify-end gap-1">
-                    <TeamDialog
-                      mode="edit"
-                      team={{
-                        id: team.id,
-                        name: team.name,
-                        category: team.category,
-                        gender: team.gender,
-                        minBirthYear: team.minBirthYear,
-                        maxBirthYear: team.maxBirthYear,
-                        federationGroup: team.federationGroup,
-                        federationCode: team.federationCode,
-                        playerFeeCents: team.playerFeeCents,
-                        playerFeePeriod: team.playerFeePeriod,
-                        playerFeeNotes: team.playerFeeNotes,
-                      }}
-                    />
                     <DeleteTeamDialog id={team.id} name={team.name} />
                   </TableCell>
                 ) : null}
