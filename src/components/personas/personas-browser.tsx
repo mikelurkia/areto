@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import {
-  MailIcon,
-  MessageCircleIcon,
-  PhoneIcon,
-  SearchIcon,
-} from "lucide-react";
+import { MailIcon, MessageCircleIcon, PhoneIcon } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -19,21 +14,31 @@ import {
   emailsForSelection,
   exportPersonRows,
 } from "@/app/[locale]/(app)/personas/list-actions";
+import type { TeamCategoryValue } from "@/components/equipos/team-categories";
 import { calculateAge, isMinor } from "@/lib/age";
-import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import {
+  hasActiveFilters,
+  useFilterParams,
+  useSearchText,
+} from "@/hooks/use-filter-params";
 import { whatsappLink } from "@/lib/contact-links";
+import { ALERT_ICON, ALERT_TONE, personAlerts } from "@/lib/person-status";
+import { TONE_ICON } from "@/lib/status-tone";
+import { cn } from "@/lib/utils";
+import { BulkActionsBar } from "@/components/bulk-actions-bar";
+import { EmptyValue } from "@/components/empty-value";
+import { FiltersBar } from "@/components/filters-bar";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { ExportMenu } from "@/components/export-menu";
 import { PaginationBar } from "@/components/pagination-bar";
+import { SearchInput } from "@/components/search-input";
+import { StatusBadge } from "@/components/status-badge";
 import { ContactExportItems } from "@/components/personas/contact-export";
 import { DeletePersonDialog } from "@/components/personas/delete-person-dialog";
 import { PersonDialog } from "@/components/personas/person-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -76,7 +81,11 @@ type PersonRow = {
     teamId: string;
     role: string;
     jerseyNumber: number | null;
-    team: { name: string };
+    team: {
+      name: string;
+      category: TeamCategoryValue | null;
+      season: { isCurrent: boolean };
+    };
   }[];
   qualifications: { title: string; expiresOn: string | null }[];
   tags: string[];
@@ -87,11 +96,7 @@ type PersonRow = {
 type TeamOption = { id: string; label: string };
 
 /** Equipos visibles por fila antes de resumir el resto en un «+N». */
-const MAX_TEAM_BADGES = 2;
-
-function initials(firstName: string, lastName: string): string {
-  return `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
-}
+const MAX_TEAMS = 2;
 
 /** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
 const FILTER_DEFAULTS = {
@@ -106,6 +111,7 @@ const FILTER_DEFAULTS = {
 
 export function PersonasBrowser({
   persons,
+  photoUrls,
   total,
   pageCount,
   page: currentPage,
@@ -116,6 +122,8 @@ export function PersonasBrowser({
 }: {
   /** Solo las filas de la página actual: el filtrado y el troceado los hace SQL. */
   persons: PersonRow[];
+  /** Miniatura por id de persona; sin entrada, se pintan las iniciales. */
+  photoUrls: Record<string, string>;
   total: number;
   pageCount: number;
   page: number;
@@ -126,7 +134,9 @@ export function PersonasBrowser({
 }) {
   const t = useTranslations("Personas");
   const tEquipos = useTranslations("Equipos");
-  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS, { navigate: true });
+  const [filters, setFilters, isFiltering] = useFilterParams(FILTER_DEFAULTS, {
+    navigate: true,
+  });
   const { equipo: team, rol: role, caduca: expiry, docs, etiqueta: tag } = filters;
   const [query, setQuery] = useSearchText(filters.q, (value) =>
     setFilters({ q: value }),
@@ -188,6 +198,8 @@ export function PersonasBrowser({
       ? { ids: [...selectedIds] }
       : { searchParams: Object.fromEntries(searchParams) };
   }
+
+  const filtersActive = hasActiveFilters(filters, FILTER_DEFAULTS);
 
   const allPageSelected =
     persons.length > 0 && persons.every((p) => selectedIds.has(p.id));
@@ -270,6 +282,12 @@ export function PersonasBrowser({
   function handleTagChange(value: string | null) {
     setFilters({ etiqueta: value ?? "all", pagina: "1" });
   }
+  /** Todo a su valor de partida: `setFilters` borra de la URL lo que iguala al defecto. */
+  function clearFilters() {
+    setQuery("");
+    setFilters(FILTER_DEFAULTS);
+  }
+
   function goToPage(next: number) {
     setFilters({ pagina: String(Math.min(Math.max(1, next), pageCount)) });
   }
@@ -288,17 +306,35 @@ export function PersonasBrowser({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            ref={searchRef}
-            value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="w-56 pl-8"
-          />
-        </div>
+      <FiltersBar
+        trailing={
+          /* Un solo menú con los dos juegos de datos de esta pantalla: el
+             listado tal cual y los datos de contacto. Fuera de la barra de
+             acciones masivas a propósito: aquella pide `canManage` y esto se
+             resuelve con permiso de lectura. */
+          <ExportMenu
+            filename="personas"
+            getData={exportData}
+            scopeLabel={t("contactExportScopeFiltered")}
+          >
+            <ContactExportItems
+              getScope={contactExportScope}
+              scopeLabel={
+                selectedIds.size > 0
+                  ? t("contactExportScopeSelected", { count: selectedIds.size })
+                  : t("contactExportScopeFiltered")
+              }
+            />
+          </ExportMenu>
+        }
+      >
+        <SearchInput
+          ref={searchRef}
+          value={query}
+          onValueChange={handleQueryChange}
+          placeholder={t("searchPlaceholder")}
+          clearLabel={t("searchClear")}
+        />
         <Select value={team} onValueChange={handleTeamChange}>
           <SelectTrigger aria-label={t("filterTeamLabel")}>
             <SelectValue>
@@ -400,31 +436,14 @@ export function PersonasBrowser({
             </SelectContent>
           </Select>
         ) : null}
-        {/* La exportación ya va al servidor a por las filas, así que puede
-            tardar: deshabilitado mientras está en vuelo. */}
-        <div className="ml-auto">
-          {/* Un solo menú con los dos juegos de datos de esta pantalla: el
-              listado tal cual y los datos de contacto. Fuera de la barra de
-              acciones masivas a propósito: aquella pide `canManage` y esto se
-              resuelve con permiso de lectura. */}
-          <ExportMenu filename="personas" getData={exportData}>
-            <ContactExportItems
-              getScope={contactExportScope}
-              scopeLabel={
-                selectedIds.size > 0
-                  ? t("contactExportScopeSelected", { count: selectedIds.size })
-                  : t("contactExportScopeFiltered")
-              }
-            />
-          </ExportMenu>
-        </div>
-      </div>
+      </FiltersBar>
 
       {canManage && selectedIds.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 p-2">
-          <span className="text-sm font-medium">
-            {t("bulkSelectedCount", { count: selectedIds.size })}
-          </span>
+        <BulkActionsBar
+          countLabel={t("bulkSelectedCount", { count: selectedIds.size })}
+          clearLabel={t("bulkClearSelection")}
+          onClear={() => setSelectedIds(new Set())}
+        >
           <Button
             variant="outline"
             size="sm"
@@ -491,14 +510,22 @@ export function PersonasBrowser({
           >
             {t("bulkAddToTeamAction")}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto"
-            onClick={() => setSelectedIds(new Set())}
-          >
-            {t("bulkClearSelection")}
-          </Button>
+        </BulkActionsBar>
+      ) : null}
+
+      {/* Cuántas personas hay detrás de estos filtros. Sin esta línea la única
+          cifra de la pantalla era la paginación, que con 25 o menos resultados
+          ni siquiera se pinta. */}
+      {/* Con cero resultados la cifra sobra: lo dice ya el propio vacío, y
+          allí es donde va el botón de limpiar. */}
+      {total > 0 ? (
+        <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground print:hidden">
+          <span aria-live="polite">{t("resultsCount", { count: total })}</span>
+          {filtersActive ? (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              {t("clearFilters")}
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -507,9 +534,24 @@ export function PersonasBrowser({
           size="compact"
           title={t("noResultsTitle")}
           description={t("noResultsDescription")}
-        />
+        >
+          {filtersActive ? (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              {t("clearFilters")}
+            </Button>
+          ) : null}
+        </SectionPlaceholder>
       ) : (
-        <>
+        /* Mientras el filtro viaja al servidor la tabla sigue siendo la
+           anterior: se apaga para que se vea que lo que hay en pantalla ya no
+           es la respuesta a lo que se acaba de pedir. */
+        <div
+          className={cn(
+            "flex flex-col gap-6 transition-opacity",
+            isFiltering && "opacity-60",
+          )}
+          aria-busy={isFiltering}
+        >
           {/* Una fila por persona: celdas a `py-1` y todo el contenido en línea. */}
           <Table className="[&_td]:py-1">
             <TableHeader>
@@ -526,6 +568,7 @@ export function PersonasBrowser({
                 <TableHead>{t("colName")}</TableHead>
                 <TableHead priority="tertiary">{t("colNationalId")}</TableHead>
                 <TableHead priority="secondary">{t("colTeam")}</TableHead>
+                <TableHead className="w-20">{t("colAlerts")}</TableHead>
                 <TableHead priority="tertiary">{t("colContact")}</TableHead>
                 <TableHead priority="secondary">{t("colStatus")}</TableHead>
                 {canManage ? (
@@ -538,12 +581,40 @@ export function PersonasBrowser({
             <TableBody>
               {persons.map((person) => {
                 const fullName = `${person.firstName} ${person.lastName}`;
-                const visibleTeams = person.memberships.slice(0, MAX_TEAM_BADGES);
-                const hiddenTeams = person.memberships.slice(MAX_TEAM_BADGES);
                 const membershipRoles = [
                   ...new Set(person.memberships.map((m) => m.role)),
                 ];
-                const hasStatus = person.isMember || membershipRoles.length > 0;
+                const alerts = personAlerts(person);
+                // Equipos como texto, no como badges: un badge por equipo
+                // envolvía y estiraba el alto de la fila. Se ven los dos
+                // primeros y el resto cuenta como «+N», con la lista completa
+                // en el `title`.
+                const teamNames = person.memberships.map((m) =>
+                  m.jerseyNumber ? `${m.team.name} · #${m.jerseyNumber}` : m.team.name,
+                );
+                const hiddenTeams = teamNames.length - MAX_TEAMS;
+                const teamsLabel = [
+                  ...teamNames.slice(0, MAX_TEAMS),
+                  ...(hiddenTeams > 0 ? [`+${hiddenTeams}`] : []),
+                ].join(" · ");
+                // Estado: «socio» se queda como badge —es la distinción que más
+                // se busca de un vistazo—, y roles y etiquetas bajan a texto.
+                const statusLabel = [
+                  ...membershipRoles.map((role) => tEquipos(`roleOption.${role}`)),
+                  ...person.tags,
+                ].join(" · ");
+                // Lo que en móvil desaparece con su columna, resumido en la
+                // misma línea del nombre y truncado.
+                const mobileSummary = [
+                  person.nationalId,
+                  teamNames.join(" · "),
+                  [
+                    ...(person.isMember ? [t("memberBadge")] : []),
+                    ...membershipRoles.map((role) => tEquipos(`roleOption.${role}`)),
+                  ].join(" · "),
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
                 return (
                   <TableRow key={person.id}>
                     {canManage ? (
@@ -557,42 +628,42 @@ export function PersonasBrowser({
                         />
                       </TableCell>
                     ) : null}
-                    <TableCell className="font-medium">
+                    <TableCell className="max-w-0 font-medium">
+                      {/* Una sola línea: el nombre trunca y todo lo demás va a
+                          su lado, nunca debajo. */}
                       <div className="flex items-center gap-2">
-                        <Avatar size="sm">
-                          <AvatarFallback>
-                            {initials(person.firstName, person.lastName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <HoverPrefetchLink
-                              href={`/personas/${person.id}`}
-                              className="hover:underline"
-                            >
-                              {fullName}
-                            </HoverPrefetchLink>
-                            {person.birthDate ? (
-                              <span className="text-xs font-normal text-muted-foreground">
-                                {t("ageYears", {
-                                  count: calculateAge(person.birthDate),
-                                })}
-                              </span>
-                            ) : null}
-                            {person.birthDate && isMinor(person.birthDate) ? (
-                              <Badge variant="outline" className="text-xs">
-                                {t("minorTag")}
-                              </Badge>
-                            ) : null}
-                          </div>
-                          {/* El DNI tiene columna propia a partir de `lg`; por
-                              debajo baja aquí para no perderse. */}
-                          {person.nationalId ? (
-                            <span className="block text-xs font-normal text-muted-foreground tabular-nums lg:hidden">
-                              {person.nationalId}
-                            </span>
-                          ) : null}
-                        </div>
+                        <HoverPrefetchLink
+                          href={`/personas/${person.id}`}
+                          /* Quien ya no está en ningún equipo de la temporada
+                             activa se apaga en vez de ganar otro badge. */
+                          className={cn(
+                            "truncate hover:underline",
+                            person.isPastMember && "text-muted-foreground",
+                          )}
+                        >
+                          {fullName}
+                        </HoverPrefetchLink>
+                        {person.birthDate ? (
+                          <span className="shrink-0 text-xs font-normal text-muted-foreground">
+                            {t("ageYears", {
+                              count: calculateAge(person.birthDate),
+                            })}
+                          </span>
+                        ) : null}
+                        {person.birthDate && isMinor(person.birthDate) ? (
+                          <StatusBadge
+                            tone="neutral"
+                            label={t("minorTag")}
+                            className="shrink-0"
+                          />
+                        ) : null}
+                        {/* Lo que las columnas escondidas se llevan en
+                            pantallas estrechas, en esta misma línea. */}
+                        {mobileSummary ? (
+                          <span className="truncate text-xs font-normal text-muted-foreground md:hidden">
+                            · {mobileSummary}
+                          </span>
+                        ) : null}
                       </div>
                     </TableCell>
                     <TableCell
@@ -602,32 +673,41 @@ export function PersonasBrowser({
                     >
                       {person.nationalId ?? "—"}
                     </TableCell>
-                    <TableCell priority="secondary">
-                      {person.memberships.length > 0 ? (
-                        <div className="flex items-center gap-1">
-                          {visibleTeams.map((m) => (
-                            <Badge
-                              key={m.teamId}
-                              variant="outline"
-                              className="font-normal"
-                            >
-                              {m.jerseyNumber
-                                ? `${m.team.name} · #${m.jerseyNumber}`
-                                : m.team.name}
-                            </Badge>
-                          ))}
-                          {hiddenTeams.length > 0 ? (
-                            <Badge
-                              variant="outline"
-                              className="font-normal"
-                              title={hiddenTeams.map((m) => m.team.name).join(", ")}
-                            >
-                              +{hiddenTeams.length}
-                            </Badge>
-                          ) : null}
-                        </div>
+                    <TableCell
+                      priority="secondary"
+                      nowrap
+                      className="max-w-0 truncate text-muted-foreground"
+                      title={teamNames.join(", ") || undefined}
+                    >
+                      {teamsLabel || <EmptyValue />}
+                    </TableCell>
+                    {/* Los avisos no llevan `priority`: son justo lo que no
+                        debe desaparecer al estrecharse la pantalla. Como
+                        iconos caben en la línea; el texto lo da el `title` y
+                        el lector de pantalla lo lee del `sr-only`. */}
+                    <TableCell nowrap>
+                      {alerts.length > 0 ? (
+                        <span className="flex items-center gap-1">
+                          {alerts.map((alert) => {
+                            const AlertIcon = ALERT_ICON[alert];
+                            const label = t(`alert.${alert}`);
+                            return (
+                              <span
+                                key={alert}
+                                className={cn(
+                                  "inline-flex",
+                                  TONE_ICON[ALERT_TONE[alert]],
+                                )}
+                                title={label}
+                              >
+                                <AlertIcon className="size-4" aria-hidden />
+                                <span className="sr-only">{label}</span>
+                              </span>
+                            );
+                          })}
+                        </span>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <EmptyValue />
                       )}
                     </TableCell>
                     <TableCell priority="tertiary">
@@ -680,23 +760,30 @@ export function PersonasBrowser({
                           ) : null}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <EmptyValue />
                       )}
                     </TableCell>
-                    <TableCell priority="secondary">
-                      {hasStatus ? (
-                        <div className="flex items-center gap-1">
+                    <TableCell
+                      priority="secondary"
+                      nowrap
+                      className="max-w-0 truncate text-muted-foreground"
+                      title={statusLabel || undefined}
+                    >
+                      {person.isMember || statusLabel ? (
+                        <span className="flex items-center gap-1.5">
                           {person.isMember ? (
-                            <Badge variant="secondary">{t("memberBadge")}</Badge>
+                            <StatusBadge
+                              tone="highlight"
+                              label={t("memberBadge")}
+                              className="shrink-0"
+                            />
                           ) : null}
-                          {membershipRoles.map((role) => (
-                            <Badge key={role} variant="secondary">
-                              {tEquipos(`roleOption.${role}`)}
-                            </Badge>
-                          ))}
-                        </div>
+                          {statusLabel ? (
+                            <span className="truncate capitalize">{statusLabel}</span>
+                          ) : null}
+                        </span>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <EmptyValue />
                       )}
                     </TableCell>
                     {canManage ? (
@@ -705,7 +792,7 @@ export function PersonasBrowser({
                           <PersonDialog
                             mode="edit"
                             person={person}
-                            photoUrl={null}
+                            photoUrl={photoUrls[person.id] ?? null}
                             canManageBanking={canManageBanking}
                           />
                           <DeletePersonDialog id={person.id} name={fullName} />
@@ -723,7 +810,7 @@ export function PersonasBrowser({
             onPageChange={goToPage}
             hrefFor={hrefForPage}
           />
-        </>
+        </div>
       )}
     </>
   );

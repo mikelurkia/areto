@@ -14,6 +14,7 @@ import {
 } from "@/lib/medical-panel-rows";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
+import { EMPTY } from "@/components/empty-value";
 import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
 import { PrintableSheet } from "@/components/printable-sheet";
@@ -38,9 +39,6 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "Metadata" });
   return { title: t("medicoListado") };
 }
-
-/** Sin fecha registrada se imprime una raya, igual que en el acta federativa. */
-const EMPTY = "—";
 
 /**
  * Cabecera común a las dos variantes del documento: qué es, de qué club y con

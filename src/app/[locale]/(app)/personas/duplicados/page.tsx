@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { findDuplicatePersonGroups } from "@/lib/person-matching";
 import { Link } from "@/i18n/navigation";
+import { EMPTY } from "@/components/empty-value";
 import { PageHeader } from "@/components/page-header";
 import { MergeDuplicatesDialog } from "@/components/personas/merge-duplicates-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -98,15 +99,22 @@ export default async function PersonDuplicatesPage({
                     >
                       {person.firstName} {person.lastName}
                     </Link>
-                    <span className="text-muted-foreground">
-                      {person.nationalId ?? "—"}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {person.email ?? "—"}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {person.phone ?? "—"}
-                    </span>
+                    {/* Con el dato a secas, tres rayas seguidas no dicen cuál
+                        era el DNI, cuál el correo y cuál el teléfono. El
+                        rótulo va delante y en versalitas para que la línea se
+                        siga leyendo de un vistazo. */}
+                    {[
+                      [t("colNationalId"), person.nationalId],
+                      [t("colEmail"), person.email],
+                      [t("colPhone"), person.phone],
+                    ].map(([label, value]) => (
+                      <span key={label} className="text-muted-foreground">
+                        <span className="text-xs tracking-wide uppercase">
+                          {label}
+                        </span>{" "}
+                        {value || EMPTY}
+                      </span>
+                    ))}
                     {person.memberships.map((m) => (
                       <Badge key={m.teamId} variant="secondary">
                         {m.team.name}

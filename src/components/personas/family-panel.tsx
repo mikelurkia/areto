@@ -8,6 +8,8 @@ import {
 import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { SectionHeading } from "@/components/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -115,14 +117,6 @@ async function MemberCard({
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-      {children}
-    </h3>
-  );
-}
-
 export async function FamilyPanel({
   guardians,
   siblings,
@@ -140,22 +134,22 @@ export async function FamilyPanel({
       {minorWithoutGuardian || minorGuardian ? (
         <div className="flex flex-col gap-2">
           {minorWithoutGuardian ? (
-            <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-              <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-              <span>{t("minorWithoutGuardianWarning")}</span>
-            </div>
+            <Alert variant="destructive">
+              <TriangleAlertIcon />
+              <AlertDescription>{t("minorWithoutGuardianWarning")}</AlertDescription>
+            </Alert>
           ) : null}
           {minorGuardian ? (
-            <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-              <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-              <span>{t("minorGuardianWarning")}</span>
-            </div>
+            <Alert variant="destructive">
+              <TriangleAlertIcon />
+              <AlertDescription>{t("minorGuardianWarning")}</AlertDescription>
+            </Alert>
           ) : null}
         </div>
       ) : null}
 
       <div className="flex flex-col gap-3">
-        <SectionTitle>{t("guardianLabel")}</SectionTitle>
+        <SectionHeading as="h3" title={t("guardianLabel")} />
         {guardians.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {guardians.map((member) => (
@@ -169,7 +163,7 @@ export async function FamilyPanel({
 
       {siblings.length > 0 ? (
         <div className="flex flex-col gap-3">
-          <SectionTitle>{t("siblingsSection")}</SectionTitle>
+          <SectionHeading as="h3" title={t("siblingsSection")} />
           <div className="grid gap-3 sm:grid-cols-2">
             {siblings.map((member) => (
               <MemberCard key={member.id} member={member} backTo={backTo} backLabel={backLabel} />
@@ -180,7 +174,7 @@ export async function FamilyPanel({
 
       {dependents.length > 0 ? (
         <div className="flex flex-col gap-3">
-          <SectionTitle>{t("dependentsLabel")}</SectionTitle>
+          <SectionHeading as="h3" title={t("dependentsLabel")} />
           <div className="grid gap-3 sm:grid-cols-2">
             {dependents.map((member) => (
               <MemberCard key={member.id} member={member} backTo={backTo} backLabel={backLabel} />

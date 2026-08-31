@@ -581,6 +581,7 @@
     "removeGuardianSr": "{name} tutore gisa kendu",
     "colNationalId": "NAN",
     "colTeam": "Taldea",
+    "colAlerts": "Abisuak",
     "colGuardian": "Tutorea",
     "photoLabel": "Argazkia",
     "viewOriginalPhotoAction": "Ikusi argazki originala",
@@ -589,6 +590,9 @@
     "photoInvalidType": "Argazkiak JPG, PNG edo WebP formatukoa izan behar du.",
     "photoTooLarge": "Argazkiak ezin du 5 MB baino gehiago izan.",
     "searchPlaceholder": "Bilatu izenez, emailez, NANez edo telefonoz...",
+    "searchClear": "Ezabatu bilaketa",
+    "resultsCount": "{count, plural, =0 {Pertsonarik ez} one {pertsona #} other {# pertsona}}",
+    "clearFilters": "Garbitu iragazkiak",
     "filterTeamLabel": "Taldea",
     "filterTeamAll": "Talde guztiak",
     "filterTeamNone": "Talderik gabe",
@@ -903,7 +907,15 @@
     "tabRegistrations": "Izen-emateak ({count})",
     "registrationsSection": "Izen-emateak",
     "noRegistrationsDescription": "Pertsona honek ez du oraindik izen-emate erregistraturik.",
-    "viewRegistrationAction": "Eskaera ikusi"
+    "viewRegistrationAction": "Eskaera ikusi",
+    "alert": {
+      "minorWithoutGuardian": "Tutorerik gabe",
+      "medicalMissing": "Azterketarik gabe",
+      "medicalExpired": "Azterketa iraungita",
+      "medicalSoon": "Azterketa iraungitzear",
+      "qualificationSoon": "Titulazioa iraungitzear",
+      "photoConsentMissing": "Irudi-baimenik gabe"
+    }
   },
   "Inscripciones": {
     "title": "Izen-emateak",

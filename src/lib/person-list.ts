@@ -5,6 +5,7 @@ import { and, asc, count, eq, ilike, inArray, isNotNull, or, sql } from "drizzle
 import { db } from "@/db";
 import { persons, seasons, teams } from "@/db/schema";
 import { isPastMember } from "@/lib/membership";
+import { EXPIRY_WINDOW_DAYS } from "@/lib/person-status";
 import { likePattern, phoneDigitsMatch } from "@/lib/sql-text";
 import { teamSeasonLabel } from "@/lib/team-label";
 
@@ -27,10 +28,11 @@ import { teamSeasonLabel } from "@/lib/team-label";
 
 export const PERSON_PAGE_SIZE = 25;
 
-/** Ventana de "caduca pronto", la misma que usaba el filtro en cliente. */
-const EXPIRY_WINDOW_DAYS = 30;
-
-/** `interval` no acepta parámetro, así que el número va interpolado; es una constante del código, no entrada del usuario. */
+/**
+ * `interval` no acepta parámetro, así que el número va interpolado; es una
+ * constante del código, no entrada del usuario. Viene de `person-status.ts`
+ * para que el filtro y el aviso que pinta la fila usen la misma ventana.
+ */
 const EXPIRY_WINDOW = sql.raw(`interval '${EXPIRY_WINDOW_DAYS} days'`);
 
 export type PersonFilters = {
@@ -212,6 +214,7 @@ function loadRows(where: ReturnType<typeof personWhere>, page?: number) {
       phone: true,
       birthDate: true,
       nationalId: true,
+      photoPath: true,
       address: true,
       city: true,
       postalCode: true,
@@ -236,7 +239,10 @@ function loadRows(where: ReturnType<typeof personWhere>, page?: number) {
         columns: { teamId: true, role: true, jerseyNumber: true },
         with: {
           team: {
-            columns: { name: true },
+            // `category` decide si el equipo exige reconocimiento médico
+            // (`categoryRequiresMedicalCheckup`), que es lo que separa "sin
+            // certificado" de "no le hace falta" en el aviso de la fila.
+            columns: { name: true, category: true },
             with: { season: { columns: { isCurrent: true } } },
           },
         },
@@ -273,7 +279,11 @@ function toRow(p: RawPerson) {
       teamId: m.teamId,
       role: m.role,
       jerseyNumber: m.jerseyNumber,
-      team: { name: m.team.name },
+      team: {
+        name: m.team.name,
+        category: m.team.category,
+        season: { isCurrent: m.team.season.isCurrent },
+      },
     })),
     qualifications: qualifications.map((q) => ({ title: q.title, expiresOn: q.expiresOn })),
     tags: tags.map((t) => t.tag),
