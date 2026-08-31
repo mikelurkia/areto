@@ -11,7 +11,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { exportContactRows } from "@/app/[locale]/(app)/personas/list-actions";
-import { ExportMenuGroupLabel } from "@/components/export-menu";
+import { ExportMenuGroup } from "@/components/export-menu";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Link } from "@/i18n/navigation";
 import { downloadCsv } from "@/lib/csv";
@@ -106,10 +106,13 @@ export function ContactExportItems({
   const { running, exportCsv, exportXlsx } = useContactExport(getScope);
 
   return (
-    <>
-      <ExportMenuGroupLabel>
-        {t("contactExportAction")} · {scopeLabel}
-      </ExportMenuGroupLabel>
+    <ExportMenuGroup
+      label={
+        <>
+          {t("contactExportAction")} · {scopeLabel}
+        </>
+      }
+    >
       <DropdownMenuItem onClick={exportCsv}>
         {running === "csv" ? (
           <Loader2Icon className="animate-spin" />
@@ -130,6 +133,6 @@ export function ContactExportItems({
         <PrinterIcon />
         {tExport("print")}
       </DropdownMenuItem>
-    </>
+    </ExportMenuGroup>
   );
 }

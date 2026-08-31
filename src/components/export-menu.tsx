@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -109,61 +110,78 @@ export function ExportMenu({
         {label ?? t("action")}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-52">
-        {/* El ámbito es la única diferencia entre dos descargas que por lo
-            demás se ven iguales, así que se dice antes de elegir formato. */}
-        {scopeLabel ? (
-          <>
+        {/* Cada rótulo va dentro de su `DropdownMenuGroup`: `DropdownMenuLabel`
+            es un `Menu.GroupLabel` de Base UI y suelto en el contenido revienta
+            («MenuGroupContext is missing»). Además es lo correcto: el rótulo
+            nombra a las entradas que lo siguen, no al menú entero. */}
+        <DropdownMenuGroup>
+          {/* El ámbito es la única diferencia entre dos descargas que por lo
+              demás se ven iguales, así que se dice antes de elegir formato. */}
+          {scopeLabel ? (
             <DropdownMenuLabel className="text-muted-foreground font-normal">
               {scopeLabel}
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-          </>
-        ) : null}
-        <DropdownMenuItem
-          onClick={() => run("csv", (d) => downloadCsv(`${filename}.csv`, d.headers, d.rows))}
-        >
-          <FileTextIcon />
-          {t("csv")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => run("xlsx", (d) => downloadXlsx(`${filename}.xlsx`, d.headers, d.rows))}
-        >
-          <FileSpreadsheetIcon />
-          {t("xlsx")}
-        </DropdownMenuItem>
-        {printHref || onPrint ? (
-          <>
-            <DropdownMenuSeparator />
-            {/* Dos formas de imprimir: la hoja que vive en otra ruta va como
-                enlace (es una página del servidor, no una descarga), y la
-                pantalla que ya *es* el documento se imprime en el sitio. */}
-            {printHref ? (
-              <DropdownMenuItem render={<Link href={printHref} />}>
-                <PrinterIcon />
-                {t("print")}
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onClick={onPrint}>
-                <PrinterIcon />
-                {t("print")}
-              </DropdownMenuItem>
-            )}
-          </>
-        ) : null}
+          ) : null}
+          <DropdownMenuItem
+            onClick={() => run("csv", (d) => downloadCsv(`${filename}.csv`, d.headers, d.rows))}
+          >
+            <FileTextIcon />
+            {t("csv")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => run("xlsx", (d) => downloadXlsx(`${filename}.xlsx`, d.headers, d.rows))}
+          >
+            <FileSpreadsheetIcon />
+            {t("xlsx")}
+          </DropdownMenuItem>
+          {printHref || onPrint ? (
+            <>
+              <DropdownMenuSeparator />
+              {/* Dos formas de imprimir: la hoja que vive en otra ruta va como
+                  enlace (es una página del servidor, no una descarga), y la
+                  pantalla que ya *es* el documento se imprime en el sitio. */}
+              {printHref ? (
+                <DropdownMenuItem render={<Link href={printHref} />}>
+                  <PrinterIcon />
+                  {t("print")}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={onPrint}>
+                  <PrinterIcon />
+                  {t("print")}
+                </DropdownMenuItem>
+              )}
+            </>
+          ) : null}
+        </DropdownMenuGroup>
         {children}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-/** Encabezado para separar un segundo juego de datos dentro del menú. */
-export function ExportMenuGroupLabel({ children }: { children: ReactNode }) {
+/**
+ * Un segundo juego de datos dentro del mismo menú, con su rótulo.
+ *
+ * El grupo no es decorativo: `DropdownMenuLabel` necesita uno para existir, y
+ * de paso deja claro a los lectores de pantalla qué entradas rotula.
+ */
+export function ExportMenuGroup({
+  label,
+  children,
+}: {
+  label: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <>
       <DropdownMenuSeparator />
-      <DropdownMenuLabel className="text-muted-foreground font-normal">
+      <DropdownMenuGroup>
+        <DropdownMenuLabel className="text-muted-foreground font-normal">
+          {label}
+        </DropdownMenuLabel>
         {children}
-      </DropdownMenuLabel>
+      </DropdownMenuGroup>
     </>
   );
 }
