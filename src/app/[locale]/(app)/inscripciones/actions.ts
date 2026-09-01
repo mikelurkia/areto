@@ -184,49 +184,57 @@ export async function updateRegistration(
     return { error: t("ibanInvalid") };
   }
 
-  await db
-    .update(registrations)
-    .set({
-      firstName: fields.firstName,
-      lastName: fields.lastName,
-      birthDate: fields.birthDate || null,
-      nationalId: fields.nationalId || null,
-      address: fields.address || null,
-      city: fields.city || null,
-      postalCode: fields.postalCode || null,
-      phone: fields.phone || null,
-      email: fields.email || null,
-      iban: fields.iban || null,
-      // Un socio no tiene tallas ni plazos: no se tocan esas columnas de la
-      // propia solicitud, igual que no se piden en su formulario.
-      ...(isPlayerKind
-        ? {
-            shirtSize: fields.shirtSize || null,
-            pantsSize: fields.pantsSize || null,
-            shoeSize: fields.shoeSize || null,
-            installmentsChosen: fields.installmentsChosen,
-          }
-        : {}),
-    })
-    .where(eq(registrations.id, id));
-
   const guardians = readGuardians(formData);
-  await db.delete(registrationGuardians).where(eq(registrationGuardians.registrationId, id));
-  if (guardians.length > 0) {
-    await db.insert(registrationGuardians).values(
-      guardians.map((g, i) => ({
-        registrationId: id,
-        firstName: g.firstName,
-        lastName: g.lastName,
-        birthDate: g.birthDate || null,
-        nationalId: g.nationalId || null,
-        address: g.address || null,
-        phone: g.phone || null,
-        email: g.email || null,
-        sortOrder: i,
-      })),
-    );
-  }
+
+  /*
+   * Junto en una transacción: los tutores se reemplazan con un DELETE +
+   * INSERT, así que un fallo entre los dos dejaba la solicitud editada pero
+   * sin ningún tutor, y sin forma de saber cuáles tenía.
+   */
+  await db.transaction(async (tx) => {
+    await tx
+      .update(registrations)
+      .set({
+        firstName: fields.firstName,
+        lastName: fields.lastName,
+        birthDate: fields.birthDate || null,
+        nationalId: fields.nationalId || null,
+        address: fields.address || null,
+        city: fields.city || null,
+        postalCode: fields.postalCode || null,
+        phone: fields.phone || null,
+        email: fields.email || null,
+        iban: fields.iban || null,
+        // Un socio no tiene tallas ni plazos: no se tocan esas columnas de la
+        // propia solicitud, igual que no se piden en su formulario.
+        ...(isPlayerKind
+          ? {
+              shirtSize: fields.shirtSize || null,
+              pantsSize: fields.pantsSize || null,
+              shoeSize: fields.shoeSize || null,
+              installmentsChosen: fields.installmentsChosen,
+            }
+          : {}),
+      })
+      .where(eq(registrations.id, id));
+
+    await tx.delete(registrationGuardians).where(eq(registrationGuardians.registrationId, id));
+    if (guardians.length > 0) {
+      await tx.insert(registrationGuardians).values(
+        guardians.map((g, i) => ({
+          registrationId: id,
+          firstName: g.firstName,
+          lastName: g.lastName,
+          birthDate: g.birthDate || null,
+          nationalId: g.nationalId || null,
+          address: g.address || null,
+          phone: g.phone || null,
+          email: g.email || null,
+          sortOrder: i,
+        })),
+      );
+    }
+  });
 
   revalidateRoutes(
     ROUTE.inscripciones,
