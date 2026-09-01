@@ -33,6 +33,7 @@ import {
   SPONSORSHIP_TONE,
   sponsorshipStatus,
 } from "@/lib/sponsorship";
+import { formatCents } from "@/lib/money";
 
 type CurrentTerm = {
   tier: string | null;
@@ -91,9 +92,7 @@ export function SponsorsBrowser({
 
   function formatAmount(amountCents: number | null) {
     if (amountCents === null) return "—";
-    return new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(
-      amountCents / 100,
-    );
+    return formatCents(amountCents, locale);
   }
 
   function statusOf(s: SponsorRow): "active" | "expiringSoon" | "expired" | "noTerm" {

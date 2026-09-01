@@ -10,6 +10,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { currencyFormatter } from "@/lib/money";
 
 export function YearlyComparisonChart({
   data,
@@ -20,10 +21,7 @@ export function YearlyComparisonChart({
   config: ChartConfig;
   locale: string;
 }) {
-  const currencyFmt = new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "EUR",
-  });
+  const currencyFmt = currencyFormatter(locale);
 
   return (
     <ChartContainer config={config} className="w-full">
