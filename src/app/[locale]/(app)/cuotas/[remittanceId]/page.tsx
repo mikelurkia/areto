@@ -48,10 +48,14 @@ export default async function RemittanceDetailPage({
       season: true,
       charges: {
         with: {
-          mandate: true,
-          payer: true,
-          membership: { with: { person: true, team: true } },
-          clubMember: { with: { person: true } },
+          mandate: { columns: { rum: true } },
+          payer: { columns: { firstName: true, lastName: true } },
+          membership: {
+            with: { person: { columns: { firstName: true, lastName: true } } },
+          },
+          clubMember: {
+            with: { person: { columns: { firstName: true, lastName: true } } },
+          },
         },
         orderBy: (sepaCharges, { asc }) => [asc(sepaCharges.createdAt)],
       },
