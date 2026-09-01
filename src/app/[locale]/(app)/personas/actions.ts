@@ -220,11 +220,20 @@ function readGuardianIds(formData: FormData, excludeId?: string): string[] {
   return [...new Set(ids)].filter((id) => id !== excludeId);
 }
 
-/** Reemplaza los tutores de una persona: borra los actuales e inserta los nuevos (el primero, principal). */
-async function replaceGuardians(personId: string, guardianIds: string[]) {
-  await db.delete(personGuardians).where(eq(personGuardians.personId, personId));
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Reemplaza los tutores de una persona: borra los actuales e inserta los
+ * nuevos (el primero, principal).
+ *
+ * Exige un `tx` y no `db` porque es un DELETE + INSERT: si el insert falla por
+ * su cuenta, la persona se queda **sin ningún tutor**, y eso además invalida
+ * el `payerPersonId` que se acaba de escribir en su ficha.
+ */
+async function replaceGuardians(tx: Tx, personId: string, guardianIds: string[]) {
+  await tx.delete(personGuardians).where(eq(personGuardians.personId, personId));
   if (guardianIds.length === 0) return;
-  await db.insert(personGuardians).values(
+  await tx.insert(personGuardians).values(
     guardianIds.map((guardianId, i) => ({
       personId,
       guardianId,
@@ -268,21 +277,22 @@ function today(): string {
  * ya asignado (no se reutiliza).
  */
 async function syncClubMembership(
+  tx: Tx,
   personId: string,
   isMember: boolean,
   memberNumber: number | null,
 ) {
-  const existing = await db.query.clubMembers.findFirst({
+  const existing = await tx.query.clubMembers.findFirst({
     where: eq(clubMembers.personId, personId),
   });
   if (isMember) {
     if (existing) {
-      await db
+      await tx
         .update(clubMembers)
         .set({ status: "active", memberNumber, cancelledAt: null })
         .where(eq(clubMembers.id, existing.id));
     } else {
-      await db.insert(clubMembers).values({
+      await tx.insert(clubMembers).values({
         personId,
         status: "active",
         memberNumber,
@@ -290,7 +300,7 @@ async function syncClubMembership(
       });
     }
   } else if (existing && existing.status === "active") {
-    await db
+    await tx
       .update(clubMembers)
       .set({ status: "cancelled", cancelledAt: today() })
       .where(eq(clubMembers.id, existing.id));
@@ -453,20 +463,28 @@ export async function createPerson(
         })
         .returning({ id: persons.id });
 
+      /*
+       * Dentro del mismo `tx` que el insert: si el alta de socio choca con un
+       * `member_number` ya usado, o falla el enlace de tutores, la persona no
+       * puede quedarse creada a medias con un `{error}` de vuelta.
+       */
+      await syncClubMembership(tx, person.id, fields.isMember, fields.memberNumber);
+      await replaceGuardians(tx, person.id, guardianIds);
+
       return person.id;
     });
-    await syncClubMembership(personId, fields.isMember, fields.memberNumber);
   } catch (error) {
     const message = uniqueViolationMessage(error, t);
     if (message) return { error: message };
     throw error;
   }
 
+  // La foto va fuera de la transacción: es una subida a Storage, que no se
+  // deshace con un ROLLBACK y no debe tener abierta una transacción esperando.
   if (photo) {
     const path = await uploadPersonPhoto(personId, photo);
     await db.update(persons).set({ photoPath: path }).where(eq(persons.id, personId));
   }
-  await replaceGuardians(personId, guardianIds);
   if (payer.iban) {
     await recordAuditEvent({
       actorUserId: user.id,
@@ -525,36 +543,44 @@ export async function updatePerson(
   // anular el SEPA propio de la persona, igual que antes.
   const payer = resolvePayerFields(guardianIds, fields.iban || null, existing?.sepaConsent ?? false);
 
+  /*
+   * Las tres escrituras van juntas o no van: `replaceGuardians` es un DELETE +
+   * INSERT, así que un fallo a mitad dejaba a la persona sin tutores y con el
+   * `payerPersonId` recién escrito apuntando a un tutor que ya no consta.
+   */
   try {
-    await db
-      .update(persons)
-      .set({
-        firstName: fields.firstName,
-        lastName: fields.lastName,
-        email: fields.email || null,
-        phone: fields.phone || null,
-        birthDate: fields.birthDate || null,
-        nationalId: fields.nationalId || null,
-        address: fields.address || null,
-        city: fields.city || null,
-        postalCode: fields.postalCode || null,
-        iban: payer.iban,
-        shirtSize: fields.shirtSize || null,
-        pantsSize: fields.pantsSize || null,
-        shoeSize: fields.shoeSize || null,
-        photoConsent: existing?.photoConsent ?? false,
-        photoConsentAt: existing?.photoConsentAt ?? null,
-        sepaConsent: payer.sepaConsent,
-        sepaConsentAt: nextConsentAt(
-          existing?.sepaConsent ?? false,
-          payer.sepaConsent,
-          existing?.sepaConsentAt ?? null,
-        ),
-        payerPersonId: payer.payerPersonId,
-        notes: fields.notes || null,
-      })
-      .where(eq(persons.id, id));
-    await syncClubMembership(id, fields.isMember, fields.memberNumber);
+    await db.transaction(async (tx) => {
+      await tx
+        .update(persons)
+        .set({
+          firstName: fields.firstName,
+          lastName: fields.lastName,
+          email: fields.email || null,
+          phone: fields.phone || null,
+          birthDate: fields.birthDate || null,
+          nationalId: fields.nationalId || null,
+          address: fields.address || null,
+          city: fields.city || null,
+          postalCode: fields.postalCode || null,
+          iban: payer.iban,
+          shirtSize: fields.shirtSize || null,
+          pantsSize: fields.pantsSize || null,
+          shoeSize: fields.shoeSize || null,
+          photoConsent: existing?.photoConsent ?? false,
+          photoConsentAt: existing?.photoConsentAt ?? null,
+          sepaConsent: payer.sepaConsent,
+          sepaConsentAt: nextConsentAt(
+            existing?.sepaConsent ?? false,
+            payer.sepaConsent,
+            existing?.sepaConsentAt ?? null,
+          ),
+          payerPersonId: payer.payerPersonId,
+          notes: fields.notes || null,
+        })
+        .where(eq(persons.id, id));
+      await syncClubMembership(tx, id, fields.isMember, fields.memberNumber);
+      await replaceGuardians(tx, id, guardianIds);
+    });
   } catch (error) {
     const constraint = uniqueViolationConstraint(error);
     if (constraint === "club_members_member_number_idx") {
@@ -572,6 +598,8 @@ export async function updatePerson(
     throw error;
   }
 
+  // La foto va fuera de la transacción: es una subida a Storage, que no se
+  // deshace con un ROLLBACK y no debe tener abierta una transacción esperando.
   if (photo) {
     if (existing?.photoPath) await removePersonPhotoObject(existing.photoPath);
     const path = await uploadPersonPhoto(id, photo);
@@ -580,7 +608,6 @@ export async function updatePerson(
     await removePersonPhotoObject(existing.photoPath);
     await db.update(persons).set({ photoPath: null }).where(eq(persons.id, id));
   }
-  await replaceGuardians(id, guardianIds);
   if (existing && existing.iban !== payer.iban) {
     await recordAuditEvent({
       actorUserId: user.id,
