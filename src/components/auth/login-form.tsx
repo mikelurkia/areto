@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -47,6 +47,14 @@ export function LoginForm({ next }: { next: string }) {
     initialState,
   );
 
+  // `autoFocus` no basta: al llegar por navegación de cliente, el layout-router
+  // de Next enfoca el segmento recién montado en un layout effect posterior y
+  // se lleva el foco. Un efecto pasivo corre después y lo recupera.
+  const emailRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    emailRef.current?.focus();
+  }, []);
+
   return (
     <div className="flex w-full flex-col gap-4">
       <form action={loginAction}>
@@ -55,6 +63,7 @@ export function LoginForm({ next }: { next: string }) {
           <Field data-invalid={loginState.error ? true : undefined}>
             <FieldLabel htmlFor="login-email">{t("email")}</FieldLabel>
             <Input
+              ref={emailRef}
               id="login-email"
               name="email"
               type="email"
