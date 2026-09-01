@@ -884,12 +884,11 @@ export async function importSponsors(
   if (lines.length === 0) return { error: t("importEmpty") };
 
   const validTiers = sponsorshipTier.enumValues as readonly string[];
-  let created = 0;
 
-  for (const line of lines) {
+  const parsed = lines.flatMap((line) => {
     const cols = line.split(/[\t;]/).map((c) => c.trim());
     const name = cols[0];
-    if (!name) continue;
+    if (!name) return [];
 
     const amountRaw = (cols[1] ?? "").replace(/[€\s.]/g, "").replace(",", ".");
     const amount = Number(amountRaw);
@@ -900,17 +899,34 @@ export async function importSponsors(
       ? (tierRaw as (typeof sponsorshipTier.enumValues)[number])
       : null;
 
-    const [sponsor] = await db
+    return [{ name, tier, amountCents }];
+  });
+  if (parsed.length === 0) return { error: t("importEmpty") };
+
+  /*
+    Dos inserts por lote dentro de una transacción, en vez de dos por línea
+    pegada. Antes, un fallo a mitad dejaba patrocinadores sin su acuerdo y sin
+    forma de saber por dónde se había quedado la importación; ahora entra todo
+    o no entra nada. Mismo criterio que `importTeamsFromSeason`.
+
+    `returning` conserva el orden de `values`, así que cada acuerdo se cuelga
+    del patrocinador de su misma línea.
+  */
+  const created = await db.transaction(async (tx) => {
+    const inserted = await tx
       .insert(sponsors)
-      .values({ name })
+      .values(parsed.map(({ name }) => ({ name })))
       .returning({ id: sponsors.id });
-    await db.insert(sponsorshipTerms).values({
-      sponsorId: sponsor.id,
-      tier,
-      totalAmountCents: amountCents,
-    });
-    created += 1;
-  }
+
+    await tx.insert(sponsorshipTerms).values(
+      inserted.map(({ id }, i) => ({
+        sponsorId: id,
+        tier: parsed[i].tier,
+        totalAmountCents: parsed[i].amountCents,
+      })),
+    );
+    return inserted.length;
+  });
 
   revalidateRoutes(
     ROUTE.patrocinadores,

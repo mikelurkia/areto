@@ -426,6 +426,7 @@
     "statMissing": "{count} sin reconocimiento",
     "allGood": "Todo en orden.",
     "searchPlaceholder": "Buscar por nombre…",
+    "searchClear": "Borrar la búsqueda",
     "filterTeamLabel": "Equipo",
     "filterTeamAll": "Todos los equipos",
     "filterStatusLabel": "Estado",
@@ -1056,6 +1057,7 @@
     "submissionFailed": "No se ha podido enviar la inscripción por un problema de conexión. Vuelve a intentarlo en unos minutos.",
     "submissionNotDelivered": "La inscripción no ha llegado a enviarse: se ha cortado la conexión o las fotos pesaban demasiado. Lo que habías rellenado sigue aquí; vuelve a adjuntar las tres fotos y envíalo otra vez.",
     "searchPlaceholder": "Buscar por nombre, DNI o email...",
+    "searchClear": "Borrar la búsqueda",
     "filterStatusLabel": "Estado",
     "filterStatusAll": "Todos los estados",
     "status": {
@@ -1146,6 +1148,7 @@
     "emptySociosDescription": "Los socios aparecerán aquí en cuanto se apruebe la primera alta.",
     "emptySolicitudesDescription": "Aquí aparecerán las altas de socio enviadas desde el formulario público.",
     "searchPlaceholder": "Buscar por nombre, email o teléfono...",
+    "searchClear": "Borrar la búsqueda",
     "colName": "Nombre",
     "colMemberNumber": "Nº de socio",
     "colContact": "Contacto",
@@ -1390,6 +1393,7 @@
     "noteBodyRequired": "La entrada no puede estar vacía.",
     "noteDeleted": "Entrada eliminada.",
     "searchPlaceholder": "Buscar por nombre o categoría...",
+    "searchClear": "Borrar la búsqueda",
     "exportCsvAction": "Exportar CSV",
     "noResultsTitle": "Sin resultados",
     "noResultsDescription": "Ningún equipo coincide con la búsqueda."
@@ -1467,6 +1471,7 @@
     "contractInvalidType": "El contrato debe ser un PDF o una imagen (JPG, PNG o WEBP).",
     "contractTooLarge": "El contrato no puede superar los 10 MB.",
     "searchPlaceholder": "Buscar patrocinador...",
+    "searchClear": "Borrar la búsqueda",
     "filterStatusLabel": "Estado",
     "filterStatusAll": "Todos",
     "filterStatusActive": "Activos",
@@ -2090,6 +2095,7 @@
     "cancel": "Cancelar",
     "saveChanges": "Guardar cambios",
     "searchPlaceholder": "Buscar por nombre...",
+    "searchClear": "Borrar la búsqueda",
     "exportCsvAction": "Exportar CSV",
     "noResultsTitle": "Sin resultados",
     "noResultsDescription": "Ninguna temporada coincide con la búsqueda."

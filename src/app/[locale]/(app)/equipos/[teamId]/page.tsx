@@ -100,7 +100,26 @@ export default async function TeamDetailPage({
     getTeam(teamId),
     db.query.memberships.findMany({
       where: eq(memberships.teamId, teamId),
-      with: { person: true },
+      with: {
+        person: {
+          columns: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            birthDate: true,
+            photoPath: true,
+            medicalCertUntil: true,
+            shirtSize: true,
+            pantsSize: true,
+            shoeSize: true,
+            nationalId: true,
+            phone: true,
+            address: true,
+            city: true,
+            postalCode: true,
+          },
+        },
+      },
       orderBy: (memberships, { asc }) => [asc(memberships.jerseyNumber)],
     }),
     canManage

@@ -100,7 +100,7 @@ const getPerson = cache((personId: string) =>
         with: { guardian: true },
         orderBy: (g, { desc }) => [desc(g.isPrimary)],
       },
-      guardianOfRows: { with: { person: true } },
+      guardianOfRows: { with: { person: { columns: FAMILY_PERSON_COLUMNS } } },
       payerPerson: true,
       clubMember: true,
       memberships: { with: { team: { with: { season: true } } } },
@@ -119,6 +119,17 @@ const getPerson = cache((personId: string) =>
 );
 
 /** Persona vista desde el panel de familia: solo lo que pinta una ficha breve. */
+/** Las columnas que pinta el panel de familia, y solo esas. */
+const FAMILY_PERSON_COLUMNS = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  phone: true,
+  email: true,
+  birthDate: true,
+  photoPath: true,
+} as const;
+
 type FamilyPerson = {
   id: string;
   firstName: string;
@@ -156,7 +167,7 @@ async function FamilySection({
     guardianIds.length > 0
       ? await db.query.personGuardians.findMany({
           where: inArray(personGuardians.guardianId, guardianIds),
-          with: { person: true },
+          with: { person: { columns: FAMILY_PERSON_COLUMNS } },
         })
       : [];
   const siblingsById = new Map<string, FamilyPerson>();

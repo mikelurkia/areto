@@ -4,6 +4,7 @@ import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { StatusBadge } from "@/components/status-badge";
 import { SEPA_CHARGE_TONE, type SepaChargeStatus } from "@/lib/sepa-charge-status";
+import { formatCents } from "@/lib/money";
 import {
   Table,
   TableBody,
@@ -43,7 +44,6 @@ export async function PersonCuotasTable({
 }) {
   const t = await getTranslations("Cuotas");
   const tPersonas = await getTranslations("Personas");
-  const currencyFmt = new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" });
   const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
 
   if (charges.length === 0) {
@@ -69,7 +69,7 @@ export async function PersonCuotasTable({
               <TableCell className="font-medium">{charge.subjectName}</TableCell>
               <TableCell priority="secondary">{charge.periodKey}</TableCell>
               <TableCell nowrap className="text-right font-medium">
-                {currencyFmt.format(charge.amountCents / 100)}
+                {formatCents(charge.amountCents, locale)}
               </TableCell>
               <TableCell>
                 <StatusBadge
