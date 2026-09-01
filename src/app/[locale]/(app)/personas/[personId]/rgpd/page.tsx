@@ -22,7 +22,9 @@ const getPersonRecord = cache((personId: string) =>
     where: eq(persons.id, personId),
     with: {
       guardianRows: { with: { guardian: true } },
-      guardianOfRows: { with: { person: true } },
+      guardianOfRows: {
+        with: { person: { columns: { firstName: true, lastName: true } } },
+      },
       payerPerson: true,
       clubMember: true,
       memberships: { with: { team: { with: { season: true } } } },

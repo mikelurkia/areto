@@ -1,10 +1,41 @@
 import "server-only";
 
-import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import {
+  and,
+  count,
+  countDistinct,
+  eq,
+  exists,
+  gt,
+  isNotNull,
+  isNull,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { db } from "@/db";
-import { memberships, persons, registrations } from "@/db/schema";
+import {
+  clubMembers,
+  memberships,
+  personMedicalCheckups,
+  persons,
+  registrations,
+  seasons,
+  teams,
+} from "@/db/schema";
+
+/**
+ * Cada chequeo devuelve un número, así que se cuenta en SQL y no en memoria:
+ * antes varios de ellos se traían la tabla `persons` entera —con relaciones
+ * anidadas— para filtrarla en JavaScript, y el coste escalaba con el tamaño
+ * del club en vez de con el subconjunto que interesa.
+ */
+async function scalarCount(query: { execute: () => Promise<{ value: number }[]> }) {
+  const [row] = await query.execute();
+  return Number(row?.value ?? 0);
+}
 import { findDuplicatePersonGroups } from "@/lib/person-matching";
 
 /** Etiquetas de caché de las tarjetas de incoherencias del dashboard. */
@@ -33,25 +64,26 @@ export type IntegrityIssue = {
  * crea la ficha de `persons` pero ninguna plantilla.
  */
 async function countOrphanPlayers(): Promise<number> {
-  const approvedPlayerRegistrations = await db.query.registrations.findMany({
-    where: and(
-      eq(registrations.kind, "player"),
-      eq(registrations.status, "approved"),
-      isNotNull(registrations.matchedPersonId),
-    ),
-    columns: { matchedPersonId: true },
-  });
-  const personIds = [
-    ...new Set(approvedPlayerRegistrations.map((r) => r.matchedPersonId!)),
-  ];
-  if (personIds.length === 0) return 0;
-
-  const matchedPersons = await db.query.persons.findMany({
-    where: inArray(persons.id, personIds),
-    columns: { id: true },
-    with: { memberships: { columns: { id: true } } },
-  });
-  return matchedPersons.filter((p) => p.memberships.length === 0).length;
+  // `countDistinct`: dos inscripciones aprobadas de la misma persona son una
+  // sola ficha huérfana.
+  return scalarCount(
+    db
+      .select({ value: countDistinct(registrations.matchedPersonId) })
+      .from(registrations)
+      .where(
+        and(
+          eq(registrations.kind, "player"),
+          eq(registrations.status, "approved"),
+          isNotNull(registrations.matchedPersonId),
+          notExists(
+            db
+              .select({ one: sql`1` })
+              .from(memberships)
+              .where(eq(memberships.personId, registrations.matchedPersonId)),
+          ),
+        ),
+      ),
+  );
 }
 
 /**
@@ -60,21 +92,36 @@ async function countOrphanPlayers(): Promise<number> {
  * exigen, solo validan el formato si se rellena.
  */
 async function countMissingNationalId(): Promise<number> {
-  const rows = await db.query.persons.findMany({
-    where: isNull(persons.nationalId),
-    columns: { id: true },
-    with: {
-      memberships: {
-        columns: {},
-        with: { team: { columns: {}, with: { season: { columns: { isCurrent: true } } } } },
-      },
-      clubMember: { columns: { status: true } },
-    },
-  });
-  return rows.filter(
-    (p) =>
-      p.memberships.some((m) => m.team.season.isCurrent) || p.clubMember?.status === "active",
-  ).length;
+  return scalarCount(
+    db
+      .select({ value: count() })
+      .from(persons)
+      .where(
+        and(
+          isNull(persons.nationalId),
+          or(
+            exists(
+              db
+                .select({ one: sql`1` })
+                .from(memberships)
+                .innerJoin(teams, eq(teams.id, memberships.teamId))
+                .innerJoin(seasons, eq(seasons.id, teams.seasonId))
+                .where(
+                  and(eq(memberships.personId, persons.id), eq(seasons.isCurrent, true)),
+                ),
+            ),
+            exists(
+              db
+                .select({ one: sql`1` })
+                .from(clubMembers)
+                .where(
+                  and(eq(clubMembers.personId, persons.id), eq(clubMembers.status, "active")),
+                ),
+            ),
+          ),
+        ),
+      ),
+  );
 }
 
 /**
@@ -88,34 +135,43 @@ async function countMissingNationalId(): Promise<number> {
 async function countMedicalCertMismatches(currentSeasonId: string | null): Promise<number> {
   if (!currentSeasonId) return 0;
 
-  const rows = await db.query.persons.findMany({
-    columns: { id: true, medicalCertUntil: true },
-    with: {
-      medicalCheckups: { columns: { occurredOn: true, expiresOn: true } },
-      memberships: {
-        columns: { role: true },
-        with: { team: { columns: { seasonId: true } } },
-      },
-    },
-  });
+  /**
+   * El `expiresOn` del reconocimiento más reciente, o `NULL` si la persona no
+   * tiene ninguno. `IS DISTINCT FROM` cubre de una vez los dos casos que antes
+   * eran dos ramas del bucle: fechas que no cuadran, y ficha con
+   * `medicalCertUntil` puesto sin ningún reconocimiento detrás.
+   */
+  const latestExpiresOn = sql`(
+    SELECT ${personMedicalCheckups.expiresOn}
+    FROM ${personMedicalCheckups}
+    WHERE ${eq(personMedicalCheckups.personId, persons.id)}
+    ORDER BY ${personMedicalCheckups.occurredOn} DESC
+    LIMIT 1
+  )`;
 
-  let count = 0;
-  for (const person of rows) {
-    const isActivePlayer = person.memberships.some(
-      (m) => m.role === "player" && m.team.seasonId === currentSeasonId,
-    );
-    if (!isActivePlayer) continue;
-
-    if (person.medicalCheckups.length === 0) {
-      if (person.medicalCertUntil !== null) count++;
-      continue;
-    }
-    const latest = person.medicalCheckups.reduce((a, b) =>
-      a.occurredOn >= b.occurredOn ? a : b,
-    );
-    if (latest.expiresOn !== person.medicalCertUntil) count++;
-  }
-  return count;
+  return scalarCount(
+    db
+      .select({ value: count() })
+      .from(persons)
+      .where(
+        and(
+          exists(
+            db
+              .select({ one: sql`1` })
+              .from(memberships)
+              .innerJoin(teams, eq(teams.id, memberships.teamId))
+              .where(
+                and(
+                  eq(memberships.personId, persons.id),
+                  eq(memberships.role, "player"),
+                  eq(teams.seasonId, currentSeasonId),
+                ),
+              ),
+          ),
+          sql`${latestExpiresOn} IS DISTINCT FROM ${persons.medicalCertUntil}`,
+        ),
+      ),
+  );
 }
 
 /**
@@ -124,18 +180,16 @@ async function countMedicalCertMismatches(currentSeasonId: string | null): Promi
  * equipos de la temporada dada con más de un capitán marcado.
  */
 async function countDuplicateCaptains(seasonId: string): Promise<number> {
-  const rows = await db.query.memberships.findMany({
-    where: eq(memberships.isCaptain, true),
-    columns: { teamId: true },
-    with: { team: { columns: { seasonId: true } } },
-  });
+  const perTeam = db
+    .select({ teamId: memberships.teamId })
+    .from(memberships)
+    .innerJoin(teams, eq(teams.id, memberships.teamId))
+    .where(and(eq(memberships.isCaptain, true), eq(teams.seasonId, seasonId)))
+    .groupBy(memberships.teamId)
+    .having(gt(count(), 1))
+    .as("teams_con_varios_capitanes");
 
-  const countsByTeam = new Map<string, number>();
-  for (const m of rows) {
-    if (m.team.seasonId !== seasonId) continue;
-    countsByTeam.set(m.teamId, (countsByTeam.get(m.teamId) ?? 0) + 1);
-  }
-  return [...countsByTeam.values()].filter((c) => c > 1).length;
+  return scalarCount(db.select({ value: count() }).from(perTeam));
 }
 
 /**

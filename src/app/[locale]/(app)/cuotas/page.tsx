@@ -66,8 +66,15 @@ export default async function CuotasPage({
       where: (sepaCharges, { and, eq, isNull }) =>
         and(eq(sepaCharges.status, "pending"), isNull(sepaCharges.remittanceId)),
       with: {
-        membership: { with: { team: true, person: true } },
-        clubMember: { with: { person: true } },
+        membership: {
+          with: {
+            team: { columns: { name: true } },
+            person: { columns: { firstName: true, lastName: true } },
+          },
+        },
+        clubMember: {
+          with: { person: { columns: { firstName: true, lastName: true } } },
+        },
       },
     }),
   ]);
