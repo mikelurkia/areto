@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { PublicHeader } from "@/components/public/public-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { SocioForm } from "./socio-form";
+import { formatCents } from "@/lib/money";
 
 export async function generateMetadata({
   params,
@@ -31,9 +32,7 @@ export default async function InscripcionSocioPage({
     getRegistrationAvailability(),
   ]);
 
-  const feeAmount = new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(
-    memberAnnualFeeCents / 100,
-  );
+  const feeAmount = formatCents(memberAnnualFeeCents, locale);
 
   return (
     <div className="flex flex-1 flex-col">
