@@ -59,6 +59,7 @@ export function LoginForm({ next }: { next: string }) {
               name="email"
               type="email"
               autoComplete="email"
+              autoFocus
               required
               aria-invalid={loginState.error ? true : undefined}
             />
