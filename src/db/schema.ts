@@ -1287,6 +1287,8 @@ export const sepaCharges = pgTable(
       .where(sql`${t.clubMemberId} is not null`),
     index("sepa_charges_remittance_idx").on(t.remittanceId),
     index("sepa_charges_payer_idx").on(t.payerPersonId),
+    // `resolveMandates` pregunta por aquí qué mandatos ya han cobrado algo.
+    index("sepa_charges_mandate_idx").on(t.mandateId),
     check(
       "sepa_charges_membership_xor_club_member",
       sql`(${t.membershipId} is not null) <> (${t.clubMemberId} is not null)`,

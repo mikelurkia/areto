@@ -15,7 +15,7 @@ import {
 import { recordAuditEvent } from "@/lib/audit-log";
 import { requirePermission } from "@/lib/auth";
 import { buildPain008, type SepaChargeForXml } from "@/lib/sepa-xml";
-import { getOrCreateMandate, nextSequenceType } from "@/lib/sepa";
+import { resolveMandates, sequenceTypeAssigner } from "@/lib/sepa";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 
 export type CuotasState = {
@@ -51,6 +51,25 @@ type PersonPayerFields = {
 /** Persona pagadora efectiva: el tutor enlazado si lo hay, o la propia persona. */
 function payerIdOf(person: PersonPayerFields): string {
   return person.payerPersonId ?? person.id;
+}
+
+type PayerRow = { id: string; iban: string | null; sepaConsent: boolean };
+
+/**
+ * Los pagadores que de verdad van a recibir un cargo en esta tanda, sin
+ * repetir: los que no tienen IBAN o consentimiento quedan fuera porque el
+ * bucle los cuenta como omitidos.
+ *
+ * No vale con pasar todos los pagadores del equipo: `resolveMandates` crea el
+ * mandato que falte, y estrenarle uno a quien no se le va a cobrar nada gasta
+ * un RUM —que no se reutiliza jamás— para nada.
+ */
+function payersToCharge(payerIds: string[], payerById: Map<string, PayerRow>) {
+  return [...new Set(payerIds)].flatMap((id) => {
+    const payer = payerById.get(id);
+    if (!payer?.iban || !payer.sepaConsent) return [];
+    return [{ payerPersonId: payer.id, iban: payer.iban, sepaConsent: payer.sepaConsent }];
+  });
 }
 
 async function nextRemittanceMessageId(): Promise<string> {
@@ -167,29 +186,37 @@ export async function generatePlayerCharges(
   }
   if (toGenerate.length === 0) return { error: t("playerChargesAllExist") };
 
+  /*
+   * Los mandatos se resuelven de una tanda, antes del bucle: dentro eran dos
+   * consultas por cargo (jugadores x meses), y el `sequenceType` salía mal
+   * porque se consultaba una tabla en la que aún no se había insertado nada.
+   */
+  const mandates = await resolveMandates(
+    payersToCharge(
+      toGenerate.map(({ membership }) => payerIdOf(membership.person)),
+      payerById,
+    ),
+  );
+  const sequenceTypeFor = sequenceTypeAssigner();
+
   const rows: (typeof sepaCharges.$inferInsert)[] = [];
   for (const { membership, periodKey, amountCents } of toGenerate) {
     const payerId = payerIdOf(membership.person);
-    const payer = payerById.get(payerId);
-    if (!payer?.iban || !payer.sepaConsent) {
+    const mandate = mandates.get(payerId);
+    // Sin mandato = sin IBAN o sin consentimiento: `payersToCharge` lo dejó fuera.
+    if (!mandate) {
       skipped += 1;
       continue;
     }
-    const mandate = await getOrCreateMandate({
-      payerPersonId: payer.id,
-      iban: payer.iban,
-      sepaConsent: payer.sepaConsent,
-    });
-    const sequenceType = await nextSequenceType(mandate.id);
     rows.push({
       kind: "player",
       seasonId,
       membershipId: membership.id,
-      payerPersonId: payer.id,
+      payerPersonId: payerId,
       mandateId: mandate.id,
       periodKey,
       amountCents,
-      sequenceType,
+      sequenceType: sequenceTypeFor(mandate),
     });
   }
   if (rows.length === 0) return { error: t("allSkipped") };
@@ -249,30 +276,34 @@ export async function generateMemberCharges(
   const toGenerate = activeMembers.filter((m) => !existingIds.has(m.id));
   if (toGenerate.length === 0) return { error: t("memberChargesAllExist") };
 
+  // Mismo motivo que en `generatePlayerCharges`: una sola tanda antes del bucle.
+  const mandates = await resolveMandates(
+    payersToCharge(
+      toGenerate.map((m) => payerIdOf(m.person)),
+      payerById,
+    ),
+  );
+  const sequenceTypeFor = sequenceTypeAssigner();
+
   let skipped = 0;
   const rows: (typeof sepaCharges.$inferInsert)[] = [];
   for (const clubMember of toGenerate) {
     const payerId = payerIdOf(clubMember.person);
-    const payer = payerById.get(payerId);
-    if (!payer?.iban || !payer.sepaConsent) {
+    const mandate = mandates.get(payerId);
+    // Sin mandato = sin IBAN o sin consentimiento: `payersToCharge` lo dejó fuera.
+    if (!mandate) {
       skipped += 1;
       continue;
     }
-    const mandate = await getOrCreateMandate({
-      payerPersonId: payer.id,
-      iban: payer.iban,
-      sepaConsent: payer.sepaConsent,
-    });
-    const sequenceType = await nextSequenceType(mandate.id);
     rows.push({
       kind: "member",
       seasonId,
       clubMemberId: clubMember.id,
-      payerPersonId: payer.id,
+      payerPersonId: payerId,
       mandateId: mandate.id,
       periodKey: "season",
       amountCents: settings.memberAnnualFeeCents,
-      sequenceType,
+      sequenceType: sequenceTypeFor(mandate),
     });
   }
   if (rows.length === 0) return { error: t("allSkipped") };
