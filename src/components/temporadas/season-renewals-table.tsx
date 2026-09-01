@@ -8,6 +8,7 @@ import type { RenewalStatus, SeasonRenewalRow } from "@/lib/season-renewals";
 import type { StatusTone } from "@/lib/status-tone";
 import { mailtoBccLink, mailtoLink, whatsappLink } from "@/lib/contact-links";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
+import { BulkActionsBar } from "@/components/bulk-actions-bar";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -107,29 +108,28 @@ export function SeasonRenewalsTable({
   return (
     <div className="flex flex-col gap-3">
       {selectedIds.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 p-2">
-          <span className="text-sm font-medium">
-            {t("bulkSelectedCount", { count: selectedIds.size })}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            render={<a href={bulkReminderHref} />}
-            nativeButton={false}
+        <>
+          <BulkActionsBar
+            countLabel={t("bulkSelectedCount", { count: selectedIds.size })}
+            clearLabel={t("bulkClearSelection")}
+            onClear={() => setSelectedIds(new Set())}
           >
-            <MailIcon data-icon="inline-start" />
-            {t("bulkReminderAction", { count: selectedEmails.length })}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto"
-            onClick={() => setSelectedIds(new Set())}
-          >
-            {t("bulkClearSelection")}
-          </Button>
-          <p className="w-full text-xs text-muted-foreground">{t("bulkReminderNote")}</p>
-        </div>
+            <Button
+              variant="outline"
+              size="sm"
+              render={<a href={bulkReminderHref} />}
+              nativeButton={false}
+            >
+              <MailIcon data-icon="inline-start" />
+              {t("bulkReminderAction", { count: selectedEmails.length })}
+            </Button>
+          </BulkActionsBar>
+          {/* La nota va bajo la barra, no dentro: `BulkActionsBar` reserva su
+              última posición para «quitar selección». */}
+          <p className="text-xs text-muted-foreground print:hidden">
+            {t("bulkReminderNote")}
+          </p>
+        </>
       ) : null}
       {noEmailCount > 0 ? (
         <p className="text-sm text-muted-foreground">{t("bulkNoEmailWarning", { count: noEmailCount })}</p>

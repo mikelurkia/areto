@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
@@ -11,8 +10,9 @@ import {
 } from "@/components/temporada/season-dialog";
 import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { FiltersBar } from "@/components/filters-bar";
+import { SearchInput } from "@/components/search-input";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -83,20 +83,14 @@ export function TemporadasBrowser({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="w-56 pl-8"
-          />
-        </div>
-        <div className="ml-auto">
-          <ExportMenu filename="temporadas" getData={exportData} />
-        </div>
-      </div>
+      <FiltersBar trailing={<ExportMenu filename="temporadas" getData={exportData} />}>
+        <SearchInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder={t("searchPlaceholder")}
+          clearLabel={t("searchClear")}
+        />
+      </FiltersBar>
 
       {filtered.length === 0 ? (
         <SectionPlaceholder

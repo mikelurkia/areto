@@ -2,15 +2,15 @@
 
 import { StatusBadge } from "@/components/status-badge";
 import { useMemo } from "react";
-import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { DeleteSponsorDialog } from "@/components/patrocinadores/delete-sponsor-dialog";
 import { SponsorDialog } from "@/components/patrocinadores/sponsor-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { FiltersBar } from "@/components/filters-bar";
+import { SearchInput } from "@/components/search-input";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -145,16 +145,23 @@ export function SponsorsBrowser({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="w-56 pl-8"
+      <FiltersBar
+        trailing={
+          /* Esta pantalla *es* el documento (tiene sus bloques `print:`), así
+             que imprimir es imprimirla, no ir a otra ruta. */
+          <ExportMenu
+            filename="patrocinadores"
+            getData={exportData}
+            onPrint={() => window.print()}
           />
-        </div>
+        }
+      >
+        <SearchInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder={t("searchPlaceholder")}
+          clearLabel={t("searchClear")}
+        />
         <Select value={status} onValueChange={(v) => setFilters({ estado: v ?? "all" })}>
           <SelectTrigger aria-label={t("filterStatusLabel")}>
             <SelectValue>
@@ -195,16 +202,7 @@ export function SponsorsBrowser({
             <SelectItem value="none">{t("filterTierNone")}</SelectItem>
           </SelectContent>
         </Select>
-        <div className="ml-auto">
-          {/* Esta pantalla *es* el documento (tiene sus bloques `print:`), así
-              que imprimir es imprimirla, no ir a otra ruta. */}
-          <ExportMenu
-            filename="patrocinadores"
-            getData={exportData}
-            onPrint={() => window.print()}
-          />
-        </div>
-      </div>
+      </FiltersBar>
 
       {/*
         Sin paginar, a propósito: esta pantalla se imprime (`ExportMenu`), y lo
