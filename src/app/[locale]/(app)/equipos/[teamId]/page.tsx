@@ -29,6 +29,7 @@ import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { RosterTable } from "@/components/equipos/roster-table";
 import { TeamCaptainCard } from "@/components/equipos/team-captain-card";
+import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
 import { TeamForm } from "@/components/equipos/team-form";
 import { DocumentDialog } from "@/components/document-dialog";
 import { NotesLog } from "@/components/notes-log";
