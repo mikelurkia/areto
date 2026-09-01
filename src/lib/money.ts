@@ -18,10 +18,20 @@ export function readAmountCents(raw: FormDataEntryValue | null): number | null {
   return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
 }
 
+/**
+ * El formateador de euros del proyecto, para quien ya tiene **euros** y no
+ * céntimos: hoy solo las gráficas de patrocinadores, que reciben el importe ya
+ * dividido porque el eje se dibuja con él.
+ *
+ * Devuelve la instancia de `Intl.NumberFormat` en vez de una función de
+ * formateo porque `recharts` la usa como `tickFormatter` en cada marca del eje
+ * y crear una instancia por marca es caro. Para todo lo demás, `formatCents`.
+ */
+export function currencyFormatter(locale: string): Intl.NumberFormat {
+  return new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" });
+}
+
 /** Céntimos → "45,00 €" en el idioma de la petición. */
 export function formatCents(cents: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "EUR",
-  }).format(cents / 100);
+  return currencyFormatter(locale).format(cents / 100);
 }

@@ -3,13 +3,14 @@
 import { useMemo } from "react";
 import {
   ClipboardListIcon,
-  SearchIcon,
   TriangleAlertIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { ExportMenu } from "@/components/export-menu";
+import { FiltersBar } from "@/components/filters-bar";
+import { SearchInput } from "@/components/search-input";
 import { usePagedRows } from "@/hooks/use-paged-rows";
 import { useTabParam } from "@/hooks/use-tab-param";
 import {
@@ -19,14 +20,14 @@ import {
   medicalReferenceDates,
   type MedicalPanelRow,
 } from "@/lib/medical-panel-rows";
-import { type MedicalCertStatus } from "@/lib/medical-status";
+import { MEDICAL_CERT_TONE, type MedicalCertStatus } from "@/lib/medical-status";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -76,22 +77,17 @@ const STATUS_FILTER_VALUES = [
   "needsUpdate",
 ];
 
-function StatusBadge({
-  status,
-  date,
-  t,
-}: {
-  status: MedicalCertStatus;
-  date: string | null;
-  t: ReturnType<typeof useTranslations<"Medico">>;
-}) {
-  if (status === "exempt") return <Badge variant="outline">{t("statusExemptBadge")}</Badge>;
-  if (status === "missing") return <Badge variant="secondary">{t("statusMissingBadge")}</Badge>;
-  if (status === "expired")
-    return <Badge variant="destructive">{t("statusExpiredBadge", { date: date! })}</Badge>;
-  if (status === "expiring")
-    return <Badge variant="warning">{t("statusExpiringBadge", { date: date! })}</Badge>;
-  return <Badge variant="outline">{t("statusOkBadge", { date: date! })}</Badge>;
+/** Etiqueta del certificado; el color lo pone `MEDICAL_CERT_TONE`. */
+function medicalCertLabel(
+  status: MedicalCertStatus,
+  date: string | null,
+  t: ReturnType<typeof useTranslations<"Medico">>,
+) {
+  if (status === "exempt") return t("statusExemptBadge");
+  if (status === "missing") return t("statusMissingBadge");
+  if (status === "expired") return t("statusExpiredBadge", { date: date! });
+  if (status === "expiring") return t("statusExpiringBadge", { date: date! });
+  return t("statusOkBadge", { date: date! });
 }
 
 /** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
@@ -252,16 +248,27 @@ export function MedicalPanelBrowser({
         )}
       </Card>
 
-      <div className="flex flex-wrap items-center gap-2 print:hidden">
-        <div className="relative">
-          <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="w-56 pl-8"
+      <FiltersBar
+        className="print:hidden"
+        trailing={
+          /* Un solo menú para las dos pestañas: exporta e imprime lo que se
+             está viendo, y el listado imprimible ya recibe estos mismos
+             filtros por la URL. */
+          <ExportMenu
+            filename={
+              view === "certificados" ? "reconocimientos-medicos" : "partes-lesion"
+            }
+            getData={view === "certificados" ? certificatesData : injuryData}
+            printHref={printListHref}
           />
-        </div>
+        }
+      >
+        <SearchInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder={t("searchPlaceholder")}
+          clearLabel={t("searchClear")}
+        />
         <Select value={team} onValueChange={(v) => setFilters({ equipo: v ?? "all" })}>
           <SelectTrigger aria-label={t("filterTeamLabel")}>
             <SelectValue>
@@ -301,19 +308,7 @@ export function MedicalPanelBrowser({
             </SelectContent>
           </Select>
         ) : null}
-        <div className="ml-auto">
-          {/* Un solo menú para las dos pestañas: exporta e imprime lo que se
-              está viendo, y el listado imprimible ya recibe estos mismos
-              filtros por la URL. */}
-          <ExportMenu
-            filename={
-              view === "certificados" ? "reconocimientos-medicos" : "partes-lesion"
-            }
-            getData={view === "certificados" ? certificatesData : injuryData}
-            printHref={printListHref}
-          />
-        </div>
-      </div>
+      </FiltersBar>
 
       <Tabs value={view} onValueChange={(v) => setView(v as (typeof VIEWS)[number])}>
         <TabsList>
@@ -358,7 +353,10 @@ export function MedicalPanelBrowser({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={row.status} date={row.medicalCertUntil} t={t} />
+                        <StatusBadge
+                          tone={MEDICAL_CERT_TONE[row.status]}
+                          label={medicalCertLabel(row.status, row.medicalCertUntil, t)}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
