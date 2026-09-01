@@ -1,5 +1,56 @@
 @AGENTS.md
 
+1. Think Before Coding
+Don't assume. Don't hide confusion. Surface tradeoffs.
+
+Before implementing:
+
+State your assumptions explicitly. If uncertain, ask.
+If multiple interpretations exist, present them - don't pick silently.
+If a simpler approach exists, say so. Push back when warranted.
+If something is unclear, stop. Name what's confusing. Ask.
+
+2. Simplicity First
+Minimum code that solves the problem. Nothing speculative.
+
+No features beyond what was asked.
+No abstractions for single-use code.
+No "flexibility" or "configurability" that wasn't requested.
+No error handling for impossible scenarios.
+If you write 200 lines and it could be 50, rewrite it.
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+3. Surgical Changes
+Touch only what you must. Clean up only your own mess.
+
+When editing existing code:
+
+Don't "improve" adjacent code, comments, or formatting.
+Don't refactor things that aren't broken.
+Match existing style, even if you'd do it differently.
+If you notice unrelated dead code, mention it - don't delete it.
+When your changes create orphans:
+
+Remove imports/variables/functions that YOUR changes made unused.
+Don't remove pre-existing dead code unless asked.
+The test: Every changed line should trace directly to the user's request.
+
+4. Goal-Driven Execution
+Define success criteria. Loop until verified.
+
+Transform tasks into verifiable goals:
+
+"Add validation" → "Write tests for invalid inputs, then make them pass"
+"Fix the bug" → "Write a test that reproduces it, then make it pass"
+"Refactor X" → "Ensure tests pass before and after"
+For multi-step tasks, state a brief plan:
+
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
 # Convenciones del proyecto
 
 ## Cache Components (`"use cache"`)
@@ -66,23 +117,6 @@ color a mano, cabecera a mano e iconos de lucide sin sufijo `Icon`): están en
 limpio, así que si `pnpm run lint` señala una, es nueva. La solución es usar el
 componente, no un `eslint-disable`. Un componente recién traído del registry de
 shadcn puede llegar con colores crudos: se mapean a tokens al añadirlo.
-
-## Flujo de trabajo con git
-
-Invariantes, sin excepciones:
-
-- `main` está protegida: nunca commitees ni empujes directamente a ella.
-- Crea la rama (`feat/…`, `fix/…`, `chore/…`) **antes del primer commit**; si al
-  arrancar una tarea la rama actual es `main`, eso es lo primero que haces.
-- Un cambio en `src/db/schema.ts` va siempre con su migración generada
-  (`pnpm run db:generate`) en el mismo PR: al mergear se aplica sola a
-  producción.
-- Solo una rama abierta a la vez toca el esquema (dos generarían el mismo
-  número de migración).
-
-El procedimiento completo —comandos, decisión expand/contract y qué hacer
-cuando algo falla— está en la skill `desarrollar-funcionalidad`
-(`.claude/skills/desarrollar-funcionalidad/`).
 
 ## Coste de contexto
 

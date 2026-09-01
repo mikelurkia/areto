@@ -5,6 +5,7 @@ import { DeleteChargeDialog } from "@/components/cuotas/delete-charge-dialog";
 import { DeletePendingChargesDialog } from "@/components/cuotas/delete-pending-charges-dialog";
 import { StopPropagation } from "@/components/stop-propagation";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { formatCents } from "@/lib/money";
 import {
   Table,
   TableBody,
@@ -40,7 +41,6 @@ export function PendingChargeGroupCard({
   locale: string;
   t: Awaited<ReturnType<typeof getTranslations<"Cuotas">>>;
 }) {
-  const currencyFmt = new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" });
   const ids = rows.map((row) => row.id);
 
   return (
@@ -58,7 +58,7 @@ export function PendingChargeGroupCard({
         </span>
         <span className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{rows.length}</span>
-          <span className="font-semibold">{currencyFmt.format(amountCents / 100)}</span>
+          <span className="font-semibold">{formatCents(amountCents, locale)}</span>
           {canManage ? (
             <StopPropagation>
               <DeletePendingChargesDialog ids={ids} subject={subject} periodKey={periodKey} />
@@ -80,7 +80,7 @@ export function PendingChargeGroupCard({
               <TableRow key={row.id}>
                 <TableCell>{row.personName}</TableCell>
                 <TableCell nowrap className="text-right">
-                  {currencyFmt.format(row.amountCents / 100)}
+                  {formatCents(row.amountCents, locale)}
                 </TableCell>
                 {canManage ? (
                   <TableCell className="flex justify-end">

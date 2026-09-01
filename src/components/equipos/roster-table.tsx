@@ -11,12 +11,12 @@ import { MembershipFederationCardDialog } from "@/components/equipos/membership-
 import { EmptyValue } from "@/components/empty-value";
 import { Link } from "@/i18n/navigation";
 import {
+  MEDICAL_CERT_TONE,
   MEDICAL_EXPIRY_WINDOW_DAYS,
   medicalCertStatus,
   type MedicalCertStatus,
 } from "@/lib/medical-status";
 import { StatusBadge } from "@/components/status-badge";
-import type { StatusTone } from "@/lib/status-tone";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -64,14 +64,6 @@ export type RosterTableRow = {
 };
 
 const FILTER_DEFAULTS = { vista: "roster" };
-
-const MEDICAL_TONE: Record<MedicalCertStatus, StatusTone> = {
-  expired: "danger",
-  missing: "warning",
-  expiring: "warning",
-  ok: "positive",
-  exempt: "neutral",
-};
 
 /**
  * Tabla de plantilla con vista conmutable: mismas filas (ya cargadas en la
@@ -325,7 +317,7 @@ function MedicalBadge({
           : status === "expiring"
             ? t("statusExpiringBadge", { date: date! })
             : t("statusOkBadge", { date: date! });
-  return <StatusBadge tone={MEDICAL_TONE[status]} label={label} />;
+  return <StatusBadge tone={MEDICAL_CERT_TONE[status]} label={label} />;
 }
 
 /** Ventana de aviso del certificado médico, calculada en cliente al pintar la tabla. */

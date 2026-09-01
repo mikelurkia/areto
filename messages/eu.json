@@ -426,6 +426,7 @@
     "statMissing": "{count} azterketa gabe",
     "allGood": "Dena ondo.",
     "searchPlaceholder": "Bilatu izenez…",
+    "searchClear": "Ezabatu bilaketa",
     "filterTeamLabel": "Taldea",
     "filterTeamAll": "Talde guztiak",
     "filterStatusLabel": "Egoera",
@@ -1056,6 +1057,7 @@
     "submissionFailed": "Ezin izan da inskripzioa bidali konexio-arazo baten ondorioz. Saiatu berriro minutu batzuk barru.",
     "submissionNotDelivered": "Izen-ematea ez da bidali: konexioa eten da edo argazkiek gehiegi pisatzen zuten. Bete duzuna hemen duzu oraindik; erantsi hiru argazkiak berriro eta bidali berriro.",
     "searchPlaceholder": "Bilatu izenez, NANez edo emailez...",
+    "searchClear": "Ezabatu bilaketa",
     "filterStatusLabel": "Egoera",
     "filterStatusAll": "Egoera guztiak",
     "status": {
@@ -1146,6 +1148,7 @@
     "emptySociosDescription": "Bazkideak hemen agertuko dira lehen alta onartu bezain laster.",
     "emptySolicitudesDescription": "Hemen agertuko dira formulario publikotik bidalitako bazkide-altak.",
     "searchPlaceholder": "Bilatu izenez, emailez edo telefonoz...",
+    "searchClear": "Ezabatu bilaketa",
     "colName": "Izena",
     "colMemberNumber": "Bazkide zk.",
     "colContact": "Kontaktua",
@@ -1390,6 +1393,7 @@
     "noteBodyRequired": "Sarrera ezin da hutsik egon.",
     "noteDeleted": "Sarrera ezabatu da.",
     "searchPlaceholder": "Bilatu izenez edo mailaz...",
+    "searchClear": "Ezabatu bilaketa",
     "exportCsvAction": "CSV esportatu",
     "noResultsTitle": "Emaitzarik ez",
     "noResultsDescription": "Ez dago bilaketarekin bat datorren talderik."
@@ -1467,6 +1471,7 @@
     "contractInvalidType": "Kontratuak PDF edo irudi bat izan behar du (JPG, PNG edo WEBP).",
     "contractTooLarge": "Kontratuak ezin du 10 MB baino gehiago izan.",
     "searchPlaceholder": "Bilatu babeslea...",
+    "searchClear": "Ezabatu bilaketa",
     "filterStatusLabel": "Egoera",
     "filterStatusAll": "Denak",
     "filterStatusActive": "Aktiboak",
@@ -2090,6 +2095,7 @@
     "cancel": "Utzi",
     "saveChanges": "Gorde aldaketak",
     "searchPlaceholder": "Bilatu izenez...",
+    "searchClear": "Ezabatu bilaketa",
     "exportCsvAction": "CSV esportatu",
     "noResultsTitle": "Emaitzarik ez",
     "noResultsDescription": "Ez dago bilaketarekin bat datorren denboraldirik."

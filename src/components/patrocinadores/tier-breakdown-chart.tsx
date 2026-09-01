@@ -8,6 +8,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { currencyFormatter } from "@/lib/money";
 
 export function TierBreakdownChart({
   data,
@@ -18,10 +19,7 @@ export function TierBreakdownChart({
   config: ChartConfig;
   locale: string;
 }) {
-  const currencyFmt = new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "EUR",
-  });
+  const currencyFmt = currencyFormatter(locale);
 
   return (
     <ChartContainer config={config} className="w-full">

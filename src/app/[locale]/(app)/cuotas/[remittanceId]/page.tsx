@@ -10,6 +10,7 @@ import { StatTile } from "@/components/stat-tile";
 import { DeleteRemittanceDialog } from "@/components/cuotas/delete-remittance-dialog";
 import { DownloadRemittanceXmlButton } from "@/components/cuotas/download-remittance-xml-button";
 import { MarkRemittanceCollectedButton } from "@/components/cuotas/mark-remittance-collected-button";
+import { formatCents } from "@/lib/money";
 import {
   RemittanceChargesTable,
   type ChargeRow,
@@ -47,10 +48,14 @@ export default async function RemittanceDetailPage({
       season: true,
       charges: {
         with: {
-          mandate: true,
-          payer: true,
-          membership: { with: { person: true, team: true } },
-          clubMember: { with: { person: true } },
+          mandate: { columns: { rum: true } },
+          payer: { columns: { firstName: true, lastName: true } },
+          membership: {
+            with: { person: { columns: { firstName: true, lastName: true } } },
+          },
+          clubMember: {
+            with: { person: { columns: { firstName: true, lastName: true } } },
+          },
         },
         orderBy: (sepaCharges, { asc }) => [asc(sepaCharges.createdAt)],
       },
@@ -58,7 +63,6 @@ export default async function RemittanceDetailPage({
   });
   if (!remittance) notFound();
 
-  const currencyFmt = new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" });
   const totalCents = remittance.charges.reduce((sum, c) => sum + c.amountCents, 0);
   const pendingCount = remittance.charges.filter((c) => c.status === "pending").length;
   const subject =
@@ -102,7 +106,7 @@ export default async function RemittanceDetailPage({
 
       <div className="grid gap-3 sm:grid-cols-3">
         <StatTile label={t("colChargeCount")} value={remittance.charges.length} />
-        <StatTile label={t("colAmount")} value={currencyFmt.format(totalCents / 100)} />
+        <StatTile label={t("colAmount")} value={formatCents(totalCents, locale)} />
         <StatTile label={t("stat.pending")} value={pendingCount} />
       </div>
 

@@ -71,6 +71,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatCents } from "@/lib/money";
 
 const LOGO_BUCKET = "sponsorship-logos";
 const CONTRACT_BUCKET = "sponsorship-contracts";
@@ -161,10 +162,7 @@ export default async function SponsorDetailPage({
 
   function formatAmount(amountCents: number | null) {
     if (amountCents === null) return null;
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: "EUR",
-    }).format(amountCents / 100);
+    return formatCents(amountCents, locale);
   }
 
   function termLabel(term: { startsOn: string | null; endsOn: string | null }) {

@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import {
   BriefcaseIcon,
   CheckIcon,
-  SearchIcon,
   TriangleAlertIcon,
   UserCheckIcon,
   UserIcon,
@@ -16,7 +15,6 @@ import { DeleteTeamDialog } from "@/components/equipos/delete-team-dialog";
 import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -28,6 +26,8 @@ import {
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { usePagedRows } from "@/hooks/use-paged-rows";
 import { ExportMenu } from "@/components/export-menu";
+import { FiltersBar } from "@/components/filters-bar";
+import { SearchInput } from "@/components/search-input";
 import { formatCents } from "@/lib/money";
 import type { RosterHealthAlerts } from "@/lib/roster-health";
 
@@ -136,20 +136,14 @@ export function EquiposBrowser({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="w-56 pl-8"
-          />
-        </div>
-        <div className="ml-auto">
-          <ExportMenu filename="equipos" getData={exportData} />
-        </div>
-      </div>
+      <FiltersBar trailing={<ExportMenu filename="equipos" getData={exportData} />}>
+        <SearchInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder={t("searchPlaceholder")}
+          clearLabel={t("searchClear")}
+        />
+      </FiltersBar>
 
       {filtered.length === 0 ? (
         <SectionPlaceholder

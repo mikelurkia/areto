@@ -2,17 +2,17 @@
 
 import { StatusBadge } from "@/components/status-badge";
 import { useMemo } from "react";
-import { SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { usePagedRows } from "@/hooks/use-paged-rows";
 import { ExportMenu } from "@/components/export-menu";
+import { FiltersBar } from "@/components/filters-bar";
+import { SearchInput } from "@/components/search-input";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { PaginationBar } from "@/components/pagination-bar";
 import { STATUS_TONE, type RegistrationStatus } from "@/lib/registration-status";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -105,16 +105,13 @@ export function RegistrationsBrowser({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="w-56 pl-8"
-          />
-        </div>
+      <FiltersBar trailing={<ExportMenu filename="inscripciones" getData={exportData} />}>
+        <SearchInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder={t("searchPlaceholder")}
+          clearLabel={t("searchClear")}
+        />
         <Select value={status} onValueChange={(v) => setFilters({ estado: v ?? "all" })}>
           <SelectTrigger aria-label={t("filterStatusLabel")}>
             <SelectValue>
@@ -132,10 +129,7 @@ export function RegistrationsBrowser({
             <SelectItem value="rejected">{t("status.rejected")}</SelectItem>
           </SelectContent>
         </Select>
-        <div className="ml-auto">
-          <ExportMenu filename="inscripciones" getData={exportData} />
-        </div>
-      </div>
+      </FiltersBar>
 
       {filtered.length === 0 ? (
         <SectionPlaceholder
