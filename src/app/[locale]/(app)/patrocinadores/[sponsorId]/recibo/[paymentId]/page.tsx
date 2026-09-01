@@ -10,6 +10,7 @@ import { seasonLabel } from "@/lib/sponsorship";
 import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
 import { PrintableSheet } from "@/components/printable-sheet";
+import { formatCents } from "@/lib/money";
 
 export async function generateMetadata({
   params,
@@ -45,10 +46,7 @@ export default async function SponsorInvoicePage({
   const { logoUrl } = await getClubBrandingAssets();
 
   const sponsor = payment.term.sponsor;
-  const amount = new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "EUR",
-  }).format(payment.amountCents / 100);
+  const amount = formatCents(payment.amountCents, locale);
 
   const concept = payment.year
     ? `${t("sponsorshipConcept", { name: sponsor.name })} · ${seasonLabel(payment.year)}`

@@ -8,6 +8,7 @@ import { usePathname } from "@/i18n/navigation";
 import { ExportMenu } from "@/components/export-menu";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { formatCents } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -49,13 +50,6 @@ export function InvoiceRegister({
   const pathname = usePathname();
   const [year, setYear] = useState("all");
 
-  function formatAmount(amountCents: number) {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: "EUR",
-    }).format(amountCents / 100);
-  }
-
   const filtered = useMemo(() => {
     if (year === "all") return invoices;
     return invoices.filter((inv) => (inv.invoicedOn ?? "").slice(0, 4) === year);
@@ -79,7 +73,7 @@ export function InvoiceRegister({
       inv.invoiceNumber,
       inv.sponsorName,
       inv.concept,
-      formatAmount(inv.amountCents),
+      formatCents(inv.amountCents, locale),
     ]);
     return { headers, rows };
   }
@@ -160,7 +154,7 @@ export function InvoiceRegister({
                   {inv.concept}
                 </TableCell>
                 <TableCell nowrap className="text-right font-medium">
-                  {formatAmount(inv.amountCents)}
+                  {formatCents(inv.amountCents, locale)}
                 </TableCell>
                 <TableCell className="flex justify-end print:hidden">
                   <Button
@@ -191,7 +185,7 @@ export function InvoiceRegister({
               <TableCell />
               <TableCell priority="tertiary" />
               <TableCell nowrap className="text-right font-semibold">
-                {formatAmount(totalCents)}
+                {formatCents(totalCents, locale)}
               </TableCell>
               <TableCell className="print:hidden" />
             </TableRow>

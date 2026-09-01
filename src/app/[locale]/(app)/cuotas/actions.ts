@@ -44,9 +44,10 @@ function monthlyPeriodKeys(startsOn: string, endsOn: string): string[] {
 type PersonPayerFields = {
   id: string;
   payerPersonId: string | null;
-  iban: string | null;
-  sepaConsent: boolean;
 };
+
+/** Lo único que hace falta de la persona para saber quién paga por ella. */
+const PAYER_COLUMNS = { id: true, payerPersonId: true } as const;
 
 /** Persona pagadora efectiva: el tutor enlazado si lo hay, o la propia persona. */
 function payerIdOf(person: PersonPayerFields): string {
@@ -115,7 +116,7 @@ export async function generatePlayerCharges(
 
   const teamMemberships = await db.query.memberships.findMany({
     where: and(eq(memberships.teamId, teamId), eq(memberships.role, "player")),
-    with: { person: true },
+    with: { person: { columns: PAYER_COLUMNS } },
   });
   if (teamMemberships.length === 0) return { error: t("noPlayers") };
 
@@ -249,7 +250,7 @@ export async function generateMemberCharges(
 
   const activeMembers = await db.query.clubMembers.findMany({
     where: eq(clubMembers.status, "active"),
-    with: { person: true },
+    with: { person: { columns: PAYER_COLUMNS } },
   });
   if (activeMembers.length === 0) return { error: t("noMembers") };
 

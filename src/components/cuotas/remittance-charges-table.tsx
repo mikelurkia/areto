@@ -7,6 +7,7 @@ import { MarkChargeCollectedButton } from "@/components/cuotas/mark-charge-colle
 import { MarkChargeReturnedDialog } from "@/components/cuotas/mark-charge-returned-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { StatusBadge } from "@/components/status-badge";
+import { formatCents } from "@/lib/money";
 import { SEPA_CHARGE_TONE, type SepaChargeStatus } from "@/lib/sepa-charge-status";
 import {
   Table,
@@ -37,12 +38,6 @@ export function RemittanceChargesTable({
   canManage: boolean;
 }) {
   const t = useTranslations("Cuotas");
-
-  function formatAmount(amountCents: number) {
-    return new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(
-      amountCents / 100,
-    );
-  }
 
   if (charges.length === 0) {
     return (
@@ -75,7 +70,7 @@ export function RemittanceChargesTable({
               {charge.rum}
             </TableCell>
             <TableCell nowrap className="text-right font-medium">
-              {formatAmount(charge.amountCents)}
+              {formatCents(charge.amountCents, locale)}
             </TableCell>
             <TableCell>
               <StatusBadge

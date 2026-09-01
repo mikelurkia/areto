@@ -55,7 +55,17 @@ export default async function TeamRosterSheetPage({
     getTeam(teamId),
     db.query.memberships.findMany({
       where: eq(memberships.teamId, teamId),
-      with: { person: true },
+      with: {
+        person: {
+          columns: {
+            firstName: true,
+            lastName: true,
+            nationalId: true,
+            birthDate: true,
+            medicalCertUntil: true,
+          },
+        },
+      },
       orderBy: (memberships, { asc }) => [asc(memberships.jerseyNumber)],
     }),
     getClubSettings(),

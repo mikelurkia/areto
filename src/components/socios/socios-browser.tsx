@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { MailIcon, SearchIcon } from "lucide-react";
+import { MailIcon } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -18,8 +18,10 @@ import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { PaginationBar } from "@/components/pagination-bar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { FiltersBar } from "@/components/filters-bar";
+import { SearchInput } from "@/components/search-input";
+import { BulkActionsBar } from "@/components/bulk-actions-bar";
 import {
   Table,
   TableBody,
@@ -176,26 +178,21 @@ export function SociosBrowser({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-56">
-          <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="pl-8"
-          />
-        </div>
-        <div className="ml-auto">
-          <ExportMenu filename="socios" getData={exportData} />
-        </div>
-      </div>
+      <FiltersBar trailing={<ExportMenu filename="socios" getData={exportData} />}>
+        <SearchInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder={t("searchPlaceholder")}
+          clearLabel={t("searchClear")}
+        />
+      </FiltersBar>
 
       {canManage && selectedIds.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/50 p-2">
-          <span className="text-sm font-medium">
-            {t("bulkSelectedCount", { count: selectedIds.size })}
-          </span>
+        <BulkActionsBar
+          countLabel={t("bulkSelectedCount", { count: selectedIds.size })}
+          clearLabel={t("bulkClearSelection")}
+          onClear={() => setSelectedIds(new Set())}
+        >
           <Button
             variant="outline"
             size="sm"
@@ -216,15 +213,7 @@ export function SociosBrowser({
           >
             {t("bulkCancelMembershipAction")}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto"
-            onClick={() => setSelectedIds(new Set())}
-          >
-            {t("bulkClearSelection")}
-          </Button>
-        </div>
+        </BulkActionsBar>
       ) : null}
 
       {total === 0 ? (
