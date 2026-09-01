@@ -12,6 +12,22 @@ const nextConfig: NextConfig = {
    * como error en desarrollo y en build.
    */
   cacheComponents: true,
+  /**
+   * Contadores derivados del panel: integridad, duplicados y renovaciones.
+   * Su frescura la garantizan los `updateTag` de cada acción que los altera, no
+   * el reloj, así que `revalidate` puede ser largo. Con `cacheLife("minutes")`
+   * —revalidate de 60s— cada entrada se reescribía en segundo plano cada minuto
+   * que hubiera tráfico, y cada reescritura es una escritura ISR facturable que
+   * no aportaba nada. El `expire` de un día acota lo que entra por fuera de la
+   * aplicación (importaciones, edición directa en la base).
+   */
+  cacheLife: {
+    derivados: {
+      stale: 300, // 5 min
+      revalidate: 3600, // 1 h
+      expire: 86400, // 1 día
+    },
+  },
   // El binario nativo de `sharp` para Linux vive en paquetes aparte
   // (`@img/sharp-linux-x64`, `@img/sharp-libvips-linux-x64`) que el file
   // tracing de Next no detecta solo (sharp lo carga con dlopen, no con un

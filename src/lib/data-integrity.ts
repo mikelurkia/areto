@@ -149,7 +149,7 @@ export async function loadDataIntegrityIssues(
 ): Promise<IntegrityIssue[]> {
   "use cache";
   cacheTag(INTEGRITY_ISSUES_TAG);
-  cacheLife("minutes");
+  cacheLife("derivados");
 
   const [orphanPlayers, missingNationalId, medicalCertMismatch, duplicateCaptains] =
     await Promise.all([
@@ -187,7 +187,7 @@ export async function loadDataIntegrityIssues(
 export async function countDuplicatePersonGroups(): Promise<number> {
   "use cache";
   cacheTag(DUPLICATE_PERSONS_TAG);
-  cacheLife("minutes");
+  cacheLife("derivados");
 
   const allPersons = await db.query.persons.findMany({
     columns: {

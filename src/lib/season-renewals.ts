@@ -77,7 +77,7 @@ export function resolveRenewalStatus(
 export async function loadSeasonRenewals(seasonId: string): Promise<SeasonRenewals> {
   "use cache";
   cacheTag(SEASON_RENEWALS_TAG);
-  cacheLife("minutes");
+  cacheLife("derivados");
 
   const seasonTeams = await db.query.teams.findMany({
     where: eq(teams.seasonId, seasonId),

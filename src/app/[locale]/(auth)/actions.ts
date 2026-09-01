@@ -8,7 +8,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { getSiteUrl } from "@/lib/site-url";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
-import { revalidateAppShell } from "@/lib/revalidate";
 
 export type AuthState = {
   error?: string;
@@ -37,7 +36,6 @@ export async function login(
 
   if (error) return { error: t("invalidCredentials") };
 
-  revalidateAppShell();
   const current = await getCurrentUser();
   const locale = current?.locale ?? routing.defaultLocale;
   return localizedRedirect({ href: next, locale });
@@ -113,7 +111,6 @@ export async function setPassword(
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return { error: error.message };
 
-  revalidateAppShell();
   const current = await getCurrentUser();
   const locale = current?.locale ?? routing.defaultLocale;
   return localizedRedirect({ href: "/dashboard", locale });
@@ -135,6 +132,5 @@ export async function setPassword(
 export async function logout(): Promise<{ redirectTo: string }> {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  revalidateAppShell();
   return { redirectTo: `/${await getLocale()}` };
 }
