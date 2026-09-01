@@ -1,0 +1,1 @@
+CREATE INDEX "sepa_charges_mandate_idx" ON "sepa_charges" USING btree ("mandate_id");
