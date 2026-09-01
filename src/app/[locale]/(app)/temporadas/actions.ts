@@ -14,7 +14,7 @@ import {
   postgresConstraint,
 } from "@/lib/db-errors";
 import { REGISTRATION_AVAILABILITY_TAG } from "@/lib/registration-settings";
-import { revalidateAppShell } from "@/lib/revalidate";
+import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
 
 export type SeasonState = {
   error?: string;
@@ -74,7 +74,7 @@ export async function createSeason(
   }
 
   updateTag(REGISTRATION_AVAILABILITY_TAG);
-  revalidateAppShell();
+  updateTag(SEASON_RENEWALS_TAG);
   return { message: t("seasonCreated") };
 }
 
@@ -110,7 +110,7 @@ export async function updateSeason(
   }
 
   updateTag(REGISTRATION_AVAILABILITY_TAG);
-  revalidateAppShell();
+  updateTag(SEASON_RENEWALS_TAG);
   return { message: t("seasonUpdated") };
 }
 
@@ -133,6 +133,6 @@ export async function deleteSeason(
   }
 
   updateTag(REGISTRATION_AVAILABILITY_TAG);
-  revalidateAppShell();
+  updateTag(SEASON_RENEWALS_TAG);
   return { message: t("seasonDeleted") };
 }

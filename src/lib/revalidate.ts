@@ -61,12 +61,24 @@ export function revalidateRoutes(...routes: readonly AppRoute[]): void {
 
 /**
  * Invalida el armazón de la aplicación completo: el layout de `[locale]` y todo
- * lo que cuelga de él.
+ * lo que cuelga de él. Sigue dejando fuera el layout raíz, así que los mensajes
+ * de i18n cacheados a `max` sobreviven.
  *
- * Reservado para lo que de verdad cambia la aplicación entera —sesión, idioma,
- * permisos del usuario, temporada activa—, porque de eso depende lo que pinta
- * la barra lateral en cada página. Sigue dejando fuera el layout raíz, así que
- * los mensajes de i18n cacheados a `max` sobreviven.
+ * CARO: son ~74 rutas por dos idiomas, y cada una se reescribe en la siguiente
+ * visita. Del orden de 150 escrituras ISR por llamada.
+ *
+ * NADA QUE DEPENDA DEL USUARIO ENTRA AQUÍ. El armazón es compartido y anónimo:
+ * `(app)/layout.tsx` es síncrono a propósito, y la sesión, los permisos y el
+ * bloque de usuario del sidebar viven dentro de `<Suspense>`, así que se
+ * renderizan en cada petición y nunca llegan a guardarse en el armazón. Lo
+ * mismo vale para el cuerpo de las páginas: todas empiezan por `requireUser` /
+ * `requirePermission`, que leen cookies, de modo que sus consultas ya son de
+ * tiempo de petición. Invalidar en login, logout o cambio de idioma no
+ * refrescaba nada — solo pagaba las 150 escrituras.
+ *
+ * Lo que sí está cacheado lleva su `cacheTag` y se expira con `updateTag`.
+ * Antes de llamar aquí, comprueba que lo que quieres refrescar no sea una de
+ * esas dos cosas.
  */
 export function revalidateAppShell(): void {
   revalidatePath("/[locale]", "layout");
