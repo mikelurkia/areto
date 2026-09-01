@@ -19,10 +19,11 @@ import {
   medicalReferenceDates,
   type MedicalPanelRow,
 } from "@/lib/medical-panel-rows";
-import { type MedicalCertStatus } from "@/lib/medical-status";
+import { MEDICAL_CERT_TONE, type MedicalCertStatus } from "@/lib/medical-status";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -76,22 +77,17 @@ const STATUS_FILTER_VALUES = [
   "needsUpdate",
 ];
 
-function StatusBadge({
-  status,
-  date,
-  t,
-}: {
-  status: MedicalCertStatus;
-  date: string | null;
-  t: ReturnType<typeof useTranslations<"Medico">>;
-}) {
-  if (status === "exempt") return <Badge variant="outline">{t("statusExemptBadge")}</Badge>;
-  if (status === "missing") return <Badge variant="secondary">{t("statusMissingBadge")}</Badge>;
-  if (status === "expired")
-    return <Badge variant="destructive">{t("statusExpiredBadge", { date: date! })}</Badge>;
-  if (status === "expiring")
-    return <Badge variant="warning">{t("statusExpiringBadge", { date: date! })}</Badge>;
-  return <Badge variant="outline">{t("statusOkBadge", { date: date! })}</Badge>;
+/** Etiqueta del certificado; el color lo pone `MEDICAL_CERT_TONE`. */
+function medicalCertLabel(
+  status: MedicalCertStatus,
+  date: string | null,
+  t: ReturnType<typeof useTranslations<"Medico">>,
+) {
+  if (status === "exempt") return t("statusExemptBadge");
+  if (status === "missing") return t("statusMissingBadge");
+  if (status === "expired") return t("statusExpiredBadge", { date: date! });
+  if (status === "expiring") return t("statusExpiringBadge", { date: date! });
+  return t("statusOkBadge", { date: date! });
 }
 
 /** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
@@ -358,7 +354,10 @@ export function MedicalPanelBrowser({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={row.status} date={row.medicalCertUntil} t={t} />
+                        <StatusBadge
+                          tone={MEDICAL_CERT_TONE[row.status]}
+                          label={medicalCertLabel(row.status, row.medicalCertUntil, t)}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

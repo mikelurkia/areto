@@ -31,6 +31,7 @@ import {
 import { type ChartConfig } from "@/components/ui/chart";
 import { TierBreakdownChart } from "@/components/patrocinadores/tier-breakdown-chart";
 import { YearlyComparisonChart } from "@/components/patrocinadores/yearly-comparison-chart";
+import { formatCents } from "@/lib/money";
 
 const LOGO_BUCKET = "sponsorship-logos";
 const CONTRACT_BUCKET = "sponsorship-contracts";
@@ -81,11 +82,6 @@ export default async function PatrocinadoresPage({
       orderBy: (persons, { asc }) => [asc(persons.lastName), asc(persons.firstName)],
     }),
   ]);
-
-  const currencyFmt = new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "EUR",
-  });
 
   // El reloj, después de las consultas (ver next-prerender-current-time).
   const today = new Date().toISOString().slice(0, 10);
@@ -336,11 +332,11 @@ export default async function PatrocinadoresPage({
           />
           <StatTile
             label={t("committedLabel")}
-            value={currencyFmt.format(seasonCommittedCents / 100)}
+            value={formatCents(seasonCommittedCents, locale)}
           />
           <StatTile
             label={t("collectedLabel")}
-            value={currencyFmt.format(seasonCollectedCents / 100)}
+            value={formatCents(seasonCollectedCents, locale)}
           />
           <StatTile
             label={t("kpiCollectionRate")}
@@ -371,7 +367,7 @@ export default async function PatrocinadoresPage({
                 </Link>
                 {item.amountCents !== null ? (
                   <span className="font-medium">
-                    {currencyFmt.format(item.amountCents / 100)}
+                    {formatCents(item.amountCents, locale)}
                   </span>
                 ) : null}
                 <StatusBadge

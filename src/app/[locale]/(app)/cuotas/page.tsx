@@ -13,6 +13,7 @@ import { DownloadRemittanceXmlButton } from "@/components/cuotas/download-remitt
 import { GenerateMemberChargesButton } from "@/components/cuotas/generate-member-charges-button";
 import { GeneratePlayerChargesDialog } from "@/components/cuotas/generate-player-charges-dialog";
 import { PendingChargeGroupCard } from "@/components/cuotas/pending-charge-group-card";
+import { formatCents } from "@/lib/money";
 import {
   Table,
   TableBody,
@@ -72,7 +73,6 @@ export default async function CuotasPage({
     }),
   ]);
 
-  const currencyFmt = new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" });
 
   const statTotals = { pending: 0, collected: 0, returned: 0 };
   for (const charge of chargeStats) {
@@ -132,9 +132,9 @@ export default async function CuotasPage({
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatTile label={t("stat.pending")} value={currencyFmt.format(statTotals.pending / 100)} />
-        <StatTile label={t("stat.collected")} value={currencyFmt.format(statTotals.collected / 100)} />
-        <StatTile label={t("stat.returned")} value={currencyFmt.format(statTotals.returned / 100)} />
+        <StatTile label={t("stat.pending")} value={formatCents(statTotals.pending, locale)} />
+        <StatTile label={t("stat.collected")} value={formatCents(statTotals.collected, locale)} />
+        <StatTile label={t("stat.returned")} value={formatCents(statTotals.returned, locale)} />
       </div>
 
       {pendingGroupRows.length > 0 ? (
@@ -193,7 +193,7 @@ export default async function CuotasPage({
                   </TableCell>
                   <TableCell className="text-right">{remittance.charges.length}</TableCell>
                   <TableCell nowrap className="text-right font-medium">
-                    {currencyFmt.format(total / 100)}
+                    {formatCents(total, locale)}
                   </TableCell>
                   <TableCell className="flex justify-end gap-1">
                     <DownloadRemittanceXmlButton remittanceId={remittance.id} />
