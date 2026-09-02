@@ -56,7 +56,7 @@ import { PrintButton } from "@/components/print-button";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress, ProgressValue } from "@/components/ui/progress";
+import { Progress } from "@/components/ui/progress";
 import {
   Collapsible,
   CollapsibleContent,
@@ -473,11 +473,10 @@ export default async function SponsorDetailPage({
                             className="max-w-xs"
                             aria-label={t("collectedLabel")}
                           >
-                            <ProgressValue className="text-xs">
-                              {() =>
-                                `${formatAmount(termCollectedCents)} / ${formatAmount(termTotalCents)}`
-                              }
-                            </ProgressValue>
+                            <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                              {formatAmount(termCollectedCents)} /{" "}
+                              {formatAmount(termTotalCents)}
+                            </span>
                           </Progress>
                         ) : null}
                         {term.benefits ? (
