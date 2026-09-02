@@ -158,6 +158,87 @@ function readEditableFields(formData: FormData) {
   };
 }
 
+/** Valida los campos editables comunes a "Guardar cambios" y "Aprobar": ambas
+ * acciones parten ahora del mismo `formData`, así que comparten esta
+ * comprobación en vez de duplicarla. */
+function validateEditableFields(
+  fields: ReturnType<typeof readEditableFields>,
+  t: Awaited<ReturnType<typeof getTranslations>>,
+): string | null {
+  if (!fields.firstName) return t("firstNameRequired");
+  if (!fields.lastName) return t("lastNameRequired");
+  if (fields.nationalId && !isValidNationalId(fields.nationalId)) return t("nationalIdInvalid");
+  if (fields.iban && !isValidIban(fields.iban)) return t("ibanInvalid");
+  return null;
+}
+
+/**
+ * Persiste en la propia solicitud los campos editables del jugador/socio y
+ * reemplaza sus tutores por los que traiga `formData` (DELETE + INSERT,
+ * juntos en la transacción del llamante: un fallo a mitad dejaría la
+ * solicitud editada pero sin ningún tutor, y sin forma de saber cuáles
+ * tenía). Devuelve los tutores tal como quedan tras el reemplazo —con su id
+ * nuevo, en el mismo orden posicional de `formData`— para que
+ * `approveRegistration` pueda usarlos sin volver a consultarlos.
+ */
+async function applyRegistrationEdits(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  id: string,
+  kind: string,
+  fields: ReturnType<typeof readEditableFields>,
+  formData: FormData,
+): Promise<(typeof registrationGuardians.$inferSelect)[]> {
+  const isPlayerKind = kind === "player";
+
+  await tx
+    .update(registrations)
+    .set({
+      firstName: fields.firstName,
+      lastName: fields.lastName,
+      birthDate: fields.birthDate || null,
+      nationalId: fields.nationalId || null,
+      address: fields.address || null,
+      city: fields.city || null,
+      postalCode: fields.postalCode || null,
+      phone: fields.phone || null,
+      email: fields.email || null,
+      iban: fields.iban || null,
+      // Un socio no tiene tallas ni plazos: no se tocan esas columnas de la
+      // propia solicitud, igual que no se piden en su formulario.
+      ...(isPlayerKind
+        ? {
+            shirtSize: fields.shirtSize || null,
+            pantsSize: fields.pantsSize || null,
+            shoeSize: fields.shoeSize || null,
+            installmentsChosen: fields.installmentsChosen,
+          }
+        : {}),
+    })
+    .where(eq(registrations.id, id));
+
+  const guardians = readGuardians(formData);
+  await tx.delete(registrationGuardians).where(eq(registrationGuardians.registrationId, id));
+  if (guardians.length === 0) return [];
+  return tx
+    .insert(registrationGuardians)
+    .values(
+      guardians.map((g, i) => ({
+        registrationId: id,
+        firstName: g.firstName,
+        lastName: g.lastName,
+        birthDate: g.birthDate || null,
+        nationalId: g.nationalId || null,
+        address: g.address || null,
+        city: g.city || null,
+        postalCode: g.postalCode || null,
+        phone: g.phone || null,
+        email: g.email || null,
+        sortOrder: i,
+      })),
+    )
+    .returning();
+}
+
 export async function updateRegistration(
   _prev: RegistrationReviewState,
   formData: FormData,
@@ -173,68 +254,11 @@ export async function updateRegistration(
   if (existing.status !== "pending") return { error: t("alreadyReviewed") };
 
   const kind = String(formData.get("kind") ?? "player");
-  const isPlayerKind = kind === "player";
   const fields = readEditableFields(formData);
-  if (!fields.firstName) return { error: t("firstNameRequired") };
-  if (!fields.lastName) return { error: t("lastNameRequired") };
-  if (fields.nationalId && !isValidNationalId(fields.nationalId)) {
-    return { error: t("nationalIdInvalid") };
-  }
-  if (fields.iban && !isValidIban(fields.iban)) {
-    return { error: t("ibanInvalid") };
-  }
+  const validationError = validateEditableFields(fields, t);
+  if (validationError) return { error: validationError };
 
-  const guardians = readGuardians(formData);
-
-  /*
-   * Junto en una transacción: los tutores se reemplazan con un DELETE +
-   * INSERT, así que un fallo entre los dos dejaba la solicitud editada pero
-   * sin ningún tutor, y sin forma de saber cuáles tenía.
-   */
-  await db.transaction(async (tx) => {
-    await tx
-      .update(registrations)
-      .set({
-        firstName: fields.firstName,
-        lastName: fields.lastName,
-        birthDate: fields.birthDate || null,
-        nationalId: fields.nationalId || null,
-        address: fields.address || null,
-        city: fields.city || null,
-        postalCode: fields.postalCode || null,
-        phone: fields.phone || null,
-        email: fields.email || null,
-        iban: fields.iban || null,
-        // Un socio no tiene tallas ni plazos: no se tocan esas columnas de la
-        // propia solicitud, igual que no se piden en su formulario.
-        ...(isPlayerKind
-          ? {
-              shirtSize: fields.shirtSize || null,
-              pantsSize: fields.pantsSize || null,
-              shoeSize: fields.shoeSize || null,
-              installmentsChosen: fields.installmentsChosen,
-            }
-          : {}),
-      })
-      .where(eq(registrations.id, id));
-
-    await tx.delete(registrationGuardians).where(eq(registrationGuardians.registrationId, id));
-    if (guardians.length > 0) {
-      await tx.insert(registrationGuardians).values(
-        guardians.map((g, i) => ({
-          registrationId: id,
-          firstName: g.firstName,
-          lastName: g.lastName,
-          birthDate: g.birthDate || null,
-          nationalId: g.nationalId || null,
-          address: g.address || null,
-          phone: g.phone || null,
-          email: g.email || null,
-          sortOrder: i,
-        })),
-      );
-    }
-  });
+  await db.transaction((tx) => applyRegistrationEdits(tx, id, kind, fields, formData));
 
   revalidateRoutes(
     ROUTE.inscripciones,
@@ -260,32 +284,35 @@ export async function approveRegistration(
     ? (membershipRoleRaw as MembershipRole)
     : "player";
 
-  const registration = await db.query.registrations.findFirst({
-    where: eq(registrations.id, id),
-    with: { guardians: { orderBy: (g, { asc }) => [asc(g.sortOrder)] } },
-  });
-  if (!registration) return { error: t("notFound") };
+  const existing = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });
+  if (!existing) return { error: t("notFound") };
   const reviewer = await requirePermission(
-    registration.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
+    existing.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
   );
-  if (registration.status !== "pending") return { error: t("alreadyReviewed") };
-  if (registration.iban && !isValidIban(registration.iban)) {
-    return { error: t("ibanInvalidFixFirst") };
-  }
+  if (existing.status !== "pending") return { error: t("alreadyReviewed") };
+
+  // "Aprobar" comparte formulario con "Guardar cambios": lee siempre lo que
+  // hay en pantalla en ese momento, no lo que quedó guardado la última vez
+  // (por eso ya no hace falta pulsar "Guardar cambios" antes de aprobar).
+  const editedFields = readEditableFields(formData);
+  const validationError = validateEditableFields(editedFields, t);
+  if (validationError) return { error: validationError };
 
   let personId: string;
   try {
     personId = await db.transaction(async (tx) => {
       let personId: string;
 
+      const guardians = await applyRegistrationEdits(tx, id, existing.kind, editedFields, formData);
+
       // Los tutores se procesan primero: el tutor principal (el primero
       // introducido) es quien domicilia la cuota de un jugador menor, así
       // que hace falta conocer su id antes de dar de alta/actualizar al
       // jugador con el `payerPersonId` correcto.
       const guardianPersonIds: string[] = [];
-      for (const [i, g] of registration.guardians.entries()) {
+      for (const [i, g] of guardians.entries()) {
         const isPayer = i === 0;
-        const matchValue = String(formData.get(`matchedFor_${g.id}`) ?? "new");
+        const matchValue = String(formData.get(`matchedFor_${i}`) ?? "new");
         let guardianPersonId: string;
         if (matchValue !== "new") {
           guardianPersonId = matchValue;
@@ -315,11 +342,11 @@ export async function approveRegistration(
               postalCode: g.postalCode,
               phone: g.phone,
               email: g.email,
-              ...(isPayer ? { iban: registration.iban } : {}),
+              ...(isPayer ? { iban: editedFields.iban || null } : {}),
             },
             existingGuardian ?? null,
             formData,
-            `guardian_${g.id}`,
+            `guardian_${i}`,
             isPayer ? GUARDIAN_PAYER_UPDATE_FIELDS : GUARDIAN_UPDATE_FIELDS,
           );
           await tx
@@ -328,8 +355,8 @@ export async function approveRegistration(
               ...guardianFields,
               ...(isPayer
                 ? {
-                    sepaConsent: registration.sepaConsent,
-                    sepaConsentAt: registration.sepaConsentAt,
+                    sepaConsent: existing.sepaConsent,
+                    sepaConsentAt: existing.sepaConsentAt,
                   }
                 : {}),
             })
@@ -349,9 +376,9 @@ export async function approveRegistration(
               email: g.email,
               ...(isPayer
                 ? {
-                    iban: registration.iban,
-                    sepaConsent: registration.sepaConsent,
-                    sepaConsentAt: registration.sepaConsentAt,
+                    iban: editedFields.iban || null,
+                    sepaConsent: existing.sepaConsent,
+                    sepaConsentAt: existing.sepaConsentAt,
                   }
                 : {}),
             })
@@ -365,21 +392,21 @@ export async function approveRegistration(
           .where(eq(registrationGuardians.id, g.id));
       }
 
-      const payer = resolvePayerFields(guardianPersonIds, registration.iban, registration.sepaConsent);
+      const payer = resolvePayerFields(guardianPersonIds, editedFields.iban || null, existing.sepaConsent);
       const payerPersonId = payer.payerPersonId;
-      const isPlayerKind = registration.kind === "player";
+      const isPlayerKind = existing.kind === "player";
       // Un socio no tiene tallas ni pide consentimiento de imagen/traslados: si
       // se incluyeran aquí, aprobar su alta borraría esos datos de una persona
       // que ya fuera jugador (ver MEMBER_UPDATE_FIELDS).
       const sizeFields = isPlayerKind
-        ? { shirtSize: registration.shirtSize, pantsSize: registration.pantsSize, shoeSize: registration.shoeSize }
+        ? { shirtSize: editedFields.shirtSize || null, pantsSize: editedFields.pantsSize || null, shoeSize: editedFields.shoeSize || null }
         : {};
       const kitConsentFields = isPlayerKind
         ? {
-            photoConsent: registration.photoConsent,
-            photoConsentAt: registration.photoConsentAt,
-            termsConsent: registration.termsConsent,
-            termsConsentAt: registration.termsConsentAt,
+            photoConsent: existing.photoConsent,
+            photoConsentAt: existing.photoConsentAt,
+            termsConsent: existing.termsConsent,
+            termsConsentAt: existing.termsConsentAt,
           }
         : {};
 
@@ -405,15 +432,15 @@ export async function approveRegistration(
         });
         const fields = applyKeepOverrides(
           {
-            firstName: registration.firstName,
-            lastName: registration.lastName,
-            birthDate: registration.birthDate,
-            nationalId: registration.nationalId,
-            address: registration.address,
-            city: registration.city,
-            postalCode: registration.postalCode,
-            phone: registration.phone,
-            email: registration.email,
+            firstName: editedFields.firstName,
+            lastName: editedFields.lastName,
+            birthDate: editedFields.birthDate || null,
+            nationalId: editedFields.nationalId || null,
+            address: editedFields.address || null,
+            city: editedFields.city || null,
+            postalCode: editedFields.postalCode || null,
+            phone: editedFields.phone || null,
+            email: editedFields.email || null,
             iban: payer.iban,
             ...sizeFields,
           },
@@ -433,10 +460,10 @@ export async function approveRegistration(
           .set({
             ...fields,
             ...kitConsentFields,
-            privacyConsent: registration.privacyConsent,
-            privacyConsentAt: registration.privacyConsentAt,
+            privacyConsent: existing.privacyConsent,
+            privacyConsentAt: existing.privacyConsentAt,
             sepaConsent: payer.sepaConsent,
-            sepaConsentAt: payer.sepaConsent ? registration.sepaConsentAt : null,
+            sepaConsentAt: payer.sepaConsent ? existing.sepaConsentAt : null,
             payerPersonId,
           })
           .where(eq(persons.id, personId));
@@ -444,22 +471,22 @@ export async function approveRegistration(
         const [inserted] = await tx
           .insert(persons)
           .values({
-            firstName: registration.firstName,
-            lastName: registration.lastName,
-            birthDate: registration.birthDate,
-            nationalId: registration.nationalId,
-            address: registration.address,
-            city: registration.city,
-            postalCode: registration.postalCode,
-            phone: registration.phone,
-            email: registration.email,
+            firstName: editedFields.firstName,
+            lastName: editedFields.lastName,
+            birthDate: editedFields.birthDate || null,
+            nationalId: editedFields.nationalId || null,
+            address: editedFields.address || null,
+            city: editedFields.city || null,
+            postalCode: editedFields.postalCode || null,
+            phone: editedFields.phone || null,
+            email: editedFields.email || null,
             iban: payer.iban,
             ...sizeFields,
             ...kitConsentFields,
-            privacyConsent: registration.privacyConsent,
-            privacyConsentAt: registration.privacyConsentAt,
+            privacyConsent: existing.privacyConsent,
+            privacyConsentAt: existing.privacyConsentAt,
             sepaConsent: payer.sepaConsent,
-            sepaConsentAt: payer.sepaConsent ? registration.sepaConsentAt : null,
+            sepaConsentAt: payer.sepaConsent ? existing.sepaConsentAt : null,
             payerPersonId,
           })
           .returning({ id: persons.id });
@@ -486,10 +513,10 @@ export async function approveRegistration(
             role: membershipRole,
             // Informativo en origen; solo tiene efecto si el equipo cobra la
             // cuota de jugador en 2 plazos (ver `generatePlayerCharges`).
-            installmentsCount: registration.installmentsChosen,
+            installmentsCount: editedFields.installmentsChosen,
           })
           .onConflictDoNothing();
-      } else if (registration.kind === "member") {
+      } else if (existing.kind === "member") {
         // Alta de socio: sin equipo, cuelga de `club_members` en vez de `memberships`.
         // Si la persona ya fue socia y causó baja, reactivamos en vez de duplicar
         // (índice único por `personId`).
@@ -532,11 +559,11 @@ export async function approveRegistration(
   const keepExistingFile = (key: "photo" | "idFront" | "idBack") =>
     matchedPersonId !== "new" && formData.get(`keep_person_${key}`) === "on";
 
-  if (registration.photoPath && !keepExistingFile("photo")) {
-    const targetPath = `${personId}/photo.${extFromPath(registration.photoPath)}`;
+  if (existing.photoPath && !keepExistingFile("photo")) {
+    const targetPath = `${personId}/photo.${extFromPath(existing.photoPath)}`;
     await copyFileBetweenBuckets(
       REGISTRATION_BUCKET,
-      registration.photoPath,
+      existing.photoPath,
       PERSON_PHOTO_BUCKET,
       targetPath,
     );
@@ -544,15 +571,15 @@ export async function approveRegistration(
     await db.update(persons).set({ photoPath: targetPath }).where(eq(persons.id, personId));
   }
 
-  if (registration.idFrontPath && !keepExistingFile("idFront")) {
-    const targetPath = `${personId}/id-front.${extFromPath(registration.idFrontPath)}`;
-    await copyFileBetweenBuckets(REGISTRATION_BUCKET, registration.idFrontPath, PERSON_DOCUMENTS_BUCKET, targetPath);
+  if (existing.idFrontPath && !keepExistingFile("idFront")) {
+    const targetPath = `${personId}/id-front.${extFromPath(existing.idFrontPath)}`;
+    await copyFileBetweenBuckets(REGISTRATION_BUCKET, existing.idFrontPath, PERSON_DOCUMENTS_BUCKET, targetPath);
     await db.update(persons).set({ idFrontPath: targetPath }).where(eq(persons.id, personId));
   }
 
-  if (registration.idBackPath && !keepExistingFile("idBack")) {
-    const targetPath = `${personId}/id-back.${extFromPath(registration.idBackPath)}`;
-    await copyFileBetweenBuckets(REGISTRATION_BUCKET, registration.idBackPath, PERSON_DOCUMENTS_BUCKET, targetPath);
+  if (existing.idBackPath && !keepExistingFile("idBack")) {
+    const targetPath = `${personId}/id-back.${extFromPath(existing.idBackPath)}`;
+    await copyFileBetweenBuckets(REGISTRATION_BUCKET, existing.idBackPath, PERSON_DOCUMENTS_BUCKET, targetPath);
     await db.update(persons).set({ idBackPath: targetPath }).where(eq(persons.id, personId));
   }
 
@@ -561,7 +588,7 @@ export async function approveRegistration(
     action: "approve",
     entityType: "registration",
     entityId: id,
-    metadata: { personId, kind: registration.kind },
+    metadata: { personId, kind: existing.kind },
   });
   updateTag(INTEGRITY_ISSUES_TAG);
   updateTag(SEASON_RENEWALS_TAG);

@@ -15,7 +15,7 @@ import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { ReviewForm, type RegistrationDetail } from "@/components/inscripciones/review-form";
 import { ReviewedRegistrationPanel } from "@/components/inscripciones/reviewed-registration-panel";
 import { PlayerRegistrationSummary } from "@/components/inscripciones/registration-summary";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader, SectionHeading } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 
 const PHOTO_BUCKET = "registration-documents";
@@ -180,9 +180,7 @@ export default async function RegistrationDetailPage({
       />
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("documentsSection")}
-        </h2>
+        <SectionHeading title={t("documentsSection")} />
         <div className="flex flex-wrap gap-4">
           {(
             [

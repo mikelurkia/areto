@@ -9,14 +9,11 @@ import {
   updateRegistration,
 } from "@/app/[locale]/(app)/inscripciones/actions";
 import { ConsentRow, MatchSelect, type PersonCandidate } from "@/components/match-select";
-import {
-  GuardianEditBlock,
-  GuardianMatchBlock,
-  type GuardianData,
-} from "@/components/inscripciones/guardian-review-fields";
+import { GuardianBlock, type GuardianData } from "@/components/inscripciones/guardian-review-fields";
 import { MaskedIbanInput } from "@/components/masked-iban";
+import { SectionHeading } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/submit-button";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,8 +36,8 @@ const MEMBER_DIFF_FIELDS = [
 ] as const;
 
 /** Igual que en `review-form.tsx`: si el socio es menor y tiene tutor, el
- * iban ya no se compara sobre él (lo compara `GuardianMatchBlock` en el
- * tutor pagador). */
+ * iban ya no se compara sobre él (lo compara `GuardianBlock` en el tutor
+ * pagador). */
 const MEMBER_DIFF_FIELDS_WITHOUT_IBAN = MEMBER_DIFF_FIELDS.filter((f) => f !== "iban");
 
 export type MemberRegistrationDetail = {
@@ -75,94 +72,63 @@ export function MemberReviewForm({ registration }: { registration: MemberRegistr
   const hasGuardians = registration.guardians.length > 0;
 
   return (
-    <div className="flex flex-col gap-8">
-      <form action={editAction} className="flex flex-col gap-6">
-        <input type="hidden" name="id" value={registration.id} />
-        <input type="hidden" name="kind" value={registration.kind} />
-        <FieldGroup>
-          <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("memberSection")}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="firstName">{t("firstNameLabel")}</FieldLabel>
-              <Input id="firstName" name="firstName" defaultValue={registration.firstName} required />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="lastName">{t("lastNameLabel")}</FieldLabel>
-              <Input id="lastName" name="lastName" defaultValue={registration.lastName} required />
-            </Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="birthDate">{t("birthDateLabel")}</FieldLabel>
-              <Input id="birthDate" name="birthDate" type="date" defaultValue={registration.birthDate ?? ""} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="nationalId">{t("nationalIdLabel")}</FieldLabel>
-              <Input id="nationalId" name="nationalId" defaultValue={registration.nationalId ?? ""} />
-            </Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
-            <Field>
-              <FieldLabel htmlFor="address">{t("addressLabel")}</FieldLabel>
-              <Input id="address" name="address" defaultValue={registration.address ?? ""} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="postalCode">{t("postalCodeLabel")}</FieldLabel>
-              <Input
-                id="postalCode"
-                name="postalCode"
-                inputMode="numeric"
-                defaultValue={registration.postalCode ?? ""}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="city">{t("cityLabel")}</FieldLabel>
-              <Input id="city" name="city" defaultValue={registration.city ?? ""} />
-            </Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="phone">{t("phoneLabel")}</FieldLabel>
-              <Input id="phone" name="phone" defaultValue={registration.phone ?? ""} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="email">{t("emailLabel")}</FieldLabel>
-              <Input id="email" name="email" defaultValue={registration.email ?? ""} />
-            </Field>
-          </div>
-        </FieldGroup>
+    <form className="flex flex-col gap-6">
+      <input type="hidden" name="id" value={registration.id} />
+      <input type="hidden" name="kind" value={registration.kind} />
 
-        <GuardianEditBlock guardians={registration.guardians} />
-
-        <FieldGroup>
-          <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("paymentSection")}
-          </h2>
+      <Card className="gap-3 px-(--card-spacing)">
+        <SectionHeading title={t("memberSection")} />
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="iban">{t("ibanLabel")}</FieldLabel>
-            <MaskedIbanInput id="iban" name="iban" defaultValue={registration.iban ?? ""} />
+            <FieldLabel htmlFor="firstName">{t("firstNameLabel")}</FieldLabel>
+            <Input id="firstName" name="firstName" defaultValue={registration.firstName} required />
           </Field>
-          <Card size="sm" className="gap-2 px-(--card-spacing)">
-            <ConsentRow label={t("sepaConsentShortLabel")} granted={registration.sepaConsent} />
-            <ConsentRow label={t("privacyConsentShortLabel")} granted={registration.privacyConsent} />
-          </Card>
-        </FieldGroup>
-
-        {editState.error ? <p className="text-sm text-destructive">{editState.error}</p> : null}
-        <div>
-          <SubmitButton variant="outline">{t("saveChangesAction")}</SubmitButton>
+          <Field>
+            <FieldLabel htmlFor="lastName">{t("lastNameLabel")}</FieldLabel>
+            <Input id="lastName" name="lastName" defaultValue={registration.lastName} required />
+          </Field>
         </div>
-      </form>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="birthDate">{t("birthDateLabel")}</FieldLabel>
+            <Input id="birthDate" name="birthDate" type="date" defaultValue={registration.birthDate ?? ""} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="nationalId">{t("nationalIdLabel")}</FieldLabel>
+            <Input id="nationalId" name="nationalId" defaultValue={registration.nationalId ?? ""} />
+          </Field>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
+          <Field>
+            <FieldLabel htmlFor="address">{t("addressLabel")}</FieldLabel>
+            <Input id="address" name="address" defaultValue={registration.address ?? ""} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="postalCode">{t("postalCodeLabel")}</FieldLabel>
+            <Input
+              id="postalCode"
+              name="postalCode"
+              inputMode="numeric"
+              defaultValue={registration.postalCode ?? ""}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="city">{t("cityLabel")}</FieldLabel>
+            <Input id="city" name="city" defaultValue={registration.city ?? ""} />
+          </Field>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="phone">{t("phoneLabel")}</FieldLabel>
+            <Input id="phone" name="phone" defaultValue={registration.phone ?? ""} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="email">{t("emailLabel")}</FieldLabel>
+            <Input id="email" name="email" defaultValue={registration.email ?? ""} />
+          </Field>
+        </div>
 
-      <Card className="gap-6 px-(--card-spacing)">
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("reviewSection")}
-        </h2>
-        <form action={approveAction} className="flex flex-col gap-4">
-          <input type="hidden" name="id" value={registration.id} />
-
+        <div className="border-t pt-3">
           <MatchSelect
             name="matchedPersonId"
             candidates={registration.candidates}
@@ -182,19 +148,38 @@ export function MemberReviewForm({ registration }: { registration: MemberRegistr
             diffFields={hasGuardians ? MEMBER_DIFF_FIELDS_WITHOUT_IBAN : MEMBER_DIFF_FIELDS}
             keepPrefix="person"
           />
+        </div>
+      </Card>
 
-          <GuardianMatchBlock guardians={registration.guardians} registrationIban={registration.iban} />
+      <GuardianBlock guardians={registration.guardians} registrationIban={registration.iban} />
 
-          {approveState.error ? (
-            <p className="text-sm text-destructive">{approveState.error}</p>
-          ) : null}
-          <div>
-            <SubmitButton>{t("approveAction")}</SubmitButton>
-          </div>
-        </form>
+      <Card className="gap-3 px-(--card-spacing)">
+        <SectionHeading title={t("paymentSection")} />
+        <Field>
+          <FieldLabel htmlFor="iban">{t("ibanLabel")}</FieldLabel>
+          <MaskedIbanInput id="iban" name="iban" defaultValue={registration.iban ?? ""} />
+        </Field>
+        <Card size="sm" className="gap-2 px-(--card-spacing)">
+          <ConsentRow label={t("sepaConsentShortLabel")} granted={registration.sepaConsent} />
+          <ConsentRow label={t("privacyConsentShortLabel")} granted={registration.privacyConsent} />
+        </Card>
+      </Card>
 
-        <form action={rejectAction} className="flex flex-col gap-3 border-t pt-4">
-          <input type="hidden" name="id" value={registration.id} />
+      <Card className="gap-4 px-(--card-spacing)">
+        <SectionHeading title={t("reviewSection")} />
+
+        {editState.error ? <p className="text-sm text-destructive">{editState.error}</p> : null}
+        {approveState.error ? (
+          <p className="text-sm text-destructive">{approveState.error}</p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <SubmitButton formAction={editAction} variant="outline">
+            {t("saveChangesAction")}
+          </SubmitButton>
+          <SubmitButton formAction={approveAction}>{t("approveAction")}</SubmitButton>
+        </div>
+
+        <div className="flex flex-col gap-3 border-t pt-4">
           <Field>
             <FieldLabel htmlFor="rejectionReason">{t("rejectionReasonLabel")}</FieldLabel>
             <Textarea id="rejectionReason" name="rejectionReason" placeholder={t("rejectionReasonPlaceholder")} />
@@ -203,10 +188,12 @@ export function MemberReviewForm({ registration }: { registration: MemberRegistr
             <p className="text-sm text-destructive">{rejectState.error}</p>
           ) : null}
           <div>
-            <SubmitButton variant="destructive">{t("rejectAction")}</SubmitButton>
+            <SubmitButton formAction={rejectAction} variant="destructive">
+              {t("rejectAction")}
+            </SubmitButton>
           </div>
-        </form>
+        </div>
       </Card>
-    </div>
+    </form>
   );
 }

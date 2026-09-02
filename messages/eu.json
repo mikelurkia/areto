@@ -1074,7 +1074,6 @@
     "shoeSizeRequired": "Oinetako neurria derrigorrezkoa da.",
     "ibanRequired": "IBANa derrigorrezkoa da.",
     "ibanInvalid": "IBANa ez da baliozkoa (egiaztatu zenbakia).",
-    "ibanInvalidFixFirst": "Eskaera honen IBANa ez da baliozkoa. Zuzendu editatzeko inprimakian onartu aurretik.",
     "sepaConsentRequired": "Kuotaren helbideratzea baimendu behar duzu.",
     "privacyConsentRequired": "Datuen tratamendua onartu behar duzu inskripzioa bidaltzeko.",
     "photoRequired": "Argazkia derrigorrezkoa da.",

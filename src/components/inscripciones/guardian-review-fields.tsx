@@ -5,6 +5,7 @@ import { PlusIcon, TrashIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { MatchSelect, type PersonCandidate } from "@/components/match-select";
+import { SectionHeading } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -40,40 +41,57 @@ const GUARDIAN_DIFF_FIELDS = [
 const GUARDIAN_PAYER_DIFF_FIELDS = [...GUARDIAN_DIFF_FIELDS, "iban"] as const;
 
 /**
- * Bloque de edición de tutores (añadir/quitar, datos de contacto). Un tutor es
- * un tutor sea la inscripción de jugador o de socio, así que este bloque es
- * compartido entre `review-form.tsx` y `member-review-form.tsx`. Gestiona su
- * propio estado de filas añadidas/quitadas.
+ * Bloque de edición + vinculación de tutores, un `Card` por tutor: añadir/
+ * quitar filas, datos de contacto, y —para los que ya existían al cargar la
+ * página, con `candidates` calculados en el servidor— su `MatchSelect` de
+ * vinculación justo debajo, en la misma tarjeta. Un tutor añadido en esta
+ * misma sesión de edición no tiene candidatos con los que comparar (se
+ * calculan al renderizar la página), así que no lleva selector: se procesará
+ * como persona nueva al aprobar. Un tutor es un tutor sea la inscripción de
+ * jugador o de socio, así que este bloque es compartido entre
+ * `review-form.tsx` y `member-review-form.tsx`.
  */
-export function GuardianEditBlock({ guardians }: { guardians: GuardianData[] }) {
+export function GuardianBlock({
+  guardians,
+  registrationIban,
+}: {
+  guardians: GuardianData[];
+  registrationIban: string | null;
+}) {
   const t = useTranslations("Inscripciones");
   const [guardianKeys, setGuardianKeys] = useState<number[]>(
     guardians.length > 0 ? guardians.map((_, i) => i) : [],
   );
   const nextGuardianKey = useRef(guardianKeys.length);
+  const [names, setNames] = useState<Record<number, string>>(
+    Object.fromEntries(guardians.map((g, i) => [i, `${g.firstName} ${g.lastName}`.trim()])),
+  );
 
   return (
     <FieldGroup>
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("guardiansSection")}
-        </h2>
-        <button
-          type="button"
-          className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          onClick={() => setGuardianKeys((prev) => [...prev, nextGuardianKey.current++])}
-        >
-          <PlusIcon className="size-4" />
-          {t("addGuardianAction")}
-        </button>
-      </div>
+      <SectionHeading
+        title={t("guardiansSection")}
+        actions={
+          <button
+            type="button"
+            className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            onClick={() => setGuardianKeys((prev) => [...prev, nextGuardianKey.current++])}
+          >
+            <PlusIcon className="size-4" />
+            {t("addGuardianAction")}
+          </button>
+        }
+      />
       {guardianKeys.map((key, i) => {
         const existing = guardians[key];
+        const isPayer = i === 0;
+        const name = names[key];
         return (
           <Card key={key} className="gap-3 px-(--card-spacing)">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
                 {t("guardianLabel")} {i + 1}
+                {name ? ` — ${name}` : ""}
               </span>
               <button
                 type="button"
@@ -87,11 +105,31 @@ export function GuardianEditBlock({ guardians }: { guardians: GuardianData[] }) 
             <div className="grid gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel>{t("firstNameLabel")}</FieldLabel>
-                <Input name="guardianFirstName" defaultValue={existing?.firstName ?? ""} required />
+                <Input
+                  name="guardianFirstName"
+                  defaultValue={existing?.firstName ?? ""}
+                  onChange={(e) =>
+                    setNames((prev) => ({
+                      ...prev,
+                      [key]: `${e.target.value} ${existing?.lastName ?? ""}`.trim(),
+                    }))
+                  }
+                  required
+                />
               </Field>
               <Field>
                 <FieldLabel>{t("lastNameLabel")}</FieldLabel>
-                <Input name="guardianLastName" defaultValue={existing?.lastName ?? ""} required />
+                <Input
+                  name="guardianLastName"
+                  defaultValue={existing?.lastName ?? ""}
+                  onChange={(e) =>
+                    setNames((prev) => ({
+                      ...prev,
+                      [key]: `${existing?.firstName ?? ""} ${e.target.value}`.trim(),
+                    }))
+                  }
+                  required
+                />
               </Field>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -132,54 +170,33 @@ export function GuardianEditBlock({ guardians }: { guardians: GuardianData[] }) 
                 <Input name="guardianEmail" defaultValue={existing?.email ?? ""} />
               </Field>
             </div>
+
+            {existing ? (
+              <div className="border-t pt-3">
+                <MatchSelect
+                  name={`matchedFor_${i}`}
+                  candidates={existing.candidates}
+                  placeholder={t("guardianMatchLabel", { index: i + 1 })}
+                  newValues={{
+                    firstName: existing.firstName,
+                    lastName: existing.lastName,
+                    birthDate: existing.birthDate,
+                    nationalId: existing.nationalId,
+                    address: existing.address,
+                    city: existing.city,
+                    postalCode: existing.postalCode,
+                    phone: existing.phone,
+                    email: existing.email,
+                    ...(isPayer ? { iban: registrationIban } : {}),
+                  }}
+                  diffFields={isPayer ? GUARDIAN_PAYER_DIFF_FIELDS : GUARDIAN_DIFF_FIELDS}
+                  keepPrefix={`guardian_${i}`}
+                />
+              </div>
+            ) : null}
           </Card>
         );
       })}
     </FieldGroup>
-  );
-}
-
-/**
- * Un `MatchSelect` por tutor, para vincular con una persona ya existente al
- * aprobar. El primero de la lista es el tutor pagador: solo el suyo compara
- * también el IBAN (un menor no puede ser titular de un mandato SEPA, así que
- * el resto de tutores nunca lo tienen).
- */
-export function GuardianMatchBlock({
-  guardians,
-  registrationIban,
-}: {
-  guardians: GuardianData[];
-  registrationIban: string | null;
-}) {
-  const t = useTranslations("Inscripciones");
-  return (
-    <>
-      {guardians.map((g, i) => {
-        const isPayer = i === 0;
-        return (
-          <MatchSelect
-            key={g.id}
-            name={`matchedFor_${g.id}`}
-            candidates={g.candidates}
-            placeholder={t("guardianMatchLabel", { index: i + 1 })}
-            newValues={{
-              firstName: g.firstName,
-              lastName: g.lastName,
-              birthDate: g.birthDate,
-              nationalId: g.nationalId,
-              address: g.address,
-              city: g.city,
-              postalCode: g.postalCode,
-              phone: g.phone,
-              email: g.email,
-              ...(isPayer ? { iban: registrationIban } : {}),
-            }}
-            diffFields={isPayer ? GUARDIAN_PAYER_DIFF_FIELDS : GUARDIAN_DIFF_FIELDS}
-            keepPrefix={`guardian_${g.id}`}
-          />
-        );
-      })}
-    </>
   );
 }
