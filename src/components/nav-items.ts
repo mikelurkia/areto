@@ -8,6 +8,7 @@ import {
   HandshakeIcon,
   IdCardIcon,
   LayoutDashboardIcon,
+  LightbulbIcon,
   ShirtIcon,
   ShieldUserIcon,
   StethoscopeIcon,
@@ -142,6 +143,16 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
             title: t("club"),
             href: "/club",
             icon: Building2Icon,
+            group: "club" as const,
+          },
+        ]
+      : []),
+    ...(can("sugerencias.view")
+      ? [
+          {
+            title: t("sugerencias"),
+            href: "/sugerencias",
+            icon: LightbulbIcon,
             group: "club" as const,
           },
         ]

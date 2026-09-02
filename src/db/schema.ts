@@ -139,6 +139,14 @@ export const registrationStatus = pgEnum("registration_status", [
 /** Estado de la condición de socio de una persona. */
 export const clubMemberStatus = pgEnum("club_member_status", ["active", "cancelled"]);
 
+/** Estado de seguimiento de una petición de funcionalidad. */
+export const featureRequestStatus = pgEnum("feature_request_status", [
+  "pending",
+  "in_review",
+  "done",
+  "discarded",
+]);
+
 /**
  * Circunstancia en la que se produjo una lesión, tal y como la pregunta el
  * parte oficial de la Mutualidad ("¿Dónde ocurrió la lesión?"). `other` obliga
@@ -1107,6 +1115,19 @@ export const registrations = pgTable(
     index("registrations_created_at_idx").on(t.createdAt),
   ],
 ).enableRLS();
+
+/** Sugerencia de operativa enviada por un usuario ya registrado en la app. */
+export const featureRequests = pgTable("feature_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  status: featureRequestStatus("status").notNull().default("pending"),
+  requestedByUserId: uuid("requested_by_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
 
 /**
  * Tutor/a indicado en una solicitud de jugador menor. Puede haber varios; no

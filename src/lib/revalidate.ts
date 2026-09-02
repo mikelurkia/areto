@@ -50,6 +50,7 @@ export const ROUTE = {
   medicoListado: "/[locale]/medico/listado",
   calendario: "/[locale]/calendario",
   club: "/[locale]/club",
+  sugerencias: "/[locale]/sugerencias",
 } as const;
 
 export type AppRoute = (typeof ROUTE)[keyof typeof ROUTE];
