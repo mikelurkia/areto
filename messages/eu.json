@@ -15,6 +15,7 @@
     "inscripciones": "Izen-emateak · Areto",
     "socios": "Bazkideak · Areto",
     "medico": "Panel medikoa · Areto",
+    "sugerencias": "Iradokizunak · Areto",
     "usuarios": "Erabiltzaileak · Areto",
     "roles": "Rolak · Areto",
     "auditoria": "Auditoria · Areto",
@@ -66,6 +67,7 @@
     "inscripciones": "Izen-emateak",
     "socios": "Bazkideak",
     "medico": "Panel medikoa",
+    "sugerencias": "Iradokizunak",
     "administracion": "Administrazioa",
     "publicSite": "Webgune publikoa",
     "federations": "Federazio-aplikazioak",
@@ -331,6 +333,7 @@
       "patrocinadores": "Babesleak",
       "cuotas": "Kuotak",
       "club": "Kluba",
+      "sugerencias": "Iradokizunak",
       "administracion": "Administrazioa"
     },
     "moduleHints": {
@@ -343,6 +346,7 @@
       "patrocinadores": "Babesleak, kontratuak eta fakturazioa.",
       "cuotas": "Jokalarien eta bazkideen kuoten SEPA helbideratzeak.",
       "club": "Klubaren datuak eta federazio-sarbideak.",
+      "sugerencias": "Erabiltzaileen funtzionalitate-eskaerak.",
       "administracion": "Nor sartzen den Areton eta zer egin dezakeen."
     },
     "permissions": {
@@ -370,6 +374,8 @@
       "cuotas_manage": "Kudeatu kuotak",
       "club_view": "Ikusi klubaren datuak",
       "club_manage": "Editatu klubaren datuak",
+      "sugerencias_view": "Bidali iradokizunak",
+      "sugerencias_manage": "Kudeatu iradokizunak",
       "usuarios_manage": "Kudeatu erabiltzaileak",
       "roles_manage": "Kudeatu rolak eta baimenak",
       "administracion_audit_view": "Ikusi auditoria-erregistroa"
@@ -399,6 +405,8 @@
       "cuotas_manage": "Kargu-hartzeak eta helbideratzeak sortzea, eta kargu-hartzeak kobratu edo itzuli gisa markatzea.",
       "club_view": "Klubaren datuak eta federazio-sarbideak ikustea.",
       "club_manage": "Klubaren datuak eta konfigurazioa editatzea.",
+      "sugerencias_view": "Bere funtzionalitate-eskaerak bidali eta kontsultatzea.",
+      "sugerencias_manage": "Eskaera guztiak ikusi eta haien egoera aldatzea.",
       "usuarios_manage": "Kontuak gonbidatu, editatu, desaktibatu eta ezabatzea, eta rola esleitzea.",
       "roles_manage": "Rolak sortu eta bakoitzak zein baimen duen erabakitzea.",
       "administracion_audit_view": "Modulu sentikorretan (medikua, bankukoa, erabiltzaileak eta rolak, izen-emateak) nork zer egin duen kontsultatzea."
@@ -469,6 +477,36 @@
     "colBirthDate": "Jaiotze-data",
     "colRole": "Rola",
     "colExpiry": "Iraungitze-data"
+  },
+  "Sugerencias": {
+    "title": "Iradokizunak",
+    "subtitle": "Areton izan nahi zenituzketen funtzionalitate eta eragiketa eskaerak.",
+    "formTitle": "Iradokizun bat bidali",
+    "titleLabel": "Izenburua",
+    "titlePlaceholder": "Bazkideen zerrenda PDF gisa esportatu ahal izatea",
+    "descriptionLabel": "Deskribapena",
+    "descriptionPlaceholder": "Kontaiguzu zer behar duzun eta zertarako erabiliko zenukeen.",
+    "submitAction": "Bidali iradokizuna",
+    "titleRequired": "Izenburua ezin da hutsik egon.",
+    "descriptionRequired": "Deskribapena ezin da hutsik egon.",
+    "requestCreated": "Iradokizuna bidali da.",
+    "listTitleOwn": "Zure iradokizunak",
+    "listTitleAll": "Iradokizun guztiak",
+    "emptyTitle": "Oraindik ez dago iradokizunik",
+    "emptyDescriptionOwn": "Hemen ikusiko dituzu bidaltzen dituzun iradokizunak.",
+    "emptyDescriptionAll": "Oraindik ez da iradokizunik iritsi.",
+    "colTitle": "Izenburua",
+    "colRequestedBy": "Bidali du",
+    "colStatus": "Egoera",
+    "colCreatedAt": "Data",
+    "status": {
+      "pending": "Zain",
+      "in_review": "Berrikusten",
+      "done": "Eginda",
+      "discarded": "Baztertuta"
+    },
+    "statusUpdated": "Egoera eguneratu da.",
+    "changeStatusSr": "«{title}» iradokizunaren egoera aldatu"
   },
   "Personas": {
     "title": "Pertsonak",

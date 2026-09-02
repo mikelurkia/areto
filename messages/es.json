@@ -15,6 +15,7 @@
     "inscripciones": "Inscripciones · Areto",
     "socios": "Socios · Areto",
     "medico": "Panel médico · Areto",
+    "sugerencias": "Sugerencias · Areto",
     "usuarios": "Usuarios · Areto",
     "roles": "Roles · Areto",
     "auditoria": "Auditoría · Areto",
@@ -66,6 +67,7 @@
     "inscripciones": "Inscripciones",
     "socios": "Socios",
     "medico": "Panel médico",
+    "sugerencias": "Sugerencias",
     "administracion": "Administración",
     "publicSite": "Sitio público",
     "federations": "Aplicaciones federativas",
@@ -331,6 +333,7 @@
       "patrocinadores": "Patrocinadores",
       "cuotas": "Cuotas",
       "club": "Club",
+      "sugerencias": "Sugerencias",
       "administracion": "Administración"
     },
     "moduleHints": {
@@ -343,6 +346,7 @@
       "patrocinadores": "Patrocinadores, contratos y facturación.",
       "cuotas": "Remesas SEPA de cuotas de jugadores y socios.",
       "club": "Datos del club y accesos federativos.",
+      "sugerencias": "Peticiones de funcionalidad de los usuarios.",
       "administracion": "Quién entra en Areto y qué puede hacer."
     },
     "permissions": {
@@ -370,6 +374,8 @@
       "cuotas_manage": "Gestionar cuotas",
       "club_view": "Ver los datos del club",
       "club_manage": "Editar los datos del club",
+      "sugerencias_view": "Enviar sugerencias",
+      "sugerencias_manage": "Gestionar sugerencias",
       "usuarios_manage": "Gestionar usuarios",
       "roles_manage": "Gestionar roles y permisos",
       "administracion_audit_view": "Ver el registro de auditoría"
@@ -399,6 +405,8 @@
       "cuotas_manage": "Generar cargos y remesas, y marcar cargos como cobrados o devueltos.",
       "club_view": "Ver los datos del club y los accesos federativos.",
       "club_manage": "Editar los datos del club y su configuración.",
+      "sugerencias_view": "Enviar y consultar sus propias peticiones de funcionalidad.",
+      "sugerencias_manage": "Ver todas las peticiones y cambiar su estado.",
       "usuarios_manage": "Invitar, editar, desactivar y eliminar cuentas, y asignarles rol.",
       "roles_manage": "Crear roles y decidir qué permisos tiene cada uno.",
       "administracion_audit_view": "Consultar quién ha hecho qué en los módulos sensibles (médico, bancario, usuarios y roles, inscripciones)."
@@ -469,6 +477,36 @@
     "colBirthDate": "Fecha nac.",
     "colRole": "Rol",
     "colExpiry": "Caducidad"
+  },
+  "Sugerencias": {
+    "title": "Sugerencias",
+    "subtitle": "Peticiones de funcionalidad y operativas que os gustaría tener en Areto.",
+    "formTitle": "Enviar una sugerencia",
+    "titleLabel": "Título",
+    "titlePlaceholder": "Poder exportar el listado de socios en PDF",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Cuéntanos qué necesitas y para qué lo usarías.",
+    "submitAction": "Enviar sugerencia",
+    "titleRequired": "El título no puede estar vacío.",
+    "descriptionRequired": "La descripción no puede estar vacía.",
+    "requestCreated": "Sugerencia enviada.",
+    "listTitleOwn": "Tus sugerencias",
+    "listTitleAll": "Todas las sugerencias",
+    "emptyTitle": "Sin sugerencias todavía",
+    "emptyDescriptionOwn": "Aquí verás las sugerencias que envíes.",
+    "emptyDescriptionAll": "Todavía no ha llegado ninguna sugerencia.",
+    "colTitle": "Título",
+    "colRequestedBy": "Enviado por",
+    "colStatus": "Estado",
+    "colCreatedAt": "Fecha",
+    "status": {
+      "pending": "Pendiente",
+      "in_review": "En revisión",
+      "done": "Hecho",
+      "discarded": "Descartado"
+    },
+    "statusUpdated": "Estado actualizado.",
+    "changeStatusSr": "Cambiar el estado de «{title}»"
   },
   "Personas": {
     "title": "Personas",

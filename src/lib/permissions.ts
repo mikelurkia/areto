@@ -54,6 +54,9 @@ export const PERMISSIONS = [
   // Club
   "club.view",
   "club.manage",
+  // Sugerencias (peticiones de funcionalidad)
+  "sugerencias.view",
+  "sugerencias.manage",
   // Administración de la propia aplicación
   "usuarios.manage",
   "roles.manage",
@@ -93,6 +96,7 @@ export type PermissionModuleKey =
   | "patrocinadores"
   | "cuotas"
   | "club"
+  | "sugerencias"
   | "administracion";
 
 /**
@@ -136,6 +140,7 @@ export const PERMISSION_MODULES: readonly {
   },
   { key: "cuotas", permissions: ["cuotas.view", "cuotas.manage"] },
   { key: "club", permissions: ["club.view", "club.manage"] },
+  { key: "sugerencias", permissions: ["sugerencias.view", "sugerencias.manage"] },
   {
     key: "administracion",
     permissions: ["usuarios.manage", "roles.manage", "administracion.audit.view"],
@@ -184,7 +189,7 @@ export const ADMIN_LOCKED_PERMISSIONS: readonly Permission[] = [
 export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, readonly Permission[]> = {
   admin: [...PERMISSIONS],
   staff: PERMISSIONS.filter(
-    (p) => p !== "usuarios.manage" && p !== "roles.manage",
+    (p) => p !== "usuarios.manage" && p !== "roles.manage" && p !== "sugerencias.manage",
   ),
   coach: [
     "equipos.view",
@@ -192,10 +197,11 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, readonly Permission[
     "temporadas.view",
     "calendario.view",
     "calendario.manage",
+    "sugerencias.view",
   ],
-  player: ["equipos.view", "temporadas.view", "calendario.view"],
-  member: ["equipos.view", "temporadas.view", "calendario.view"],
-  basic: ["equipos.view", "temporadas.view"],
+  player: ["equipos.view", "temporadas.view", "calendario.view", "sugerencias.view"],
+  member: ["equipos.view", "temporadas.view", "calendario.view", "sugerencias.view"],
+  basic: ["equipos.view", "temporadas.view", "sugerencias.view"],
 };
 
 /** Nombre y orden de fábrica de los roles de sistema (el nombre visible se traduce por `key`). */
