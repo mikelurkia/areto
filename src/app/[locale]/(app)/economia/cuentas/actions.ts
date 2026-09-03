@@ -4,10 +4,14 @@ import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
-import { economicCategories, financialAccounts } from "@/db/schema";
+import { accountMovements, economicCategories, financialAccounts } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { recordAuditEvent } from "@/lib/audit-log";
-import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
+import {
+  FOREIGN_KEY_VIOLATION,
+  UNIQUE_VIOLATION,
+  isPostgresError,
+} from "@/lib/db-errors";
 import {
   ECONOMIA_VIEW_PERMISSIONS,
   LEDGERS,
@@ -147,6 +151,15 @@ export async function updateAccount(
     throw error;
   }
 
+  // Los apuntes llevan copiado el libro de su cuenta (es la columna que filtra
+  // toda query del módulo), así que mover la cuenta los mueve con ella.
+  if (nextLedger !== current.ledger) {
+    await db
+      .update(accountMovements)
+      .set({ ledger: nextLedger })
+      .where(eq(accountMovements.accountId, id));
+  }
+
   await recordAuditEvent({
     actorUserId: user.id,
     action: "update",
@@ -173,7 +186,16 @@ export async function deleteAccount(
   if (!current) return { error: t("accountNotFound") };
   if (!canManageLedger(user, current.ledger)) return { error: t("notAllowed") };
 
-  await db.delete(financialAccounts).where(eq(financialAccounts.id, id));
+  try {
+    await db.delete(financialAccounts).where(eq(financialAccounts.id, id));
+  } catch (error) {
+    // La FK de `account_movements` es `restrict`: una cuenta con apuntes no se
+    // borra, se retira con `isActive`.
+    if (isPostgresError(error, FOREIGN_KEY_VIOLATION)) {
+      return { error: t("accountHasMovements") };
+    }
+    throw error;
+  }
 
   await recordAuditEvent({
     actorUserId: user.id,

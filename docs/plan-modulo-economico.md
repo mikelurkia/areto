@@ -29,7 +29,7 @@ Rutina de cada fase, en sesión limpia:
 |---|---|---|
 | 0 | Este documento en `main` | hecha (este PR) |
 | 1 | Cimientos: `ledger`, categorías, cuentas, permisos, shell de `/economia` | hecha |
-| 2 | Movimientos: tabla, alta manual, listado | pendiente |
+| 2 | Movimientos: tabla, alta manual, listado | hecha |
 | 3 | Importación Norma 43 + CSV, lotes y deduplicación | pendiente |
 | 4 | Facturas recibidas, proveedores y conciliación | pendiente |
 | 5 | Facturas emitidas, absorción de patrocinio, agregado de remesas | pendiente |
