@@ -150,7 +150,7 @@ export async function requireUser(): Promise<CurrentUser> {
  * equipo), el patrón es devolver `{ error: t("notAllowed") }` desde la acción.
  */
 export async function requirePermission(
-  permission: Permission | Permission[],
+  permission: Permission | readonly Permission[],
 ): Promise<CurrentUser> {
   const user = await requireUser();
   const needed = Array.isArray(permission) ? permission : [permission];
