@@ -7,10 +7,11 @@ import { Link } from "@/i18n/navigation";
 import { LEDGER_PARAM, LEDGERS, type Ledger } from "@/lib/economia";
 import { cn } from "@/lib/utils";
 
-export type EconomiaSection = "resumen" | "cuentas";
+export type EconomiaSection = "resumen" | "movimientos" | "cuentas";
 
 const SECTIONS: { key: EconomiaSection; href: string }[] = [
   { key: "resumen", href: "/economia" },
+  { key: "movimientos", href: "/economia/movimientos" },
   { key: "cuentas", href: "/economia/cuentas" },
 ];
 

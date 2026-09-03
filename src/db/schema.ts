@@ -1085,6 +1085,57 @@ export const financialAccounts = pgTable(
   (t) => [uniqueIndex("financial_accounts_name_idx").on(t.name)],
 ).enableRLS();
 
+/**
+ * De dónde salió el apunte. Hoy solo hay `manual`; el importador de Norma 43 y
+ * CSV llega en su propio PR y escribirá `import`.
+ */
+export const movementSource = pgEnum("movement_source", ["import", "manual"]);
+
+/**
+ * Un apunte de una cuenta: la línea del extracto bancario, o el movimiento de
+ * la caja de efectivo.
+ *
+ * `amountCents` va CON SIGNO —negativo el cargo, positivo el abono—, que es
+ * como llega del banco y lo que permite que el saldo sea una suma y no un
+ * `case`. `balanceCents` es el saldo que el propio extracto declara tras el
+ * apunte: es del banco, no se calcula, y sirve para cuadrar la importación.
+ *
+ * `ledger` se copia de la cuenta al crear el apunte en vez de leerse por
+ * `join`: es la columna que filtra toda query del módulo, y un `join` la
+ * dejaría fuera del índice. Cambiar una cuenta de libro es un caso de esquina
+ * que arrastra sus apuntes (lo hace `updateAccount`).
+ *
+ * `seasonId` se guarda explícito —resuelto con `seasonYearOf` y editable
+ * después—, nunca derivado de `seasons.startsOn`/`endsOn`, que son nullable y
+ * el seed base las deja vacías (ver decisión 4 del plan).
+ */
+export const accountMovements = pgTable(
+  "account_movements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => financialAccounts.id, { onDelete: "restrict" }),
+    ledger: ledger("ledger").notNull(),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => seasons.id, { onDelete: "restrict" }),
+    bookedOn: date("booked_on").notNull(), // fecha de operación
+    valueOn: date("value_on"), // fecha valor, si el extracto la trae
+    amountCents: integer("amount_cents").notNull(), // con signo: - cargo, + abono
+    concept: text("concept").notNull(),
+    counterparty: text("counterparty"), // ordenante o beneficiario, tal cual lo da el banco
+    balanceCents: integer("balance_cents"), // saldo declarado por el extracto tras el apunte
+    categoryId: uuid("category_id").references(() => economicCategories.id, {
+      onDelete: "set null",
+    }),
+    source: movementSource("source").notNull().default("manual"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("account_movements_account_booked_idx").on(t.accountId, t.bookedOn)],
+).enableRLS();
+
 // ---------------------------------------------------------------------------
 // Auditoría: acciones sensibles (médico, bancario, usuarios/roles, inscripciones)
 // ---------------------------------------------------------------------------
@@ -1709,5 +1760,21 @@ export const sepaChargeReturnsRelations = relations(sepaChargeReturns, ({ one })
   remittance: one(sepaRemittances, {
     fields: [sepaChargeReturns.remittanceId],
     references: [sepaRemittances.id],
+  }),
+}));
+
+export const financialAccountsRelations = relations(financialAccounts, ({ many }) => ({
+  movements: many(accountMovements),
+}));
+
+export const accountMovementsRelations = relations(accountMovements, ({ one }) => ({
+  account: one(financialAccounts, {
+    fields: [accountMovements.accountId],
+    references: [financialAccounts.id],
+  }),
+  season: one(seasons, { fields: [accountMovements.seasonId], references: [seasons.id] }),
+  category: one(economicCategories, {
+    fields: [accountMovements.categoryId],
+    references: [economicCategories.id],
   }),
 }));

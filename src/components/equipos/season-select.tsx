@@ -21,9 +21,16 @@ type Season = {
 export function SeasonSelect({
   seasons,
   selectedId,
+  extraParams,
 }: {
   seasons: Season[];
   selectedId: string;
+  /**
+   * Parámetros de la URL que hay que conservar al cambiar de temporada. En
+   * `/equipos` no hay ninguno; en el módulo económico viaja el libro, y
+   * perderlo devolvería al usuario al libro oficial sin decir nada.
+   */
+  extraParams?: Record<string, string>;
 }) {
   const t = useTranslations("Equipos");
   const tSeason = useTranslations("Temporadas");
@@ -37,7 +44,10 @@ export function SeasonSelect({
   return (
     <Select
       value={selectedId}
-      onValueChange={(value) => router.push(`${pathname}?season=${value}`)}
+      onValueChange={(value) => {
+        const query = new URLSearchParams({ ...extraParams, season: value ?? selectedId });
+        router.push(`${pathname}?${query.toString()}`);
+      }}
     >
       <SelectTrigger aria-label={tSeason("seasonLabel")}>
         <SelectValue>
