@@ -1170,6 +1170,141 @@ export const accountMovements = pgTable(
 ).enableRLS();
 
 // ---------------------------------------------------------------------------
+// Módulo económico: facturas recibidas (ver docs/plan-modulo-economico.md, fase 4)
+// ---------------------------------------------------------------------------
+
+/** Estado de cobro de una factura recibida. */
+export const receivedInvoiceStatus = pgEnum("received_invoice_status", [
+  "pending",
+  "paid",
+  "disputed",
+]);
+
+/**
+ * De dónde sale la factura: `manual` desde el formulario, `extracted`
+ * reservado para un futuro agente de lectura automática de PDF (decisión 10
+ * del plan) — hoy ningún flujo escribe `extracted`.
+ */
+export const invoiceSource = pgEnum("invoice_source", ["manual", "extracted"]);
+
+/**
+ * Proveedor: quien emite las facturas recibidas. `taxId` único cuando se
+ * conoce, pero nullable: no bloquea el alta de un proveedor sin CIF a mano.
+ */
+export const suppliers = pgTable(
+  "suppliers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    taxId: text("tax_id"), // CIF/NIF
+    iban: text("iban"),
+    contactName: text("contact_name"),
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    defaultCategoryId: uuid("default_category_id").references(() => economicCategories.id, {
+      onDelete: "set null",
+    }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("suppliers_tax_id_idx").on(t.taxId).where(sql`${t.taxId} is not null`)],
+).enableRLS();
+
+/**
+ * Factura recibida: el gasto devengado, con independencia de si ya ha salido
+ * del banco (eso lo dice `movement_links`). El desglose fiscal se guarda
+ * explícito —no derivado— porque las facturas reales no siempre cuadran al
+ * céntimo y la fila refleja el papel (decisión 8 del plan).
+ *
+ * `invoiceNumber` es el número que le puso el PROVEEDOR, no uno propio del
+ * club, por eso el único es compuesto con `supplierId`: dos proveedores
+ * pueden compartir numeración por coincidencia.
+ */
+export const receivedInvoices = pgTable(
+  "received_invoices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    supplierId: uuid("supplier_id")
+      .notNull()
+      .references(() => suppliers.id, { onDelete: "restrict" }),
+    ledger: ledger("ledger").notNull().default("official"),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => seasons.id, { onDelete: "restrict" }),
+    teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
+    invoiceNumber: text("invoice_number").notNull(),
+    issuedOn: date("issued_on").notNull(),
+    dueDate: date("due_date"),
+    categoryId: uuid("category_id").references(() => economicCategories.id, {
+      onDelete: "set null",
+    }),
+    description: text("description"),
+    baseCents: integer("base_cents").notNull(),
+    vatCents: integer("vat_cents").notNull().default(0),
+    withholdingCents: integer("withholding_cents").notNull().default(0),
+    totalCents: integer("total_cents").notNull(),
+    status: receivedInvoiceStatus("status").notNull().default("pending"),
+    source: invoiceSource("source").notNull().default("manual"),
+    filePath: text("file_path"),
+    fileName: text("file_name"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("received_invoices_supplier_number_idx").on(t.supplierId, t.invoiceNumber),
+    index("received_invoices_season_idx").on(t.seasonId),
+  ],
+).enableRLS();
+
+/**
+ * Conciliación N:M entre un apunte bancario y lo que lo justifica: una
+ * transferencia paga varias facturas, una factura se paga a plazos, y una
+ * remesa SEPA entra en el extracto como un único apunte agregado. Se enlaza
+ * contra exactamente uno de los cuatro tipos de documento (`check` XOR); el
+ * estado de conciliación (pendiente/parcial/conciliado) es DERIVADO —suma de
+ * enlaces frente al importe de cada lado— nunca almacenado, para no
+ * desincronizarse al borrar un enlace (decisión 5 del plan).
+ *
+ * `issuedInvoiceId` queda sin FK hasta la fase 5, cuando exista
+ * `issued_invoices`: la columna se crea ya para no repetir el `check` XOR más
+ * adelante, pero en esta fase solo `receivedInvoiceId` tiene UI.
+ */
+export const movementLinks = pgTable(
+  "movement_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    movementId: uuid("movement_id")
+      .notNull()
+      .references(() => accountMovements.id, { onDelete: "cascade" }),
+    amountCents: integer("amount_cents").notNull(),
+    receivedInvoiceId: uuid("received_invoice_id").references(() => receivedInvoices.id, {
+      onDelete: "cascade",
+    }),
+    issuedInvoiceId: uuid("issued_invoice_id"),
+    sepaRemittanceId: uuid("sepa_remittance_id").references(() => sepaRemittances.id, {
+      onDelete: "cascade",
+    }),
+    sponsorPaymentId: uuid("sponsor_payment_id").references(() => sponsorPayments.id, {
+      onDelete: "cascade",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("movement_links_movement_idx").on(t.movementId),
+    index("movement_links_received_invoice_idx").on(t.receivedInvoiceId),
+    check(
+      "movement_links_target_xor",
+      sql`(
+        (case when ${t.receivedInvoiceId} is not null then 1 else 0 end) +
+        (case when ${t.issuedInvoiceId} is not null then 1 else 0 end) +
+        (case when ${t.sepaRemittanceId} is not null then 1 else 0 end) +
+        (case when ${t.sponsorPaymentId} is not null then 1 else 0 end)
+      ) = 1`,
+    ),
+  ],
+).enableRLS();
+
+// ---------------------------------------------------------------------------
 // Auditoría: acciones sensibles (médico, bancario, usuarios/roles, inscripciones)
 // ---------------------------------------------------------------------------
 
@@ -1831,3 +1966,44 @@ export const movementImportBatchesRelations = relations(
     movements: many(accountMovements),
   }),
 );
+
+export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
+  defaultCategory: one(economicCategories, {
+    fields: [suppliers.defaultCategoryId],
+    references: [economicCategories.id],
+  }),
+  invoices: many(receivedInvoices),
+}));
+
+export const receivedInvoicesRelations = relations(receivedInvoices, ({ one, many }) => ({
+  supplier: one(suppliers, {
+    fields: [receivedInvoices.supplierId],
+    references: [suppliers.id],
+  }),
+  season: one(seasons, { fields: [receivedInvoices.seasonId], references: [seasons.id] }),
+  team: one(teams, { fields: [receivedInvoices.teamId], references: [teams.id] }),
+  category: one(economicCategories, {
+    fields: [receivedInvoices.categoryId],
+    references: [economicCategories.id],
+  }),
+  links: many(movementLinks),
+}));
+
+export const movementLinksRelations = relations(movementLinks, ({ one }) => ({
+  movement: one(accountMovements, {
+    fields: [movementLinks.movementId],
+    references: [accountMovements.id],
+  }),
+  receivedInvoice: one(receivedInvoices, {
+    fields: [movementLinks.receivedInvoiceId],
+    references: [receivedInvoices.id],
+  }),
+  sepaRemittance: one(sepaRemittances, {
+    fields: [movementLinks.sepaRemittanceId],
+    references: [sepaRemittances.id],
+  }),
+  sponsorPayment: one(sponsorPayments, {
+    fields: [movementLinks.sponsorPaymentId],
+    references: [sponsorPayments.id],
+  }),
+}));

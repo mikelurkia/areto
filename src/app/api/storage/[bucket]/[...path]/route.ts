@@ -28,6 +28,8 @@ const BUCKET_READ_PERMISSION: Record<string, Permission> = {
   "sponsorship-contracts": "patrocinadores.view",
   "registration-documents": "inscripciones.view",
   "document-templates": "club.view",
+  "invoice-files": "economia.official.view",
+  "invoice-files-internal": "economia.internal.view",
 };
 
 /** Tipos que el navegador puede mostrar inline sin riesgo; cualquier otro se fuerza a descarga. */

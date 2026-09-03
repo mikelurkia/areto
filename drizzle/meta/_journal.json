@@ -575,6 +575,13 @@
       "when": 1788471107177,
       "tag": "0081_tiny_wong",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1788472741710,
+      "tag": "0082_complete_blizzard",
+      "breakpoints": true
     }
   ]
 }

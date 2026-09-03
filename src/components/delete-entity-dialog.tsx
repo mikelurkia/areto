@@ -35,7 +35,10 @@ type EntityKey =
   | "Remittance"
   | "Charge"
   | "Account"
-  | "Movement";
+  | "Movement"
+  | "Supplier"
+  | "ReceivedInvoice"
+  | "MovementLink";
 
 /** Forma común de las Server Actions de borrado (documentos, titulaciones, médico, lesiones...). */
 type DeleteActionState = { error?: string; message?: string };

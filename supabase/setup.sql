@@ -198,7 +198,14 @@ insert into storage.buckets (id, name, public) values
   -- Plantillas de documentos oficiales que la aplicación rellena (hoy solo el
   -- parte de lesión de la Mutualidad). Privado: es un impreso federativo, no
   -- material público, y `public/` se sirve sin sesión.
-  ('document-templates',       'document-templates',       false)
+  ('document-templates',       'document-templates',       false),
+  -- Adjuntos del módulo económico, en DOS buckets —uno por libro— porque
+  -- `BUCKET_READ_PERMISSION` mapea un bucket a un solo permiso: si los PDF de
+  -- los dos libros compartieran bucket, quien solo tiene
+  -- `economia.official.view` podría descargar una factura interna (ver
+  -- decisión 2 de `docs/plan-modulo-economico.md`).
+  ('invoice-files',            'invoice-files',            false),
+  ('invoice-files-internal',   'invoice-files-internal',   false)
 on conflict (id) do nothing;
 
 -- `sponsorship-logos` es PÚBLICO a diferencia del resto: los logos no son datos
@@ -249,7 +256,9 @@ begin
       ('membership-documents',    'equipos.view',          'equipos.manage'),
       ('sponsor-documents',       'patrocinadores.view',   'patrocinadores.manage'),
       ('sponsorship-contracts',   'patrocinadores.view',   'patrocinadores.manage'),
-      ('document-templates',      'club.view',             'club.manage')
+      ('document-templates',      'club.view',             'club.manage'),
+      ('invoice-files',           'economia.official.view', 'economia.official.manage'),
+      ('invoice-files-internal',  'economia.internal.view', 'economia.internal.manage')
     ) as t(bucket, read_perm, write_perm)
   loop
     prefix := replace(b.bucket, '-', '_');
