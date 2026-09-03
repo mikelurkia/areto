@@ -51,6 +51,13 @@ export const PERMISSIONS = [
   // Cuotas (remesas SEPA)
   "cuotas.view",
   "cuotas.manage",
+  // Economía: un par de permisos POR LIBRO, ortogonales y no jerárquicos. No
+  // hay un `economia.view` general a propósito — quien solo tiene el par
+  // `official` no ve el libro interno en ningún sitio.
+  "economia.official.view",
+  "economia.official.manage",
+  "economia.internal.view",
+  "economia.internal.manage",
   // Club
   "club.view",
   "club.manage",
@@ -95,6 +102,7 @@ export type PermissionModuleKey =
   | "calendario"
   | "patrocinadores"
   | "cuotas"
+  | "economia"
   | "club"
   | "sugerencias"
   | "administracion";
@@ -139,6 +147,15 @@ export const PERMISSION_MODULES: readonly {
     permissions: ["patrocinadores.view", "patrocinadores.manage"],
   },
   { key: "cuotas", permissions: ["cuotas.view", "cuotas.manage"] },
+  {
+    key: "economia",
+    permissions: [
+      "economia.official.view",
+      "economia.official.manage",
+      "economia.internal.view",
+      "economia.internal.manage",
+    ],
+  },
   { key: "club", permissions: ["club.view", "club.manage"] },
   { key: "sugerencias", permissions: ["sugerencias.view", "sugerencias.manage"] },
   {
@@ -188,8 +205,15 @@ export const ADMIN_LOCKED_PERMISSIONS: readonly Permission[] = [
  */
 export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, readonly Permission[]> = {
   admin: [...PERMISSIONS],
+  // `staff` (Secretaría) lleva el libro oficial pero NO el interno: la junta se
+  // modela como un rol al que se le marcan los `internal` desde la matriz.
   staff: PERMISSIONS.filter(
-    (p) => p !== "usuarios.manage" && p !== "roles.manage" && p !== "sugerencias.manage",
+    (p) =>
+      p !== "usuarios.manage" &&
+      p !== "roles.manage" &&
+      p !== "sugerencias.manage" &&
+      p !== "economia.internal.view" &&
+      p !== "economia.internal.manage",
   ),
   coach: [
     "equipos.view",

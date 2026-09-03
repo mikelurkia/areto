@@ -1019,6 +1019,73 @@ export const invoiceCounters = pgTable("invoice_counters", {
 }).enableRLS();
 
 // ---------------------------------------------------------------------------
+// Módulo económico: cimientos (ver docs/plan-modulo-economico.md)
+// ---------------------------------------------------------------------------
+
+/**
+ * Ámbito contable de una fila económica. `official` es el libro que sale del
+ * banco y va a la asamblea; `internal` es la contabilidad de gestión (caja de
+ * efectivo, lotería, rifas). Ningún total agrega los dos: el filtro lo pone
+ * `visibleLedgers()` en el `where` de toda query del módulo.
+ */
+export const ledger = pgEnum("ledger", ["official", "internal"]);
+
+/** Una categoría económica es de ingreso o de gasto, nunca de las dos. */
+export const economicCategoryKind = pgEnum("economic_category_kind", ["income", "expense"]);
+
+/** Cuenta bancaria o caja de efectivo. */
+export const financialAccountKind = pgEnum("financial_account_kind", ["bank", "cash"]);
+
+/**
+ * Catálogo de categorías económicas, EDITABLE por el club — la única excepción
+ * deliberada a la costumbre del proyecto de modelar los catálogos como
+ * `pgEnum`. Un presupuesto con categorías fijas no es usable: la junta añade
+ * "subvención de la diputación" y no puede esperar a un despliegue.
+ *
+ * Es la dimensión compartida por las cuatro piezas del módulo (presupuesto,
+ * movimientos, facturas recibidas y emitidas), y por eso NO lleva `ledger`:
+ * "material deportivo" significa lo mismo en los dos libros.
+ *
+ * No se borran, se retiran con `isActive`: borrarlas rompería el histórico.
+ */
+export const economicCategories = pgTable(
+  "economic_categories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: economicCategoryKind("kind").notNull(),
+    name: text("name").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("economic_categories_kind_name_idx").on(t.kind, t.name)],
+).enableRLS();
+
+/**
+ * Cuenta donde vive el dinero: la del banco, la de eventos, la caja de
+ * efectivo. "Movimientos bancarios" presupone al menos una, y el saldo solo
+ * significa algo por cuenta — de ahí que el saldo inicial viva aquí.
+ *
+ * `ledger` va en la cuenta y lo heredan sus movimientos: la caja de efectivo
+ * suele ser justamente la del libro interno.
+ */
+export const financialAccounts = pgTable(
+  "financial_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    kind: financialAccountKind("kind").notNull().default("bank"),
+    ledger: ledger("ledger").notNull().default("official"),
+    iban: text("iban"), // null en las cuentas de efectivo
+    openingBalanceCents: integer("opening_balance_cents").notNull().default(0),
+    openingBalanceOn: date("opening_balance_on"), // fecha a la que se refiere el saldo inicial
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("financial_accounts_name_idx").on(t.name)],
+).enableRLS();
+
+// ---------------------------------------------------------------------------
 // Auditoría: acciones sensibles (médico, bancario, usuarios/roles, inscripciones)
 // ---------------------------------------------------------------------------
 

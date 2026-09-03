@@ -15,7 +15,8 @@ export type AuditEntityType =
   | "registration"
   | "sepa_mandate"
   | "sepa_charge"
-  | "sepa_remittance";
+  | "sepa_remittance"
+  | "financial_account";
 
 type RecordAuditEventInput = {
   actorUserId: string | null;

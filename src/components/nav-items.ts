@@ -7,6 +7,7 @@ import {
   ClipboardListIcon,
   HandshakeIcon,
   IdCardIcon,
+  LandmarkIcon,
   LayoutDashboardIcon,
   LightbulbIcon,
   ShirtIcon,
@@ -114,6 +115,16 @@ export function useNavItems(permissions: readonly Permission[]): NavItem[] {
             href: "/calendario",
             icon: CalendarDaysIcon,
             group: "deportivo" as const,
+          },
+        ]
+      : []),
+    ...(can("economia.official.view") || can("economia.internal.view")
+      ? [
+          {
+            title: t("economia"),
+            href: "/economia",
+            icon: LandmarkIcon,
+            group: "economico" as const,
           },
         ]
       : []),
