@@ -11,15 +11,12 @@ import {
 } from "@/app/[locale]/(app)/inscripciones/actions";
 import { isBirthYearOutOfRange } from "@/lib/roster-health";
 import { ConsentRow, MatchSelect, type PersonCandidate } from "@/components/match-select";
-import {
-  GuardianEditBlock,
-  GuardianMatchBlock,
-  type GuardianData,
-} from "@/components/inscripciones/guardian-review-fields";
+import { GuardianBlock, type GuardianData } from "@/components/inscripciones/guardian-review-fields";
 import { MaskedIbanInput } from "@/components/masked-iban";
+import { SectionHeading } from "@/components/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -120,181 +117,77 @@ export function ReviewForm({
     isBirthYearOutOfRange(registration.birthDate, selectedTeam);
 
   return (
-    <div className="flex flex-col gap-8">
-      <form action={editAction} className="flex flex-col gap-6">
-        <input type="hidden" name="id" value={registration.id} />
-        <input type="hidden" name="kind" value={registration.kind} />
-        <FieldGroup>
-          <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("playerSection")}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="firstName">{t("firstNameLabel")}</FieldLabel>
-              <Input id="firstName" name="firstName" defaultValue={registration.firstName} required />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="lastName">{t("lastNameLabel")}</FieldLabel>
-              <Input id="lastName" name="lastName" defaultValue={registration.lastName} required />
-            </Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="birthDate">{t("birthDateLabel")}</FieldLabel>
-              <Input id="birthDate" name="birthDate" type="date" defaultValue={registration.birthDate ?? ""} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="nationalId">{t("nationalIdLabel")}</FieldLabel>
-              <Input id="nationalId" name="nationalId" defaultValue={registration.nationalId ?? ""} />
-            </Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
-            <Field>
-              <FieldLabel htmlFor="address">{t("addressLabel")}</FieldLabel>
-              <Input id="address" name="address" defaultValue={registration.address ?? ""} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="postalCode">{t("postalCodeLabel")}</FieldLabel>
-              <Input
-                id="postalCode"
-                name="postalCode"
-                inputMode="numeric"
-                defaultValue={registration.postalCode ?? ""}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="city">{t("cityLabel")}</FieldLabel>
-              <Input id="city" name="city" defaultValue={registration.city ?? ""} />
-            </Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="phone">{t("phoneLabel")}</FieldLabel>
-              <Input id="phone" name="phone" defaultValue={registration.phone ?? ""} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="email">{t("emailLabel")}</FieldLabel>
-              <Input id="email" name="email" defaultValue={registration.email ?? ""} />
-            </Field>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Field>
-              <FieldLabel htmlFor="shirtSize">{t("shirtSizeLabel")}</FieldLabel>
-              <Input id="shirtSize" name="shirtSize" defaultValue={registration.shirtSize ?? ""} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="pantsSize">{t("pantsSizeLabel")}</FieldLabel>
-              <Input id="pantsSize" name="pantsSize" defaultValue={registration.pantsSize ?? ""} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="shoeSize">{t("shoeSizeLabel")}</FieldLabel>
-              <Input id="shoeSize" name="shoeSize" defaultValue={registration.shoeSize ?? ""} />
-            </Field>
-          </div>
-        </FieldGroup>
+    <form className="flex flex-col gap-6">
+      <input type="hidden" name="id" value={registration.id} />
+      <input type="hidden" name="kind" value={registration.kind} />
 
-        <GuardianEditBlock guardians={registration.guardians} />
-
-        <FieldGroup>
-          <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("paymentSection")}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="iban">{t("ibanLabel")}</FieldLabel>
-              <MaskedIbanInput id="iban" name="iban" defaultValue={registration.iban ?? ""} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="installmentsChosen">{t("installmentsLabel")}</FieldLabel>
-              <Select value={installments} onValueChange={(v) => setInstallments(v ?? "1")}>
-                <SelectTrigger id="installmentsChosen" className="w-full">
-                  <SelectValue>
-                    {(v: string) => (v === "2" ? t("installmentsTwo") : t("installmentsOne"))}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">{t("installmentsOne")}</SelectItem>
-                  <SelectItem value="2">{t("installmentsTwo")}</SelectItem>
-                </SelectContent>
-              </Select>
-              <input type="hidden" name="installmentsChosen" value={installments} />
-            </Field>
-          </div>
-          <Card size="sm" className="gap-2 px-(--card-spacing)">
-            <ConsentRow label={t("sepaConsentShortLabel")} granted={registration.sepaConsent} />
-            <ConsentRow label={t("termsConsentShortLabel")} granted={registration.termsConsent} />
-            <ConsentRow label={t("imageConsentShortLabel")} granted={registration.photoConsent} />
-            <ConsentRow
-              label={t("privacyConsentShortLabel")}
-              granted={registration.privacyConsent}
-            />
-          </Card>
-        </FieldGroup>
-
-        {editState.error ? <p className="text-sm text-destructive">{editState.error}</p> : null}
-        <div>
-          <SubmitButton variant="outline">{t("saveChangesAction")}</SubmitButton>
+      <Card className="gap-3 px-(--card-spacing)">
+        <SectionHeading title={t("playerSection")} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="firstName">{t("firstNameLabel")}</FieldLabel>
+            <Input id="firstName" name="firstName" defaultValue={registration.firstName} required />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="lastName">{t("lastNameLabel")}</FieldLabel>
+            <Input id="lastName" name="lastName" defaultValue={registration.lastName} required />
+          </Field>
         </div>
-      </form>
-
-      <Card className="gap-6 px-(--card-spacing)">
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("reviewSection")}
-        </h2>
-        <form action={approveAction} className="flex flex-col gap-4">
-          <input type="hidden" name="id" value={registration.id} />
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="teamId">{t("teamLabel")}</FieldLabel>
-            <Select value={teamId} onValueChange={(v) => setTeamId(v ?? "")}>
-              <SelectTrigger id="teamId" className="w-full">
-                <SelectValue placeholder={t("selectTeamPlaceholder")}>
-                  {(v: string) => teamOptions.find((o) => o.id === v)?.label ?? t("selectTeamPlaceholder")}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {teamOptions.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <input type="hidden" name="teamId" value={teamId} />
-            <p className="text-xs text-muted-foreground">{t("teamOptionalHint")}</p>
-            {teamAgeMismatch && selectedTeam ? (
-              <Alert variant="warning">
-                <TriangleAlertIcon className="size-3.5" />
-                <AlertDescription className="text-xs text-foreground">
-                  {t("teamAgeMismatchWarning", {
-                    min: selectedTeam.minBirthYear ?? "",
-                    max: selectedTeam.maxBirthYear ?? "",
-                    year: registration.birthDate
-                      ? registration.birthDate.slice(0, 4)
-                      : "",
-                  })}
-                </AlertDescription>
-              </Alert>
-            ) : null}
+            <FieldLabel htmlFor="birthDate">{t("birthDateLabel")}</FieldLabel>
+            <Input id="birthDate" name="birthDate" type="date" defaultValue={registration.birthDate ?? ""} />
           </Field>
-
           <Field>
-            <FieldLabel htmlFor="membershipRole">{tEquipos("roleLabel")}</FieldLabel>
-            <Select
-              value={membershipRole}
-              onValueChange={(v) => setMembershipRole((v as typeof membershipRole) ?? "player")}
-            >
-              <SelectTrigger id="membershipRole" className="w-full">
-                <SelectValue>{(v: string) => tEquipos(`roleOption.${v}` as "roleOption.player")}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="player">{tEquipos("roleOption.player")}</SelectItem>
-                <SelectItem value="coach">{tEquipos("roleOption.coach")}</SelectItem>
-                <SelectItem value="staff">{tEquipos("roleOption.staff")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <input type="hidden" name="membershipRole" value={membershipRole} />
+            <FieldLabel htmlFor="nationalId">{t("nationalIdLabel")}</FieldLabel>
+            <Input id="nationalId" name="nationalId" defaultValue={registration.nationalId ?? ""} />
           </Field>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
+          <Field>
+            <FieldLabel htmlFor="address">{t("addressLabel")}</FieldLabel>
+            <Input id="address" name="address" defaultValue={registration.address ?? ""} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="postalCode">{t("postalCodeLabel")}</FieldLabel>
+            <Input
+              id="postalCode"
+              name="postalCode"
+              inputMode="numeric"
+              defaultValue={registration.postalCode ?? ""}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="city">{t("cityLabel")}</FieldLabel>
+            <Input id="city" name="city" defaultValue={registration.city ?? ""} />
+          </Field>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="phone">{t("phoneLabel")}</FieldLabel>
+            <Input id="phone" name="phone" defaultValue={registration.phone ?? ""} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="email">{t("emailLabel")}</FieldLabel>
+            <Input id="email" name="email" defaultValue={registration.email ?? ""} />
+          </Field>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field>
+            <FieldLabel htmlFor="shirtSize">{t("shirtSizeLabel")}</FieldLabel>
+            <Input id="shirtSize" name="shirtSize" defaultValue={registration.shirtSize ?? ""} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="pantsSize">{t("pantsSizeLabel")}</FieldLabel>
+            <Input id="pantsSize" name="pantsSize" defaultValue={registration.pantsSize ?? ""} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="shoeSize">{t("shoeSizeLabel")}</FieldLabel>
+            <Input id="shoeSize" name="shoeSize" defaultValue={registration.shoeSize ?? ""} />
+          </Field>
+        </div>
 
+        <div className="border-t pt-3">
           <MatchSelect
             name="matchedPersonId"
             candidates={registration.candidates}
@@ -322,19 +215,111 @@ export function ReviewForm({
               newIdBackUrl: registration.newIdBackUrl,
             }}
           />
+        </div>
+      </Card>
 
-          <GuardianMatchBlock guardians={registration.guardians} registrationIban={registration.iban} />
+      <GuardianBlock guardians={registration.guardians} registrationIban={registration.iban} />
 
-          {approveState.error ? (
-            <p className="text-sm text-destructive">{approveState.error}</p>
+      <Card className="gap-3 px-(--card-spacing)">
+        <SectionHeading title={t("paymentSection")} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="iban">{t("ibanLabel")}</FieldLabel>
+            <MaskedIbanInput id="iban" name="iban" defaultValue={registration.iban ?? ""} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="installmentsChosen">{t("installmentsLabel")}</FieldLabel>
+            <Select value={installments} onValueChange={(v) => setInstallments(v ?? "1")}>
+              <SelectTrigger id="installmentsChosen" className="w-full">
+                <SelectValue>
+                  {(v: string) => (v === "2" ? t("installmentsTwo") : t("installmentsOne"))}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">{t("installmentsOne")}</SelectItem>
+                <SelectItem value="2">{t("installmentsTwo")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <input type="hidden" name="installmentsChosen" value={installments} />
+          </Field>
+        </div>
+        <Card size="sm" className="gap-2 px-(--card-spacing)">
+          <ConsentRow label={t("sepaConsentShortLabel")} granted={registration.sepaConsent} />
+          <ConsentRow label={t("termsConsentShortLabel")} granted={registration.termsConsent} />
+          <ConsentRow label={t("imageConsentShortLabel")} granted={registration.photoConsent} />
+          <ConsentRow
+            label={t("privacyConsentShortLabel")}
+            granted={registration.privacyConsent}
+          />
+        </Card>
+      </Card>
+
+      <Card className="gap-4 px-(--card-spacing)">
+        <SectionHeading title={t("reviewSection")} />
+        <Field>
+          <FieldLabel htmlFor="teamId">{t("teamLabel")}</FieldLabel>
+          <Select value={teamId} onValueChange={(v) => setTeamId(v ?? "")}>
+            <SelectTrigger id="teamId" className="w-full">
+              <SelectValue placeholder={t("selectTeamPlaceholder")}>
+                {(v: string) => teamOptions.find((o) => o.id === v)?.label ?? t("selectTeamPlaceholder")}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {teamOptions.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <input type="hidden" name="teamId" value={teamId} />
+          <p className="text-xs text-muted-foreground">{t("teamOptionalHint")}</p>
+          {teamAgeMismatch && selectedTeam ? (
+            <Alert variant="warning">
+              <TriangleAlertIcon className="size-3.5" />
+              <AlertDescription className="text-xs text-foreground">
+                {t("teamAgeMismatchWarning", {
+                  min: selectedTeam.minBirthYear ?? "",
+                  max: selectedTeam.maxBirthYear ?? "",
+                  year: registration.birthDate
+                    ? registration.birthDate.slice(0, 4)
+                    : "",
+                })}
+              </AlertDescription>
+            </Alert>
           ) : null}
-          <div>
-            <SubmitButton>{t("approveAction")}</SubmitButton>
-          </div>
-        </form>
+        </Field>
 
-        <form action={rejectAction} className="flex flex-col gap-3 border-t pt-4">
-          <input type="hidden" name="id" value={registration.id} />
+        <Field>
+          <FieldLabel htmlFor="membershipRole">{tEquipos("roleLabel")}</FieldLabel>
+          <Select
+            value={membershipRole}
+            onValueChange={(v) => setMembershipRole((v as typeof membershipRole) ?? "player")}
+          >
+            <SelectTrigger id="membershipRole" className="w-full">
+              <SelectValue>{(v: string) => tEquipos(`roleOption.${v}` as "roleOption.player")}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="player">{tEquipos("roleOption.player")}</SelectItem>
+              <SelectItem value="coach">{tEquipos("roleOption.coach")}</SelectItem>
+              <SelectItem value="staff">{tEquipos("roleOption.staff")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <input type="hidden" name="membershipRole" value={membershipRole} />
+        </Field>
+
+        {editState.error ? <p className="text-sm text-destructive">{editState.error}</p> : null}
+        {approveState.error ? (
+          <p className="text-sm text-destructive">{approveState.error}</p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <SubmitButton formAction={editAction} variant="outline">
+            {t("saveChangesAction")}
+          </SubmitButton>
+          <SubmitButton formAction={approveAction}>{t("approveAction")}</SubmitButton>
+        </div>
+
+        <div className="flex flex-col gap-3 border-t pt-4">
           <Field>
             <FieldLabel htmlFor="rejectionReason">{t("rejectionReasonLabel")}</FieldLabel>
             <Textarea id="rejectionReason" name="rejectionReason" placeholder={t("rejectionReasonPlaceholder")} />
@@ -343,10 +328,12 @@ export function ReviewForm({
             <p className="text-sm text-destructive">{rejectState.error}</p>
           ) : null}
           <div>
-            <SubmitButton variant="destructive">{t("rejectAction")}</SubmitButton>
+            <SubmitButton formAction={rejectAction} variant="destructive">
+              {t("rejectAction")}
+            </SubmitButton>
           </div>
-        </form>
+        </div>
       </Card>
-    </div>
+    </form>
   );
 }

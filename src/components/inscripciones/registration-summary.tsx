@@ -6,6 +6,7 @@ import type { RegistrationDetail } from "@/components/inscripciones/review-form"
 import { InfoRow } from "@/components/info-row";
 import { MaskedIbanText } from "@/components/masked-iban";
 import { ConsentRow } from "@/components/match-select";
+import { SectionHeading } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 
 async function GuardianSummary({ guardian, index }: { guardian: GuardianData; index: number }) {
@@ -40,9 +41,7 @@ function GuardiansSummarySection({
   if (guardians.length === 0) return null;
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        {title}
-      </h2>
+      <SectionHeading title={title} />
       <div className="flex flex-col gap-3">
         {guardians.map((g, i) => (
           <GuardianSummary key={g.id} guardian={g} index={i} />
@@ -66,11 +65,9 @@ export async function PlayerRegistrationSummary({
 }) {
   const t = await getTranslations("Inscripciones");
   return (
-    <Card className="gap-6 px-(--card-spacing)">
-      <div className="flex flex-col gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("playerSection")}
-        </h2>
+    <div className="flex flex-col gap-6">
+      <Card className="gap-3 px-(--card-spacing)">
+        <SectionHeading title={t("playerSection")} />
         <dl className="grid gap-3 sm:grid-cols-2">
           <InfoRow label={t("firstNameLabel")} value={registration.firstName} />
           <InfoRow label={t("lastNameLabel")} value={registration.lastName} />
@@ -85,14 +82,12 @@ export async function PlayerRegistrationSummary({
           <InfoRow label={t("pantsSizeLabel")} value={registration.pantsSize} />
           <InfoRow label={t("shoeSizeLabel")} value={registration.shoeSize} />
         </dl>
-      </div>
+      </Card>
 
       <GuardiansSummarySection guardians={registration.guardians} title={t("guardiansSection")} />
 
-      <div className="flex flex-col gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("paymentSection")}
-        </h2>
+      <Card className="gap-3 px-(--card-spacing)">
+        <SectionHeading title={t("paymentSection")} />
         <dl className="grid gap-3 sm:grid-cols-2">
           <InfoRow
             label={t("ibanLabel")}
@@ -114,8 +109,8 @@ export async function PlayerRegistrationSummary({
             granted={registration.privacyConsent}
           />
         </Card>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 }
 
@@ -126,11 +121,9 @@ export async function MemberRegistrationSummary({
 }) {
   const t = await getTranslations("Inscripciones");
   return (
-    <Card className="gap-6 px-(--card-spacing)">
-      <div className="flex flex-col gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("memberSection")}
-        </h2>
+    <div className="flex flex-col gap-6">
+      <Card className="gap-3 px-(--card-spacing)">
+        <SectionHeading title={t("memberSection")} />
         <dl className="grid gap-3 sm:grid-cols-2">
           <InfoRow label={t("firstNameLabel")} value={registration.firstName} />
           <InfoRow label={t("lastNameLabel")} value={registration.lastName} />
@@ -142,14 +135,12 @@ export async function MemberRegistrationSummary({
           <InfoRow label={t("phoneLabel")} value={registration.phone} />
           <InfoRow label={t("emailLabel")} value={registration.email} />
         </dl>
-      </div>
+      </Card>
 
       <GuardiansSummarySection guardians={registration.guardians} title={t("guardiansSection")} />
 
-      <div className="flex flex-col gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("paymentSection")}
-        </h2>
+      <Card className="gap-3 px-(--card-spacing)">
+        <SectionHeading title={t("paymentSection")} />
         <dl className="grid gap-3 sm:grid-cols-2">
           <InfoRow
             label={t("ibanLabel")}
@@ -163,7 +154,7 @@ export async function MemberRegistrationSummary({
             granted={registration.privacyConsent}
           />
         </Card>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 }

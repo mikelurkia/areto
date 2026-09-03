@@ -1074,7 +1074,6 @@
     "shoeSizeRequired": "La talla de pie es obligatoria.",
     "ibanRequired": "El IBAN es obligatorio.",
     "ibanInvalid": "El IBAN no es válido (revisa el número).",
-    "ibanInvalidFixFirst": "El IBAN de esta solicitud no es válido. Corrígelo en el formulario de edición antes de aprobar.",
     "sepaConsentRequired": "Es necesario autorizar la domiciliación de la cuota.",
     "privacyConsentRequired": "Es necesario aceptar el tratamiento de datos para enviar la inscripción.",
     "photoRequired": "La foto es obligatoria.",
