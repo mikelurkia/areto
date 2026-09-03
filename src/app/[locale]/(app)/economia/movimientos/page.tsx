@@ -1,4 +1,4 @@
-import { ArrowLeftRightIcon, LandmarkIcon } from "lucide-react";
+import { ArrowLeftRightIcon, LandmarkIcon, UploadIcon } from "lucide-react";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -10,6 +10,8 @@ import { MovementsBrowser } from "@/components/economia/movements-browser";
 import { SeasonSelect } from "@/components/equipos/season-select";
 import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { Button } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 import { requirePermission } from "@/lib/auth";
 import {
   ECONOMIA_VIEW_PERMISSIONS,
@@ -129,13 +131,31 @@ export default async function MovimientosPage({
               extraParams={visible.length > 1 ? { [LEDGER_PARAM]: ledger } : undefined}
             />
             {canManage && season && openAccounts.length > 0 ? (
-              <MovementDialog
-                mode="create"
-                accounts={openAccounts}
-                seasons={seasonOptions}
-                categories={categoryOptions}
-                seasonId={season.id}
-              />
+              <>
+                <Button
+                  variant="outline"
+                  nativeButton={false}
+                  render={
+                    <Link
+                      href={
+                        visible.length > 1
+                          ? `/economia/movimientos/importar?${LEDGER_PARAM}=${ledger}`
+                          : "/economia/movimientos/importar"
+                      }
+                    />
+                  }
+                >
+                  <UploadIcon data-icon="inline-start" />
+                  {t("importAction")}
+                </Button>
+                <MovementDialog
+                  mode="create"
+                  accounts={openAccounts}
+                  seasons={seasonOptions}
+                  categories={categoryOptions}
+                  seasonId={season.id}
+                />
+              </>
             ) : null}
           </>
         }

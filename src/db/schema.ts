@@ -1086,10 +1086,33 @@ export const financialAccounts = pgTable(
 ).enableRLS();
 
 /**
- * De dónde salió el apunte. Hoy solo hay `manual`; el importador de Norma 43 y
- * CSV llega en su propio PR y escribirá `import`.
+ * De dónde salió el apunte: `manual` desde el formulario, `import` desde un
+ * lote de `movement_import_batches`.
  */
 export const movementSource = pgEnum("movement_source", ["import", "manual"]);
+
+export const movementImportFormat = pgEnum("movement_import_format", ["n43", "csv"]);
+
+/**
+ * Un fichero subido en `/economia/movimientos/importar`: agrupa los apuntes
+ * que trajo para poder verlos juntos, no para deshacer la importación (no hay
+ * cascada de borrado hacia `accountMovements`, ver más abajo).
+ */
+export const movementImportBatches = pgTable("movement_import_batches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => financialAccounts.id, { onDelete: "restrict" }),
+  fileName: text("file_name").notNull(),
+  format: movementImportFormat("format").notNull(),
+  importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
+  importedByUserId: uuid("imported_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  rowCount: integer("row_count").notNull(),
+  fromDate: date("from_date").notNull(),
+  toDate: date("to_date").notNull(),
+}).enableRLS();
 
 /**
  * Un apunte de una cuenta: la línea del extracto bancario, o el movimiento de
@@ -1130,10 +1153,20 @@ export const accountMovements = pgTable(
       onDelete: "set null",
     }),
     source: movementSource("source").notNull().default("manual"),
+    // Huella de deduplicación: solo la rellena el importador (ver
+    // decisión 5 del plan). Nula en los apuntes manuales — Postgres no choca
+    // dos nulos contra el índice único, así que no se interponen entre sí.
+    fingerprint: text("fingerprint"),
+    importBatchId: uuid("import_batch_id").references(() => movementImportBatches.id, {
+      onDelete: "set null",
+    }),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("account_movements_account_booked_idx").on(t.accountId, t.bookedOn)],
+  (t) => [
+    index("account_movements_account_booked_idx").on(t.accountId, t.bookedOn),
+    uniqueIndex("account_movements_account_fingerprint_idx").on(t.accountId, t.fingerprint),
+  ],
 ).enableRLS();
 
 // ---------------------------------------------------------------------------
@@ -1765,6 +1798,7 @@ export const sepaChargeReturnsRelations = relations(sepaChargeReturns, ({ one })
 
 export const financialAccountsRelations = relations(financialAccounts, ({ many }) => ({
   movements: many(accountMovements),
+  importBatches: many(movementImportBatches),
 }));
 
 export const accountMovementsRelations = relations(accountMovements, ({ one }) => ({
@@ -1777,4 +1811,23 @@ export const accountMovementsRelations = relations(accountMovements, ({ one }) =
     fields: [accountMovements.categoryId],
     references: [economicCategories.id],
   }),
+  importBatch: one(movementImportBatches, {
+    fields: [accountMovements.importBatchId],
+    references: [movementImportBatches.id],
+  }),
 }));
+
+export const movementImportBatchesRelations = relations(
+  movementImportBatches,
+  ({ one, many }) => ({
+    account: one(financialAccounts, {
+      fields: [movementImportBatches.accountId],
+      references: [financialAccounts.id],
+    }),
+    importedBy: one(users, {
+      fields: [movementImportBatches.importedByUserId],
+      references: [users.id],
+    }),
+    movements: many(accountMovements),
+  }),
+);
