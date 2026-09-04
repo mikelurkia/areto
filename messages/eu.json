@@ -553,7 +553,7 @@
     "phoneLabel": "Telefonoa",
     "phonePlaceholder": "600 000 000",
     "birthDateLabel": "Jaiotze-data",
-    "birthDateAgeTeamHint": "Adinaren arabera: {teams}",
+    "birthDateAgeCategoryHint": "Adinaren araberako maila: {category}",
     "nationalIdLabel": "NAN",
     "nationalIdPlaceholder": "12345678A",
     "isMemberLabel": "Klubeko bazkidea da",

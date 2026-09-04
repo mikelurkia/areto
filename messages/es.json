@@ -553,7 +553,7 @@
     "phoneLabel": "Teléfono",
     "phonePlaceholder": "600 000 000",
     "birthDateLabel": "Fecha de nacimiento",
-    "birthDateAgeTeamHint": "Por edad: {teams}",
+    "birthDateAgeCategoryHint": "Categoría por edad: {category}",
     "nationalIdLabel": "DNI/NIE",
     "nationalIdPlaceholder": "12345678A",
     "isMemberLabel": "Es socio/a del club",

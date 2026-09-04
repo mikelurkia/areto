@@ -374,11 +374,8 @@ export default async function PersonDetailPage({
       with: { season: true },
       orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
     }),
-    db.query.seasonCategoryBirthYears.findMany(),
+    db.query.seasonCategoryBirthYears.findMany({ with: { season: true } }),
   ]);
-  const birthYearsByCategory = new Map(
-    allCategoryBirthYears.map((row) => [`${row.seasonId}:${row.category}`, row]),
-  );
 
   const existingTags = existingTagRows.map((r) => r.tag);
 
@@ -442,19 +439,17 @@ export default async function PersonDetailPage({
   const isMinorWithoutGuardian = isMinor(person.birthDate) && person.guardianRows.length === 0;
   const hasMinorGuardian = person.guardianRows.some((r) => isMinor(r.guardian.birthDate));
   const birthYear = person.birthDate ? Number(person.birthDate.slice(0, 4)) : null;
-  const ageTeamNames = birthYear
-    ? allTeams
-        .filter((team) => {
-          if (!team.season.isCurrent || !team.category) return false;
-          const range = birthYearsByCategory.get(`${team.seasonId}:${team.category}`);
-          return (
-            range?.minBirthYear != null &&
-            range.maxBirthYear != null &&
-            birthYear >= range.minBirthYear &&
-            birthYear <= range.maxBirthYear
-          );
-        })
-        .map((team) => team.name)
+  const ageCategoryLabel = birthYear
+    ? allCategoryBirthYears
+        .filter(
+          (row) =>
+            row.season.isCurrent &&
+            row.minBirthYear != null &&
+            row.maxBirthYear != null &&
+            birthYear >= row.minBirthYear &&
+            birthYear <= row.maxBirthYear,
+        )
+        .map((row) => tEquipos(`category.${row.category}`))
         .join(", ") || null
     : null;
   const isMember = person.clubMember?.status === "active";
@@ -712,9 +707,9 @@ export default async function PersonDetailPage({
                     person.birthDate ? (
                       <>
                         {person.birthDate}
-                        {ageTeamNames ? (
+                        {ageCategoryLabel ? (
                           <span className="ml-2 text-xs font-normal text-muted-foreground">
-                            {t("birthDateAgeTeamHint", { teams: ageTeamNames })}
+                            {t("birthDateAgeCategoryHint", { category: ageCategoryLabel })}
                           </span>
                         ) : null}
                       </>
