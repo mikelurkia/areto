@@ -13,7 +13,13 @@ import {
 import { requirePermission } from "@/lib/auth";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { FOREIGN_KEY_VIOLATION, UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
-import { ECONOMIA_VIEW_PERMISSIONS, LEDGERS, canManageLedger, type Ledger } from "@/lib/economia";
+import {
+  ECONOMIA_VIEW_PERMISSIONS,
+  LEDGERS,
+  canManageLedger,
+  invoiceFileBucket,
+  type Ledger,
+} from "@/lib/economia";
 import { readAmountCents } from "@/lib/money";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
@@ -24,19 +30,14 @@ type Translator = Awaited<ReturnType<typeof getTranslations>>;
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 const ALLOWED_FILE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
-/** Bucket del adjunto según el libro de la factura: uno por libro, ver `docs/plan-modulo-economico.md`. */
-function fileBucket(ledger: Ledger): string {
-  return ledger === "internal" ? "invoice-files-internal" : "invoice-files";
-}
-
 async function uploadInvoiceFile(ledger: Ledger, invoiceId: string, file: File) {
   const path = `${invoiceId}/invoice.${extensionFromMimeType(file.type)}`;
-  await uploadFile(fileBucket(ledger), path, file);
+  await uploadFile(invoiceFileBucket(ledger), path, file);
   return { path, name: file.name };
 }
 
 async function removeInvoiceFileObject(ledger: Ledger, path: string) {
-  await removeFile(fileBucket(ledger), path);
+  await removeFile(invoiceFileBucket(ledger), path);
 }
 
 function readFile(formData: FormData): File | null {

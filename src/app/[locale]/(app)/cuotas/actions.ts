@@ -348,10 +348,13 @@ export async function createRemittance(
     return { error: t("creditorDataMissing") };
   }
 
-  let chargeIds: string[];
+  // Hace falta el importe, no solo el id: el total de la remesa se CONGELA al
+  // generarla. No se puede recalcular después sumando cargos, porque una
+  // devolución le anula el `remittanceId` al cargo (decisión 6 del plan).
+  let charges: { id: string; amountCents: number }[];
   if (kind === "player" && teamId) {
     const rows = await db
-      .select({ id: sepaCharges.id })
+      .select({ id: sepaCharges.id, amountCents: sepaCharges.amountCents })
       .from(sepaCharges)
       .innerJoin(memberships, eq(sepaCharges.membershipId, memberships.id))
       .where(
@@ -364,7 +367,7 @@ export async function createRemittance(
           eq(memberships.teamId, teamId),
         ),
       );
-    chargeIds = rows.map((r) => r.id);
+    charges = rows;
   } else {
     const rows = await db.query.sepaCharges.findMany({
       where: and(
@@ -374,11 +377,14 @@ export async function createRemittance(
         eq(sepaCharges.status, "pending"),
         isNull(sepaCharges.remittanceId),
       ),
-      columns: { id: true },
+      columns: { id: true, amountCents: true },
     });
-    chargeIds = rows.map((r) => r.id);
+    charges = rows;
   }
-  if (chargeIds.length === 0) return { error: t("remittanceEmpty") };
+  if (charges.length === 0) return { error: t("remittanceEmpty") };
+
+  const chargeIds = charges.map((c) => c.id);
+  const totalCents = charges.reduce((sum, c) => sum + c.amountCents, 0);
 
   const messageId = await nextRemittanceMessageId();
   const [remittance] = await db
@@ -390,6 +396,7 @@ export async function createRemittance(
       periodKey,
       messageId,
       collectionDate,
+      totalCents,
       generatedByUserId: user.id,
     })
     .returning();
@@ -404,7 +411,7 @@ export async function createRemittance(
     action: "create",
     entityType: "sepa_remittance",
     entityId: remittance.id,
-    metadata: { kind, seasonId, teamId, periodKey, count: chargeIds.length },
+    metadata: { kind, seasonId, teamId, periodKey, count: chargeIds.length, totalCents },
   });
 
   revalidateRoutes(ROUTE.cuotas, ROUTE.cuotaFicha);

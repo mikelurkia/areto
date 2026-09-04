@@ -9,6 +9,7 @@ import {
   courtEvents,
   federationAccounts,
   invoiceCounters,
+  issuedInvoices,
   memberships,
   personGuardians,
   personInjuryReports,
@@ -20,6 +21,9 @@ import {
   registrationGuardians,
   registrations,
   seasons,
+  sepaCharges,
+  sepaMandates,
+  sepaRemittances,
   sponsorContacts,
   sponsorNotes,
   sponsorPayments,
@@ -600,6 +604,10 @@ const SPONSOR_PLANS: SponsorPlan[] = SPONSOR_BUSINESSES.map((_, i) => {
 const sponsorRows: (typeof sponsors.$inferInsert)[] = [];
 const termRows: (typeof sponsorshipTerms.$inferInsert)[] = [];
 const sponsorPaymentRows: (typeof sponsorPayments.$inferInsert)[] = [];
+// Registro fiscal único: las facturas de patrocinio viven aquí desde la fase 5
+// del módulo económico. `seasonId` se rellena en `insertSeedRows`, que es quien
+// conoce los ids reales de las temporadas.
+const issuedInvoiceRows: (typeof issuedInvoices.$inferInsert)[] = [];
 
 let invoiceNumber = 0;
 
@@ -649,6 +657,27 @@ SPONSOR_BUSINESSES.forEach((business, i) => {
     const invoiced = plan.status === "confirmed" && isFirstYear && i % 2 === 0;
     const paid = invoiced && i % 4 === 0;
 
+    const number = invoiced
+      ? `${seasonYear}/${String(++invoiceNumber).padStart(4, "0")}`
+      : null;
+    const invoiceId = invoiced ? seedId(`issued-invoice:${business.key}:${year}`) : null;
+
+    if (invoiced) {
+      issuedInvoiceRows.push({
+        id: invoiceId!,
+        number: number!,
+        seasonId: currentSeasonId, // se resuelve en `insertSeedRows`
+        issuedOn: `${year}-10-01`,
+        customerName: business.fiscalName ?? business.name,
+        customerTaxId: taxId(i),
+        customerAddress: `${address(i)}, 20560 Oñati`,
+        sponsorId,
+        concept: `Patrocinio ${business.name} · ${seasonLabel(year)}`,
+        baseCents: amountCents,
+        totalCents: amountCents,
+      });
+    }
+
     sponsorPaymentRows.push({
       id: seedId(`sponsor-payment:${business.key}:${year}`),
       termId,
@@ -658,7 +687,8 @@ SPONSOR_BUSINESSES.forEach((business, i) => {
       dueDate: `${year}-11-30`,
       paidOn: paid ? `${year}-10-14` : null,
       method: paid ? "transfer" : null,
-      invoiceNumber: invoiced ? `${seasonYear}/${String(++invoiceNumber).padStart(4, "0")}` : null,
+      issuedInvoiceId: invoiceId,
+      invoiceNumber: number,
       invoicedOn: invoiced ? `${year}-10-01` : null,
     });
   }
@@ -804,6 +834,73 @@ REGISTRATION_PLANS.forEach((plan, i) => {
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// Cuotas por domiciliación: mandatos, cargos y una remesa
+// ---------------------------------------------------------------------------
+
+/*
+  Sin esto no se puede probar la conciliación de ingresos: el banco abona una
+  remesa como un ÚNICO apunte agregado, y hasta la fase 5 el seed no generaba
+  ni un cargo. Se siembra una remesa de la temporada actual con su
+  `totalCents` congelado y un cargo devuelto, que es el caso que descuadra la
+  suma de cargos (la devolución le anula el `remittanceId`) y el motivo de que
+  el total se guarde en vez de recalcularse.
+*/
+
+const PLAYER_FEE_CENTS = 21000;
+
+const sepaMandateRows: (typeof sepaMandates.$inferInsert)[] = [];
+const sepaChargeRows: (typeof sepaCharges.$inferInsert)[] = [];
+
+const chargedMemberships = membershipRows.filter((m) => m.role === "player").slice(0, 12);
+const remittanceId = seedId("sepa-remittance:cuotas");
+
+chargedMemberships.forEach((membership, i) => {
+  const mandateId = seedId(`sepa-mandate:${membership.id}`);
+  sepaMandateRows.push({
+    id: mandateId,
+    payerPersonId: membership.personId!,
+    rum: `ARETO-${String(i + 1).padStart(6, "0")}`,
+    signedOn: `${seasonYear}-08-20`,
+    ibanSnapshot: `ES91210004184502000${String(i + 1).padStart(5, "0")}`,
+  });
+
+  // El último se devuelve: vuelve a "pending" y pierde la remesa, igual que
+  // hace `updateChargeStatus`.
+  const returned = i === chargedMemberships.length - 1;
+  sepaChargeRows.push({
+    id: seedId(`sepa-charge:${membership.id}`),
+    remittanceId: returned ? null : remittanceId,
+    kind: "player",
+    seasonId: currentSeasonId, // se resuelve en `insertSeedRows`
+    membershipId: membership.id,
+    payerPersonId: membership.personId!,
+    mandateId,
+    periodKey: "season",
+    amountCents: PLAYER_FEE_CENTS,
+    status: returned ? "pending" : "collected",
+    sequenceType: "FRST",
+    collectedOn: returned ? null : `${seasonYear}-10-05`,
+    returnedOn: returned ? `${seasonYear}-10-12` : null,
+    returnReason: returned ? "MS03" : null,
+  });
+});
+
+const sepaRemittanceRows: (typeof sepaRemittances.$inferInsert)[] = [
+  {
+    id: remittanceId,
+    kind: "player",
+    seasonId: currentSeasonId, // se resuelve en `insertSeedRows`
+    periodKey: "season",
+    messageId: `ARETO-${seasonYear}-0001`,
+    collectionDate: `${seasonYear}-10-05`,
+    // Congelado con TODOS los cargos que se enviaron, devolución incluida:
+    // es lo que sigue cuadrando con el apunte del banco.
+    totalCents: PLAYER_FEE_CENTS * chargedMemberships.length,
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Ejecución
 // ---------------------------------------------------------------------------
@@ -813,6 +910,10 @@ const seedIds = {
   registrations: registrationRows.map((r) => r.id!),
   courtEvents: courtEventRows.map((r) => r.id!),
   sponsors: sponsorRows.map((r) => r.id!),
+  issuedInvoices: issuedInvoiceRows.map((r) => r.id!),
+  sepaCharges: sepaChargeRows.map((r) => r.id!),
+  sepaRemittances: sepaRemittanceRows.map((r) => r.id!),
+  sepaMandates: sepaMandateRows.map((r) => r.id!),
   memberships: membershipRows.map((r) => r.id!),
   persons: personRows.map((r) => r.id!),
   teams: teamRows.map((r) => r.id!),
@@ -831,8 +932,12 @@ const seedIds = {
 async function deleteSeedRows() {
   await db.delete(registrations).where(inArray(registrations.id, seedIds.registrations));
   await db.delete(courtEvents).where(inArray(courtEvents.id, seedIds.courtEvents));
+  await db.delete(sepaCharges).where(inArray(sepaCharges.id, seedIds.sepaCharges));
+  await db.delete(sepaRemittances).where(inArray(sepaRemittances.id, seedIds.sepaRemittances));
+  await db.delete(sepaMandates).where(inArray(sepaMandates.id, seedIds.sepaMandates));
   await db.delete(memberships).where(inArray(memberships.id, seedIds.memberships));
   await db.delete(sponsors).where(inArray(sponsors.id, seedIds.sponsors));
+  await db.delete(issuedInvoices).where(inArray(issuedInvoices.id, seedIds.issuedInvoices));
   await db.delete(persons).where(inArray(persons.id, seedIds.persons));
   await db.delete(teams).where(inArray(teams.id, seedIds.teams));
   await db.delete(seasons).where(inArray(seasons.id, seedIds.seasons));
@@ -929,6 +1034,9 @@ async function insertSeedRows(seasonIds: { current: string; previous: string }) 
     team.seasonId = team.seasonId === currentSeasonId ? seasonIds.current : seasonIds.previous;
   }
   for (const registration of registrationRows) registration.seasonId = seasonIds.current;
+  for (const invoice of issuedInvoiceRows) invoice.seasonId = seasonIds.current;
+  for (const charge of sepaChargeRows) charge.seasonId = seasonIds.current;
+  for (const remittance of sepaRemittanceRows) remittance.seasonId = seasonIds.current;
 
   // El número de socio es correlativo y único en toda la tabla: si la base ya
   // tenía altas que no son del seed, las del seed siguen a partir de la última.
@@ -952,7 +1060,11 @@ async function insertSeedRows(seasonIds: { current: string; previous: string }) 
   await db.insert(courtEvents).values(courtEventRows);
   await db.insert(sponsors).values(sponsorRows);
   await db.insert(sponsorshipTerms).values(termRows);
+  await db.insert(issuedInvoices).values(issuedInvoiceRows);
   await db.insert(sponsorPayments).values(sponsorPaymentRows);
+  await db.insert(sepaMandates).values(sepaMandateRows);
+  await db.insert(sepaRemittances).values(sepaRemittanceRows);
+  await db.insert(sepaCharges).values(sepaChargeRows);
   await db.insert(sponsorContacts).values(sponsorContactRows);
   await db.insert(sponsorNotes).values(sponsorNoteRows);
   await db.insert(registrations).values(registrationRows);

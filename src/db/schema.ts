@@ -885,6 +885,11 @@ export const sponsorPayments = pgTable(
     dueDate: date("due_date"), // fecha prevista de cobro
     paidOn: date("paid_on"), // fecha real de cobro (cuando status = "paid")
     method: text("method"), // "cash", "transfer"...
+    // Registro fiscal de esta anualidad, desde la fase 5 del módulo económico.
+    // `invoiceNumber`/`invoicedOn` quedan como copia hasta el PR de contract.
+    issuedInvoiceId: uuid("issued_invoice_id").references((): AnyPgColumn => issuedInvoices.id, {
+      onDelete: "set null",
+    }),
     invoiceNumber: text("invoice_number"), // nº de factura emitida por este cobro
     invoicedOn: date("invoiced_on"), // fecha de emisión de la factura
     notes: text("notes"),
@@ -1181,6 +1186,18 @@ export const receivedInvoiceStatus = pgEnum("received_invoice_status", [
 ]);
 
 /**
+ * Estado de una factura emitida. No hay `deleted`: una factura emitida no se
+ * borra nunca —dejaría un hueco permanente en la numeración—, se anula
+ * (`cancelled`) o se rectifica (`rectified`, con la rectificativa apuntando a
+ * ella por `rectifiesInvoiceId`). Ver decisión 7 del plan.
+ */
+export const issuedInvoiceStatus = pgEnum("issued_invoice_status", [
+  "issued",
+  "rectified",
+  "cancelled",
+]);
+
+/**
  * De dónde sale la factura: `manual` desde el formulario, `extracted`
  * reservado para un futuro agente de lectura automática de PDF (decisión 10
  * del plan) — hoy ningún flujo escribe `extracted`.
@@ -1257,6 +1274,63 @@ export const receivedInvoices = pgTable(
 ).enableRLS();
 
 /**
+ * Factura emitida: el registro fiscal ÚNICO del club. Un club no puede tener
+ * dos libros de facturas emitidas compartiendo numeración, así que aquí entran
+ * también las de patrocinio (decisión 7 del plan); `sponsor_payments` conserva
+ * de momento sus columnas viejas y enlaza aquí por `issuedInvoiceId`.
+ *
+ * `number` lo pone el club —lo reserva `nextInvoiceNumber` sobre
+ * `invoice_counters`—, de ahí el único global, al revés que en las recibidas.
+ *
+ * El destinatario se guarda DESNORMALIZADO: una factura congela los datos
+ * fiscales del cliente el día que se emite. Renombrar el patrocinador no puede
+ * reescribir facturas pasadas, que es lo que pasaba leyéndolos en vivo.
+ * `sponsorId`/`personId` son referencias de navegación, opcionales y sin XOR:
+ * una factura puede no corresponder a ninguno de los dos.
+ */
+export const issuedInvoices = pgTable(
+  "issued_invoices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    number: text("number").notNull(),
+    ledger: ledger("ledger").notNull().default("official"),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => seasons.id, { onDelete: "restrict" }),
+    issuedOn: date("issued_on").notNull(),
+    dueDate: date("due_date"),
+    customerName: text("customer_name").notNull(),
+    customerTaxId: text("customer_tax_id"),
+    customerAddress: text("customer_address"),
+    sponsorId: uuid("sponsor_id").references(() => sponsors.id, { onDelete: "set null" }),
+    personId: uuid("person_id").references(() => persons.id, { onDelete: "set null" }),
+    categoryId: uuid("category_id").references(() => economicCategories.id, {
+      onDelete: "set null",
+    }),
+    concept: text("concept"),
+    baseCents: integer("base_cents").notNull(),
+    vatCents: integer("vat_cents").notNull().default(0),
+    withholdingCents: integer("withholding_cents").notNull().default(0),
+    totalCents: integer("total_cents").notNull(),
+    status: issuedInvoiceStatus("status").notNull().default("issued"),
+    rectifiesInvoiceId: uuid("rectifies_invoice_id").references(
+      (): AnyPgColumn => issuedInvoices.id,
+      { onDelete: "set null" },
+    ),
+    source: invoiceSource("source").notNull().default("manual"),
+    filePath: text("file_path"),
+    fileName: text("file_name"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("issued_invoices_number_idx").on(t.number),
+    index("issued_invoices_season_idx").on(t.seasonId),
+    index("issued_invoices_sponsor_idx").on(t.sponsorId),
+  ],
+).enableRLS();
+
+/**
  * Conciliación N:M entre un apunte bancario y lo que lo justifica: una
  * transferencia paga varias facturas, una factura se paga a plazos, y una
  * remesa SEPA entra en el extracto como un único apunte agregado. Se enlaza
@@ -1264,10 +1338,6 @@ export const receivedInvoices = pgTable(
  * estado de conciliación (pendiente/parcial/conciliado) es DERIVADO —suma de
  * enlaces frente al importe de cada lado— nunca almacenado, para no
  * desincronizarse al borrar un enlace (decisión 5 del plan).
- *
- * `issuedInvoiceId` queda sin FK hasta la fase 5, cuando exista
- * `issued_invoices`: la columna se crea ya para no repetir el `check` XOR más
- * adelante, pero en esta fase solo `receivedInvoiceId` tiene UI.
  */
 export const movementLinks = pgTable(
   "movement_links",
@@ -1280,7 +1350,9 @@ export const movementLinks = pgTable(
     receivedInvoiceId: uuid("received_invoice_id").references(() => receivedInvoices.id, {
       onDelete: "cascade",
     }),
-    issuedInvoiceId: uuid("issued_invoice_id"),
+    issuedInvoiceId: uuid("issued_invoice_id").references(() => issuedInvoices.id, {
+      onDelete: "cascade",
+    }),
     sepaRemittanceId: uuid("sepa_remittance_id").references(() => sepaRemittances.id, {
       onDelete: "cascade",
     }),
@@ -1292,6 +1364,7 @@ export const movementLinks = pgTable(
   (t) => [
     index("movement_links_movement_idx").on(t.movementId),
     index("movement_links_received_invoice_idx").on(t.receivedInvoiceId),
+    index("movement_links_issued_invoice_idx").on(t.issuedInvoiceId),
     check(
       "movement_links_target_xor",
       sql`(
@@ -1535,6 +1608,12 @@ export const sepaRemittances = pgTable(
     periodKey: text("period_key").notNull(),
     messageId: text("message_id").notNull(),
     collectionDate: date("collection_date").notNull(),
+    // Importe total CONGELADO al generar la remesa, y fecha real de abono. Sin
+    // esto no hay nada a lo que enlazar el apunte agregado que mete el banco:
+    // el total no se puede recalcular sumando cargos porque una devolución le
+    // anula el `remittanceId` al cargo (decisión 6 del plan).
+    totalCents: integer("total_cents").notNull().default(0),
+    settledOn: date("settled_on"),
     generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
     generatedByUserId: uuid("generated_by_user_id").references(() => users.id, {
       onDelete: "set null",
@@ -1729,6 +1808,10 @@ export const sponsorPaymentsRelations = relations(sponsorPayments, ({ one }) => 
     fields: [sponsorPayments.termId],
     references: [sponsorshipTerms.id],
   }),
+  issuedInvoice: one(issuedInvoices, {
+    fields: [sponsorPayments.issuedInvoiceId],
+    references: [issuedInvoices.id],
+  }),
 }));
 
 export const teamsRelations = relations(teams, ({ one, many }) => ({
@@ -1902,6 +1985,7 @@ export const sepaRemittancesRelations = relations(sepaRemittances, ({ one, many 
     references: [users.id],
   }),
   charges: many(sepaCharges),
+  links: many(movementLinks),
 }));
 
 export const sepaChargesRelations = relations(sepaCharges, ({ one, many }) => ({
@@ -1989,6 +2073,23 @@ export const receivedInvoicesRelations = relations(receivedInvoices, ({ one, man
   links: many(movementLinks),
 }));
 
+export const issuedInvoicesRelations = relations(issuedInvoices, ({ one, many }) => ({
+  season: one(seasons, { fields: [issuedInvoices.seasonId], references: [seasons.id] }),
+  category: one(economicCategories, {
+    fields: [issuedInvoices.categoryId],
+    references: [economicCategories.id],
+  }),
+  sponsor: one(sponsors, { fields: [issuedInvoices.sponsorId], references: [sponsors.id] }),
+  person: one(persons, { fields: [issuedInvoices.personId], references: [persons.id] }),
+  rectifies: one(issuedInvoices, {
+    fields: [issuedInvoices.rectifiesInvoiceId],
+    references: [issuedInvoices.id],
+    relationName: "rectification",
+  }),
+  rectifiedBy: many(issuedInvoices, { relationName: "rectification" }),
+  links: many(movementLinks),
+}));
+
 export const movementLinksRelations = relations(movementLinks, ({ one }) => ({
   movement: one(accountMovements, {
     fields: [movementLinks.movementId],
@@ -1997,6 +2098,10 @@ export const movementLinksRelations = relations(movementLinks, ({ one }) => ({
   receivedInvoice: one(receivedInvoices, {
     fields: [movementLinks.receivedInvoiceId],
     references: [receivedInvoices.id],
+  }),
+  issuedInvoice: one(issuedInvoices, {
+    fields: [movementLinks.issuedInvoiceId],
+    references: [issuedInvoices.id],
   }),
   sepaRemittance: one(sepaRemittances, {
     fields: [movementLinks.sepaRemittanceId],

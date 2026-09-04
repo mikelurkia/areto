@@ -32,7 +32,7 @@ Rutina de cada fase, en sesión limpia:
 | 2 | Movimientos: tabla, alta manual, listado | hecha |
 | 3 | Importación Norma 43 + CSV, lotes y deduplicación | hecha |
 | 4 | Facturas recibidas, proveedores y conciliación | hecha |
-| 5 | Facturas emitidas, absorción de patrocinio, agregado de remesas | pendiente |
+| 5 | Facturas emitidas, absorción de patrocinio, agregado de remesas | hecha |
 | 6 | Presupuesto e informe presupuesto vs devengado vs caja | pendiente |
 | 7 | *Contract*: retirar `invoiceNumber`/`invoicedOn` de `sponsor_payments` | pendiente |
 

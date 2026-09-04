@@ -40,7 +40,7 @@ import { DeleteSponsorDialog } from "@/components/patrocinadores/delete-sponsor-
 import { DeleteSponsorPaymentDialog } from "@/components/patrocinadores/delete-sponsor-payment-dialog";
 import { DeleteSponsorshipTermDialog } from "@/components/patrocinadores/delete-sponsorship-term-dialog";
 import { GenerateAnnualitiesDialog } from "@/components/patrocinadores/generate-payments-dialog";
-import { IssueInvoiceButton } from "@/components/patrocinadores/issue-invoice-button";
+import { IssuedInvoiceDialog } from "@/components/economia/issued-invoice-dialog";
 import { MarkPaymentPaidButton } from "@/components/patrocinadores/mark-payment-paid-button";
 import { RenewSponsorshipTermButton } from "@/components/patrocinadores/renew-sponsorship-term-button";
 import { SponsorContactDialog } from "@/components/patrocinadores/sponsor-contact-dialog";
@@ -130,8 +130,9 @@ export default async function SponsorDetailPage({
   const canManage = hasPermission(user, "patrocinadores.manage");
   const t = await getTranslations("Patrocinadores");
 
-  // La ficha y el listado de personas (selector de contacto) son independientes.
-  const [sponsor, allPersons] = await Promise.all([
+  // La ficha, el listado de personas (selector de contacto) y los catálogos
+  // que necesita el diálogo de emisión de factura son independientes.
+  const [sponsor, allPersons, allSeasons, categories] = await Promise.all([
     getSponsor(sponsorId),
     db.query.persons.findMany({
       columns: { id: true, firstName: true, lastName: true },
@@ -139,6 +140,14 @@ export default async function SponsorDetailPage({
         asc(persons.lastName),
         asc(persons.firstName),
       ],
+    }),
+    db.query.seasons.findMany({
+      columns: { id: true, name: true },
+      orderBy: (seasons, { desc }) => [desc(seasons.name)],
+    }),
+    db.query.economicCategories.findMany({
+      columns: { id: true, name: true },
+      orderBy: (c, { asc }) => [asc(c.sortOrder), asc(c.name)],
     }),
   ]);
   if (!sponsor) notFound();
@@ -650,7 +659,31 @@ export default async function SponsorDetailPage({
                                           </span>
                                         </Button>
                                       ) : (
-                                        <IssueInvoiceButton id={payment.id} />
+                                        <IssuedInvoiceDialog
+                                          mode="sponsor"
+                                          ledger="official"
+                                          manageableLedgers={["official"]}
+                                          seasons={allSeasons}
+                                          categories={categories}
+                                          defaults={{
+                                            sponsorPaymentId: payment.id,
+                                            seasonId:
+                                              (payment.year
+                                                ? allSeasons.find(
+                                                    (s) => s.name === seasonLabel(payment.year!),
+                                                  )?.id
+                                                : null) ??
+                                              allSeasons[0]?.id ??
+                                              "",
+                                            customerName: sponsor.fiscalName ?? sponsor.name,
+                                            customerTaxId: sponsor.taxId,
+                                            customerAddress: sponsor.fiscalAddress,
+                                            concept: payment.year
+                                              ? `${t("sponsorshipConcept", { name: sponsor.name })} · ${seasonLabel(payment.year)}`
+                                              : t("sponsorshipConcept", { name: sponsor.name }),
+                                            totalCents: payment.amountCents,
+                                          }}
+                                        />
                                       )}
                                       <SponsorPaymentDialog
                                         mode="edit"

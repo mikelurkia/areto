@@ -4,14 +4,22 @@ import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
-import { accountMovements, financialAccounts } from "@/db/schema";
+import {
+  accountMovements,
+  financialAccounts,
+  movementLinks,
+  sepaRemittances,
+} from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { recordAuditEvent } from "@/lib/audit-log";
+import { FOREIGN_KEY_VIOLATION, isPostgresError } from "@/lib/db-errors";
 import {
   ECONOMIA_VIEW_PERMISSIONS,
   canManageLedger,
+  reconciliationState,
 } from "@/lib/economia";
 import { readAmountCents } from "@/lib/money";
+import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/actions";
 
 type Translator = Awaited<ReturnType<typeof getTranslations>>;
@@ -170,4 +178,104 @@ export async function deleteMovement(
   });
 
   return { message: t("movementDeleted") };
+}
+
+// ---------------------------------------------------------------------------
+// Conciliación de ingresos: el apunte AGREGADO de una remesa SEPA
+// ---------------------------------------------------------------------------
+
+/**
+ * El banco abona una remesa como un único apunte, así que la conciliación de
+ * ingresos por cuotas se hace contra `sepa_remittances`, no cargo a cargo.
+ * `settledOn` se deriva de los enlaces: en cuanto suman el total congelado de
+ * la remesa, queda abonada con la fecha del apunte más reciente.
+ */
+async function syncRemittanceSettlement(remittanceId: string) {
+  const remittance = await db.query.sepaRemittances.findFirst({
+    where: eq(sepaRemittances.id, remittanceId),
+    columns: { totalCents: true },
+    with: { links: { with: { movement: { columns: { bookedOn: true } } } } },
+  });
+  if (!remittance) return;
+
+  const linked = remittance.links.reduce((sum, l) => sum + l.amountCents, 0);
+  const settled = reconciliationState(linked, remittance.totalCents) === "settled";
+  const settledOn = settled
+    ? remittance.links.map((l) => l.movement.bookedOn).sort().at(-1)!
+    : null;
+
+  await db
+    .update(sepaRemittances)
+    .set({ settledOn })
+    .where(eq(sepaRemittances.id, remittanceId));
+}
+
+export async function linkMovementToRemittance(
+  _prev: EconomiaState,
+  formData: FormData,
+): Promise<EconomiaState> {
+  const t = await getTranslations("Economia");
+  const user = await requirePermission(ECONOMIA_VIEW_PERMISSIONS);
+
+  const movementId = String(formData.get("movementId") ?? "");
+  const sepaRemittanceId = String(formData.get("sepaRemittanceId") ?? "");
+  const amountCents = readAmountCents(formData.get("amount"));
+  if (!movementId || !sepaRemittanceId) return { error: t("notAllowed") };
+  if (amountCents === null || amountCents === 0) return { error: t("movementAmountRequired") };
+
+  const movement = await db.query.accountMovements.findFirst({
+    where: eq(accountMovements.id, movementId),
+    columns: { ledger: true },
+  });
+  if (!movement) return { error: t("movementNotFound") };
+  if (!canManageLedger(user, movement.ledger)) return { error: t("notAllowed") };
+
+  try {
+    await db.insert(movementLinks).values({ movementId, sepaRemittanceId, amountCents });
+  } catch (error) {
+    if (isPostgresError(error, FOREIGN_KEY_VIOLATION)) return { error: t("notAllowed") };
+    throw error;
+  }
+  await syncRemittanceSettlement(sepaRemittanceId);
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "create",
+    entityType: "movement_link",
+    entityId: movementId,
+    metadata: { sepaRemittanceId, amountCents },
+  });
+
+  revalidateRoutes(ROUTE.cuotaFicha);
+  return { message: t("linkCreated") };
+}
+
+export async function unlinkRemittanceMovement(
+  _prev: EconomiaState,
+  formData: FormData,
+): Promise<EconomiaState> {
+  const t = await getTranslations("Economia");
+  const user = await requirePermission(ECONOMIA_VIEW_PERMISSIONS);
+
+  const id = String(formData.get("id") ?? "");
+  const link = await db.query.movementLinks.findFirst({
+    where: eq(movementLinks.id, id),
+    with: { movement: { columns: { ledger: true } } },
+  });
+  if (!link?.sepaRemittanceId) return { error: t("notAllowed") };
+  if (!canManageLedger(user, link.movement.ledger)) return { error: t("notAllowed") };
+
+  await db.delete(movementLinks).where(eq(movementLinks.id, id));
+  await syncRemittanceSettlement(link.sepaRemittanceId);
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "delete",
+    entityType: "movement_link",
+    entityId: id,
+    metadata: { sepaRemittanceId: link.sepaRemittanceId },
+  });
+
+  revalidateRoutes(ROUTE.cuotaFicha);
+  return { message: t("linkDeleted") };
 }

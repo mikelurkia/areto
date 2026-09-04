@@ -32,25 +32,32 @@ export default async function InvoiceRegisterPage({
   await requirePermission("patrocinadores.view");
   const t = await getTranslations("Patrocinadores");
 
+  // Vista filtrada del registro fiscal único: las anualidades que ya tienen
+  // factura emitida. Los datos salen de la factura, no del patrocinador, que
+  // es lo que impide que renombrar la empresa reescriba facturas pasadas.
+  // Se consulta desde `sponsor_payments` porque el recibo imprimible sigue
+  // colgando de la anualidad.
   const payments = await db.query.sponsorPayments.findMany({
-    where: isNotNull(sponsorPayments.invoiceNumber),
-    with: { term: { with: { sponsor: true } } },
+    where: isNotNull(sponsorPayments.issuedInvoiceId),
+    with: { term: { columns: { sponsorId: true } }, issuedInvoice: true },
     orderBy: (p, { desc }) => [desc(p.invoicedOn), desc(p.invoiceNumber)],
   });
 
   const invoices: InvoiceRow[] = payments.map((payment) => {
-    const sponsor = payment.term.sponsor;
-    const concept = payment.year
-      ? `${t("sponsorshipConcept", { name: sponsor.name })} · ${seasonLabel(payment.year)}`
-      : t("sponsorshipConcept", { name: sponsor.name });
+    const invoice = payment.issuedInvoice!;
+    const concept =
+      invoice.concept ??
+      (payment.year
+        ? `${t("sponsorshipConcept", { name: invoice.customerName })} · ${seasonLabel(payment.year)}`
+        : t("sponsorshipConcept", { name: invoice.customerName }));
     return {
       id: payment.id,
-      sponsorId: sponsor.id,
-      invoiceNumber: payment.invoiceNumber!,
-      invoicedOn: payment.invoicedOn,
-      sponsorName: sponsor.fiscalName ?? sponsor.name,
+      sponsorId: payment.term.sponsorId,
+      invoiceNumber: invoice.number,
+      invoicedOn: invoice.issuedOn,
+      sponsorName: invoice.customerName,
       concept,
-      amountCents: payment.amountCents,
+      amountCents: invoice.totalCents,
     };
   });
 
