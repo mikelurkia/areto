@@ -40,7 +40,6 @@ export default async function InvoiceRegisterPage({
   const payments = await db.query.sponsorPayments.findMany({
     where: isNotNull(sponsorPayments.issuedInvoiceId),
     with: { term: { columns: { sponsorId: true } }, issuedInvoice: true },
-    orderBy: (p, { desc }) => [desc(p.invoicedOn), desc(p.invoiceNumber)],
   });
 
   const invoices: InvoiceRow[] = payments.map((payment) => {
@@ -60,6 +59,14 @@ export default async function InvoiceRegisterPage({
       amountCents: invoice.totalCents,
     };
   });
+
+  // El orden lo marca la factura, no la anualidad, así que se ordena aquí:
+  // `orderBy` de la query relacional solo alcanza columnas de `sponsor_payments`.
+  invoices.sort(
+    (a, b) =>
+      (b.invoicedOn ?? "").localeCompare(a.invoicedOn ?? "") ||
+      b.invoiceNumber.localeCompare(a.invoiceNumber),
+  );
 
   const years = [
     ...new Set(
