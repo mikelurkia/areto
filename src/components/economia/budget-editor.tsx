@@ -146,6 +146,12 @@ function BudgetBlock({
                   <TableCell nowrap className="text-right">
                     {editable ? (
                       <Input
+                        // El campo no es controlado, así que su `defaultValue`
+                        // no puede cambiar en caliente: al guardar, la ruta se
+                        // revalida y el importe nuevo llega por props. Con el
+                        // valor en la `key` el campo se remonta en vez de
+                        // mutar su default, que es lo que avisa Base UI.
+                        key={`${row.categoryId}:${row.plannedCents}`}
                         name={`line_${row.categoryId}`}
                         inputMode="decimal"
                         aria-label={row.name}
