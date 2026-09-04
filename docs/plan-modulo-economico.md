@@ -31,7 +31,7 @@ Rutina de cada fase, en sesión limpia:
 | 1 | Cimientos: `ledger`, categorías, cuentas, permisos, shell de `/economia` | hecha |
 | 2 | Movimientos: tabla, alta manual, listado | hecha |
 | 3 | Importación Norma 43 + CSV, lotes y deduplicación | hecha |
-| 4 | Facturas recibidas, proveedores y conciliación | pendiente |
+| 4 | Facturas recibidas, proveedores y conciliación | hecha |
 | 5 | Facturas emitidas, absorción de patrocinio, agregado de remesas | pendiente |
 | 6 | Presupuesto e informe presupuesto vs devengado vs caja | pendiente |
 | 7 | *Contract*: retirar `invoiceNumber`/`invoicedOn` de `sponsor_payments` | pendiente |

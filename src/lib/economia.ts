@@ -1,5 +1,6 @@
 import type { CurrentUser } from "@/lib/auth";
 import type { Permission } from "@/lib/permissions";
+import type { StatusTone } from "@/lib/status-tone";
 
 /**
  * Ámbito contable ("libro") del módulo económico.
@@ -58,6 +59,15 @@ export function canManageLedger(user: UserPermissions, value: Ledger): boolean {
   return user ? user.permissions.has(MANAGE_PERMISSION[value]) : false;
 }
 
+/**
+ * Los proveedores son la dimensión COMPARTIDA por los dos libros, igual que
+ * las categorías (ver `canManageCategories` en `cuentas/actions.ts`): basta
+ * con poder gestionar uno de los dos para darlos de alta.
+ */
+export function canManageSuppliers(user: UserPermissions): boolean {
+  return LEDGERS.some((value) => canManageLedger(user, value));
+}
+
 function isLedger(value: string): value is Ledger {
   return (LEDGERS as readonly string[]).includes(value);
 }
@@ -75,3 +85,12 @@ export function resolveLedger(
   if (value && isLedger(value) && visible.includes(value)) return value;
   return visible[0] ?? null;
 }
+
+export type ReceivedInvoiceStatus = "pending" | "paid" | "disputed";
+
+/** Tono por estado de factura recibida, igual en el listado y en la ficha. */
+export const RECEIVED_INVOICE_STATUS_TONE: Record<ReceivedInvoiceStatus, StatusTone> = {
+  pending: "warning",
+  paid: "positive",
+  disputed: "danger",
+};
