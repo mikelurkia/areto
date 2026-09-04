@@ -1377,6 +1377,59 @@ export const movementLinks = pgTable(
   ],
 ).enableRLS();
 
+/** Un presupuesto se trabaja en borrador y se congela al aprobarlo en asamblea. */
+export const budgetStatus = pgEnum("budget_status", ["draft", "approved"]);
+
+/**
+ * Presupuesto de una temporada en un libro. Uno por `(seasonId, ledger)`: el
+ * presupuesto de gestión y el aprobado en asamblea son documentos distintos y
+ * no se suman nunca.
+ *
+ * `approved` congela las líneas: dejan de editarse hasta que alguien con
+ * `manage` del libro lo reabre, y las dos transiciones quedan en `audit_log`.
+ */
+export const seasonBudgets = pgTable(
+  "season_budgets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => seasons.id, { onDelete: "restrict" }),
+    ledger: ledger("ledger").notNull().default("official"),
+    status: budgetStatus("status").notNull().default("draft"),
+    approvedOn: date("approved_on"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("season_budgets_season_ledger_idx").on(t.seasonId, t.ledger)],
+).enableRLS();
+
+/**
+ * Importe previsto para una categoría dentro de un presupuesto. Una línea por
+ * categoría como mucho; sin línea significa "no presupuestado", que es distinto
+ * de cero solo a efectos de lectura de la tabla.
+ *
+ * `categoryId` va a `restrict` y no a `set null` como en los apuntes: una
+ * categoría presupuestada no puede desaparecer del presupuesto en silencio, y
+ * la convención del módulo es retirarlas con `isActive`, no borrarlas.
+ */
+export const budgetLines = pgTable(
+  "budget_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    budgetId: uuid("budget_id")
+      .notNull()
+      .references(() => seasonBudgets.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => economicCategories.id, { onDelete: "restrict" }),
+    plannedCents: integer("planned_cents").notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("budget_lines_budget_category_idx").on(t.budgetId, t.categoryId)],
+).enableRLS();
+
 // ---------------------------------------------------------------------------
 // Auditoría: acciones sensibles (médico, bancario, usuarios/roles, inscripciones)
 // ---------------------------------------------------------------------------
@@ -2110,5 +2163,24 @@ export const movementLinksRelations = relations(movementLinks, ({ one }) => ({
   sponsorPayment: one(sponsorPayments, {
     fields: [movementLinks.sponsorPaymentId],
     references: [sponsorPayments.id],
+  }),
+}));
+
+export const seasonBudgetsRelations = relations(seasonBudgets, ({ one, many }) => ({
+  season: one(seasons, {
+    fields: [seasonBudgets.seasonId],
+    references: [seasons.id],
+  }),
+  lines: many(budgetLines),
+}));
+
+export const budgetLinesRelations = relations(budgetLines, ({ one }) => ({
+  budget: one(seasonBudgets, {
+    fields: [budgetLines.budgetId],
+    references: [seasonBudgets.id],
+  }),
+  category: one(economicCategories, {
+    fields: [budgetLines.categoryId],
+    references: [economicCategories.id],
   }),
 }));

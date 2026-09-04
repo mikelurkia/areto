@@ -51,6 +51,7 @@ export const ROUTE = {
   economiaRecibidaFicha: "/[locale]/economia/recibidas/[invoiceId]",
   economiaEmitidas: "/[locale]/economia/emitidas",
   economiaEmitidaFicha: "/[locale]/economia/emitidas/[invoiceId]",
+  economiaPresupuesto: "/[locale]/economia/presupuesto",
   medico: "/[locale]/medico",
   medicoListado: "/[locale]/medico/listado",
   calendario: "/[locale]/calendario",

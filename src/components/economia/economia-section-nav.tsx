@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 export type EconomiaSection =
   | "resumen"
+  | "presupuesto"
   | "movimientos"
   | "recibidas"
   | "emitidas"
@@ -17,6 +18,7 @@ export type EconomiaSection =
 
 const SECTIONS: { key: EconomiaSection; href: string }[] = [
   { key: "resumen", href: "/economia" },
+  { key: "presupuesto", href: "/economia/presupuesto" },
   { key: "movimientos", href: "/economia/movimientos" },
   { key: "recibidas", href: "/economia/recibidas" },
   { key: "emitidas", href: "/economia/emitidas" },
