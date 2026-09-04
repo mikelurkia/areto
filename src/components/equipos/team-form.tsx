@@ -25,8 +25,6 @@ type Team = {
   name: string;
   category: string | null;
   gender: string | null;
-  minBirthYear: number | null;
-  maxBirthYear: number | null;
   federationGroup: string | null;
   federationCode: string | null;
   playerFeeCents: number | null;
@@ -127,38 +125,6 @@ export function TeamForm(props: TeamFormProps) {
                 ))}
               </SelectContent>
             </Select>
-          </Field>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field>
-            <FieldLabel htmlFor="team-min-birth-year">
-              {t("minBirthYearLabel")}
-            </FieldLabel>
-            <Input
-              id="team-min-birth-year"
-              name="minBirthYear"
-              type="number"
-              inputMode="numeric"
-              placeholder="2010"
-              defaultValue={
-                props.mode === "edit" ? (props.team.minBirthYear ?? "") : ""
-              }
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="team-max-birth-year">
-              {t("maxBirthYearLabel")}
-            </FieldLabel>
-            <Input
-              id="team-max-birth-year"
-              name="maxBirthYear"
-              type="number"
-              inputMode="numeric"
-              placeholder="2011"
-              defaultValue={
-                props.mode === "edit" ? (props.team.maxBirthYear ?? "") : ""
-              }
-            />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">

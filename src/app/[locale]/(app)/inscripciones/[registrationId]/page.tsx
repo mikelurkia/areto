@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { registrations, teams } from "@/db/schema";
+import { registrations, seasonCategoryBirthYears, teams } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format-date";
 import { findCandidates } from "@/lib/person-matching";
@@ -53,7 +53,7 @@ export default async function RegistrationDetailPage({
   // en /socios, con su propio formulario más corto.
   if (registration.kind !== "player") redirect(`/${locale}/socios/${registrationId}`);
 
-  const [allPersons, seasonTeams, photoUrl, idFrontUrl, idBackUrl] = await Promise.all([
+  const [allPersons, seasonTeams, seasonCategoryRanges, photoUrl, idFrontUrl, idBackUrl] = await Promise.all([
     db.query.persons.findMany({
       columns: {
         id: true,
@@ -79,6 +79,9 @@ export default async function RegistrationDetailPage({
       where: eq(teams.seasonId, registration.seasonId),
       with: { season: true },
       orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
+    }),
+    db.query.seasonCategoryBirthYears.findMany({
+      where: eq(seasonCategoryBirthYears.seasonId, registration.seasonId),
     }),
     // Solo se usa como miniatura de comparación/revisión (64-128px), nunca a
     // tamaño completo, así que basta con la miniatura.
@@ -151,12 +154,18 @@ export default async function RegistrationDetailPage({
     })),
   };
 
-  const teamOptions = seasonTeams.map((team) => ({
-    id: team.id,
-    label: teamSeasonLabel(team, team.season),
-    minBirthYear: team.minBirthYear,
-    maxBirthYear: team.maxBirthYear,
-  }));
+  const birthYearsByCategory = new Map(
+    seasonCategoryRanges.map((row) => [row.category, row]),
+  );
+  const teamOptions = seasonTeams.map((team) => {
+    const range = team.category ? birthYearsByCategory.get(team.category) : undefined;
+    return {
+      id: team.id,
+      label: teamSeasonLabel(team, team.season),
+      minBirthYear: range?.minBirthYear ?? null,
+      maxBirthYear: range?.maxBirthYear ?? null,
+    };
+  });
 
   const fullName = `${registration.firstName} ${registration.lastName}`;
 

@@ -368,13 +368,17 @@ export default async function PersonDetailPage({
   // deja de esperar a que lleguen las membresías de la persona. Ya no se trae
   // la lista de personas del club: el selector de tutores los busca al escribir
   // (`GuardianPicker`), así que ver una ficha ya no descarga el listado entero.
-  const [existingTagRows, allTeams] = await Promise.all([
+  const [existingTagRows, allTeams, allCategoryBirthYears] = await Promise.all([
     db.selectDistinct({ tag: personTags.tag }).from(personTags).orderBy(personTags.tag),
     db.query.teams.findMany({
       with: { season: true },
       orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
     }),
+    db.query.seasonCategoryBirthYears.findMany(),
   ]);
+  const birthYearsByCategory = new Map(
+    allCategoryBirthYears.map((row) => [`${row.seasonId}:${row.category}`, row]),
+  );
 
   const existingTags = existingTagRows.map((r) => r.tag);
 
@@ -440,14 +444,16 @@ export default async function PersonDetailPage({
   const birthYear = person.birthDate ? Number(person.birthDate.slice(0, 4)) : null;
   const ageTeamNames = birthYear
     ? allTeams
-        .filter(
-          (team) =>
-            team.season.isCurrent &&
-            team.minBirthYear != null &&
-            team.maxBirthYear != null &&
-            birthYear >= team.minBirthYear &&
-            birthYear <= team.maxBirthYear,
-        )
+        .filter((team) => {
+          if (!team.season.isCurrent || !team.category) return false;
+          const range = birthYearsByCategory.get(`${team.seasonId}:${team.category}`);
+          return (
+            range?.minBirthYear != null &&
+            range.maxBirthYear != null &&
+            birthYear >= range.minBirthYear &&
+            birthYear <= range.maxBirthYear
+          );
+        })
         .map((team) => team.name)
         .join(", ") || null
     : null;

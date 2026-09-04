@@ -35,13 +35,6 @@ function readGender(formData: FormData): TeamGenderValue | null {
     : null;
 }
 
-function readBirthYear(formData: FormData, field: string): number | null {
-  const value = String(formData.get(field) ?? "").trim();
-  if (!value) return null;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) ? parsed : null;
-}
-
 function readFeePeriod(formData: FormData): FeePeriodValue {
   const value = String(formData.get("playerFeePeriod") ?? "");
   return (FEE_PERIODS as readonly string[]).includes(value)
@@ -81,16 +74,11 @@ export async function createTeam(
   const category = readCategory(formData);
   const gender = readGender(formData);
   const seasonId = String(formData.get("seasonId") ?? "");
-  const minBirthYear = readBirthYear(formData, "minBirthYear");
-  const maxBirthYear = readBirthYear(formData, "maxBirthYear");
   const federationGroup = String(formData.get("federationGroup") ?? "").trim();
   const federationCode = String(formData.get("federationCode") ?? "").trim();
   const fee = readPlayerFee(formData);
 
   if (!name) return { error: t("nameRequired") };
-  if (minBirthYear !== null && maxBirthYear !== null && minBirthYear > maxBirthYear) {
-    return { error: t("birthYearRangeInvalid") };
-  }
   if (!fee.ok) return { error: t("playerFeeInvalid") };
 
   const [newTeam] = await db
@@ -100,8 +88,6 @@ export async function createTeam(
       name,
       category,
       gender,
-      minBirthYear,
-      maxBirthYear,
       federationGroup: federationGroup || null,
       federationCode: federationCode || null,
       playerFeeCents: fee.cents,
@@ -127,16 +113,11 @@ export async function updateTeam(
   const name = String(formData.get("name") ?? "").trim();
   const category = readCategory(formData);
   const gender = readGender(formData);
-  const minBirthYear = readBirthYear(formData, "minBirthYear");
-  const maxBirthYear = readBirthYear(formData, "maxBirthYear");
   const federationGroup = String(formData.get("federationGroup") ?? "").trim();
   const federationCode = String(formData.get("federationCode") ?? "").trim();
   const fee = readPlayerFee(formData);
 
   if (!name) return { error: t("nameRequired") };
-  if (minBirthYear !== null && maxBirthYear !== null && minBirthYear > maxBirthYear) {
-    return { error: t("birthYearRangeInvalid") };
-  }
   if (!fee.ok) return { error: t("playerFeeInvalid") };
 
   await db
@@ -145,8 +126,6 @@ export async function updateTeam(
       name,
       category,
       gender,
-      minBirthYear,
-      maxBirthYear,
       federationGroup: federationGroup || null,
       federationCode: federationCode || null,
       playerFeeCents: fee.cents,
@@ -222,8 +201,6 @@ export async function renewTeam(
         name: source.name,
         category: source.category,
         gender: source.gender,
-        minBirthYear: source.minBirthYear,
-        maxBirthYear: source.maxBirthYear,
         federationGroup: source.federationGroup,
         federationCode: source.federationCode,
         playerFeeCents: source.playerFeeCents,
@@ -332,8 +309,6 @@ export async function importTeamsFromSeason(
           name: source.name,
           category: source.category,
           gender: source.gender,
-          minBirthYear: source.minBirthYear,
-          maxBirthYear: source.maxBirthYear,
           federationGroup: source.federationGroup,
           federationCode: source.federationCode,
           playerFeeCents: source.playerFeeCents,

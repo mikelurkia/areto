@@ -1,11 +1,11 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { BellIcon, ClipboardListIcon, ShieldHalfIcon } from "lucide-react";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { memberships, teams } from "@/db/schema";
+import { memberships, seasonCategoryBirthYears, teams } from "@/db/schema";
 import {
   addTeamDocument,
   addTeamNote,
@@ -135,6 +135,21 @@ export default async function TeamDetailPage({
   ]);
   if (!team) notFound();
 
+  // Rango de año de nacimiento de la categoría del equipo: vive por
+  // temporada+categoría, no por equipo, así que hace falta una consulta aparte
+  // (depende de `team.category`/`team.seasonId`, no se puede sumar al
+  // `Promise.all` de arriba).
+  const categoryBirthYears = team.category
+    ? await db.query.seasonCategoryBirthYears.findFirst({
+        where: and(
+          eq(seasonCategoryBirthYears.seasonId, team.seasonId),
+          eq(seasonCategoryBirthYears.category, team.category),
+        ),
+      })
+    : undefined;
+  const minBirthYear = categoryBirthYears?.minBirthYear ?? null;
+  const maxBirthYear = categoryBirthYears?.maxBirthYear ?? null;
+
   // Orden de plantilla: cuerpo técnico primero y jugadores por puesto
   // (ver `sortRoster`); el dorsal solo desempata dentro de cada grupo.
   const teamMemberships = sortRoster(roster);
@@ -177,7 +192,7 @@ export default async function TeamDetailPage({
 
   const { stats: rosterStats, alerts: rosterAlerts } = computeRosterHealth(
     teamMemberships,
-    team,
+    { category: team.category, minBirthYear, maxBirthYear },
   );
 
   // Capitanía: el brazalete lo lleva un jugador, así que el selector solo
@@ -316,8 +331,8 @@ export default async function TeamDetailPage({
               canManage={canManage}
               requiresCheckup={categoryRequiresMedicalCheckup(team.category)}
               installmentsMode={team.playerFeePeriod === "installments"}
-              minBirthYear={team.minBirthYear}
-              maxBirthYear={team.maxBirthYear}
+              minBirthYear={minBirthYear}
+              maxBirthYear={maxBirthYear}
               headerActions={
                 canManage ? (
                   <>
@@ -359,9 +374,9 @@ export default async function TeamDetailPage({
                   ageOutOfRange:
                     m.role === "player" &&
                     birthYear !== null &&
-                    team.minBirthYear !== null &&
-                    team.maxBirthYear !== null &&
-                    (birthYear < team.minBirthYear || birthYear > team.maxBirthYear),
+                    minBirthYear !== null &&
+                    maxBirthYear !== null &&
+                    (birthYear < minBirthYear || birthYear > maxBirthYear),
                   webRegistrationMissing:
                     webRegistrationStatus === "missing" || webRegistrationStatus === "rejected",
                   federationCardUrl: federationCardUrls.get(m.id) ?? null,
@@ -498,8 +513,6 @@ export default async function TeamDetailPage({
                     name: team.name,
                     category: team.category,
                     gender: team.gender,
-                    minBirthYear: team.minBirthYear,
-                    maxBirthYear: team.maxBirthYear,
                     federationGroup: team.federationGroup,
                     federationCode: team.federationCode,
                     playerFeeCents: team.playerFeeCents,
