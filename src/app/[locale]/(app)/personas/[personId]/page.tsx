@@ -437,6 +437,20 @@ export default async function PersonDetailPage({
   const privacyConsentDate = fmtConsentDate(person.privacyConsentAt);
   const isMinorWithoutGuardian = isMinor(person.birthDate) && person.guardianRows.length === 0;
   const hasMinorGuardian = person.guardianRows.some((r) => isMinor(r.guardian.birthDate));
+  const birthYear = person.birthDate ? Number(person.birthDate.slice(0, 4)) : null;
+  const ageTeamNames = birthYear
+    ? allTeams
+        .filter(
+          (team) =>
+            team.season.isCurrent &&
+            team.minBirthYear != null &&
+            team.maxBirthYear != null &&
+            birthYear >= team.minBirthYear &&
+            birthYear <= team.maxBirthYear,
+        )
+        .map((team) => team.name)
+        .join(", ") || null
+    : null;
   const isMember = person.clubMember?.status === "active";
   const memberNumber = person.clubMember?.memberNumber ?? null;
 
@@ -686,7 +700,21 @@ export default async function PersonDetailPage({
             <div className="flex flex-col gap-3">
               <SectionHeading title={t("personalDataSection")} />
               <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <InfoRow label={t("birthDateLabel")} value={person.birthDate} />
+                <InfoRow
+                  label={t("birthDateLabel")}
+                  value={
+                    person.birthDate ? (
+                      <>
+                        {person.birthDate}
+                        {ageTeamNames ? (
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            {t("birthDateAgeTeamHint", { teams: ageTeamNames })}
+                          </span>
+                        ) : null}
+                      </>
+                    ) : null
+                  }
+                />
                 <InfoRow label={t("nationalIdLabel")} value={person.nationalId} />
               </dl>
             </div>
