@@ -12,7 +12,7 @@ export default function Loading() {
       <PageHeaderSkeleton actions={2} />
       <SectionNavSkeleton widths={["w-20", "w-28", "w-24", "w-20", "w-24", "w-20"]} />
       <StatCardsSkeleton count={2} />
-      <FiltersBarSkeleton selects={2} trailing={1} />
+      <FiltersBarSkeleton selects={1} trailing={1} />
       <TableSkeleton
         columns={[
           "w-24",
@@ -21,7 +21,7 @@ export default function Loading() {
           { width: "w-28", priority: "tertiary" },
           "w-24",
           { width: "w-24", priority: "secondary" },
-          "w-20",
+          "w-12",
         ]}
         rows={8}
       />

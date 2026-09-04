@@ -21,6 +21,8 @@ export type AuditEntityType =
   | "movement_import_batch"
   | "supplier"
   | "received_invoice"
+  | "issued_invoice"
+  | "sponsor_payment"
   | "movement_link";
 
 type RecordAuditEventInput = {

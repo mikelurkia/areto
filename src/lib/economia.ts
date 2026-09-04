@@ -94,3 +94,43 @@ export const RECEIVED_INVOICE_STATUS_TONE: Record<ReceivedInvoiceStatus, StatusT
   paid: "positive",
   disputed: "danger",
 };
+
+export type IssuedInvoiceStatus = "issued" | "rectified" | "cancelled";
+
+/** Tono por estado de factura emitida. Una anulada se apaga, no alarma. */
+export const ISSUED_INVOICE_STATUS_TONE: Record<IssuedInvoiceStatus, StatusTone> = {
+  issued: "positive",
+  rectified: "warning",
+  cancelled: "neutral",
+};
+
+/**
+ * Bucket del adjunto de una factura según su libro: uno por libro, porque
+ * `BUCKET_READ_PERMISSION` mapea cada bucket a un solo permiso (decisión 2 del
+ * plan). Emitidas y recibidas comparten los dos buckets y se separan por
+ * prefijo de ruta.
+ */
+export function invoiceFileBucket(value: Ledger): string {
+  return value === "internal" ? "invoice-files-internal" : "invoice-files";
+}
+
+export type ReconciliationState = "pending" | "partial" | "settled";
+
+/**
+ * Estado de conciliación DERIVADO de la suma de enlaces frente al importe del
+ * documento — nunca almacenado, para no desincronizarse al borrar un enlace
+ * (decisión 5 del plan). Compara en valor absoluto: un ingreso y un gasto
+ * llevan signos opuestos en el extracto.
+ */
+export function reconciliationState(linkedCents: number, totalCents: number): ReconciliationState {
+  const linked = Math.abs(linkedCents);
+  const total = Math.abs(totalCents);
+  if (linked <= 0) return "pending";
+  return linked >= total ? "settled" : "partial";
+}
+
+export const RECONCILIATION_TONE: Record<ReconciliationState, StatusTone> = {
+  pending: "neutral",
+  partial: "warning",
+  settled: "positive",
+};

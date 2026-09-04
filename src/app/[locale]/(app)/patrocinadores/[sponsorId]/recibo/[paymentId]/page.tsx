@@ -36,7 +36,10 @@ export default async function SponsorInvoicePage({
   const [payment, club] = await Promise.all([
     db.query.sponsorPayments.findFirst({
       where: eq(sponsorPayments.id, paymentId),
-      with: { term: { with: { sponsor: true } } },
+      with: {
+        term: { with: { sponsor: { columns: { id: true, name: true } } } },
+        issuedInvoice: true,
+      },
     }),
     getClubSettings(),
   ]);
@@ -45,12 +48,17 @@ export default async function SponsorInvoicePage({
   // Storage propias (ver CLAUDE.md sobre concurrencia de queries en páginas).
   const { logoUrl } = await getClubBrandingAssets();
 
-  const sponsor = payment.term.sponsor;
-  const amount = formatCents(payment.amountCents, locale);
+  // Los datos del destinatario y los importes salen de la factura emitida, que
+  // los congeló el día de la emisión: leerlos en vivo del patrocinador haría
+  // que renombrar la empresa reescribiese facturas ya emitidas.
+  const invoice = payment.issuedInvoice;
+  const amount = formatCents(invoice?.totalCents ?? payment.amountCents, locale);
 
-  const concept = payment.year
-    ? `${t("sponsorshipConcept", { name: sponsor.name })} · ${seasonLabel(payment.year)}`
-    : t("sponsorshipConcept", { name: sponsor.name });
+  const concept =
+    invoice?.concept ??
+    (payment.year
+      ? `${t("sponsorshipConcept", { name: payment.term.sponsor.name })} · ${seasonLabel(payment.year)}`
+      : t("sponsorshipConcept", { name: payment.term.sponsor.name }));
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -59,7 +67,7 @@ export default async function SponsorInvoicePage({
         <PrintButton label={t("printAction")} />
       </div>
 
-      {!payment.invoiceNumber ? (
+      {!invoice ? (
         <p className="mx-auto w-full max-w-xl rounded-md border border-dashed p-3 text-center text-[8pt] text-muted-foreground print:hidden">
           {t("notInvoicedYet")}
         </p>
@@ -81,14 +89,12 @@ export default async function SponsorInvoicePage({
             </div>
           </div>
           <div className="text-right text-[8pt]">
-            {payment.invoiceNumber ? (
+            {invoice ? (
               <>
                 <p className="text-muted-foreground">{t("invoiceNumberLabel")}</p>
-                <p className="font-medium">{payment.invoiceNumber}</p>
+                <p className="font-medium">{invoice.number}</p>
+                <p className="mt-1 text-[7pt] text-muted-foreground">{invoice.issuedOn}</p>
               </>
-            ) : null}
-            {payment.invoicedOn ? (
-              <p className="mt-1 text-[7pt] text-muted-foreground">{payment.invoicedOn}</p>
             ) : null}
           </div>
         </div>
@@ -114,12 +120,12 @@ export default async function SponsorInvoicePage({
             <p className="mb-1 text-[7pt] tracking-wide text-muted-foreground uppercase">
               {t("invoiceTo")}
             </p>
-            <p className="font-medium">{sponsor.fiscalName ?? sponsor.name}</p>
-            {sponsor.taxId ? (
-              <p className="text-[8pt] text-muted-foreground">{sponsor.taxId}</p>
+            <p className="font-medium">{invoice?.customerName ?? payment.term.sponsor.name}</p>
+            {invoice?.customerTaxId ? (
+              <p className="text-[8pt] text-muted-foreground">{invoice.customerTaxId}</p>
             ) : null}
-            {sponsor.fiscalAddress ? (
-              <p className="text-[8pt] text-muted-foreground">{sponsor.fiscalAddress}</p>
+            {invoice?.customerAddress ? (
+              <p className="text-[8pt] text-muted-foreground">{invoice.customerAddress}</p>
             ) : null}
           </div>
         </div>
@@ -130,11 +136,34 @@ export default async function SponsorInvoicePage({
           <span className="max-w-xs text-right font-medium">{concept}</span>
         </div>
 
+        {invoice && (invoice.vatCents !== 0 || invoice.withholdingCents !== 0) ? (
+          <div className="mt-3 flex flex-col gap-1 text-[8pt]">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">{t("invoiceBaseLabel")}</span>
+              <span>{formatCents(invoice.baseCents, locale)}</span>
+            </div>
+            {invoice.vatCents !== 0 ? (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">{t("invoiceVatLabel")}</span>
+                <span>{formatCents(invoice.vatCents, locale)}</span>
+              </div>
+            ) : null}
+            {invoice.withholdingCents !== 0 ? (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">{t("invoiceWithholdingLabel")}</span>
+                <span>-{formatCents(invoice.withholdingCents, locale)}</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="mt-4 flex items-center justify-between">
           <span className="font-semibold">{t("totalLabel")}</span>
           <span className="text-[10pt] font-semibold">{amount}</span>
         </div>
-        <p className="mt-1 text-right text-[7pt] text-muted-foreground">{t("vatExempt")}</p>
+        {!invoice || invoice.vatCents === 0 ? (
+          <p className="mt-1 text-right text-[7pt] text-muted-foreground">{t("vatExempt")}</p>
+        ) : null}
 
         {club?.iban ? (
           <div className="mt-6 border-t pt-4 text-[8pt]">

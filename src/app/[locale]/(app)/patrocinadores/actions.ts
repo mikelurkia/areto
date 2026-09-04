@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import {
+  issuedInvoices,
   paymentStatus,
   persons,
   sponsorContacts,
@@ -17,7 +18,8 @@ import {
   sponsorshipTier,
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
-import { nextInvoiceNumber } from "@/lib/club";
+import { recordAuditEvent } from "@/lib/audit-log";
+import { getClubSettings, hasIssuerData, nextInvoiceNumber } from "@/lib/club";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
 import { resizeImageToWebp } from "@/lib/image-resize";
@@ -609,15 +611,37 @@ export async function updateSponsorPayment(
   return { message: t("paymentUpdated") };
 }
 
+/**
+ * Borra una anualidad. Una ya facturada NO se borra: dejaría un hueco
+ * permanente en la numeración fiscal. Se anula o se rectifica la factura desde
+ * el registro de emitidas (decisión 7 del plan del módulo económico).
+ */
 export async function deleteSponsorPayment(
   _prev: SponsorState,
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requirePermission("patrocinadores.manage");
+  const user = await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
+  const payment = await db.query.sponsorPayments.findFirst({
+    where: eq(sponsorPayments.id, id),
+    columns: { id: true, invoiceNumber: true, issuedInvoiceId: true },
+  });
+  if (!payment) return { error: t("paymentNotFound") };
+  if (payment.invoiceNumber || payment.issuedInvoiceId) {
+    return { error: t("cannotDeleteInvoicedPayment") };
+  }
+
   await db.delete(sponsorPayments).where(eq(sponsorPayments.id, id));
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "delete",
+    entityType: "sponsor_payment",
+    entityId: id,
+    metadata: {},
+  });
 
   revalidateRoutes(
     ROUTE.patrocinadores,
@@ -653,41 +677,91 @@ export async function markSponsorPaymentPaid(
 }
 
 /**
- * Emite la factura de un cobro: le asigna un número correlativo del año en
- * curso (2026/0001...) y fija la fecha de emisión a hoy. Es idempotente: si el
- * cobro ya tiene número de factura no lo reasigna (la numeración no puede tener
- * huecos ni duplicados). El documento imprimible vive en la ruta `recibo`.
+ * Emite la factura de un cobro en el registro fiscal único `issued_invoices`
+ * (decisión 7 del plan del módulo económico): reserva un número correlativo
+ * del año de emisión y **congela** los datos fiscales del patrocinador, para
+ * que renombrar la empresa no reescriba facturas pasadas.
+ *
+ * Reservar el número y escribir la factura van en la misma transacción: si el
+ * insert falla, el número quedaría quemado y la serie tendría un hueco.
+ * Es idempotente: un cobro ya facturado no se refactura.
+ *
+ * `sponsor_payments.invoiceNumber`/`invoicedOn` se siguen escribiendo como
+ * copia hasta el PR de *contract* que las retire.
  */
 export async function issueSponsorInvoice(
   _prev: SponsorState,
   formData: FormData,
 ): Promise<SponsorState> {
   const t = await getTranslations("Patrocinadores");
-  await requirePermission("patrocinadores.manage");
+  const user = await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
   const payment = await db.query.sponsorPayments.findFirst({
     where: eq(sponsorPayments.id, id),
-    columns: { id: true, invoiceNumber: true },
+    columns: { id: true, invoiceNumber: true, issuedInvoiceId: true, amountCents: true },
+    with: { term: { with: { sponsor: true } } },
   });
   if (!payment) return { error: t("paymentNotFound") };
-  if (payment.invoiceNumber) return { error: t("alreadyInvoiced") };
+  if (payment.invoiceNumber || payment.issuedInvoiceId) return { error: t("alreadyInvoiced") };
 
-  const today = new Date();
-  const invoiceNumber = await nextInvoiceNumber(today.getFullYear());
+  if (!hasIssuerData(await getClubSettings())) return { error: t("issuerDataMissing") };
 
-  await db
-    .update(sponsorPayments)
-    .set({ invoiceNumber, invoicedOn: today.toISOString().slice(0, 10) })
-    .where(eq(sponsorPayments.id, id));
+  const seasonId = String(formData.get("seasonId") ?? "");
+  const issuedOn = String(formData.get("issuedOn") ?? "").trim();
+  const baseCents = readAmountCents(formData.get("base"));
+  const vatCents = readAmountCents(formData.get("vat")) ?? 0;
+  const withholdingCents = readAmountCents(formData.get("withholding")) ?? 0;
+  const totalCents = readAmountCents(formData.get("total"));
+  if (!seasonId || !issuedOn) return { error: t("invoiceDataRequired") };
+  if (baseCents === null || totalCents === null) return { error: t("invoiceDataRequired") };
+
+  const categoryId = String(formData.get("categoryId") ?? "");
+  const sponsor = payment.term.sponsor;
+
+  const created = await db.transaction(async (tx) => {
+    const number = await nextInvoiceNumber(Number(issuedOn.slice(0, 4)), tx);
+    const [invoice] = await tx
+      .insert(issuedInvoices)
+      .values({
+        number,
+        seasonId,
+        issuedOn,
+        customerName: sponsor.fiscalName ?? sponsor.name,
+        customerTaxId: sponsor.taxId,
+        customerAddress: sponsor.fiscalAddress,
+        sponsorId: sponsor.id,
+        categoryId: categoryId && categoryId !== "none" ? categoryId : null,
+        concept: String(formData.get("concept") ?? "").trim() || null,
+        baseCents,
+        vatCents,
+        withholdingCents,
+        totalCents,
+      })
+      .returning({ id: issuedInvoices.id, number: issuedInvoices.number });
+    await tx
+      .update(sponsorPayments)
+      .set({ issuedInvoiceId: invoice.id, invoiceNumber: invoice.number, invoicedOn: issuedOn })
+      .where(eq(sponsorPayments.id, id));
+    return invoice;
+  });
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "create",
+    entityType: "issued_invoice",
+    entityId: created.id,
+    metadata: { number: created.number, sponsorPaymentId: id },
+  });
 
   revalidateRoutes(
     ROUTE.patrocinadores,
     ROUTE.patrocinadorFicha,
     ROUTE.patrocinadoresFacturas,
     ROUTE.patrocinadoresMuro,
+    ROUTE.economiaEmitidas,
   );
-  return { message: t("invoiceIssued", { number: invoiceNumber }) };
+  return { message: t("invoiceIssued", { number: created.number }) };
 }
 
 /**

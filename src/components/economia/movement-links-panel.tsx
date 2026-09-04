@@ -4,10 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import {
-  linkMovementToInvoice,
-  unlinkMovement,
-} from "@/app/[locale]/(app)/economia/recibidas/actions";
+import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/actions";
 import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { StatusBadge } from "@/components/status-badge";
@@ -29,8 +26,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { RECONCILIATION_TONE, reconciliationState } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
-import type { StatusTone } from "@/lib/status-tone";
 
 export type MovementLinkRow = {
   id: string;
@@ -42,14 +39,20 @@ export type MovementLinkRow = {
 
 export type CandidateMovement = { id: string; concept: string; bookedOn: string; amountCents: number };
 
-const RECONCILIATION_TONE: Record<"pending" | "partial" | "settled", StatusTone> = {
-  pending: "neutral",
-  partial: "warning",
-  settled: "positive",
+/**
+ * Qué documento se está conciliando. El panel es el mismo para recibidas y
+ * emitidas: cambia el campo de `movement_links` que se rellena y la Server
+ * Action que lo inserta, que llega por prop desde el Server Component.
+ */
+export type LinkTarget = {
+  field: "receivedInvoiceId" | "issuedInvoiceId" | "sepaRemittanceId";
+  id: string;
 };
 
-function UnlinkButton({ id }: { id: string }) {
-  const [state, action] = useActionState(unlinkMovement, {});
+type LinkAction = (prev: EconomiaState, formData: FormData) => Promise<EconomiaState>;
+
+function UnlinkButton({ id, unlinkAction }: { id: string; unlinkAction: LinkAction }) {
+  const [state, action] = useActionState(unlinkAction, {});
   useActionToast(state);
   return (
     <form action={action}>
@@ -62,14 +65,18 @@ function UnlinkButton({ id }: { id: string }) {
 }
 
 export function MovementLinksPanel({
-  receivedInvoiceId,
+  target,
+  linkAction,
+  unlinkAction,
   totalCents,
   links,
   candidates,
   locale,
   canManage,
 }: {
-  receivedInvoiceId: string;
+  target: LinkTarget;
+  linkAction: LinkAction;
+  unlinkAction: LinkAction;
   totalCents: number;
   links: MovementLinkRow[];
   candidates: CandidateMovement[];
@@ -77,13 +84,12 @@ export function MovementLinksPanel({
   canManage: boolean;
 }) {
   const t = useTranslations("Economia");
-  const [state, action] = useActionState(linkMovementToInvoice, {});
+  const [state, action] = useActionState(linkAction, {});
   useActionToast(state);
   const [movementId, setMovementId] = useState(candidates[0]?.id ?? "");
 
   const linkedCents = links.reduce((sum, l) => sum + l.amountCents, 0);
-  const reconciliation =
-    linkedCents <= 0 ? "pending" : linkedCents >= totalCents ? "settled" : "partial";
+  const reconciliation = reconciliationState(linkedCents, totalCents);
 
   const dateFmt = useMemo(
     () => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
@@ -124,7 +130,7 @@ export function MovementLinksPanel({
                 </TableCell>
                 {canManage ? (
                   <TableCell>
-                    <UnlinkButton id={link.id} />
+                    <UnlinkButton id={link.id} unlinkAction={unlinkAction} />
                   </TableCell>
                 ) : null}
               </TableRow>
@@ -137,7 +143,7 @@ export function MovementLinksPanel({
 
       {canManage && candidates.length > 0 ? (
         <form action={action} className="flex flex-wrap items-end gap-2 border-t pt-3">
-          <input type="hidden" name="receivedInvoiceId" value={receivedInvoiceId} />
+          <input type="hidden" name={target.field} value={target.id} />
           <FieldGroup className="flex flex-1 flex-wrap items-end gap-2">
             <Field className="min-w-48 flex-1">
               <FieldLabel htmlFor="link-movement">{t("linkMovementLabel")}</FieldLabel>
