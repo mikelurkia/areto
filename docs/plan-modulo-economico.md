@@ -34,7 +34,7 @@ Rutina de cada fase, en sesión limpia:
 | 4 | Facturas recibidas, proveedores y conciliación | hecha |
 | 5 | Facturas emitidas, absorción de patrocinio, agregado de remesas | hecha |
 | 6 | Presupuesto e informe presupuesto vs devengado vs caja | hecha |
-| 7 | *Contract*: retirar `invoiceNumber`/`invoicedOn` de `sponsor_payments` | pendiente |
+| 7 | *Contract*: retirar `invoiceNumber`/`invoicedOn` de `sponsor_payments` | hecha |
 
 ## Contexto
 

@@ -626,10 +626,10 @@ export async function deleteSponsorPayment(
   const id = String(formData.get("id") ?? "");
   const payment = await db.query.sponsorPayments.findFirst({
     where: eq(sponsorPayments.id, id),
-    columns: { id: true, invoiceNumber: true, issuedInvoiceId: true },
+    columns: { id: true, issuedInvoiceId: true },
   });
   if (!payment) return { error: t("paymentNotFound") };
-  if (payment.invoiceNumber || payment.issuedInvoiceId) {
+  if (payment.issuedInvoiceId) {
     return { error: t("cannotDeleteInvoicedPayment") };
   }
 
@@ -685,9 +685,6 @@ export async function markSponsorPaymentPaid(
  * Reservar el número y escribir la factura van en la misma transacción: si el
  * insert falla, el número quedaría quemado y la serie tendría un hueco.
  * Es idempotente: un cobro ya facturado no se refactura.
- *
- * `sponsor_payments.invoiceNumber`/`invoicedOn` se siguen escribiendo como
- * copia hasta el PR de *contract* que las retire.
  */
 export async function issueSponsorInvoice(
   _prev: SponsorState,
@@ -699,11 +696,11 @@ export async function issueSponsorInvoice(
   const id = String(formData.get("id") ?? "");
   const payment = await db.query.sponsorPayments.findFirst({
     where: eq(sponsorPayments.id, id),
-    columns: { id: true, invoiceNumber: true, issuedInvoiceId: true, amountCents: true },
+    columns: { id: true, issuedInvoiceId: true, amountCents: true },
     with: { term: { with: { sponsor: true } } },
   });
   if (!payment) return { error: t("paymentNotFound") };
-  if (payment.invoiceNumber || payment.issuedInvoiceId) return { error: t("alreadyInvoiced") };
+  if (payment.issuedInvoiceId) return { error: t("alreadyInvoiced") };
 
   if (!hasIssuerData(await getClubSettings())) return { error: t("issuerDataMissing") };
 
@@ -741,7 +738,7 @@ export async function issueSponsorInvoice(
       .returning({ id: issuedInvoices.id, number: issuedInvoices.number });
     await tx
       .update(sponsorPayments)
-      .set({ issuedInvoiceId: invoice.id, invoiceNumber: invoice.number, invoicedOn: issuedOn })
+      .set({ issuedInvoiceId: invoice.id })
       .where(eq(sponsorPayments.id, id));
     return invoice;
   });

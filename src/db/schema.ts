@@ -885,13 +885,11 @@ export const sponsorPayments = pgTable(
     dueDate: date("due_date"), // fecha prevista de cobro
     paidOn: date("paid_on"), // fecha real de cobro (cuando status = "paid")
     method: text("method"), // "cash", "transfer"...
-    // Registro fiscal de esta anualidad, desde la fase 5 del módulo económico.
-    // `invoiceNumber`/`invoicedOn` quedan como copia hasta el PR de contract.
+    // Registro fiscal de esta anualidad, desde la fase 5 del módulo económico:
+    // el número y la fecha de emisión viven en `issued_invoices`, no aquí.
     issuedInvoiceId: uuid("issued_invoice_id").references((): AnyPgColumn => issuedInvoices.id, {
       onDelete: "set null",
     }),
-    invoiceNumber: text("invoice_number"), // nº de factura emitida por este cobro
-    invoicedOn: date("invoiced_on"), // fecha de emisión de la factura
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1276,8 +1274,8 @@ export const receivedInvoices = pgTable(
 /**
  * Factura emitida: el registro fiscal ÚNICO del club. Un club no puede tener
  * dos libros de facturas emitidas compartiendo numeración, así que aquí entran
- * también las de patrocinio (decisión 7 del plan); `sponsor_payments` conserva
- * de momento sus columnas viejas y enlaza aquí por `issuedInvoiceId`.
+ * también las de patrocinio (decisión 7 del plan); `sponsor_payments` enlaza
+ * aquí por `issuedInvoiceId` y ya no guarda copia del número ni de la fecha.
  *
  * `number` lo pone el club —lo reserva `nextInvoiceNumber` sobre
  * `invoice_counters`—, de ahí el único global, al revés que en las recibidas.

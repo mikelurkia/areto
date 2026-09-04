@@ -94,7 +94,10 @@ const getSponsor = cache((sponsorId: string) =>
       terms: {
         orderBy: (terms, { desc }) => [desc(terms.startsOn)],
         with: {
-          payments: { orderBy: (payments, { asc }) => [asc(payments.dueDate)] },
+          payments: {
+            orderBy: (payments, { asc }) => [asc(payments.dueDate)],
+            with: { issuedInvoice: { columns: { number: true, issuedOn: true } } },
+          },
         },
       },
       contacts: { orderBy: (contacts, { asc }) => [asc(contacts.name)] },
@@ -624,14 +627,12 @@ export default async function SponsorDetailPage({
                                     ) : null}
                                   </TableCell>
                                   <TableCell priority="tertiary" className="text-muted-foreground">
-                                    {payment.invoiceNumber ? (
+                                    {payment.issuedInvoice ? (
                                       <span>
-                                        {payment.invoiceNumber}
-                                        {payment.invoicedOn ? (
-                                          <span className="block text-xs">
-                                            {payment.invoicedOn}
-                                          </span>
-                                        ) : null}
+                                        {payment.issuedInvoice.number}
+                                        <span className="block text-xs">
+                                          {payment.issuedInvoice.issuedOn}
+                                        </span>
                                       </span>
                                     ) : (
                                       "—"
@@ -642,7 +643,7 @@ export default async function SponsorDetailPage({
                                       {payment.status !== "paid" ? (
                                         <MarkPaymentPaidButton id={payment.id} />
                                       ) : null}
-                                      {payment.invoiceNumber ? (
+                                      {payment.issuedInvoice ? (
                                         <Button
                                           variant="ghost"
                                           size="icon-sm"

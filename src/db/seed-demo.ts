@@ -688,8 +688,6 @@ SPONSOR_BUSINESSES.forEach((business, i) => {
       paidOn: paid ? `${year}-10-14` : null,
       method: paid ? "transfer" : null,
       issuedInvoiceId: invoiceId,
-      invoiceNumber: number,
-      invoicedOn: invoiced ? `${year}-10-01` : null,
     });
   }
 });

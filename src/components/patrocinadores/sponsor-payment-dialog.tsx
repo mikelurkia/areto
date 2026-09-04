@@ -48,8 +48,6 @@ type SponsorPayment = {
   dueDate: string | null;
   paidOn: string | null;
   method: string | null;
-  invoiceNumber: string | null;
-  invoicedOn: string | null;
   notes: string | null;
 };
 
