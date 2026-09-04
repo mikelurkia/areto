@@ -4,13 +4,19 @@ import { and, count, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 
 import { db } from "./index";
 import {
+  accountMovements,
+  budgetLines,
   clubMembers,
   clubSettings,
   courtEvents,
+  economicCategories,
   federationAccounts,
+  financialAccounts,
   invoiceCounters,
   issuedInvoices,
   memberships,
+  movementImportBatches,
+  movementLinks,
   personGuardians,
   personInjuryReports,
   personMedicalCheckups,
@@ -18,8 +24,10 @@ import {
   personQualifications,
   personTags,
   persons,
+  receivedInvoices,
   registrationGuardians,
   registrations,
+  seasonBudgets,
   seasons,
   sepaCharges,
   sepaMandates,
@@ -29,6 +37,7 @@ import {
   sponsorPayments,
   sponsors,
   sponsorshipTerms,
+  suppliers,
   teams,
 } from "./schema";
 import { seedRoles } from "./seed-roles";
@@ -87,13 +96,17 @@ import { seasonLabel, seasonYearOf } from "../lib/sponsorship";
  *
  * INCOHERENCIAS DELIBERADAS. El dashboard tiene tarjetas de incoherencias y
  * los equipos avisos de salud de plantilla; en verde no se pueden probar. El
- * seed mete cinco casos rotos a propósito, y solo estos cinco:
+ * seed mete cuatro casos rotos a propósito, y solo estos cuatro:
  *
  *   1. Tres fichas activas sin DNI          → tarjeta "missingNationalId"
  *   2. Dos dorsales 7 en el Cadete          → aviso de plantilla del equipo
- *   3. Dos capitanes en el Juvenil          → tarjeta "duplicateCaptains"
- *   4. Un jugador aprobado sin plantilla    → tarjeta "orphanPlayers"
- *   5. Dos fichas con el apellido casi igual → `/personas/duplicados`
+ *   3. Un jugador aprobado sin plantilla    → tarjeta "orphanPlayers"
+ *   4. Dos fichas con el apellido casi igual → `/personas/duplicados`
+ *
+ * La tarjeta "duplicateCaptains" ya no se puede forzar aquí: la migración
+ * 0070 añadió `memberships_single_captain_idx` (índice único parcial sobre
+ * `team_id` cuando `is_captain`), así que dos capitanes en el mismo equipo
+ * son ahora imposibles a nivel de base de datos.
  */
 
 /** Por encima de esto, la base de datos tiene datos de verdad y no es un entorno de pruebas. */
@@ -313,7 +326,7 @@ const standaloneMembers = Array.from({ length: 8 }, (_, i) =>
 
 // --- Fichas de las incoherencias ---------------------------------------------
 
-/** nº 4: aprobado desde el formulario web pero sin equipo asignado. */
+/** nº 3: aprobado desde el formulario web pero sin equipo asignado. */
 const orphanPlayer = addPerson("jokalari-umezurtza", "male", {
   birthDate: birthDateFor(3, 19, 30),
   iban: iban(5000),
@@ -322,7 +335,7 @@ const orphanPlayer = addPerson("jokalari-umezurtza", "male", {
 });
 
 /**
- * nº 5: la misma persona tecleada dos veces con el apellido mal transcrito,
+ * nº 4: la misma persona tecleada dos veces con el apellido mal transcrito,
  * que es como llegan los duplicados de verdad (`isFuzzyNameMatch` los agrupa).
  */
 addPerson("bikoiztua", "male", {
@@ -380,8 +393,7 @@ for (const team of TEAM_DEFS) {
       // nº 2: en el Cadete hay dos dorsales 7.
       jerseyNumber: team.key === "cadete" && index === 8 ? 7 : index + 1,
       positions: index === 0 ? ["portero"] : [POSITIONS[index % POSITIONS.length]],
-      // nº 3: el Juvenil tiene dos capitanes marcados.
-      isCaptain: index === 1 || (team.key === "juvenil" && index === 4),
+      isCaptain: index === 1,
       joinedAt: `${seasonYear}-09-01`,
     });
   }
@@ -601,6 +613,40 @@ const SPONSOR_PLANS: SponsorPlan[] = SPONSOR_BUSINESSES.map((_, i) => {
   };
 });
 
+/**
+ * `economic_categories` es la única tabla del seed cuyo id no sale de
+ * `seedId`: la crea la migración 0079 con `defaultRandom()`, así que aquí solo
+ * se conoce el NOMBRE de la categoría. `withCategory` apunta la fila y el
+ * nombre, y `applyCategoryIds` (en `main`, tras leerlas de la base) rellena de
+ * verdad `categoryId`/`defaultCategoryId` antes de insertar.
+ */
+const categoryAssignments: {
+  row: Record<string, unknown>;
+  field: "categoryId" | "defaultCategoryId";
+  categoryName: string;
+}[] = [];
+
+function withCategory<T extends Record<string, unknown>>(
+  row: T,
+  categoryName: string,
+  field: "categoryId" | "defaultCategoryId" = "categoryId",
+): T {
+  categoryAssignments.push({ row, field, categoryName });
+  return row;
+}
+
+function applyCategoryIds(categoryIds: Map<string, string>) {
+  for (const { row, field, categoryName } of categoryAssignments) {
+    const id = categoryIds.get(categoryName);
+    if (!id) {
+      throw new Error(
+        `Categoría económica "${categoryName}" no existe en la base. ¿Falta aplicar la migración 0079?`,
+      );
+    }
+    row[field] = id;
+  }
+}
+
 const sponsorRows: (typeof sponsors.$inferInsert)[] = [];
 const termRows: (typeof sponsorshipTerms.$inferInsert)[] = [];
 const sponsorPaymentRows: (typeof sponsorPayments.$inferInsert)[] = [];
@@ -663,7 +709,7 @@ SPONSOR_BUSINESSES.forEach((business, i) => {
     const invoiceId = invoiced ? seedId(`issued-invoice:${business.key}:${year}`) : null;
 
     if (invoiced) {
-      issuedInvoiceRows.push({
+      issuedInvoiceRows.push(withCategory({
         id: invoiceId!,
         number: number!,
         seasonId: currentSeasonId, // se resuelve en `insertSeedRows`
@@ -675,7 +721,7 @@ SPONSOR_BUSINESSES.forEach((business, i) => {
         concept: `Patrocinio ${business.name} · ${seasonLabel(year)}`,
         baseCents: amountCents,
         totalCents: amountCents,
-      });
+      }, "Babesletza"));
     }
 
     sponsorPaymentRows.push({
@@ -900,6 +946,422 @@ const sepaRemittanceRows: (typeof sepaRemittances.$inferInsert)[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Módulo económico: cuentas, movimientos, proveedores, facturas recibidas y
+// presupuesto (fases 1, 3, 4 y 6 — las categorías las trae la migración 0079,
+// el registro de facturas emitidas ya lo siembran los patrocinadores).
+// ---------------------------------------------------------------------------
+
+const mainAccountId = seedId("financial-account:kontu-nagusia");
+const eventsAccountId = seedId("financial-account:ekitaldiak");
+const cashAccountId = seedId("financial-account:eskuzko-kutxa");
+
+const financialAccountRows: (typeof financialAccounts.$inferInsert)[] = [
+  {
+    id: mainAccountId,
+    name: "Kutxa Gipuzkoa · kontu nagusia",
+    kind: "bank",
+    ledger: "official",
+    iban: iban(900),
+    openingBalanceCents: 1_850_000,
+    openingBalanceOn: `${seasonYear}-09-01`,
+  },
+  {
+    id: eventsAccountId,
+    name: "Kutxa Gipuzkoa · ekitaldiak",
+    kind: "bank",
+    ledger: "official",
+    iban: iban(901),
+    openingBalanceCents: 120_000,
+    openingBalanceOn: `${seasonYear}-09-01`,
+  },
+  {
+    id: cashAccountId,
+    name: "Eskuzko kutxa",
+    kind: "cash",
+    ledger: "internal",
+    openingBalanceCents: 15_000,
+    openingBalanceOn: `${seasonYear}-09-01`,
+  },
+];
+
+const importBatchId = seedId("movement-import-batch:kontu-nagusia-2025-10");
+
+const movementImportBatchRows: (typeof movementImportBatches.$inferInsert)[] = [
+  {
+    id: importBatchId,
+    accountId: mainAccountId,
+    fileName: "kontu_nagusia_2025_10.n43",
+    format: "n43",
+    rowCount: 7,
+    fromDate: `${seasonYear}-09-22`,
+    toDate: `${seasonYear}-10-20`,
+  },
+];
+
+/**
+ * Apunte con conciliación: además de la fila para `account_movements`,
+ * apunta el enlace que le toca a `movement_links` (con el id ya resuelto,
+ * `insertSeedRows` no lo toca).
+ */
+type MovementPlan = {
+  id: string;
+  accountId: string;
+  ledger: "official" | "internal";
+  bookedOn: string;
+  amountCents: number;
+  concept: string;
+  counterparty?: string;
+  categoryName?: string;
+  imported?: boolean;
+  link?:
+    | { receivedInvoiceId: string }
+    | { issuedInvoiceId: string }
+    | { sepaRemittanceId: string };
+};
+
+const sponsoredFirstYearInvoiceId = seedId(`issued-invoice:harategia:${seasonYear}`);
+
+const supplierId = (key: string) => seedId(`supplier:${key}`);
+
+const SUPPLIER_DEFS = [
+  { key: "kirol-nahia", name: "Kirol Nahia, S.L.", categoryName: "Kirol-materiala" },
+  { key: "etxeberria-ekipazioak", name: "Ekipazioak Etxeberria, S.L.", categoryName: "Ekipazioak" },
+  { key: "kiroldegi-udala", name: "Kiroldegi Udala", categoryName: "Instalazioak" },
+  { key: "autobusak-aranburu", name: "Autobusak Aranburu, S.L.", categoryName: "Bidaiak" },
+  { key: "prestakuntza-fisio", name: "Prestakuntza Fisio, S.L.", categoryName: "Entrenatzaileak" },
+  { key: "gipuzkoako-federazioa", name: "Gipuzkoako Futbol Federazioa", categoryName: "Federazioa eta lizentziak" },
+] as const;
+
+const supplierRows: (typeof suppliers.$inferInsert)[] = SUPPLIER_DEFS.map((s, i) =>
+  withCategory(
+    {
+      id: supplierId(s.key),
+      name: s.name,
+      taxId: taxId(200 + i),
+      iban: i % 2 === 0 ? iban(950 + i) : null,
+      contactEmail: `${s.key}@example.test`,
+      contactPhone: phone(9500 + i),
+    },
+    s.categoryName,
+    "defaultCategoryId",
+  ),
+);
+
+const receivedInvoiceRows: (typeof receivedInvoices.$inferInsert)[] = [];
+const movementPlans: MovementPlan[] = [];
+
+function addReceivedInvoice(opts: {
+  supplierKey: (typeof SUPPLIER_DEFS)[number]["key"];
+  number: string;
+  issuedOn: string;
+  baseCents: number;
+  vatCents: number;
+  withholdingCents?: number;
+  status: "pending" | "paid" | "disputed";
+  teamKey?: string;
+  paidOn?: string;
+}) {
+  const supplier = SUPPLIER_DEFS.find((s) => s.key === opts.supplierKey)!;
+  const id = seedId(`received-invoice:${opts.supplierKey}:${opts.number}`);
+  const withholdingCents = opts.withholdingCents ?? 0;
+  const totalCents = opts.baseCents + opts.vatCents - withholdingCents;
+
+  receivedInvoiceRows.push(
+    withCategory(
+      {
+        id,
+        supplierId: supplierId(opts.supplierKey),
+        seasonId: currentSeasonId, // se resuelve en `insertSeedRows`
+        teamId: opts.teamKey ? teamId(opts.teamKey, CURRENT_SEASON) : null,
+        invoiceNumber: opts.number,
+        issuedOn: opts.issuedOn,
+        baseCents: opts.baseCents,
+        vatCents: opts.vatCents,
+        withholdingCents,
+        totalCents,
+        status: opts.status,
+      },
+      supplier.categoryName,
+    ),
+  );
+
+  if (opts.status === "paid" && opts.paidOn) {
+    movementPlans.push({
+      id: seedId(`movement:${opts.supplierKey}:${opts.number}`),
+      accountId: mainAccountId,
+      ledger: "official",
+      bookedOn: opts.paidOn,
+      amountCents: -totalCents,
+      concept: `${supplier.name.toUpperCase()} · FRA. ${opts.number}`,
+      categoryName: supplier.categoryName,
+      imported: true,
+      link: { receivedInvoiceId: id },
+    });
+  }
+
+  return id;
+}
+
+addReceivedInvoice({
+  supplierKey: "kirol-nahia",
+  number: `${seasonYear}-014`,
+  issuedOn: `${seasonYear}-10-03`,
+  baseCents: 26_000,
+  vatCents: 5_460,
+  status: "paid",
+  paidOn: `${seasonYear}-10-08`,
+});
+addReceivedInvoice({
+  supplierKey: "kirol-nahia",
+  number: `${seasonYear}-041`,
+  issuedOn: `${seasonYear}-11-12`,
+  baseCents: 12_000,
+  vatCents: 2_520,
+  status: "pending",
+});
+addReceivedInvoice({
+  supplierKey: "etxeberria-ekipazioak",
+  number: `F${seasonYear}/0087`,
+  issuedOn: `${seasonYear}-09-18`,
+  baseCents: 70_000,
+  vatCents: 14_700,
+  status: "paid",
+  teamKey: "senior",
+  paidOn: `${seasonYear}-09-25`,
+});
+addReceivedInvoice({
+  supplierKey: "kiroldegi-udala",
+  number: `${seasonYear}/312`,
+  issuedOn: `${seasonYear}-10-31`,
+  baseCents: 18_500,
+  vatCents: 0,
+  status: "pending",
+});
+addReceivedInvoice({
+  supplierKey: "autobusak-aranburu",
+  number: `AB-${seasonYear}-0231`,
+  issuedOn: `${seasonYear}-10-15`,
+  baseCents: 26_446,
+  vatCents: 5_554,
+  status: "paid",
+  paidOn: `${seasonYear}-10-20`,
+});
+addReceivedInvoice({
+  supplierKey: "autobusak-aranburu",
+  number: `AB-${seasonYear}-0298`,
+  issuedOn: `${seasonYear}-11-20`,
+  baseCents: 9_000,
+  vatCents: 1_890,
+  status: "disputed",
+});
+addReceivedInvoice({
+  supplierKey: "prestakuntza-fisio",
+  number: `${seasonYear}/45`,
+  issuedOn: `${seasonYear}-10-01`,
+  baseCents: 45_000,
+  vatCents: 9_450,
+  withholdingCents: 6_750, // retención IRPF del 15% a profesional autónomo
+  status: "paid",
+  paidOn: `${seasonYear}-10-05`,
+});
+addReceivedInvoice({
+  supplierKey: "gipuzkoako-federazioa",
+  number: `FED-${seasonYear}-FITXAS`,
+  issuedOn: `${seasonYear}-09-15`,
+  baseCents: 45_000,
+  vatCents: 0, // federación: exenta de IVA
+  status: "paid",
+  paidOn: `${seasonYear}-09-22`,
+});
+addReceivedInvoice({
+  supplierKey: "gipuzkoako-federazioa",
+  number: `FED-${seasonYear}-ARBITRAJEAK`,
+  issuedOn: `${seasonYear}-12-01`,
+  baseCents: 15_000,
+  vatCents: 0,
+  status: "pending",
+});
+
+// Apuntes que no vienen de una factura: la remesa de cuotas, una subvención,
+// comisiones bancarias y el cobro del principal patrocinador.
+movementPlans.push(
+  {
+    id: seedId("movement:remesa-cuotas"),
+    accountId: mainAccountId,
+    ledger: "official",
+    bookedOn: `${seasonYear}-10-06`,
+    amountCents: PLAYER_FEE_CENTS * chargedMemberships.length,
+    concept: "REMESA SEPA CUOTAS",
+    counterparty: "AEB43 SEPA CORE",
+    categoryName: "Kuotak",
+    imported: true,
+    link: { sepaRemittanceId: remittanceId },
+  },
+  {
+    id: seedId("movement:patrocinio-harategia"),
+    accountId: mainAccountId,
+    ledger: "official",
+    bookedOn: `${seasonYear}-10-14`,
+    amountCents: 200_000,
+    concept: "HARATEGIA BIDAURRETA · PATROZINIOA",
+    categoryName: "Babesletza",
+    imported: true,
+    link: { issuedInvoiceId: sponsoredFirstYearInvoiceId },
+  },
+  {
+    id: seedId("movement:diru-laguntza-udala"),
+    accountId: mainAccountId,
+    ledger: "official",
+    bookedOn: `${seasonYear}-11-05`,
+    amountCents: 150_000,
+    concept: "DIRU-LAGUNTZA UDALA · KIROL SUSTAPENA",
+    categoryName: "Diru-laguntzak",
+  },
+  {
+    id: seedId("movement:publizitatea-eskuz"),
+    accountId: mainAccountId,
+    ledger: "official",
+    bookedOn: `${seasonYear}-10-22`,
+    amountCents: 15_000,
+    concept: "OINKARI KIROLAK · VALLA PUBLIZITARIOA",
+    categoryName: "Babesletza",
+  },
+  {
+    id: seedId("movement:komisio-kudeaketa"),
+    accountId: mainAccountId,
+    ledger: "official",
+    bookedOn: `${seasonYear}-10-31`,
+    amountCents: -1_250,
+    concept: "KONTU-MANTENTZE KOMISIOA",
+    categoryName: "Kudeaketa eta banku-gastuak",
+  },
+  {
+    id: seedId("movement:komisio-transferentzia"),
+    accountId: mainAccountId,
+    ledger: "official",
+    bookedOn: `${seasonYear}-11-30`,
+    amountCents: -300,
+    concept: "TRANSFERENTZIA KOMISIOA",
+    categoryName: "Kudeaketa eta banku-gastuak",
+  },
+  // Kutxa "ekitaldiak": txapelketa bateko sarrerak eta gastuak.
+  {
+    id: seedId("movement:txapelketa-sarrerak"),
+    accountId: eventsAccountId,
+    ledger: "official",
+    bookedOn: `${seasonYear}-12-20`,
+    amountCents: 9_000,
+    concept: "SARRERAK GABONETAKO TXAPELKETA",
+    categoryName: "Ekitaldiak eta zozketak",
+  },
+  {
+    id: seedId("movement:txapelketa-epaileak"),
+    accountId: eventsAccountId,
+    ledger: "official",
+    bookedOn: `${seasonYear}-12-20`,
+    amountCents: -3_200,
+    concept: "EPAILEAK · GABONETAKO TXAPELKETA",
+    categoryName: "Arbitrajeak",
+  },
+  {
+    id: seedId("movement:txapelketa-afaria"),
+    accountId: eventsAccountId,
+    ledger: "official",
+    bookedOn: `${seasonYear}-12-21`,
+    amountCents: -1_800,
+    concept: "TALDEEN AFARIA",
+    categoryName: "Bestelako gastuak",
+  },
+  // Eskuzko kutxa: merkandia eta botikina, libro interno.
+  {
+    id: seedId("movement:merkandia-salmenta"),
+    accountId: cashAccountId,
+    ledger: "internal",
+    bookedOn: `${seasonYear}-11-08`,
+    amountCents: 5_000,
+    concept: "MERKANDIA SALMENTA",
+    categoryName: "Bestelako sarrerak",
+  },
+  {
+    id: seedId("movement:botikina"),
+    accountId: cashAccountId,
+    ledger: "internal",
+    bookedOn: `${seasonYear}-11-15`,
+    amountCents: -1_200,
+    concept: "BOTIKIN MATERIALA",
+    categoryName: "Kirol-materiala",
+  },
+);
+
+const accountMovementRows: (typeof accountMovements.$inferInsert)[] = movementPlans.map((plan) =>
+  withCategory(
+    {
+      id: plan.id,
+      accountId: plan.accountId,
+      ledger: plan.ledger,
+      seasonId: currentSeasonId, // se resuelve en `insertSeedRows`
+      bookedOn: plan.bookedOn,
+      amountCents: plan.amountCents,
+      concept: plan.concept,
+      counterparty: plan.counterparty ?? null,
+      source: plan.imported ? "import" : "manual",
+      fingerprint: plan.imported ? `seed:${plan.id}` : null,
+      importBatchId: plan.imported ? importBatchId : null,
+    },
+    plan.categoryName!,
+  ),
+);
+
+const movementLinkRows: (typeof movementLinks.$inferInsert)[] = movementPlans
+  .filter((plan) => plan.link)
+  .map((plan) => ({
+    id: seedId(`movement-link:${plan.id}`),
+    movementId: plan.id,
+    amountCents: Math.abs(plan.amountCents),
+    ...plan.link,
+  }));
+
+const budgetId = seedId("season-budget:current-official");
+
+const seasonBudgetRows: (typeof seasonBudgets.$inferInsert)[] = [
+  {
+    id: budgetId,
+    seasonId: currentSeasonId, // se resuelve en `insertSeedRows`
+    ledger: "official",
+    status: "draft",
+  },
+];
+
+const BUDGET_LINE_DEFS: { categoryName: string; plannedCents: number }[] = [
+  { categoryName: "Kuotak", plannedCents: 2_400_000 },
+  { categoryName: "Babesletza", plannedCents: 900_000 },
+  { categoryName: "Diru-laguntzak", plannedCents: 150_000 },
+  { categoryName: "Federazioa eta lizentziak", plannedCents: 60_000 },
+  { categoryName: "Arbitrajeak", plannedCents: 40_000 },
+  { categoryName: "Kirol-materiala", plannedCents: 70_000 },
+  { categoryName: "Ekipazioak", plannedCents: 90_000 },
+  { categoryName: "Instalazioak", plannedCents: 25_000 },
+  { categoryName: "Bidaiak", plannedCents: 50_000 },
+  { categoryName: "Entrenatzaileak", plannedCents: 120_000 },
+  { categoryName: "Kudeaketa eta banku-gastuak", plannedCents: 6_000 },
+  // "Ekitaldiak eta zozketak", "Bestelako sarrerak" y "Bestelako gastuak" se
+  // dejan sin presupuestar a propósito: el ejecutado sin línea es el caso que
+  // prueba `executionPct` devolviendo `null`.
+];
+
+const budgetLineRows: (typeof budgetLines.$inferInsert)[] = BUDGET_LINE_DEFS.map((line) =>
+  withCategory(
+    {
+      id: seedId(`budget-line:${budgetId}:${line.categoryName}`),
+      budgetId,
+      categoryId: "", // resuelto por `applyCategoryIds` antes de insertar
+      plannedCents: line.plannedCents,
+    },
+    line.categoryName,
+  ),
+);
+
+// ---------------------------------------------------------------------------
 // Ejecución
 // ---------------------------------------------------------------------------
 
@@ -916,6 +1378,12 @@ const seedIds = {
   persons: personRows.map((r) => r.id!),
   teams: teamRows.map((r) => r.id!),
   seasons: seasonRows.map((r) => r.id!),
+  financialAccounts: financialAccountRows.map((r) => r.id!),
+  movementImportBatches: movementImportBatchRows.map((r) => r.id!),
+  accountMovements: accountMovementRows.map((r) => r.id!),
+  suppliers: supplierRows.map((r) => r.id!),
+  receivedInvoices: receivedInvoiceRows.map((r) => r.id!),
+  seasonBudgets: seasonBudgetRows.map((r) => r.id!),
 };
 
 /**
@@ -930,6 +1398,21 @@ const seedIds = {
 async function deleteSeedRows() {
   await db.delete(registrations).where(inArray(registrations.id, seedIds.registrations));
   await db.delete(courtEvents).where(inArray(courtEvents.id, seedIds.courtEvents));
+
+  // `account_movements` va antes que las cuentas y los lotes de importación
+  // (referencia restrict/set null hacia ellos) y antes que las temporadas; sus
+  // enlaces en `movement_links` caen solos por cascade.
+  await db.delete(accountMovements).where(inArray(accountMovements.id, seedIds.accountMovements));
+  await db
+    .delete(movementImportBatches)
+    .where(inArray(movementImportBatches.id, seedIds.movementImportBatches));
+  // Las facturas recibidas van antes que sus proveedores (referencia restrict).
+  await db.delete(receivedInvoices).where(inArray(receivedInvoices.id, seedIds.receivedInvoices));
+  await db.delete(suppliers).where(inArray(suppliers.id, seedIds.suppliers));
+  await db.delete(financialAccounts).where(inArray(financialAccounts.id, seedIds.financialAccounts));
+  // El presupuesto arrastra sus líneas por cascade.
+  await db.delete(seasonBudgets).where(inArray(seasonBudgets.id, seedIds.seasonBudgets));
+
   await db.delete(sepaCharges).where(inArray(sepaCharges.id, seedIds.sepaCharges));
   await db.delete(sepaRemittances).where(inArray(sepaRemittances.id, seedIds.sepaRemittances));
   await db.delete(sepaMandates).where(inArray(sepaMandates.id, seedIds.sepaMandates));
@@ -1027,6 +1510,14 @@ async function ensureSeasons(): Promise<{ current: string; previous: string }> {
   };
 }
 
+/** Nombre → id de cada categoría económica, para resolver `categoryAssignments`. */
+async function loadCategoryIds(): Promise<Map<string, string>> {
+  const rows = await db
+    .select({ id: economicCategories.id, name: economicCategories.name })
+    .from(economicCategories);
+  return new Map(rows.map((row) => [row.name, row.id]));
+}
+
 async function insertSeedRows(seasonIds: { current: string; previous: string }) {
   for (const team of teamRows) {
     team.seasonId = team.seasonId === currentSeasonId ? seasonIds.current : seasonIds.previous;
@@ -1035,6 +1526,9 @@ async function insertSeedRows(seasonIds: { current: string; previous: string }) 
   for (const invoice of issuedInvoiceRows) invoice.seasonId = seasonIds.current;
   for (const charge of sepaChargeRows) charge.seasonId = seasonIds.current;
   for (const remittance of sepaRemittanceRows) remittance.seasonId = seasonIds.current;
+  for (const invoice of receivedInvoiceRows) invoice.seasonId = seasonIds.current;
+  for (const movement of accountMovementRows) movement.seasonId = seasonIds.current;
+  for (const budget of seasonBudgetRows) budget.seasonId = seasonIds.current;
 
   // El número de socio es correlativo y único en toda la tabla: si la base ya
   // tenía altas que no son del seed, las del seed siguen a partir de la última.
@@ -1067,6 +1561,15 @@ async function insertSeedRows(seasonIds: { current: string; previous: string }) 
   await db.insert(sponsorNotes).values(sponsorNoteRows);
   await db.insert(registrations).values(registrationRows);
   await db.insert(registrationGuardians).values(registrationGuardianRows);
+
+  await db.insert(financialAccounts).values(financialAccountRows);
+  await db.insert(movementImportBatches).values(movementImportBatchRows);
+  await db.insert(suppliers).values(supplierRows);
+  await db.insert(receivedInvoices).values(receivedInvoiceRows);
+  await db.insert(accountMovements).values(accountMovementRows);
+  await db.insert(movementLinks).values(movementLinkRows);
+  await db.insert(seasonBudgets).values(seasonBudgetRows);
+  await db.insert(budgetLines).values(budgetLineRows);
 
   // El contador nunca retrocede: si la base ya iba por un número más alto que
   // el de las facturas del seed, se queda como estaba.
@@ -1137,6 +1640,7 @@ async function main() {
 
   await seedRoles();
   await seedClubSettings();
+  applyCategoryIds(await loadCategoryIds());
   await insertSeedRows(await ensureSeasons());
 
   console.log(
@@ -1148,7 +1652,10 @@ async function main() {
       `   ${courtEventRows.length} peticiones de cancha`,
       `   ${sponsorRows.length} patrocinadores, ${termRows.length} acuerdos y ${sponsorPaymentRows.length} anualidades`,
       `   ${registrationRows.length} inscripciones`,
-      "   (5 incoherencias deliberadas: ver la cabecera de seed-demo.ts)",
+      `   ${financialAccountRows.length} cuentas, ${accountMovementRows.length} movimientos y ${movementLinkRows.length} conciliaciones`,
+      `   ${supplierRows.length} proveedores y ${receivedInvoiceRows.length} facturas recibidas`,
+      `   1 presupuesto con ${budgetLineRows.length} líneas`,
+      "   (4 incoherencias deliberadas: ver la cabecera de seed-demo.ts)",
     ].join("\n"),
   );
   process.exit(0);
