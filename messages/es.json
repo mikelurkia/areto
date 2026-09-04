@@ -1309,6 +1309,7 @@
     "removeMemberButton": "Quitar del equipo",
     "colPerson": "Persona",
     "colJersey": "Dorsal",
+    "colBirthDate": "Fecha nac.",
     "emptyRosterTitle": "Sin jugadores todavía",
     "emptyRosterDescription": "Añade personas a este equipo para ver aquí su plantilla.",
     "selectTeam": "Selecciona un equipo",
