@@ -134,3 +134,64 @@ export const RECONCILIATION_TONE: Record<ReconciliationState, StatusTone> = {
   partial: "warning",
   settled: "positive",
 };
+
+/** Una categoría en la tabla de presupuesto, con su ejecución al lado. */
+export type BudgetRow = {
+  categoryId: string;
+  name: string;
+  kind: "income" | "expense";
+  isActive: boolean;
+  /** `null` = categoría sin presupuestar, que no es lo mismo que cero. */
+  plannedCents: number | null;
+  /** Facturas emitidas (ingreso) o recibidas (gasto) de la temporada. */
+  accruedCents: number;
+  /** Apuntes bancarios, ya con el signo puesto del lado de la categoría. */
+  cashCents: number;
+};
+
+type BudgetSide = { planned: number; accrued: number; cash: number };
+
+/**
+ * Totales del presupuesto por lado y el resultado (ingresos − gastos) en las
+ * tres magnitudes. Vive aquí porque lo necesitan tanto la página —las casillas
+ * de cabecera— como la tabla, y las dos cifras tienen que cuadrar.
+ */
+export function budgetTotals(rows: readonly BudgetRow[]): {
+  income: BudgetSide;
+  expense: BudgetSide;
+  result: BudgetSide;
+} {
+  const side = (kind: BudgetRow["kind"]): BudgetSide =>
+    rows
+      .filter((row) => row.kind === kind)
+      .reduce(
+        (acc, row) => ({
+          planned: acc.planned + (row.plannedCents ?? 0),
+          accrued: acc.accrued + row.accruedCents,
+          cash: acc.cash + row.cashCents,
+        }),
+        { planned: 0, accrued: 0, cash: 0 },
+      );
+
+  const income = side("income");
+  const expense = side("expense");
+
+  return {
+    income,
+    expense,
+    result: {
+      planned: income.planned - expense.planned,
+      accrued: income.accrued - expense.accrued,
+      cash: income.cash - expense.cash,
+    },
+  };
+}
+
+/**
+ * Porcentaje ejecutado sobre lo presupuestado, o `null` si la categoría no
+ * tiene línea: sin presupuesto no hay nada contra lo que medir.
+ */
+export function executionPct(row: BudgetRow): number | null {
+  if (!row.plannedCents) return null;
+  return (row.accruedCents / row.plannedCents) * 100;
+}

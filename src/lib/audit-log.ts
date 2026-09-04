@@ -23,7 +23,8 @@ export type AuditEntityType =
   | "received_invoice"
   | "issued_invoice"
   | "sponsor_payment"
-  | "movement_link";
+  | "movement_link"
+  | "season_budget";
 
 type RecordAuditEventInput = {
   actorUserId: string | null;
