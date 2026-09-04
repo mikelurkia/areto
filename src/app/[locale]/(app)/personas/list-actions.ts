@@ -2,7 +2,7 @@
 
 import { getTranslations } from "next-intl/server";
 
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import {
   CONTACT_EXPORT_BASENAME,
   buildContactExport,
@@ -50,8 +50,9 @@ function toContactScope(scope: ContactActionScope) {
 export async function exportPersonRows(
   searchParams: Record<string, string>,
 ): Promise<PersonListRow[]> {
-  await requirePermission("personas.view");
-  return loadPersonRowsForExport(parsePersonFilters(searchParams));
+  const user = await requirePermission("personas.view");
+  const canViewBanking = hasPermission(user, "personas.banking.view");
+  return loadPersonRowsForExport(parsePersonFilters(searchParams), canViewBanking);
 }
 
 /**

@@ -48,13 +48,14 @@ export default async function PersonasPage({
   const t = await getTranslations("Personas");
   const canManage = hasPermission(user, "personas.manage");
   const canManageBanking = hasPermission(user, "personas.banking.manage");
+  const canViewBanking = hasPermission(user, "personas.banking.view");
 
   // Los filtros viven en la URL y se resuelven en SQL: de la tabla `persons`
   // solo suben las 25 filas de la página. El diálogo de alta ya no recibe la
   // lista de personas del club para elegir tutor; la busca al escribir.
   const filters = parsePersonFilters(await searchParams);
   const [personPage, teamOptions, tagOptions] = await Promise.all([
-    loadPersonPage(filters),
+    loadPersonPage(filters, canViewBanking),
     loadCurrentTeamOptions(),
     loadPersonTagOptions(),
   ]);

@@ -263,11 +263,15 @@ type RawPerson = Awaited<ReturnType<typeof loadRows>>[number];
 /** La fila tal y como la espera `PersonasBrowser`. */
 export type PersonListRow = ReturnType<typeof toRow>;
 
-function toRow(p: RawPerson) {
+function toRow(p: RawPerson, canViewBanking: boolean) {
   const { clubMember, guardianRows, guardianOfRows, memberships, qualifications, tags, ...rest } =
     p;
   return {
     ...rest,
+    // Sin `personas.banking.view`, el IBAN no sale de aquí: la fila alimenta
+    // directamente al diálogo de edición, un componente cliente, y de otro
+    // modo viajaría en el payload aunque ninguna celda lo pinte.
+    iban: canViewBanking ? rest.iban : null,
     isMember: clubMember?.status === "active",
     memberNumber: clubMember?.memberNumber ?? null,
     guardians: guardianRows.map((r) => ({
@@ -299,7 +303,10 @@ export type PersonPage = {
   page: number;
 };
 
-export async function loadPersonPage(filters: PersonFilters): Promise<PersonPage> {
+export async function loadPersonPage(
+  filters: PersonFilters,
+  canViewBanking: boolean,
+): Promise<PersonPage> {
   const where = personWhere(filters);
 
   const [{ total }] = await db.select({ total: count() }).from(persons).where(where);
@@ -310,7 +317,7 @@ export async function loadPersonPage(filters: PersonFilters): Promise<PersonPage
   const page = Math.min(filters.page, pageCount);
   const rows = total === 0 ? [] : await loadRows(where, page);
 
-  return { rows: rows.map(toRow), total, pageCount, page };
+  return { rows: rows.map((r) => toRow(r, canViewBanking)), total, pageCount, page };
 }
 
 /**
@@ -320,9 +327,10 @@ export async function loadPersonPage(filters: PersonFilters): Promise<PersonPage
  */
 export async function loadPersonRowsForExport(
   filters: PersonFilters,
+  canViewBanking: boolean,
 ): Promise<PersonListRow[]> {
   const rows = await loadRows(personWhere(filters));
-  return rows.map(toRow);
+  return rows.map((r) => toRow(r, canViewBanking));
 }
 
 /** Etiquetas existentes, para el desplegable del filtro. */
