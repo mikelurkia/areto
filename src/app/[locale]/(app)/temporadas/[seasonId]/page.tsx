@@ -12,13 +12,14 @@ import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { seasons, teams } from "@/db/schema";
+import { seasonCategoryBirthYears, seasons, teams } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { Link } from "@/i18n/navigation";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader, SectionHeading } from "@/components/page-header";
 import { DeleteSeasonDialog, SeasonDialog } from "@/components/temporada/season-dialog";
 import { ImportTeamsDialog } from "@/components/temporada/import-teams-dialog";
+import { SeasonCategoryBirthYearsForm } from "@/components/temporada/season-category-birth-years-form";
 import { DeleteTeamDialog } from "@/components/equipos/delete-team-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +69,7 @@ export default async function TemporadaDetailPage({
   // al mismo `Promise.all` es justo el patrón de concurrencia que causó el
   // cuelgue del dashboard — como ya está cacheada (`"use cache"`), el coste
   // real de secuenciarla solo se paga en cache-miss.
-  const [season, seasonTeams, allSeasons] = await Promise.all([
+  const [season, seasonTeams, allSeasons, categoryBirthYears] = await Promise.all([
     getSeason(seasonId),
     db.query.teams.findMany({
       where: eq(teams.seasonId, seasonId),
@@ -85,6 +86,9 @@ export default async function TemporadaDetailPage({
           },
         })
       : [],
+    db.query.seasonCategoryBirthYears.findMany({
+      where: eq(seasonCategoryBirthYears.seasonId, seasonId),
+    }),
   ]);
   if (!season) notFound();
   const renewals = await loadSeasonRenewals(seasonId);
@@ -170,6 +174,11 @@ export default async function TemporadaDetailPage({
           </Button>
         </Card>
       ) : null}
+
+      <div className="flex flex-col gap-4">
+        <SectionHeading title={t("categoryBirthYearsSection")} description={t("categoryBirthYearsDescription")} />
+        <SeasonCategoryBirthYearsForm seasonId={season.id} rows={categoryBirthYears} editable={canManage} />
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">

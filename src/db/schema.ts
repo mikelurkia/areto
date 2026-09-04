@@ -224,10 +224,10 @@ export const teams = pgTable(
     category: teamCategory("category"),
     gender: teamGender("gender"),
     /**
-     * Rango de año de nacimiento admitido en el equipo esta temporada (p.ej.
-     * "nacidos entre 2010 y 2011"). Lo define el club al inscribir el equipo,
-     * cambia cada temporada y no lo deducimos nosotros de la categoría: sirve
-     * solo para avisar de incoherencias, no bloquea la inscripción.
+     * @deprecated Sin usar: el rango de año de nacimiento ahora vive por
+     * categoría y temporada en `seasonCategoryBirthYears`, no por equipo (dos
+     * equipos de la misma categoría compartían antes el mismo dato dos veces).
+     * Columnas mantenidas hasta una migración de contracción posterior.
      */
     minBirthYear: integer("min_birth_year"),
     maxBirthYear: integer("max_birth_year"),
@@ -260,6 +260,31 @@ export const teams = pgTable(
   },
   (t) => [
     index("teams_season_idx").on(t.seasonId),
+  ],
+).enableRLS();
+
+/**
+ * Rango de año de nacimiento admitido por categoría, dentro de una temporada
+ * (p.ej. Infantil = nacidos entre 2012 y 2013 en la 26/27). Un valor por
+ * categoría y temporada, no por equipo: si hay dos equipos de la misma
+ * categoría comparten el mismo rango en vez de tecletearlo dos veces. Igual
+ * que en `teams`, es un dato que el club declara y solo sirve para avisar de
+ * incoherencias, no bloquea la inscripción.
+ */
+export const seasonCategoryBirthYears = pgTable(
+  "season_category_birth_years",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => seasons.id, { onDelete: "cascade" }),
+    category: teamCategory("category").notNull(),
+    minBirthYear: integer("min_birth_year"),
+    maxBirthYear: integer("max_birth_year"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("season_category_birth_years_season_category_idx").on(t.seasonId, t.category),
   ],
 ).enableRLS();
 
@@ -1764,6 +1789,11 @@ export const sepaChargeReturns = pgTable(
 export const seasonsRelations = relations(seasons, ({ many }) => ({
   teams: many(teams),
   fees: many(fees),
+  categoryBirthYears: many(seasonCategoryBirthYears),
+}));
+
+export const seasonCategoryBirthYearsRelations = relations(seasonCategoryBirthYears, ({ one }) => ({
+  season: one(seasons, { fields: [seasonCategoryBirthYears.seasonId], references: [seasons.id] }),
 }));
 
 export const rolesRelations = relations(roles, ({ many }) => ({

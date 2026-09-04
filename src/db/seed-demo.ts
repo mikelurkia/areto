@@ -28,6 +28,7 @@ import {
   registrationGuardians,
   registrations,
   seasonBudgets,
+  seasonCategoryBirthYears,
   seasons,
   sepaCharges,
   sepaMandates,
@@ -145,8 +146,9 @@ const seasonRows: (typeof seasons.$inferInsert)[] = [
 
 /**
  * `ageFrom`/`ageTo` son las edades que tiene la categoría en la temporada que
- * arranca, y de ahí salen tanto el rango de nacimiento declarado del equipo
- * como las fechas de nacimiento de sus jugadores.
+ * arranca, y de ahí salen tanto el rango de nacimiento declarado de la
+ * categoría (por temporada, no por equipo) como las fechas de nacimiento de
+ * sus jugadores.
  */
 const TEAM_DEFS = [
   { key: "eskola", name: "Eskola", category: "escuela", players: 8, ageFrom: 7, ageTo: 8, group: "Eskola Kirola", renewed: false },
@@ -168,8 +170,6 @@ const teamRows: (typeof teams.$inferInsert)[] = [
     name: t.name,
     category: t.category,
     gender: "masculino" as const,
-    minBirthYear: seasonYear - 1 - t.ageTo,
-    maxBirthYear: seasonYear - 1 - t.ageFrom,
     federationGroup: t.group,
   })),
   ...TEAM_DEFS.map((t) => ({
@@ -178,11 +178,37 @@ const teamRows: (typeof teams.$inferInsert)[] = [
     name: t.name,
     category: t.category,
     gender: "masculino" as const,
-    minBirthYear: seasonYear - t.ageTo,
-    maxBirthYear: seasonYear - t.ageFrom,
     federationGroup: t.group,
     previousTeamId: t.renewed ? teamId(t.key, PREVIOUS_SEASON) : null,
   })),
+];
+
+/** Una fila por categoría (no por equipo): varios `TEAM_DEFS` comparten categoría. */
+function categoryBirthYearRows(
+  defs: readonly (typeof TEAM_DEFS)[number][],
+  season: string,
+  seasonId: string,
+  yearBase: number,
+) {
+  const byCategory = new Map<string, (typeof TEAM_DEFS)[number]>();
+  for (const t of defs) byCategory.set(t.category, t);
+  return [...byCategory.values()].map((t) => ({
+    id: seedId(`category-birth-years:${season}:${t.category}`),
+    seasonId,
+    category: t.category,
+    minBirthYear: yearBase - t.ageTo,
+    maxBirthYear: yearBase - t.ageFrom,
+  }));
+}
+
+const seasonCategoryBirthYearRows: (typeof seasonCategoryBirthYears.$inferInsert)[] = [
+  ...categoryBirthYearRows(
+    TEAM_DEFS.filter((t) => t.renewed),
+    PREVIOUS_SEASON,
+    previousSeasonId,
+    seasonYear - 1,
+  ),
+  ...categoryBirthYearRows(TEAM_DEFS, CURRENT_SEASON, currentSeasonId, seasonYear),
 ];
 
 // ---------------------------------------------------------------------------
@@ -1377,6 +1403,7 @@ const seedIds = {
   memberships: membershipRows.map((r) => r.id!),
   persons: personRows.map((r) => r.id!),
   teams: teamRows.map((r) => r.id!),
+  seasonCategoryBirthYears: seasonCategoryBirthYearRows.map((r) => r.id!),
   seasons: seasonRows.map((r) => r.id!),
   financialAccounts: financialAccountRows.map((r) => r.id!),
   movementImportBatches: movementImportBatchRows.map((r) => r.id!),
@@ -1421,6 +1448,9 @@ async function deleteSeedRows() {
   await db.delete(issuedInvoices).where(inArray(issuedInvoices.id, seedIds.issuedInvoices));
   await db.delete(persons).where(inArray(persons.id, seedIds.persons));
   await db.delete(teams).where(inArray(teams.id, seedIds.teams));
+  await db
+    .delete(seasonCategoryBirthYears)
+    .where(inArray(seasonCategoryBirthYears.id, seedIds.seasonCategoryBirthYears));
   await db.delete(seasons).where(inArray(seasons.id, seedIds.seasons));
   await db.delete(clubSettings).where(eq(clubSettings.id, seedId("club-settings")));
 }
@@ -1522,6 +1552,9 @@ async function insertSeedRows(seasonIds: { current: string; previous: string }) 
   for (const team of teamRows) {
     team.seasonId = team.seasonId === currentSeasonId ? seasonIds.current : seasonIds.previous;
   }
+  for (const row of seasonCategoryBirthYearRows) {
+    row.seasonId = row.seasonId === currentSeasonId ? seasonIds.current : seasonIds.previous;
+  }
   for (const registration of registrationRows) registration.seasonId = seasonIds.current;
   for (const invoice of issuedInvoiceRows) invoice.seasonId = seasonIds.current;
   for (const charge of sepaChargeRows) charge.seasonId = seasonIds.current;
@@ -1540,6 +1573,7 @@ async function insertSeedRows(seasonIds: { current: string; previous: string }) 
   });
 
   await db.insert(teams).values(teamRows);
+  await db.insert(seasonCategoryBirthYears).values(seasonCategoryBirthYearRows);
   await db.insert(persons).values(personRows);
   await db.insert(personGuardians).values(guardianRows);
   await db.insert(clubMembers).values(clubMemberRows);
