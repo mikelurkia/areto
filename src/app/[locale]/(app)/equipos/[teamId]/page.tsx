@@ -87,6 +87,7 @@ export default async function TeamDetailPage({
   const { locale, teamId } = await params;
   const { from, fromLabel } = await searchParams;
   const backHref = resolveBackHref(from, "/equipos");
+  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
   const user = await requirePermission("equipos.view");
@@ -351,6 +352,9 @@ export default async function TeamDetailPage({
                   jerseyNumber: m.jerseyNumber,
                   positions: m.positions,
                   isCaptain: m.isCaptain,
+                  birthDate: m.person.birthDate
+                    ? dateFmt.format(new Date(`${m.person.birthDate}T00:00:00`))
+                    : null,
                   birthYear,
                   ageOutOfRange:
                     m.role === "player" &&

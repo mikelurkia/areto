@@ -47,6 +47,7 @@ export type RosterTableRow = {
   jerseyNumber: number | null;
   positions: string[];
   isCaptain: boolean;
+  birthDate: string | null;
   birthYear: number | null;
   ageOutOfRange: boolean;
   webRegistrationMissing: boolean;
@@ -132,6 +133,7 @@ export function RosterTable({
             <TableHead>{t("colJersey")}</TableHead>
             {view === "roster" ? (
               <>
+                <TableHead priority="secondary">{t("colBirthDate")}</TableHead>
                 <TableHead priority="secondary">{t("roleLabel")}</TableHead>
                 <TableHead priority="tertiary">{t("colPositions")}</TableHead>
                 <TableHead priority="secondary" className="print:hidden">
@@ -202,6 +204,7 @@ export function RosterTable({
               <TableCell>{m.jerseyNumber ?? <EmptyValue />}</TableCell>
               {view === "roster" ? (
                 <>
+                  <TableCell priority="secondary">{m.birthDate ?? <EmptyValue />}</TableCell>
                   <TableCell priority="secondary">
                     {t(`roleOption.${m.role}`)}
                     {m.position ? (
