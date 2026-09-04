@@ -572,6 +572,9 @@ export default async function PersonDetailPage({
                 mode="edit"
                 person={{
                   ...person,
+                  // Sin `personas.banking.view`, no viaja al cliente: de otro
+                  // modo el diálogo lo serializaría igual sin permiso.
+                  iban: canViewBanking ? person.iban : null,
                   isMember,
                   memberNumber,
                   guardians: person.guardianRows.map((r) => ({

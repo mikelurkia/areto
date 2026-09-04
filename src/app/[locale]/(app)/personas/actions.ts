@@ -21,7 +21,7 @@ import {
   persons,
   pitchSurface,
 } from "@/db/schema";
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { nextConsentAt, stampConsent } from "@/lib/consent";
 import { DUPLICATE_PERSONS_TAG, INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
@@ -362,6 +362,7 @@ export async function createPerson(
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
   const user = await requirePermission("personas.manage");
+  const canManageBanking = hasPermission(user, "personas.banking.manage");
 
   // El usuario ya vio los candidatos (ver más abajo) y decidió vincular con
   // uno existente: a partir de aquí es una edición normal, mismo camino que
@@ -382,7 +383,9 @@ export async function createPerson(
   if (fields.nationalId && !isValidNationalId(fields.nationalId)) {
     return { error: t("nationalIdInvalid") };
   }
-  if (fields.iban && !isValidIban(fields.iban)) {
+  // Sin `personas.banking.manage` el campo ni se pinta: lo que llegue aquí no
+  // es de fiar y se descarta más abajo, así que tampoco se valida.
+  if (canManageBanking && fields.iban && !isValidIban(fields.iban)) {
     return { error: t("ibanInvalid") };
   }
   if (photo && !ALLOWED_PHOTO_TYPES.includes(photo.type)) {
@@ -428,12 +431,22 @@ export async function createPerson(
     if (candidates.length > 0) {
       const submittedFields: Record<string, string | null> = {};
       for (const key of PERSON_MATCH_FIELDS) submittedFields[key] = fields[key] || null;
-      return { candidates, submittedFields };
+      // Sin `personas.banking.manage` el IBAN de otras fichas no sale de aquí,
+      // aunque el diálogo de duplicados solo lo enseñe enmascarado: el valor
+      // real seguiría viajando en el candidato.
+      const visibleCandidates = canManageBanking
+        ? candidates
+        : candidates.map((c) => ({ ...c, iban: null }));
+      return { candidates: visibleCandidates, submittedFields };
     }
   }
 
   // Alta manual: sin consentimientos, se conceden al inscribirse, no aquí.
-  const payer = resolvePayerFields(guardianIds, fields.iban || null, false);
+  const payer = resolvePayerFields(
+    guardianIds,
+    canManageBanking ? fields.iban || null : null,
+    false,
+  );
 
   let personId: string;
   try {
@@ -506,6 +519,7 @@ export async function updatePerson(
 ): Promise<PersonState> {
   const t = await getTranslations("Personas");
   const user = await requirePermission("personas.manage");
+  const canManageBanking = hasPermission(user, "personas.banking.manage");
 
   const id = String(formData.get("id") ?? "");
   const fields = readPersonFields(formData);
@@ -516,7 +530,10 @@ export async function updatePerson(
   if (fields.nationalId && !isValidNationalId(fields.nationalId)) {
     return { error: t("nationalIdInvalid") };
   }
-  if (fields.iban && !isValidIban(fields.iban)) {
+  // Sin `personas.banking.manage` el campo ni se pinta: lo que llegue aquí no
+  // es de fiar y se descarta más abajo (se conserva el IBAN existente), así
+  // que tampoco se valida.
+  if (canManageBanking && fields.iban && !isValidIban(fields.iban)) {
     return { error: t("ibanInvalid") };
   }
   if (photo && !ALLOWED_PHOTO_TYPES.includes(photo.type)) {
@@ -541,7 +558,12 @@ export async function updatePerson(
   // Los consentimientos no se editan desde esta ficha: se conservan tal cual
   // están (ver comentario en `readPersonFields`). Un tutor nuevo sí puede
   // anular el SEPA propio de la persona, igual que antes.
-  const payer = resolvePayerFields(guardianIds, fields.iban || null, existing?.sepaConsent ?? false);
+  //
+  // El IBAN, igual: sin `personas.banking.manage` el campo no se pinta (o
+  // llega como el hidden que lo conserva), pero por si acaso no se confía en
+  // lo enviado — se mantiene el que ya había en base de datos.
+  const submittedIban = canManageBanking ? fields.iban || null : (existing?.iban ?? null);
+  const payer = resolvePayerFields(guardianIds, submittedIban, existing?.sepaConsent ?? false);
 
   /*
    * Las tres escrituras van juntas o no van: `replaceGuardians` es un DELETE +
