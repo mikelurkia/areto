@@ -1,7 +1,9 @@
 import {
+  CardSkeleton,
   PageHeaderSkeleton,
   SectionHeadingSkeleton,
   SectionNavSkeleton,
+  StatCardsSkeleton,
   TableSkeleton,
 } from "@/components/skeletons";
 
@@ -12,12 +14,14 @@ export default function Loading() {
       <SectionNavSkeleton
         widths={["w-20", "w-28", "w-28", "w-24", "w-20", "w-24", "w-20"]}
       />
+      <StatCardsSkeleton count={4} />
       <div className="flex flex-col gap-4">
         <SectionHeadingSkeleton />
         <TableSkeleton
           columns={[
             "w-40",
             "w-24",
+            { width: "w-24", priority: "secondary" },
             { width: "w-24", priority: "secondary" },
             { width: "w-24", priority: "secondary" },
             "w-24",
@@ -33,11 +37,13 @@ export default function Loading() {
             "w-24",
             { width: "w-24", priority: "secondary" },
             { width: "w-24", priority: "secondary" },
+            { width: "w-24", priority: "secondary" },
             "w-24",
           ]}
           rows={6}
         />
       </div>
+      <CardSkeleton lines={1} />
     </div>
   );
 }

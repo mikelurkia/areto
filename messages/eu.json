@@ -2186,7 +2186,13 @@
     "budgetReopened": "Aurrekontua berrirekita.",
     "budgetLocked": "Aurrekontua onartuta dago: berrireki ezazu editatu ahal izateko.",
     "budgetNotFound": "Oraindik ez dago onartzeko aurrekonturik.",
-    "budgetAmountInvalid": "Zenbateko bat ez da zenbaki bat."
+    "budgetAmountInvalid": "Zenbateko bat ez da zenbaki bat.",
+    "executionLabel": "Betetzea",
+    "resultHeading": "Emaitza",
+    "plannedIncomeLabel": "Aurreikusitako sarrerak",
+    "plannedExpenseLabel": "Aurreikusitako gastuak",
+    "plannedResultLabel": "Aurreikusitako emaitza",
+    "actualResultLabel": "Benetako emaitza"
   },
   "Login": {
     "email": "Emaila",

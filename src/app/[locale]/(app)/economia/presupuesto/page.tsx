@@ -1,4 +1,4 @@
-import { TagsIcon } from "lucide-react";
+import { ScaleIcon, TagsIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 import { and, asc, desc, eq, sum } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -11,21 +11,25 @@ import {
   seasonBudgets,
   seasons,
 } from "@/db/schema";
-import { BudgetEditor, type BudgetRow } from "@/components/economia/budget-editor";
+import { BudgetEditor } from "@/components/economia/budget-editor";
 import { BudgetStatusActions } from "@/components/economia/budget-status-actions";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { SeasonSelect } from "@/components/equipos/season-select";
 import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { StatTile } from "@/components/stat-tile";
 import { StatusBadge } from "@/components/status-badge";
 import { requirePermission } from "@/lib/auth";
 import {
   ECONOMIA_VIEW_PERMISSIONS,
   LEDGER_PARAM,
+  budgetTotals,
   canManageLedger,
   resolveLedger,
   visibleLedgers,
+  type BudgetRow,
 } from "@/lib/economia";
+import { formatCents } from "@/lib/money";
 
 export async function generateMetadata({
   params,
@@ -174,6 +178,14 @@ export default async function PresupuestoPage({
     });
 
   const approved = budget?.status === "approved";
+  const totals = budgetTotals(rows);
+  // Segunda línea de cada casilla: lo devengado y lo que ha pasado por el banco,
+  // que son preguntas distintas y no se suman.
+  const realHint = (side: { accrued: number; cash: number }) =>
+    `${t("accruedLabel")} ${formatCents(side.accrued, locale)} · ${t("cashLabel")} ${formatCents(
+      side.cash,
+      locale,
+    )}`;
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -205,6 +217,33 @@ export default async function PresupuestoPage({
         }
       />
       <EconomiaSectionNav current="presupuesto" ledger={ledger} visible={visible} />
+
+      {rows.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatTile
+            label={t("plannedIncomeLabel")}
+            value={formatCents(totals.income.planned, locale)}
+            hint={realHint(totals.income)}
+            icon={TrendingUpIcon}
+          />
+          <StatTile
+            label={t("plannedExpenseLabel")}
+            value={formatCents(totals.expense.planned, locale)}
+            hint={realHint(totals.expense)}
+            icon={TrendingDownIcon}
+          />
+          <StatTile
+            label={t("plannedResultLabel")}
+            value={formatCents(totals.result.planned, locale)}
+            icon={ScaleIcon}
+          />
+          <StatTile
+            label={t("actualResultLabel")}
+            value={formatCents(totals.result.accrued, locale)}
+            hint={`${t("cashLabel")} ${formatCents(totals.result.cash, locale)}`}
+          />
+        </div>
+      ) : null}
 
       {!season || rows.length === 0 ? (
         <SectionPlaceholder

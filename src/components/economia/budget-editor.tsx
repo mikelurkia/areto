@@ -4,12 +4,14 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 
 import { saveBudgetLines } from "@/app/[locale]/(app)/economia/presupuesto/actions";
+import { EmptyValue } from "@/components/empty-value";
 import { FormError } from "@/components/form-error";
 import { SectionHeading } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -20,29 +22,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useActionToast } from "@/hooks/use-action-toast";
-import { type Ledger } from "@/lib/economia";
+import { budgetTotals, executionPct, type BudgetRow, type Ledger } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
 import { cn } from "@/lib/utils";
-
-export type BudgetRow = {
-  categoryId: string;
-  name: string;
-  kind: "income" | "expense";
-  isActive: boolean;
-  /** `null` = categoría sin presupuestar, que no es lo mismo que cero. */
-  plannedCents: number | null;
-  /** Facturas emitidas (ingreso) o recibidas (gasto) de la temporada. */
-  accruedCents: number;
-  /** Apuntes bancarios, ya con el signo puesto del lado de la categoría. */
-  cashCents: number;
-};
 
 /**
  * Presupuesto de una temporada y su ejecución, en una sola tabla: presupuestar
  * es rellenar veinte casillas de una sentada, así que hay un único formulario
  * con un solo botón y no un diálogo por línea.
  *
- * Las tres columnas de la derecha son lectura siempre. "Devengado" y "Caja"
+ * Las columnas de la derecha son lectura siempre. "Devengado" y "Caja"
  * responden a preguntas distintas —lo comprometido en facturas frente a lo que
  * ha salido del banco— y por eso no se suman ni se cruzan.
  */
@@ -63,6 +52,8 @@ export function BudgetEditor({
   const [state, formAction] = useActionState(saveBudgetLines, {});
   useActionToast(state);
 
+  const totals = budgetTotals(rows);
+
   return (
     <form action={formAction} className="flex flex-col gap-6">
       <input type="hidden" name="ledger" value={ledger} />
@@ -73,10 +64,24 @@ export function BudgetEditor({
           key={kind}
           kind={kind}
           rows={rows.filter((row) => row.kind === kind)}
+          total={totals[kind]}
           editable={editable}
           locale={locale}
         />
       ))}
+
+      {/* El resultado repite la cifra de la cabecera a propósito: la página son
+          dos tablas largas y un presupuesto se termina de leer por abajo. */}
+      <Card size="sm">
+        <CardContent className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
+          <p className="text-sm font-medium">{t("resultHeading")}</p>
+          <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
+            <ResultFigure label={t("plannedLabel")} cents={totals.result.planned} locale={locale} />
+            <ResultFigure label={t("accruedLabel")} cents={totals.result.accrued} locale={locale} />
+            <ResultFigure label={t("cashLabel")} cents={totals.result.cash} locale={locale} />
+          </div>
+        </CardContent>
+      </Card>
 
       <FormError message={state.error} />
       {editable ? (
@@ -91,26 +96,19 @@ export function BudgetEditor({
 function BudgetBlock({
   kind,
   rows,
+  total,
   editable,
   locale,
 }: {
   kind: "income" | "expense";
   rows: BudgetRow[];
+  total: { planned: number; accrued: number; cash: number };
   editable: boolean;
   locale: string;
 }) {
   const t = useTranslations("Economia");
 
   if (rows.length === 0) return null;
-
-  const totals = rows.reduce(
-    (acc, row) => ({
-      planned: acc.planned + (row.plannedCents ?? 0),
-      accrued: acc.accrued + row.accruedCents,
-      cash: acc.cash + row.cashCents,
-    }),
-    { planned: 0, accrued: 0, cash: 0 },
-  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -128,7 +126,10 @@ function BudgetBlock({
                 <TableHead priority="secondary" className="text-right">
                   {t("cashLabel")}
                 </TableHead>
-                <TableHead className="text-right">{t("deviationLabel")}</TableHead>
+                <TableHead priority="secondary" className="text-right">
+                  {t("deviationLabel")}
+                </TableHead>
+                <TableHead className="text-right">{t("executionLabel")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -154,10 +155,8 @@ function BudgetBlock({
                         placeholder="0"
                         className="ml-auto w-28 text-right"
                       />
-                    ) : row.plannedCents === null ? (
-                      formatCents(0, locale)
                     ) : (
-                      formatCents(row.plannedCents, locale)
+                      formatCents(row.plannedCents ?? 0, locale)
                     )}
                   </TableCell>
                   <TableCell priority="secondary" nowrap className="text-right">
@@ -166,12 +165,11 @@ function BudgetBlock({
                   <TableCell priority="secondary" nowrap className="text-right">
                     {formatCents(row.cashCents, locale)}
                   </TableCell>
-                  <TableCell nowrap className="text-right">
-                    <Deviation
-                      kind={kind}
-                      cents={row.accruedCents - (row.plannedCents ?? 0)}
-                      locale={locale}
-                    />
+                  <TableCell priority="secondary" nowrap className="text-right">
+                    <Signed cents={row.accruedCents - (row.plannedCents ?? 0)} locale={locale} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Execution kind={kind} pct={executionPct(row)} label={row.name} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -182,19 +180,22 @@ function BudgetBlock({
               <TableRow>
                 <TableCell className="font-medium">{t("totalLabel")}</TableCell>
                 <TableCell nowrap className="text-right font-semibold">
-                  {formatCents(totals.planned, locale)}
+                  {formatCents(total.planned, locale)}
                 </TableCell>
                 <TableCell priority="secondary" nowrap className="text-right font-semibold">
-                  {formatCents(totals.accrued, locale)}
+                  {formatCents(total.accrued, locale)}
                 </TableCell>
                 <TableCell priority="secondary" nowrap className="text-right font-semibold">
-                  {formatCents(totals.cash, locale)}
+                  {formatCents(total.cash, locale)}
                 </TableCell>
-                <TableCell nowrap className="text-right font-semibold">
-                  <Deviation
+                <TableCell priority="secondary" nowrap className="text-right font-semibold">
+                  <Signed cents={total.accrued - total.planned} locale={locale} />
+                </TableCell>
+                <TableCell className="text-right">
+                  <Execution
                     kind={kind}
-                    cents={totals.accrued - totals.planned}
-                    locale={locale}
+                    pct={total.planned ? (total.accrued / total.planned) * 100 : null}
+                    label={t("totalLabel")}
                   />
                 </TableCell>
               </TableRow>
@@ -207,20 +208,76 @@ function BudgetBlock({
 }
 
 /**
- * Desviación = devengado − presupuestado. Lo que es malo depende del signo y
- * del tipo: ingresar menos de lo previsto y gastar más son la misma noticia.
+ * Ejecución sobre lo presupuestado. La barra se recorta al 100 % aunque el
+ * porcentaje siga subiendo, que es lo que hace visible el exceso.
+ *
+ * Solo se colorea pasarse del presupuesto, nunca ir por debajo: en septiembre
+ * no hay ni un ingreso cobrado todavía, y teñir de rojo la tabla entera no
+ * dice nada de la salud del club.
  */
-function Deviation({
+function Execution({
   kind,
+  pct,
+  label,
+}: {
+  kind: "income" | "expense";
+  pct: number | null;
+  label: string;
+}) {
+  if (pct === null) return <EmptyValue />;
+
+  const over = pct > 100;
+  const adverse = over && kind === "expense";
+  const favourable = over && kind === "income";
+
+  return (
+    <Progress
+      value={Math.min(pct, 100)}
+      aria-label={label}
+      className={cn(
+        "ml-auto w-24 gap-1",
+        adverse && "[&_[data-slot=progress-indicator]]:bg-destructive",
+        favourable && "[&_[data-slot=progress-indicator]]:bg-success",
+      )}
+    >
+      <span
+        className={cn(
+          "ml-auto text-xs tabular-nums",
+          adverse ? "text-destructive" : favourable ? "text-success" : "text-muted-foreground",
+        )}
+      >
+        {Math.round(pct)}%
+      </span>
+    </Progress>
+  );
+}
+
+/** Importe con signo explícito: sin el "+" no se lee como una diferencia. */
+function Signed({ cents, locale }: { cents: number; locale: string }) {
+  return (
+    <span className="tabular-nums">
+      {cents > 0 ? "+" : ""}
+      {formatCents(cents, locale)}
+    </span>
+  );
+}
+
+function ResultFigure({
+  label,
   cents,
   locale,
 }: {
-  kind: "income" | "expense";
+  label: string;
   cents: number;
   locale: string;
 }) {
-  const adverse = kind === "income" ? cents < 0 : cents > 0;
-  const text = `${cents > 0 ? "+" : ""}${formatCents(cents, locale)}`;
-
-  return <span className={cn(adverse && "text-destructive")}>{text}</span>;
+  return (
+    <p className="flex items-baseline gap-2">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={cn("font-semibold tabular-nums", cents < 0 && "text-destructive")}>
+        {cents > 0 ? "+" : ""}
+        {formatCents(cents, locale)}
+      </span>
+    </p>
+  );
 }

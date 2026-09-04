@@ -2186,7 +2186,13 @@
     "budgetReopened": "Presupuesto reabierto.",
     "budgetLocked": "El presupuesto está aprobado: reábrelo para poder editarlo.",
     "budgetNotFound": "Todavía no hay presupuesto que aprobar.",
-    "budgetAmountInvalid": "Hay un importe que no es un número."
+    "budgetAmountInvalid": "Hay un importe que no es un número.",
+    "executionLabel": "Ejecución",
+    "resultHeading": "Resultado",
+    "plannedIncomeLabel": "Ingresos previstos",
+    "plannedExpenseLabel": "Gastos previstos",
+    "plannedResultLabel": "Resultado previsto",
+    "actualResultLabel": "Resultado real"
   },
   "Login": {
     "email": "Email",
