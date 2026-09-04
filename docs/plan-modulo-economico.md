@@ -35,6 +35,8 @@ Rutina de cada fase, en sesión limpia:
 | 5 | Facturas emitidas, absorción de patrocinio, agregado de remesas | hecha |
 | 6 | Presupuesto e informe presupuesto vs devengado vs caja | hecha |
 | 7 | *Contract*: retirar `invoiceNumber`/`invoicedOn` de `sponsor_payments` | pendiente |
+| 8 | Resumen del módulo como portada de verdad | pendiente |
+| 9 | Costuras: enlace `/patrocinadores/facturas` ↔ `/economia/emitidas` | pendiente |
 
 ## Contexto
 
@@ -268,6 +270,59 @@ coordenadas y trae solo las 14 fuentes estándar. El proyecto ya emite documento
 como **HTML A4 imprimible** (`PrintableSheet`: 210×297mm, escala en pt) y así se
 hacen el recibo de patrocinio, el libro y los carnés. Se sigue esa vía.
 
+### 11. El módulo necesita portada; la navegación no se toca
+
+Anotado el 2026-09-04, al revisar la fase 6 ya construida: el módulo **se lee
+plano**. Conviene dejar escrito el diagnóstico, porque la reacción inmediata
+—partirlo en más entradas de menú— es la equivocada.
+
+No es la profundidad ni el número de pestañas. Es que **no hay puerta de
+entrada**: aterrizas en Resumen y son cuatro saldos, así que las siete pestañas
+cargan solas con toda la navegación, y detrás de cada una hay otra tabla.
+
+Se descarta **partir `/economia` en dos entradas del sidebar** (Economía y
+Facturación): el grupo `economico` de `src/components/nav-items.ts` ya tiene tres
+hermanos planos —Economía, Patrocinadores, Cuotas—, y una cuarta entrada aplana
+más, además de partir en dos módulos el informe presupuesto↔facturas, que es
+justamente lo que los une.
+
+Queda anotada, sin decidir, una opción barata para bajar de siete pestañas a
+seis: renombrar Cuentas como **Ajustes** y plegar ahí Proveedores, junto a
+cuentas y categorías. Los tres son catálogos. Mueve una ruta ya mergeada, así
+que no se hace de paso: o va en su propio PR o no va.
+
+Y hay una incoherencia real, pero es la contraria a la que se sospecha: **Cuotas
+y Patrocinadores son económicos y viven fuera**, y desde la fase 5
+`/patrocinadores/facturas` es literalmente una vista filtrada de
+`issued_invoices` sin un solo enlace cruzado con `/economia/emitidas`. Eso es la
+fase 9, y es barato: enlace en las dos direcciones, sin mover rutas.
+
+### 12. Qué entra en el Resumen (fase 8)
+
+La fase 1 dejó el Resumen con los saldos por cuenta, que es la cuarta parte de lo
+que este documento preveía. Con las fases 2 a 6 ya existen los datos que faltaban,
+así que la portada pasa a ser:
+
+- **Resultado de la temporada** en las tres magnitudes —presupuestado, devengado
+  y caja—, reutilizando `budgetTotals()` de `src/lib/economia.ts`, que es la misma
+  función que alimenta la página de Presupuesto: las dos cifras tienen que cuadrar.
+- **Saldos por cuenta**, lo ya existente.
+- **Pendiente de conciliar**: facturas cuyo `reconciliationState()` no es
+  `settled`, y apuntes sin ningún `movement_link`.
+- **Vencimientos próximos**: `dueDate` de recibidas y emitidas.
+- Cada bloque enlaza a su pestaña. Es lo que convierte las pestañas en un índice
+  y no en la única navegación.
+
+Dos reglas que ya se han pagado una vez cada una, y que aquí vuelven a aplicar:
+cada sección va **en su propio `<Suspense>`** con su esqueleto —el patrón exacto
+de las tres del dashboard (`AlertsGrid`, `ReviewCard`, `FixtureBoardSection`)—, y
+cualquier sección que lea el reloj hace `await connection()` primero, porque con
+Cache Components el prerender congelaría "hoy".
+
+El dashboard general sigue sin un solo importe. Llevar ahí una casilla económica
+es tentador y **no entra en este plan**: el dashboard es común a todos los roles y
+el libro interno no puede asomar en él.
+
 ---
 
 ## Esquema
@@ -406,8 +461,14 @@ de migración).
 6. **Presupuesto** — `season_budgets`/`budget_lines` y el informe presupuesto vs
    devengado vs caja.
 
-Un PR posterior de *contract*: retirar `invoiceNumber`/`invoicedOn` de
-`sponsor_payments`.
+Y tres PRs más, ya sin esquema salvo el primero (decisiones 11 y 12):
+
+7. *Contract*: retirar `invoiceNumber`/`invoicedOn` de `sponsor_payments`.
+8. **Resumen como portada** del módulo: resultado de la temporada, saldos,
+   pendiente de conciliar y vencimientos próximos, cada bloque en su
+   `<Suspense>` y enlazando a su pestaña.
+9. **Costuras**: enlace en las dos direcciones entre `/patrocinadores/facturas` y
+   `/economia/emitidas`, que desde la fase 5 son la misma tabla vista dos veces.
 
 Rama `feat/…` por PR, creada **antes del primer commit** (`main` está protegida).
 
