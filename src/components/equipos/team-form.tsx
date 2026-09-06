@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useActionToast } from "@/hooks/use-action-toast";
+import { useActionResult, useActionToast } from "@/hooks/use-action-toast";
 import { TEAM_CATEGORIES } from "@/components/equipos/team-categories";
 import { TEAM_GENDERS } from "@/components/equipos/team-genders";
 import { FEE_PERIODS } from "@/components/equipos/fee-periods";
@@ -32,14 +32,14 @@ type Team = {
   playerFeeNotes: string | null;
 };
 
-type TeamFormProps =
+type TeamFormProps = (
   | { mode: "create"; seasonId: string }
-  | { mode: "edit"; team: Team };
+  | { mode: "edit"; team: Team }
+) & { onSuccess?: () => void };
 
 /**
  * Campos de equipo, reutilizados a página completa para crear
- * (`/equipos/nuevo`) y en la pestaña Configuración de la ficha para editar.
- * Sin `Dialog` alrededor: cada sitio que lo usa pone su propia `Card`.
+ * (`/equipos/nuevo`) y dentro de un `Dialog` para editar.
  */
 export function TeamForm(props: TeamFormProps) {
   const t = useTranslations("Equipos");
@@ -48,6 +48,10 @@ export function TeamForm(props: TeamFormProps) {
     {},
   );
   useActionToast(state);
+  const onSuccess = props.onSuccess;
+  useActionResult(state, (result) => {
+    if (result.message) onSuccess?.();
+  });
 
   return (
     <form action={formAction}>

@@ -5,6 +5,7 @@ import { SendIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { sendInjuryReportByEmail, type PersonState } from "@/app/[locale]/(app)/personas/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,7 +116,7 @@ export function SendInjuryReportDialog({
               </SelectContent>
             </Select>
           </Field>
-          {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

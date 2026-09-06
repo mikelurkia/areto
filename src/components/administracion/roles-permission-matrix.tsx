@@ -4,6 +4,7 @@ import { Fragment, useActionState, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { setPermissionMatrix } from "@/app/[locale]/(app)/administracion/roles/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -336,7 +337,7 @@ export function RolesPermissionMatrix({
       {losesAdmin ? (
         <p className="text-sm text-destructive">{t("removeAdminWarning")}</p>
       ) : null}
-      {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+      <FormError message={state.error} />
 
       <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         {dirtyCells.size === 0 ? (

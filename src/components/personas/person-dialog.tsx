@@ -11,6 +11,7 @@ import {
   GuardianPicker,
   type GuardianOption,
 } from "@/components/personas/guardian-picker";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { avatarToneClasses } from "@/lib/avatar-color";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

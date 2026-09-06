@@ -116,6 +116,7 @@ export async function createMovement(
     metadata: { ledger, amountCents: parsed.values.amountCents, concept: parsed.values.concept },
   });
 
+  revalidateRoutes(ROUTE.economiaMovimientos);
   return { message: t("movementCreated") };
 }
 
@@ -158,6 +159,7 @@ export async function updateMovement(
     metadata: { ledger: nextLedger, previousLedger: current.ledger },
   });
 
+  revalidateRoutes(ROUTE.economiaMovimientos);
   return { message: t("movementUpdated") };
 }
 
@@ -190,6 +192,7 @@ export async function deleteMovement(
     },
   });
 
+  revalidateRoutes(ROUTE.economiaMovimientos);
   return { message: t("movementDeleted") };
 }
 

@@ -20,6 +20,7 @@ import {
 } from "@/lib/economia";
 import { isValidIban } from "@/lib/iban";
 import { readAmountCents } from "@/lib/money";
+import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 
 export type EconomiaState = {
   error?: string;
@@ -111,6 +112,7 @@ export async function createAccount(
     metadata: { ledger, name: parsed.values.name },
   });
 
+  revalidateRoutes(ROUTE.economiaCuentas, ROUTE.economiaMovimientos);
   return { message: t("accountCreated") };
 }
 
@@ -168,6 +170,7 @@ export async function updateAccount(
     metadata: { ledger: nextLedger, previousLedger: current.ledger, name: parsed.values.name },
   });
 
+  revalidateRoutes(ROUTE.economiaCuentas, ROUTE.economiaMovimientos);
   return { message: t("accountUpdated") };
 }
 
@@ -205,6 +208,7 @@ export async function deleteAccount(
     metadata: { ledger: current.ledger, name: current.name },
   });
 
+  revalidateRoutes(ROUTE.economiaCuentas, ROUTE.economiaMovimientos);
   return { message: t("accountDeleted") };
 }
 
@@ -254,6 +258,7 @@ export async function createCategory(
     throw error;
   }
 
+  revalidateRoutes(ROUTE.economiaCuentas, ROUTE.economiaMovimientos);
   return { message: t("categoryCreated") };
 }
 
@@ -278,5 +283,6 @@ export async function updateCategory(
     throw error;
   }
 
+  revalidateRoutes(ROUTE.economiaCuentas, ROUTE.economiaMovimientos);
   return { message: t("categoryUpdated") };
 }

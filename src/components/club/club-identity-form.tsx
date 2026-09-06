@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { updateClubIdentity, type ClubState } from "@/app/[locale]/(app)/club/actions";
 import { useIbanField } from "@/hooks/use-iban-field";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -88,7 +89,7 @@ export function ClubIdentityForm({ settings }: { settings: ClubIdentityValues | 
             <Input id="club-phone" name="phone" defaultValue={settings?.phone ?? ""} />
           </Field>
         </div>
-        {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+        <FormError message={state.error} />
         <SubmitButton className="self-start">{t("saveClubData")}</SubmitButton>
       </FieldGroup>
     </form>

@@ -11,6 +11,7 @@ import { useRequiredCheckboxError } from "@/hooks/use-required-checkbox-error";
 import { isMinor } from "@/lib/age";
 import { Link } from "@/i18n/navigation";
 import { Req } from "@/components/inscripciones/required-asterisk";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
@@ -383,7 +384,7 @@ export function SocioForm() {
         ) : null}
       </FieldGroup>
 
-      {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+      <FormError message={state.error} />
       <SubmitButton size="lg">{t("submitAction")}</SubmitButton>
     </form>
   );
