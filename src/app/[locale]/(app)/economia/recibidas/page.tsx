@@ -1,9 +1,10 @@
 import { FileTextIcon, ReceiptTextIcon } from "lucide-react";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { economicCategories, receivedInvoices, seasons, suppliers, teams } from "@/db/schema";
+import { EconomiaLedgerFilter } from "@/components/economia/economia-ledger-filter";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { ReceivedInvoiceDialog } from "@/components/economia/received-invoice-dialog";
 import { ReceivedInvoicesBrowser } from "@/components/economia/received-invoices-browser";
@@ -17,7 +18,8 @@ import {
   ECONOMIA_VIEW_PERMISSIONS,
   LEDGER_PARAM,
   canManageLedger,
-  resolveLedger,
+  ledgersForFilter,
+  resolveLedgerFilter,
   visibleLedgers,
 } from "@/lib/economia";
 
@@ -58,8 +60,11 @@ export default async function RecibidasPage({
     }),
   ]);
 
-  const ledger = resolveLedger(query[LEDGER_PARAM], visible)!;
-  const canManage = canManageLedger(user, ledger);
+  const filter = resolveLedgerFilter(query[LEDGER_PARAM], visible)!;
+  const ledgers = ledgersForFilter(filter, visible);
+  const manageableLedgers = visible.filter((l) => canManageLedger(user, l));
+  const canManage = manageableLedgers.length > 0;
+  const navLedger = filter === "both" ? visible[0] : filter;
   const season =
     allSeasons.find((s) => s.id === query.season) ??
     allSeasons.find((s) => s.isCurrent) ??
@@ -67,7 +72,10 @@ export default async function RecibidasPage({
 
   const invoiceRows = season
     ? await db.query.receivedInvoices.findMany({
-        where: and(eq(receivedInvoices.ledger, ledger), eq(receivedInvoices.seasonId, season.id)),
+        where: and(
+          inArray(receivedInvoices.ledger, ledgers),
+          eq(receivedInvoices.seasonId, season.id),
+        ),
         orderBy: [desc(receivedInvoices.issuedOn), desc(receivedInvoices.createdAt)],
         with: { supplier: { columns: { name: true } } },
       })
@@ -114,13 +122,13 @@ export default async function RecibidasPage({
             <SeasonSelect
               seasons={allSeasons}
               selectedId={season?.id ?? ""}
-              extraParams={visible.length > 1 ? { [LEDGER_PARAM]: ledger } : undefined}
+              extraParams={visible.length > 1 ? { [LEDGER_PARAM]: filter } : undefined}
             />
             {canManage && season ? (
               <ReceivedInvoiceDialog
                 mode="create"
-                ledger={ledger}
-                manageableLedgers={visible.filter((l) => canManageLedger(user, l))}
+                ledger={navLedger}
+                manageableLedgers={manageableLedgers}
                 suppliers={supplierRows}
                 seasons={seasonOptions}
                 teams={teamOptions}
@@ -130,7 +138,14 @@ export default async function RecibidasPage({
           </>
         }
       />
-      <EconomiaSectionNav current="recibidas" ledger={ledger} visible={visible} />
+      <EconomiaSectionNav
+        current="recibidas"
+        ledger={navLedger}
+        visible={visible}
+        ledgerFilterSlot={
+          <EconomiaLedgerFilter href="/economia/recibidas" filter={filter} visible={visible} />
+        }
+      />
 
       {supplierRows.length === 0 ? (
         <SectionPlaceholder
@@ -157,11 +172,10 @@ export default async function RecibidasPage({
           seasons={seasonOptions}
           teams={teamOptions}
           categories={categories}
-          ledger={ledger}
+          filter={filter}
           seasonId={season!.id}
-          manageableLedgers={visible.filter((l) => canManageLedger(user, l))}
+          manageableLedgers={manageableLedgers}
           locale={locale}
-          canManage={canManage}
         />
       )}
     </div>

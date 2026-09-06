@@ -14,8 +14,8 @@ import {
   SPONSORSHIP_EXPIRY_WINDOW_DAYS,
 } from "@/lib/sponsorship";
 import { Link } from "@/i18n/navigation";
-import { PageHeader } from "@/components/page-header";
-import { StatTile } from "@/components/stat-tile";
+import { PageHeader, SectionHeading } from "@/components/page-header";
+import { StatGrid, StatTile } from "@/components/stat-tile";
 import { ImportSponsorsDialog } from "@/components/patrocinadores/import-sponsors-dialog";
 import { SponsorsBrowser } from "@/components/patrocinadores/sponsors-browser";
 import { SponsorDialog } from "@/components/patrocinadores/sponsor-dialog";
@@ -322,10 +322,8 @@ export default async function PatrocinadoresPage({
       />
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("seasonKpisHeading", { season: currentSeasonLabel })}
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <SectionHeading title={t("seasonKpisHeading", { season: currentSeasonLabel })} />
+        <StatGrid>
           <StatTile
             label={t("kpiActiveSponsors")}
             value={activeSponsorsCount}
@@ -337,16 +335,18 @@ export default async function PatrocinadoresPage({
           <StatTile
             label={t("collectedLabel")}
             value={formatCents(seasonCollectedCents, locale)}
+            tone="positive"
           />
           <StatTile
             label={t("kpiCollectionRate")}
             value={collectionRate === null ? "—" : `${collectionRate}%`}
+            tone={collectionRate !== null && collectionRate >= 100 ? "positive" : "highlight"}
           />
-        </div>
+        </StatGrid>
       </section>
 
       {upcomingItems.length > 0 ? (
-        <Card className="print:hidden">
+        <Card size="sm" className="print:hidden">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <TriangleAlertIcon className="size-4" />
@@ -396,7 +396,7 @@ export default async function PatrocinadoresPage({
 
       <div className="grid gap-4 lg:grid-cols-2">
         {tierChartData.length > 0 ? (
-          <Card className="print:hidden">
+          <Card size="sm" className="print:hidden">
             <CardHeader>
               <CardTitle className="text-base">
                 {t("tierBreakdownSection")}
@@ -414,7 +414,7 @@ export default async function PatrocinadoresPage({
         ) : null}
 
         {yearlyChartData.length > 0 ? (
-          <Card className="print:hidden">
+          <Card size="sm" className="print:hidden">
             <CardHeader>
               <CardTitle className="text-base">{t("yearlyComparisonSection")}</CardTitle>
               <CardDescription>{t("yearlyComparisonHint")}</CardDescription>

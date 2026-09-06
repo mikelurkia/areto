@@ -1,5 +1,6 @@
 import { LockIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import type { ReactNode } from "react";
 
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -41,13 +42,23 @@ export async function EconomiaSectionNav({
   current,
   ledger,
   visible,
+  ledgerFilterSlot,
+  showLedgerControls = true,
 }: {
   current: EconomiaSection;
   ledger: Ledger;
   visible: readonly Ledger[];
+  /** Sustituye el selector de 2 botones por un control propio (p.ej. el de 3 estados de `EconomiaLedgerFilter`). */
+  ledgerFilterSlot?: ReactNode;
+  /**
+   * `ledger` sigue viajando en la URL para que las demás pestañas recuerden el
+   * libro, pero en secciones que no lo usan para filtrar (p.ej. proveedores,
+   * compartidos entre libros) ni el badge ni el selector tienen sentido.
+   */
+  showLedgerControls?: boolean;
 }) {
   const t = await getTranslations("Economia");
-  const showSwitcher = visible.length > 1;
+  const showSwitcher = showLedgerControls && visible.length > 1;
 
   const withLedger = (href: string, value: Ledger) =>
     showSwitcher ? `${href}?${LEDGER_PARAM}=${value}` : href;
@@ -72,30 +83,31 @@ export async function EconomiaSectionNav({
         ))}
       </nav>
       <div className="flex items-center gap-2 pb-2">
-        {ledger === "internal" ? (
+        {showLedgerControls && ledger === "internal" ? (
           <StatusBadge tone="warning" icon={LockIcon} label={t("internalLedgerBadge")} />
         ) : null}
-        {showSwitcher
-          ? LEDGERS.map((value) => (
-              <Button
-                key={value}
-                size="sm"
-                variant={value === ledger ? "secondary" : "ghost"}
-                aria-current={value === ledger ? "true" : undefined}
-                nativeButton={false}
-                render={
-                  <Link
-                    href={withLedger(
-                      SECTIONS.find((s) => s.key === current)!.href,
-                      value,
-                    )}
-                  />
-                }
-              >
-                {t(`ledger_${value}`)}
-              </Button>
-            ))
-          : null}
+        {ledgerFilterSlot ??
+          (showSwitcher
+            ? LEDGERS.map((value) => (
+                <Button
+                  key={value}
+                  size="sm"
+                  variant={value === ledger ? "secondary" : "ghost"}
+                  aria-current={value === ledger ? "true" : undefined}
+                  nativeButton={false}
+                  render={
+                    <Link
+                      href={withLedger(
+                        SECTIONS.find((s) => s.key === current)!.href,
+                        value,
+                      )}
+                    />
+                  }
+                >
+                  {t(`ledger_${value}`)}
+                </Button>
+              ))
+            : null)}
       </div>
     </div>
   );

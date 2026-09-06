@@ -35,9 +35,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useDialogParam } from "@/hooks/use-dialog-param";
+import type { Ledger } from "@/lib/economia";
 
 export type MovementRow = {
   id: string;
+  ledger: Ledger;
   accountId: string;
   accountName: string;
   seasonId: string;
@@ -51,6 +53,7 @@ export type MovementRow = {
   categoryName: string | null;
   source: "import" | "manual";
   notes: string | null;
+  invoiceLinks: { kind: "received" | "issued"; id: string; number: string }[];
 };
 
 export type NamedOption = { id: string; name: string };

@@ -71,7 +71,12 @@ export default async function ProveedoresPage({
         description={t("suppliersSubtitle")}
         actions={canManage ? <SupplierDialog mode="create" categories={categories} /> : null}
       />
-      <EconomiaSectionNav current="proveedores" ledger={ledger} visible={visible} />
+      <EconomiaSectionNav
+        current="proveedores"
+        ledger={ledger}
+        visible={visible}
+        showLedgerControls={false}
+      />
 
       {supplierRows.length === 0 ? (
         <SectionPlaceholder

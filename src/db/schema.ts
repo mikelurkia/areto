@@ -2101,7 +2101,7 @@ export const financialAccountsRelations = relations(financialAccounts, ({ many }
   importBatches: many(movementImportBatches),
 }));
 
-export const accountMovementsRelations = relations(accountMovements, ({ one }) => ({
+export const accountMovementsRelations = relations(accountMovements, ({ one, many }) => ({
   account: one(financialAccounts, {
     fields: [accountMovements.accountId],
     references: [financialAccounts.id],
@@ -2115,6 +2115,7 @@ export const accountMovementsRelations = relations(accountMovements, ({ one }) =
     fields: [accountMovements.importBatchId],
     references: [movementImportBatches.id],
   }),
+  links: many(movementLinks),
 }));
 
 export const movementImportBatchesRelations = relations(

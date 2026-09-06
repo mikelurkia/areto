@@ -57,7 +57,24 @@ export async function saveBudgetLines(
     else submitted.set(categoryId, cents);
   }
 
-  const ids = [...submitted.keys(), ...blanks];
+  // Las notas vienen como `note_<categoryId>`. Una nota no vacía por sí sola
+  // justifica conservar la línea aunque no haya importe (una categoría se
+  // borra de `budgetLines` solo si ni tiene importe ni nota).
+  const notes = new Map<string, string>();
+  for (const [key, raw] of formData.entries()) {
+    if (!key.startsWith("note_")) continue;
+    const categoryId = key.slice("note_".length);
+    const value = String(raw ?? "").trim();
+    if (value) notes.set(categoryId, value);
+  }
+  for (const categoryId of [...submitted.keys(), ...notes.keys()]) {
+    const blankIndex = blanks.indexOf(categoryId);
+    if (blankIndex !== -1 && (submitted.has(categoryId) || notes.has(categoryId))) {
+      blanks.splice(blankIndex, 1);
+    }
+  }
+
+  const ids = [...new Set([...submitted.keys(), ...notes.keys(), ...blanks])];
   if (ids.length > 0) {
     const known = await db.query.economicCategories.findMany({
       where: inArray(economicCategories.id, ids),
@@ -88,19 +105,26 @@ export async function saveBudgetLines(
         .where(and(eq(budgetLines.budgetId, id), inArray(budgetLines.categoryId, blanks)));
     }
 
-    if (submitted.size > 0) {
+    // Una línea se guarda si tiene importe o nota — las dos vacías es lo que
+    // manda la categoría a `blanks` de arriba.
+    const toUpsert = new Set([...submitted.keys(), ...notes.keys()]);
+    if (toUpsert.size > 0) {
       await tx
         .insert(budgetLines)
         .values(
-          [...submitted].map(([categoryId, plannedCents]) => ({
+          [...toUpsert].map((categoryId) => ({
+            // `planned_cents` es NOT NULL: una nota sin importe se guarda a 0,
+            // que es como ya se interpreta "sin presupuestar" en el resto de
+            // la tabla (`executionPct` trata 0 igual que null).
             budgetId: id,
             categoryId,
-            plannedCents,
+            plannedCents: submitted.get(categoryId) ?? 0,
+            notes: notes.get(categoryId) ?? null,
           })),
         )
         .onConflictDoUpdate({
           target: [budgetLines.budgetId, budgetLines.categoryId],
-          set: { plannedCents: sql`excluded.planned_cents` },
+          set: { plannedCents: sql`excluded.planned_cents`, notes: sql`excluded.notes` },
         });
     }
 

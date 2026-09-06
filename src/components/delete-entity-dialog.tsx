@@ -99,7 +99,7 @@ export function DeleteEntityDialog({
         <DialogHeader>
           <DialogTitle>{t(`${verb}${entityKey}Title` as "deleteDocumentTitle", values)}</DialogTitle>
           <DialogDescription>
-            {t(`${verb}${entityKey}Description` as "deleteDocumentDescription")}
+            {t(`${verb}${entityKey}Description` as "deleteDocumentDescription", values)}
           </DialogDescription>
         </DialogHeader>
         <form action={action} className="flex flex-col gap-3">

@@ -33,7 +33,7 @@ import {
   SPONSORSHIP_EXPIRY_WINDOW_DAYS,
 } from "@/lib/sponsorship";
 import { Link } from "@/i18n/navigation";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader, SectionHeading } from "@/components/page-header";
 import { StatTile } from "@/components/stat-tile";
 import { DeleteSponsorContactDialog } from "@/components/patrocinadores/delete-sponsor-contact-dialog";
 import { DeleteSponsorDialog } from "@/components/patrocinadores/delete-sponsor-dialog";
@@ -304,9 +304,7 @@ export default async function SponsorDetailPage({
         >
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("contactSection")}
-              </h2>
+              <SectionHeading title={t("contactSection")} />
               <dl className="grid grid-cols-2 gap-3">
                 <InfoRow
                   label={t("contactPersonLabel")}
@@ -350,9 +348,7 @@ export default async function SponsorDetailPage({
 
             {sponsor.fiscalName || sponsor.taxId || sponsor.fiscalAddress ? (
               <div className="flex flex-col gap-3">
-                <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  {t("fiscalSection")}
-                </h2>
+                <SectionHeading title={t("fiscalSection")} />
                 <dl className="grid grid-cols-2 gap-3">
                   <InfoRow
                     label={t("fiscalNameLabel")}
@@ -369,9 +365,7 @@ export default async function SponsorDetailPage({
 
             {sponsor.notes ? (
               <div className="flex flex-col gap-3">
-                <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  {t("notesLabel")}
-                </h2>
+                <SectionHeading title={t("notesLabel")} />
                 <p className="text-sm whitespace-pre-wrap">{sponsor.notes}</p>
               </div>
             ) : null}
@@ -383,7 +377,7 @@ export default async function SponsorDetailPage({
           keepMounted
           className="flex flex-col gap-6"
         >
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-2.5 sm:grid-cols-3">
             <StatTile
               label={t("committedLabel")}
               value={formatAmount(committedCents) ?? "—"}
@@ -391,23 +385,23 @@ export default async function SponsorDetailPage({
             <StatTile
               label={t("collectedLabel")}
               value={formatAmount(collectedCents) ?? "—"}
+              tone="positive"
             />
             <StatTile
               label={t("pendingLabel")}
               value={formatAmount(pendingCents) ?? "—"}
+              tone="warning"
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              {t("termsHistorySection")}
-            </h2>
-            {canManage ? (
-              <span className="print:hidden">
+          <SectionHeading
+            title={t("termsHistorySection")}
+            actions={
+              canManage ? (
                 <SponsorshipTermDialog mode="create" sponsorId={sponsor.id} />
-              </span>
-            ) : null}
-          </div>
+              ) : undefined
+            }
+          />
 
           {sponsor.terms.length === 0 ? (
             <SectionPlaceholder size="compact" title={t("noTermsDescription")} />
@@ -714,16 +708,14 @@ export default async function SponsorDetailPage({
           keepMounted
           className="flex flex-col gap-4"
         >
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              {t("contactsSection")}
-            </h2>
-            {canManage ? (
-              <span className="print:hidden">
+          <SectionHeading
+            title={t("contactsSection")}
+            actions={
+              canManage ? (
                 <SponsorContactDialog mode="create" sponsorId={sponsor.id} />
-              </span>
-            ) : null}
-          </div>
+              ) : undefined
+            }
+          />
           {sponsor.contacts.length === 0 ? (
             <SectionPlaceholder size="compact" title={t("noContactsDescription")} />
           ) : (
@@ -770,12 +762,10 @@ export default async function SponsorDetailPage({
           keepMounted
           className="flex flex-col gap-4"
         >
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              {t("documentsSection")}
-            </h2>
-            {canManage ? (
-              <span className="print:hidden">
+          <SectionHeading
+            title={t("documentsSection")}
+            actions={
+              canManage ? (
                 <DocumentDialog
                   mode="create"
                   parentId={sponsor.id}
@@ -785,9 +775,9 @@ export default async function SponsorDetailPage({
                   addAction={addSponsorDocument}
                   updateAction={updateSponsorDocument}
                 />
-              </span>
-            ) : null}
-          </div>
+              ) : undefined
+            }
+          />
           {sponsor.documents.length === 0 ? (
             <SectionPlaceholder size="compact" title={t("noDocumentsDescription")} />
           ) : (
@@ -864,9 +854,7 @@ export default async function SponsorDetailPage({
           keepMounted
           className="flex flex-col gap-4"
         >
-          <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("notesSection")}
-          </h2>
+          <SectionHeading title={t("notesSection")} />
           <NotesLog
             parentId={sponsor.id}
             formKey="sponsorId"

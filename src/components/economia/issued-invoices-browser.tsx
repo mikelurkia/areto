@@ -34,8 +34,9 @@ import {
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { usePagedRows } from "@/hooks/use-paged-rows";
-import { ISSUED_INVOICE_STATUS_TONE, LEDGER_PARAM, type Ledger } from "@/lib/economia";
+import { ISSUED_INVOICE_STATUS_TONE, LEDGER_PARAM, type Ledger, type LedgerFilter } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 const FILTER_DEFAULTS = { q: "", estado: "all" };
 
@@ -43,20 +44,19 @@ export function IssuedInvoicesBrowser({
   invoices,
   seasons,
   categories,
-  ledger,
+  filter,
   seasonId,
   manageableLedgers,
   locale,
-  canManage,
 }: {
   invoices: IssuedInvoiceRow[];
   seasons: NamedOption[];
   categories: NamedOption[];
-  ledger: Ledger;
+  /** "both" mezcla filas de los dos libros en la tabla, con badge de libro. */
+  filter: LedgerFilter;
   seasonId: string;
   manageableLedgers: readonly Ledger[];
   locale: string;
-  canManage: boolean;
 }) {
   const t = useTranslations("Economia");
   const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
@@ -79,12 +79,21 @@ export function IssuedInvoicesBrowser({
   }, [invoices, query, status]);
 
   // Una anulada no suma, y una rectificativa resta sola: lleva importes en
-  // negativo, así que el total emitido cuadra sin casos especiales.
-  const totals = useMemo(() => {
-    let issued = 0;
-    for (const i of filtered) if (i.status !== "cancelled") issued += i.totalCents;
-    return { issued, count: filtered.length };
+  // negativo, así que el total emitido cuadra sin casos especiales. Se
+  // agrupa por libro — nunca sumado entre libros.
+  const totalsByLedger = useMemo(() => {
+    const map = new Map<Ledger, { issued: number; count: number }>();
+    for (const i of filtered) {
+      const side = map.get(i.ledger) ?? { issued: 0, count: 0 };
+      if (i.status !== "cancelled") side.issued += i.totalCents;
+      side.count += 1;
+      map.set(i.ledger, side);
+    }
+    return map;
   }, [filtered]);
+
+  const showLedgerColumn = filter === "both";
+  const canManageAny = manageableLedgers.length > 0;
 
   const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
@@ -97,7 +106,7 @@ export function IssuedInvoicesBrowser({
   // Los filtros viven en estado local y viajan al libro imprimible por la URL,
   // que es lo que le permite reproducir en servidor la misma selección.
   const printParams = new URLSearchParams();
-  printParams.set(LEDGER_PARAM, ledger);
+  printParams.set(LEDGER_PARAM, filter);
   printParams.set("season", seasonId);
   if (status !== "all") printParams.set("estado", status);
   if (query.trim()) printParams.set("q", query.trim());
@@ -125,9 +134,18 @@ export function IssuedInvoicesBrowser({
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <StatTile label={t("totalIssuedLabel")} value={formatCents(totals.issued, locale)} />
-        <StatTile label={t("invoiceCountLabel")} value={String(totals.count)} />
+      <div className={cn("grid gap-4", showLedgerColumn && "md:grid-cols-2")}>
+        {[...totalsByLedger.entries()].map(([ledger, totals]) => (
+          <div key={ledger} className="flex flex-col gap-2">
+            {showLedgerColumn ? (
+              <StatusBadge tone="neutral" label={t(`ledger_${ledger}`)} />
+            ) : null}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <StatTile label={t("totalIssuedLabel")} value={formatCents(totals.issued, locale)} />
+              <StatTile label={t("invoiceCountLabel")} value={String(totals.count)} />
+            </div>
+          </div>
+        ))}
       </div>
 
       <FiltersBar
@@ -175,7 +193,8 @@ export function IssuedInvoicesBrowser({
                 <TableHead priority="tertiary">{t("invoiceDueDateLabel")}</TableHead>
                 <TableHead className="text-right">{t("invoiceTotalLabel")}</TableHead>
                 <TableHead priority="secondary">{t("invoiceStatusLabel")}</TableHead>
-                {canManage ? <TableHead className="w-12" /> : null}
+                {showLedgerColumn ? <TableHead priority="tertiary" /> : null}
+                {canManageAny ? <TableHead className="w-12" /> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -205,20 +224,27 @@ export function IssuedInvoicesBrowser({
                       label={t(`issuedInvoiceStatus_${i.status}`)}
                     />
                   </TableCell>
-                  {canManage ? (
+                  {showLedgerColumn ? (
+                    <TableCell priority="tertiary">
+                      <StatusBadge tone="neutral" label={t(`ledger_${i.ledger}`)} />
+                    </TableCell>
+                  ) : null}
+                  {canManageAny ? (
                     <TableCell>
-                      <span className="flex justify-end">
-                        <IssuedInvoiceDialog
-                          mode="edit"
-                          invoice={i}
-                          fileName={null}
-                          fileUrl={null}
-                          ledger={ledger}
-                          manageableLedgers={manageableLedgers}
-                          seasons={seasons}
-                          categories={categories}
-                        />
-                      </span>
+                      {manageableLedgers.includes(i.ledger) ? (
+                        <span className="flex justify-end">
+                          <IssuedInvoiceDialog
+                            mode="edit"
+                            invoice={i}
+                            fileName={null}
+                            fileUrl={null}
+                            ledger={i.ledger}
+                            manageableLedgers={manageableLedgers}
+                            seasons={seasons}
+                            categories={categories}
+                          />
+                        </span>
+                      ) : null}
                     </TableCell>
                   ) : null}
                 </TableRow>

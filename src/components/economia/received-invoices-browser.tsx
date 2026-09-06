@@ -35,8 +35,9 @@ import {
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { usePagedRows } from "@/hooks/use-paged-rows";
-import { LEDGER_PARAM, RECEIVED_INVOICE_STATUS_TONE, type Ledger } from "@/lib/economia";
+import { LEDGER_PARAM, RECEIVED_INVOICE_STATUS_TONE, type Ledger, type LedgerFilter } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 const FILTER_DEFAULTS = { q: "", proveedor: "all", estado: "all" };
 
@@ -50,22 +51,21 @@ export function ReceivedInvoicesBrowser({
   seasons,
   teams,
   categories,
-  ledger,
+  filter,
   seasonId,
   manageableLedgers,
   locale,
-  canManage,
 }: {
   invoices: ReceivedInvoiceListRow[];
   suppliers: NamedOption[];
   seasons: NamedOption[];
   teams: NamedOption[];
   categories: NamedOption[];
-  ledger: Ledger;
+  /** "both" mezcla filas de los dos libros en la tabla, con badge de libro. */
+  filter: LedgerFilter;
   seasonId: string;
   manageableLedgers: readonly Ledger[];
   locale: string;
-  canManage: boolean;
 }) {
   const t = useTranslations("Economia");
   const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
@@ -88,15 +88,21 @@ export function ReceivedInvoicesBrowser({
     return result;
   }, [invoices, query, supplier, status]);
 
-  const totals = useMemo(() => {
-    let pending = 0;
-    let paid = 0;
+  // Totales agrupados por libro — nunca sumados entre libros, misma regla que
+  // en `movements-browser.tsx`.
+  const totalsByLedger = useMemo(() => {
+    const map = new Map<Ledger, { pending: number; paid: number }>();
     for (const i of filtered) {
-      if (i.status === "paid") paid += i.totalCents;
-      else if (i.status === "pending") pending += i.totalCents;
+      const side = map.get(i.ledger) ?? { pending: 0, paid: 0 };
+      if (i.status === "paid") side.paid += i.totalCents;
+      else if (i.status === "pending") side.pending += i.totalCents;
+      map.set(i.ledger, side);
     }
-    return { pending, paid };
+    return map;
   }, [filtered]);
+
+  const showLedgerColumn = filter === "both";
+  const canManageAny = manageableLedgers.length > 0;
 
   const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
@@ -110,7 +116,7 @@ export function ReceivedInvoicesBrowser({
   // la URL: es lo que le permite reproducir en servidor la misma selección
   // que hay en pantalla (mismo patrón que `medical-panel-browser.tsx`).
   const printParams = new URLSearchParams();
-  printParams.set(LEDGER_PARAM, ledger);
+  printParams.set(LEDGER_PARAM, filter);
   printParams.set("season", seasonId);
   if (supplier !== "all") printParams.set("proveedor", supplier);
   if (status !== "all") printParams.set("estado", status);
@@ -139,9 +145,18 @@ export function ReceivedInvoicesBrowser({
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <StatTile label={t("totalPendingLabel")} value={formatCents(totals.pending, locale)} />
-        <StatTile label={t("totalPaidLabel")} value={formatCents(totals.paid, locale)} />
+      <div className={cn("grid gap-4", showLedgerColumn && "md:grid-cols-2")}>
+        {[...totalsByLedger.entries()].map(([ledger, totals]) => (
+          <div key={ledger} className="flex flex-col gap-2">
+            {showLedgerColumn ? (
+              <StatusBadge tone="neutral" label={t(`ledger_${ledger}`)} />
+            ) : null}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <StatTile label={t("totalPendingLabel")} value={formatCents(totals.pending, locale)} />
+              <StatTile label={t("totalPaidLabel")} value={formatCents(totals.paid, locale)} />
+            </div>
+          </div>
+        ))}
       </div>
 
       <FiltersBar
@@ -206,7 +221,8 @@ export function ReceivedInvoicesBrowser({
                 <TableHead priority="tertiary">{t("invoiceDueDateLabel")}</TableHead>
                 <TableHead className="text-right">{t("invoiceTotalLabel")}</TableHead>
                 <TableHead priority="secondary">{t("invoiceStatusLabel")}</TableHead>
-                {canManage ? <TableHead className="w-20" /> : null}
+                {showLedgerColumn ? <TableHead priority="tertiary" /> : null}
+                {canManageAny ? <TableHead className="w-20" /> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -236,23 +252,30 @@ export function ReceivedInvoicesBrowser({
                       label={t(`invoiceStatus_${i.status}`)}
                     />
                   </TableCell>
-                  {canManage ? (
+                  {showLedgerColumn ? (
+                    <TableCell priority="tertiary">
+                      <StatusBadge tone="neutral" label={t(`ledger_${i.ledger}`)} />
+                    </TableCell>
+                  ) : null}
+                  {canManageAny ? (
                     <TableCell>
-                      <span className="flex justify-end gap-1">
-                        <ReceivedInvoiceDialog
-                          mode="edit"
-                          invoice={i}
-                          fileName={null}
-                          fileUrl={null}
-                          ledger={ledger}
-                          manageableLedgers={manageableLedgers}
-                          suppliers={suppliers}
-                          seasons={seasons}
-                          teams={teams}
-                          categories={categories}
-                        />
-                        <DeleteReceivedInvoiceDialog id={i.id} number={i.invoiceNumber} />
-                      </span>
+                      {manageableLedgers.includes(i.ledger) ? (
+                        <span className="flex justify-end gap-1">
+                          <ReceivedInvoiceDialog
+                            mode="edit"
+                            invoice={i}
+                            fileName={null}
+                            fileUrl={null}
+                            ledger={i.ledger}
+                            manageableLedgers={manageableLedgers}
+                            suppliers={suppliers}
+                            seasons={seasons}
+                            teams={teams}
+                            categories={categories}
+                          />
+                          <DeleteReceivedInvoiceDialog id={i.id} number={i.invoiceNumber} />
+                        </span>
+                      ) : null}
                     </TableCell>
                   ) : null}
                 </TableRow>

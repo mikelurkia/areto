@@ -294,7 +294,11 @@ export function ReceivedInvoiceDialog(props: ReceivedInvoiceDialogProps) {
               </Field>
               <Field>
                 <FieldLabel htmlFor="invoice-status">{t("invoiceStatusLabel")}</FieldLabel>
-                <Select name="status" defaultValue={invoice?.status ?? "pending"}>
+                <Select
+                  key={invoice?.status ?? "pending"}
+                  name="status"
+                  defaultValue={invoice?.status ?? "pending"}
+                >
                   <SelectTrigger id="invoice-status" className="w-full">
                     <SelectValue>
                       {(value: string) => t(`invoiceStatus_${value}`)}

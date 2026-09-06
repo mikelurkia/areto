@@ -1,9 +1,10 @@
 import { ArrowLeftRightIcon, LandmarkIcon, UploadIcon } from "lucide-react";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { accountMovements, economicCategories, financialAccounts, seasons } from "@/db/schema";
+import { EconomiaLedgerFilter } from "@/components/economia/economia-ledger-filter";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { MovementDialog } from "@/components/economia/movement-dialog";
 import { MovementsBrowser } from "@/components/economia/movements-browser";
@@ -17,7 +18,8 @@ import {
   ECONOMIA_VIEW_PERMISSIONS,
   LEDGER_PARAM,
   canManageLedger,
-  resolveLedger,
+  ledgersForFilter,
+  resolveLedgerFilter,
   visibleLedgers,
 } from "@/lib/economia";
 
@@ -61,8 +63,11 @@ export default async function MovimientosPage({
     }),
   ]);
 
-  const ledger = resolveLedger(query[LEDGER_PARAM], visible)!;
-  const canManage = canManageLedger(user, ledger);
+  const filter = resolveLedgerFilter(query[LEDGER_PARAM], visible)!;
+  const ledgers = ledgersForFilter(filter, visible);
+  const manageableLedgers = visible.filter((l) => canManageLedger(user, l));
+  const canManage = manageableLedgers.length > 0;
+  const navLedger = filter === "both" ? visible[0] : filter;
   const season =
     allSeasons.find((s) => s.id === query.season) ??
     allSeasons.find((s) => s.isCurrent) ??
@@ -74,25 +79,32 @@ export default async function MovimientosPage({
   const movements = season
     ? await db.query.accountMovements.findMany({
         where: and(
-          eq(accountMovements.ledger, ledger),
+          inArray(accountMovements.ledger, ledgers),
           eq(accountMovements.seasonId, season.id),
         ),
         orderBy: [desc(accountMovements.bookedOn), desc(accountMovements.createdAt)],
         with: {
           account: { columns: { name: true } },
           category: { columns: { name: true } },
+          links: {
+            with: {
+              receivedInvoice: { columns: { id: true, invoiceNumber: true } },
+              issuedInvoice: { columns: { id: true, number: true } },
+            },
+          },
         },
       })
     : [];
 
   const accounts = await db.query.financialAccounts.findMany({
-    where: eq(financialAccounts.ledger, ledger),
-    columns: { id: true, name: true, isActive: true },
+    where: inArray(financialAccounts.ledger, ledgers),
+    columns: { id: true, name: true, isActive: true, ledger: true },
     orderBy: [asc(financialAccounts.name)],
   });
 
   const rows = movements.map((m) => ({
     id: m.id,
+    ledger: m.ledger,
     accountId: m.accountId,
     accountName: m.account.name,
     seasonId: m.seasonId,
@@ -106,12 +118,21 @@ export default async function MovimientosPage({
     categoryName: m.category?.name ?? null,
     source: m.source,
     notes: m.notes,
+    invoiceLinks: m.links.flatMap(
+      (l): { kind: "received" | "issued"; id: string; number: string }[] =>
+        l.receivedInvoice
+          ? [{ kind: "received", id: l.receivedInvoice.id, number: l.receivedInvoice.invoiceNumber }]
+          : l.issuedInvoice
+            ? [{ kind: "issued", id: l.issuedInvoice.id, number: l.issuedInvoice.number }]
+            : [],
+    ),
   }));
 
-  // Un apunte nuevo solo puede ir a una cuenta viva; las retiradas siguen
-  // apareciendo en el filtro porque sus apuntes viejos siguen en el listado.
+  // Un apunte nuevo solo puede ir a una cuenta viva y de un libro gestionable;
+  // las retiradas siguen apareciendo en el filtro de cuenta del listado porque
+  // sus apuntes viejos siguen en la tabla.
   const openAccounts = accounts
-    .filter((a) => a.isActive)
+    .filter((a) => a.isActive && manageableLedgers.includes(a.ledger))
     .map((a) => ({ id: a.id, name: a.name }));
   const categoryOptions = categories
     .filter((c) => c.isActive)
@@ -128,7 +149,7 @@ export default async function MovimientosPage({
             <SeasonSelect
               seasons={allSeasons}
               selectedId={season?.id ?? ""}
-              extraParams={visible.length > 1 ? { [LEDGER_PARAM]: ledger } : undefined}
+              extraParams={visible.length > 1 ? { [LEDGER_PARAM]: filter } : undefined}
             />
             {canManage && season && openAccounts.length > 0 ? (
               <>
@@ -139,7 +160,7 @@ export default async function MovimientosPage({
                     <Link
                       href={
                         visible.length > 1
-                          ? `/economia/movimientos/importar?${LEDGER_PARAM}=${ledger}`
+                          ? `/economia/movimientos/importar?${LEDGER_PARAM}=${navLedger}`
                           : "/economia/movimientos/importar"
                       }
                     />
@@ -160,7 +181,14 @@ export default async function MovimientosPage({
           </>
         }
       />
-      <EconomiaSectionNav current="movimientos" ledger={ledger} visible={visible} />
+      <EconomiaSectionNav
+        current="movimientos"
+        ledger={navLedger}
+        visible={visible}
+        ledgerFilterSlot={
+          <EconomiaLedgerFilter href="/economia/movimientos" filter={filter} visible={visible} />
+        }
+      />
 
       {accounts.length === 0 ? (
         <SectionPlaceholder
@@ -177,12 +205,13 @@ export default async function MovimientosPage({
       ) : (
         <MovementsBrowser
           movements={rows}
-          accounts={accounts.map((a) => ({ id: a.id, name: a.name }))}
+          accounts={accounts.map((a) => ({ id: a.id, name: a.name, ledger: a.ledger }))}
           seasons={seasonOptions}
           categories={categoryOptions}
           seasonId={season!.id}
           locale={locale}
-          canManage={canManage}
+          filter={filter}
+          manageableLedgers={manageableLedgers}
         />
       )}
     </div>

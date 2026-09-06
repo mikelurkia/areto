@@ -5,13 +5,12 @@ import { useTranslations } from "next-intl";
 
 import { saveBudgetLines } from "@/app/[locale]/(app)/economia/presupuesto/actions";
 import { EmptyValue } from "@/components/empty-value";
+import { ExecutionBar } from "@/components/economia/execution-bar";
 import { FormError } from "@/components/form-error";
-import { SectionHeading } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -110,32 +109,54 @@ function BudgetBlock({
 
   if (rows.length === 0) return null;
 
+  // Mismo tinte suave que ya usan el chip de icono de `StatTile` y la barra de
+  // `Execution` de esta misma tabla — el color diferencia ingreso de gasto sin
+  // introducir un bloque sólido ajeno al resto del módulo.
+  const tone = kind === "income" ? "text-success" : "text-destructive";
+  const rowTone = kind === "income" ? "bg-success/10" : "bg-destructive/10";
+  const cellBorder = "border border-border";
+
   return (
     <div className="flex flex-col gap-4">
-      <SectionHeading title={t(`categoryKind_${kind}`)} />
+      <span
+        className={cn(
+          "w-fit rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide uppercase",
+          rowTone,
+          tone,
+        )}
+      >
+        {t(`categoryKind_${kind}`)}
+      </span>
       <Card size="sm">
         <CardContent>
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
-              <TableRow>
-                <TableHead>{t("categoryNameLabel")}</TableHead>
-                <TableHead className="text-right">{t("plannedLabel")}</TableHead>
-                <TableHead priority="secondary" className="text-right">
+              <TableRow className={cn(rowTone, "[&>th]:h-8", "[&>th]:py-1.5")}>
+                <TableHead className={cn(cellBorder, "w-44")}>{t("categoryNameLabel")}</TableHead>
+                <TableHead className={cn(cellBorder, "w-36 text-right")}>
+                  {t("plannedLabel")}
+                </TableHead>
+                <TableHead priority="secondary" className={cn(cellBorder, "w-28 text-right")}>
                   {t("accruedLabel")}
                 </TableHead>
-                <TableHead priority="secondary" className="text-right">
+                <TableHead priority="secondary" className={cn(cellBorder, "w-28 text-right")}>
                   {t("cashLabel")}
                 </TableHead>
-                <TableHead priority="secondary" className="text-right">
+                <TableHead className={cn(cellBorder, "w-28 text-right")}>
                   {t("deviationLabel")}
                 </TableHead>
-                <TableHead className="text-right">{t("executionLabel")}</TableHead>
+                <TableHead priority="secondary" className={cn(cellBorder, "w-40")}>
+                  {t("notesLabel")}
+                </TableHead>
+                <TableHead priority="secondary" className={cn(cellBorder, "w-28 text-right")}>
+                  {t("executionLabel")}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => (
-                <TableRow key={row.categoryId}>
-                  <TableCell className="font-medium">
+                <TableRow key={row.categoryId} className="[&>td]:h-8 [&>td]:py-1">
+                  <TableCell className={cn(cellBorder, "font-medium")}>
                     <span className="flex items-center gap-2">
                       {row.name}
                       {row.isActive ? null : (
@@ -143,7 +164,7 @@ function BudgetBlock({
                       )}
                     </span>
                   </TableCell>
-                  <TableCell nowrap className="text-right">
+                  <TableCell nowrap className={cn(cellBorder, "text-right")}>
                     {editable ? (
                       <Input
                         // El campo no es controlado, así que su `defaultValue`
@@ -159,23 +180,41 @@ function BudgetBlock({
                           row.plannedCents === null ? "" : String(row.plannedCents / 100)
                         }
                         placeholder="0"
-                        className="ml-auto w-28 text-right"
+                        className="ml-auto h-7 w-28 py-1 text-right"
                       />
                     ) : (
                       formatCents(row.plannedCents ?? 0, locale)
                     )}
                   </TableCell>
-                  <TableCell priority="secondary" nowrap className="text-right">
+                  <TableCell priority="secondary" nowrap className={cn(cellBorder, "text-right")}>
                     {formatCents(row.accruedCents, locale)}
                   </TableCell>
-                  <TableCell priority="secondary" nowrap className="text-right">
+                  <TableCell priority="secondary" nowrap className={cn(cellBorder, "text-right")}>
                     {formatCents(row.cashCents, locale)}
                   </TableCell>
-                  <TableCell priority="secondary" nowrap className="text-right">
+                  <TableCell nowrap className={cn(cellBorder, "text-right")}>
                     <Signed cents={row.accruedCents - (row.plannedCents ?? 0)} locale={locale} />
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Execution kind={kind} pct={executionPct(row)} label={row.name} />
+                  <TableCell priority="secondary" className={cellBorder}>
+                    {editable ? (
+                      <Input
+                        key={`note:${row.categoryId}:${row.notes ?? ""}`}
+                        name={`note_${row.categoryId}`}
+                        aria-label={`${t("notesLabel")} — ${row.name}`}
+                        defaultValue={row.notes ?? ""}
+                        className="h-7 min-w-32 py-1"
+                      />
+                    ) : (
+                      (row.notes ?? <EmptyValue />)
+                    )}
+                  </TableCell>
+                  <TableCell priority="secondary" className={cn(cellBorder, "text-right")}>
+                    <ExecutionBar
+                      kind={kind}
+                      pct={executionPct(row)}
+                      label={row.name}
+                      className="ml-auto w-24"
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -183,25 +222,35 @@ function BudgetBlock({
             <TableFooter>
               {/* Una celda por columna, sin `colSpan`: al ocultarse las de
                   prioridad el número de celdas debe seguir cuadrando. */}
-              <TableRow>
-                <TableCell className="font-medium">{t("totalLabel")}</TableCell>
-                <TableCell nowrap className="text-right font-semibold">
+              <TableRow className={cn(rowTone, "[&>td]:h-8 [&>td]:py-1.5")}>
+                <TableCell className={cn(cellBorder, "font-medium")}>{t("totalLabel")}</TableCell>
+                <TableCell nowrap className={cn(cellBorder, "text-right font-semibold")}>
                   {formatCents(total.planned, locale)}
                 </TableCell>
-                <TableCell priority="secondary" nowrap className="text-right font-semibold">
+                <TableCell
+                  priority="secondary"
+                  nowrap
+                  className={cn(cellBorder, "text-right font-semibold")}
+                >
                   {formatCents(total.accrued, locale)}
                 </TableCell>
-                <TableCell priority="secondary" nowrap className="text-right font-semibold">
+                <TableCell
+                  priority="secondary"
+                  nowrap
+                  className={cn(cellBorder, "text-right font-semibold")}
+                >
                   {formatCents(total.cash, locale)}
                 </TableCell>
-                <TableCell priority="secondary" nowrap className="text-right font-semibold">
+                <TableCell nowrap className={cn(cellBorder, "text-right font-semibold")}>
                   <Signed cents={total.accrued - total.planned} locale={locale} />
                 </TableCell>
-                <TableCell className="text-right">
-                  <Execution
+                <TableCell priority="secondary" className={cellBorder} />
+                <TableCell priority="secondary" className={cn(cellBorder, "text-right")}>
+                  <ExecutionBar
                     kind={kind}
                     pct={total.planned ? (total.accrued / total.planned) * 100 : null}
                     label={t("totalLabel")}
+                    className="ml-auto w-24"
                   />
                 </TableCell>
               </TableRow>
@@ -210,51 +259,6 @@ function BudgetBlock({
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-/**
- * Ejecución sobre lo presupuestado. La barra se recorta al 100 % aunque el
- * porcentaje siga subiendo, que es lo que hace visible el exceso.
- *
- * Solo se colorea pasarse del presupuesto, nunca ir por debajo: en septiembre
- * no hay ni un ingreso cobrado todavía, y teñir de rojo la tabla entera no
- * dice nada de la salud del club.
- */
-function Execution({
-  kind,
-  pct,
-  label,
-}: {
-  kind: "income" | "expense";
-  pct: number | null;
-  label: string;
-}) {
-  if (pct === null) return <EmptyValue />;
-
-  const over = pct > 100;
-  const adverse = over && kind === "expense";
-  const favourable = over && kind === "income";
-
-  return (
-    <Progress
-      value={Math.min(pct, 100)}
-      aria-label={label}
-      className={cn(
-        "ml-auto w-24 gap-1",
-        adverse && "[&_[data-slot=progress-indicator]]:bg-destructive",
-        favourable && "[&_[data-slot=progress-indicator]]:bg-success",
-      )}
-    >
-      <span
-        className={cn(
-          "ml-auto text-xs tabular-nums",
-          adverse ? "text-destructive" : favourable ? "text-success" : "text-muted-foreground",
-        )}
-      >
-        {Math.round(pct)}%
-      </span>
-    </Progress>
   );
 }
 
