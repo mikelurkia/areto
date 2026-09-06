@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   CameraOffIcon,
+  FileSignatureIcon,
   GraduationCapIcon,
   StethoscopeIcon,
   UserXIcon,
@@ -43,6 +44,7 @@ export type PersonAlert =
   | "medicalMissing"
   | "medicalExpired"
   | "medicalSoon"
+  | "dataConsentMissing"
   | "qualificationSoon"
   | "photoConsentMissing";
 
@@ -51,6 +53,7 @@ export const ALERT_TONE: Record<PersonAlert, StatusTone> = {
   medicalExpired: "danger",
   medicalMissing: "warning",
   medicalSoon: "warning",
+  dataConsentMissing: "warning",
   qualificationSoon: "warning",
   photoConsentMissing: "warning",
 };
@@ -66,6 +69,7 @@ export const ALERT_ICON: Record<PersonAlert, LucideIcon> = {
   medicalExpired: StethoscopeIcon,
   medicalMissing: StethoscopeIcon,
   medicalSoon: StethoscopeIcon,
+  dataConsentMissing: FileSignatureIcon,
   qualificationSoon: GraduationCapIcon,
   photoConsentMissing: CameraOffIcon,
 };
@@ -80,6 +84,7 @@ type AlertInput = {
     team: { category: TeamCategoryValue | null; season: { isCurrent: boolean } };
   }[];
   isPastMember: boolean;
+  hasCurrentSeasonDataConsent: boolean;
 };
 
 /** `YYYY-MM-DD` de hoy y del final de una ventana, para comparar como texto. */
@@ -122,6 +127,10 @@ export function personAlerts(person: AlertInput, today: Date = new Date()): Pers
   if (status === "missing") alerts.push("medicalMissing");
   else if (status === "expired") alerts.push("medicalExpired");
   else if (status === "expiring") alerts.push("medicalSoon");
+
+  if (requiresCheckup && !person.hasCurrentSeasonDataConsent) {
+    alerts.push("dataConsentMissing");
+  }
 
   const qualification = expiryBounds(EXPIRY_WINDOW_DAYS, today);
   const qualificationSoon = person.qualifications.some(

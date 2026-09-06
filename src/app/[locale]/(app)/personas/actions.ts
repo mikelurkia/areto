@@ -11,6 +11,7 @@ import {
   injuryPlace,
   matchMinute,
   memberships,
+  personDataConsents,
   personDocuments,
   personGuardians,
   personInjuryReports,
@@ -20,6 +21,7 @@ import {
   personTags,
   persons,
   pitchSurface,
+  seasons,
 } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { recordAuditEvent } from "@/lib/audit-log";
@@ -165,6 +167,29 @@ async function removeMedicalCheckupFileObject(path: string) {
   await removeFile(MEDICAL_CHECKUPS_BUCKET, path);
 }
 
+const DATA_CONSENTS_BUCKET = "person-data-consents";
+const MAX_DATA_CONSENT_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+const ALLOWED_DATA_CONSENT_FILE_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
+async function uploadDataConsentFile(
+  personId: string,
+  consentId: string,
+  file: File,
+): Promise<string> {
+  const path = `${personId}/${consentId}.${extensionFromMimeType(file.type)}`;
+  await uploadFile(DATA_CONSENTS_BUCKET, path, file);
+  return path;
+}
+
+async function removeDataConsentFileObject(path: string) {
+  await removeFile(DATA_CONSENTS_BUCKET, path);
+}
+
 async function uploadInjuryReportFile(
   personId: string,
   reportId: string,
@@ -263,6 +288,7 @@ function uniqueViolationMessage(
   if (constraint === "club_members_member_number_idx") return t("memberNumberTaken");
   if (constraint === "persons_national_id_idx") return t("nationalIdTaken");
   if (constraint === "persons_email_idx") return t("emailTaken");
+  if (constraint === "person_data_consents_person_season_idx") return t("dataConsentSeasonTaken");
   return null;
 }
 
@@ -1072,6 +1098,164 @@ export async function deleteMedicalCheckup(
   updateTag(INTEGRITY_ISSUES_TAG);
   revalidateRoutes(ROUTE.personaFicha, ROUTE.medico, ROUTE.medicoListado, ROUTE.dashboard);
   return { message: t("medicalCheckupDeleted") };
+}
+
+function readDataConsentFields(formData: FormData) {
+  return {
+    signedOn: String(formData.get("signedOn") ?? "").trim(),
+    notes: String(formData.get("notes") ?? "").trim(),
+    removeFile: formData.get("removeFile") === "on",
+  };
+}
+
+function readDataConsentFile(formData: FormData): File | null {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return null;
+  return file;
+}
+
+export async function addDataConsent(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  const user = await requirePermission("personas.medical.manage");
+
+  const personId = String(formData.get("personId") ?? "");
+  const fields = readDataConsentFields(formData);
+  const file = readDataConsentFile(formData);
+  if (file && !ALLOWED_DATA_CONSENT_FILE_TYPES.includes(file.type)) {
+    return { error: t("dataConsentFileInvalidType") };
+  }
+  if (file && file.size > MAX_DATA_CONSENT_FILE_BYTES) {
+    return { error: t("dataConsentFileTooLarge") };
+  }
+
+  const currentSeason = await db.query.seasons.findFirst({
+    where: eq(seasons.isCurrent, true),
+    columns: { id: true },
+  });
+  if (!currentSeason) return { error: t("dataConsentNoCurrentSeason") };
+
+  let consent: { id: string };
+  try {
+    [consent] = await db
+      .insert(personDataConsents)
+      .values({
+        personId,
+        seasonId: currentSeason.id,
+        signedOn: fields.signedOn || null,
+        notes: fields.notes || null,
+      })
+      .returning({ id: personDataConsents.id });
+  } catch (error) {
+    const message = uniqueViolationMessage(error, t);
+    if (message) return { error: message };
+    throw error;
+  }
+
+  if (file) {
+    const path = await uploadDataConsentFile(personId, consent.id, file);
+    await db
+      .update(personDataConsents)
+      .set({ filePath: path })
+      .where(eq(personDataConsents.id, consent.id));
+  }
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "create",
+    entityType: "person_data_consent",
+    entityId: consent.id,
+    metadata: { personId },
+  });
+  revalidateRoutes(ROUTE.personaFicha, ROUTE.personas);
+  return { message: t("dataConsentAdded") };
+}
+
+export async function updateDataConsent(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  const user = await requirePermission("personas.medical.manage");
+
+  const id = String(formData.get("id") ?? "");
+  const fields = readDataConsentFields(formData);
+  const file = readDataConsentFile(formData);
+  if (file && !ALLOWED_DATA_CONSENT_FILE_TYPES.includes(file.type)) {
+    return { error: t("dataConsentFileInvalidType") };
+  }
+  if (file && file.size > MAX_DATA_CONSENT_FILE_BYTES) {
+    return { error: t("dataConsentFileTooLarge") };
+  }
+
+  const existing = await db.query.personDataConsents.findFirst({
+    where: eq(personDataConsents.id, id),
+    columns: { personId: true, filePath: true },
+  });
+  if (!existing) return { error: t("dataConsentNotFound") };
+
+  await db
+    .update(personDataConsents)
+    .set({
+      signedOn: fields.signedOn || null,
+      notes: fields.notes || null,
+    })
+    .where(eq(personDataConsents.id, id));
+
+  if (file) {
+    if (existing.filePath) await removeDataConsentFileObject(existing.filePath);
+    const path = await uploadDataConsentFile(existing.personId, id, file);
+    await db
+      .update(personDataConsents)
+      .set({ filePath: path })
+      .where(eq(personDataConsents.id, id));
+  } else if (fields.removeFile && existing.filePath) {
+    await removeDataConsentFileObject(existing.filePath);
+    await db
+      .update(personDataConsents)
+      .set({ filePath: null })
+      .where(eq(personDataConsents.id, id));
+  }
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "update",
+    entityType: "person_data_consent",
+    entityId: id,
+    metadata: { personId: existing.personId },
+  });
+  revalidateRoutes(ROUTE.personaFicha, ROUTE.personas);
+  return { message: t("dataConsentUpdated") };
+}
+
+export async function deleteDataConsent(
+  _prev: PersonState,
+  formData: FormData,
+): Promise<PersonState> {
+  const t = await getTranslations("Personas");
+  const user = await requirePermission("personas.medical.manage");
+
+  const id = String(formData.get("id") ?? "");
+
+  const existing = await db.query.personDataConsents.findFirst({
+    where: eq(personDataConsents.id, id),
+    columns: { personId: true, filePath: true },
+  });
+
+  await db.delete(personDataConsents).where(eq(personDataConsents.id, id));
+  if (existing?.filePath) await removeDataConsentFileObject(existing.filePath);
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "delete",
+    entityType: "person_data_consent",
+    entityId: id,
+    metadata: existing ? { personId: existing.personId } : undefined,
+  });
+
+  revalidateRoutes(ROUTE.personaFicha, ROUTE.personas);
+  return { message: t("dataConsentDeleted") };
 }
 
 export async function deleteInjuryReport(

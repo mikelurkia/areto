@@ -18,6 +18,7 @@ export type RosterHealthAlerts = {
   noJersey: number;
   medicalExpired: number;
   medicalExpiring: number;
+  dataConsentMissing: number;
   ageOutOfRange: number;
 };
 
@@ -68,6 +69,13 @@ export function RosterHealth({
     alertBadges.push(
       <Badge key="medsoon" variant="secondary">
         {t("healthMedicalExpiring", { count: alerts.medicalExpiring })}
+      </Badge>,
+    );
+  }
+  if (alerts.dataConsentMissing > 0) {
+    alertBadges.push(
+      <Badge key="dataconsent" variant="secondary">
+        {t("healthDataConsentMissing", { count: alerts.dataConsentMissing })}
       </Badge>,
     );
   }

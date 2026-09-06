@@ -25,6 +25,7 @@ type EntityKey =
   | "Document"
   | "Qualification"
   | "MedicalCheckup"
+  | "DataConsent"
   | "InjuryReport"
   | "InjuryReportFile"
   | "Team"

@@ -79,6 +79,8 @@ export function EquiposBrowser({
       lines.push(t("healthMedicalExpired", { count: alerts.medicalExpired }));
     if (alerts.medicalExpiring > 0)
       lines.push(t("healthMedicalExpiring", { count: alerts.medicalExpiring }));
+    if (alerts.dataConsentMissing > 0)
+      lines.push(t("healthDataConsentMissing", { count: alerts.dataConsentMissing }));
     if (alerts.noJersey > 0) lines.push(t("healthNoJersey", { count: alerts.noJersey }));
     return lines;
   }
