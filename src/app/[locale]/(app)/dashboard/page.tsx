@@ -26,6 +26,7 @@ import {
 } from "@/lib/data-integrity";
 import { medicalReferenceDates } from "@/lib/medical-panel-rows";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
+import { TONE_VARIANT } from "@/lib/status-tone";
 import { loadUpcomingFixtures } from "@/lib/upcoming-fixtures";
 import { Link } from "@/i18n/navigation";
 import { AlertTile } from "@/components/dashboard/alert-tile";
@@ -185,7 +186,7 @@ async function ReviewCard() {
                 {t(`review.${row.key}`)}
               </Link>
               <Badge
-                variant={row.severity === "hard" ? "destructive" : "warning"}
+                variant={TONE_VARIANT[row.severity === "hard" ? "danger" : "warning"]}
                 className="ml-auto"
               >
                 {row.count}
@@ -276,7 +277,7 @@ export default async function DashboardPage({
   const canSeeCalendario = hasPermission(user, "calendario.view");
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-6">
       <PageHeader title={t("title")} description={t("subtitle")} />
 
       {canSeePersonas ? (

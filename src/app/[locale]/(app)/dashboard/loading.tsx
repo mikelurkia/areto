@@ -2,7 +2,7 @@ import { AlertTilesSkeleton, CardSkeleton, PageHeaderSkeleton } from "@/componen
 
 export default function Loading() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-6">
       <PageHeaderSkeleton />
       {/* Rejilla de alertas, tarjeta de revisión y cuadro de la próxima jornada. */}
       <AlertTilesSkeleton />
