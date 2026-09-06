@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-06T00:00:00.000Z",
+  "title": "Design System: Areto",
+  "extensions": {
+    "colorMeta": {
+      "institutional-navy": {
+        "role": "primary",
+        "displayName": "Azul Institucional",
+        "canonical": "oklch(0.32 0.09 258)",
+        "tonalRamp": [
+          "oklch(0.16 0.04 258)",
+          "oklch(0.22 0.06 258)",
+          "oklch(0.28 0.08 258)",
+          "oklch(0.32 0.09 258)",
+          "oklch(0.44 0.1 258)",
+          "oklch(0.56 0.11 258)",
+          "oklch(0.7 0.11 258)",
+          "oklch(0.88 0.05 258)"
+        ]
+      },
+      "warm-amber": {
+        "role": "secondary",
+        "displayName": "Ámbar Cálido",
+        "canonical": "oklch(0.55 0.16 75)",
+        "tonalRamp": [
+          "oklch(0.22 0.06 75)",
+          "oklch(0.32 0.1 75)",
+          "oklch(0.44 0.13 75)",
+          "oklch(0.55 0.16 75)",
+          "oklch(0.65 0.15 75)",
+          "oklch(0.75 0.13 75)",
+          "oklch(0.85 0.09 75)",
+          "oklch(0.95 0.04 75)"
+        ]
+      },
+      "neutral-bg": {
+        "role": "neutral",
+        "displayName": "Fondo",
+        "canonical": "oklch(0.985 0.004 250)"
+      },
+      "neutral-card": {
+        "role": "neutral",
+        "displayName": "Tarjeta",
+        "canonical": "oklch(0.995 0.003 250)"
+      },
+      "neutral-foreground": {
+        "role": "neutral",
+        "displayName": "Texto Principal",
+        "canonical": "oklch(0.22 0.02 258)"
+      },
+      "neutral-muted": {
+        "role": "neutral",
+        "displayName": "Apagado",
+        "canonical": "oklch(0.95 0.012 245)"
+      },
+      "neutral-border": {
+        "role": "neutral",
+        "displayName": "Borde",
+        "canonical": "oklch(0.88 0.012 250)"
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Éxito",
+        "canonical": "oklch(0.55 0.12 145)"
+      },
+      "warning": {
+        "role": "semantic",
+        "displayName": "Aviso",
+        "canonical": "oklch(0.78 0.13 75)"
+      },
+      "destructive": {
+        "role": "semantic",
+        "displayName": "Peligro",
+        "canonical": "oklch(0.58 0.215 25)"
+      }
+    },
+    "typographyMeta": {
+      "heading": {
+        "displayName": "Barlow Condensed",
+        "purpose": "Títulos de página/tarjeta y cifras destacadas (StatTile). Nunca cuerpo de texto."
+      },
+      "body": {
+        "displayName": "Work Sans",
+        "purpose": "Todo el texto corrido, tablas, descripciones y controles de formulario."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "button-press",
+        "value": "transform 0.15s ease; active: translateY(1px)",
+        "purpose": "Feedback táctil al pulsar un botón, sin sombra."
+      }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal de una página o formulario.",
+      "html": "<button class=\"ds-btn-primary\">Guardar cambios</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; gap: 6px; border-radius: 6.4px; border: none; background: oklch(0.32 0.09 258); color: oklch(0.98 0.006 258); font-size: 14px; font-weight: 500; font-family: 'Work Sans', sans-serif; transition: background 0.15s, transform 0.15s; } .ds-btn-primary:hover { background: color-mix(in oklch, oklch(0.32 0.09 258) 80%, transparent); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: none; border: 1px solid oklch(0.32 0.09 258); box-shadow: 0 0 0 3px oklch(0.32 0.09 258 / 0.5); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Acción secundaria — mismo radio y altura que el primario, fondo transparente.",
+      "html": "<button class=\"ds-btn-outline\">Cancelar</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; border-radius: 6.4px; border: 1px solid oklch(0.88 0.012 250); background: oklch(0.985 0.004 250); color: oklch(0.22 0.02 258); font-size: 14px; font-weight: 500; font-family: 'Work Sans', sans-serif; transition: background 0.15s; } .ds-btn-outline:hover { background: oklch(0.95 0.012 245); }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-highlight",
+      "description": "Estado semántico con tono compartido (aquí, tono 'highlight' / ámbar).",
+      "html": "<span class=\"ds-badge-highlight\">Destacado</span>",
+      "css": ".ds-badge-highlight { display: inline-flex; align-items: center; justify-content: center; height: 20px; padding: 2px 8px; border-radius: 9999px; background: oklch(0.55 0.16 75); color: oklch(0.98 0.008 75); font-size: 12px; font-weight: 500; font-family: 'Work Sans', sans-serif; white-space: nowrap; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Contenedor canónico de sección; delimitado por anillo, no por sombra.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Título de tarjeta</div><div class=\"ds-card-body\">Contenido de la tarjeta.</div></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 16px; border-radius: 9px; background: oklch(0.995 0.003 250); color: oklch(0.22 0.02 258); padding: 16px; box-shadow: 0 0 0 1px oklch(0.22 0.02 258 / 0.1); } .ds-card-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 500; font-size: 16px; line-height: 1.3; } .ds-card-body { font-family: 'Work Sans', sans-serif; font-size: 14px; color: oklch(0.42 0.02 250); }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo de texto estándar de formulario.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Nombre completo\" />",
+      "css": ".ds-input { height: 32px; width: 100%; padding: 4px 10px; border-radius: 6.4px; border: 1px solid oklch(0.88 0.012 250); background: transparent; font-size: 16px; font-family: 'Work Sans', sans-serif; color: oklch(0.22 0.02 258); } .ds-input::placeholder { color: oklch(0.42 0.02 250); } .ds-input:focus-visible { outline: none; border-color: oklch(0.32 0.09 258); box-shadow: 0 0 0 3px oklch(0.32 0.09 258 / 0.5); }"
+    },
+    {
+      "name": "Stat Tile",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "KPI: etiqueta apagada + cifra grande en tipografía de encabezado. Componente de firma del sistema.",
+      "html": "<div class=\"ds-stat-tile\"><p class=\"ds-stat-label\">Cuotas cobradas</p><p class=\"ds-stat-value\">42.500 €</p></div>",
+      "css": ".ds-stat-tile { display: flex; flex-direction: column; gap: 2px; border-radius: 9px; background: oklch(0.995 0.003 250); padding: 10px; box-shadow: 0 0 0 1px oklch(0.22 0.02 258 / 0.1); } .ds-stat-label { font-family: 'Work Sans', sans-serif; font-size: 12px; color: oklch(0.42 0.02 250); margin: 0; } .ds-stat-value { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 18px; line-height: 1.2; font-variant-numeric: tabular-nums; margin: 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Secretaría de Federación",
+    "overview": "Areto es una herramienta de gestión interna para la junta y los entrenadores de un club de fútbol sala — no un producto de cara al público, sino el cuaderno operativo del club. La estética responde a eso: seria pero cálida, con carácter deportivo contenido en vez de gráfico corporativo genérico o deportivo estridente. El azul institucional es el color del papeleo federativo serio (actas, sellos, credenciales), no un azul de startup; el ámbar cálido es el detalle de medalla, reservado para lo que de verdad destaca. La tipografía condensada de los títulos (Barlow Condensed) aporta carácter atlético sin caer en la plantilla Inter/Space Grotesk que domina el software B2B genérico — decisión tomada explícitamente al construir el sistema.\n\nEl sistema es plano y preciso: sin sombras a nivel de reposo (las tarjetas se delimitan con un anillo fino, no con elevación), esquinas apenas suavizadas, densidad de datos por encima del adorno. Todo está optimizado para que una junta de 4-8 personas lea tablas, cifras y estados de un vistazo — nunca para impresionar a un visitante.",
+    "keyCharacteristics": [
+      "Azul institucional como color de marca y acción, nunca un azul \"SaaS\" saturado.",
+      "Ámbar cálido como acento raro, reservado para lo que destaca de verdad (highlight).",
+      "Cero sombras a nivel de reposo: los bordes y el anillo (ring-1) hacen el trabajo de delimitar.",
+      "Radios de esquina pequeños y consistentes, salvo en badges (píldora completa).",
+      "Titulares en tipografía condensada; cuerpo en una humanista cálida — nunca la misma familia para ambos.",
+      "Todas las vistas imprimibles comparten exactamente los mismos tokens que la pantalla, con overrides puntuales para lo que el papel no puede reproducir."
+    ],
+    "rules": [
+      { "name": "The Ring-Not-Shadow Rule", "body": "Card se delimita con ring-1 ring-foreground/10, nunca con box-shadow. En impresión el anillo se sustituye por un borde real, porque los navegadores no imprimen sombras ni la mayoría de anillos.", "section": "colors" },
+      { "name": "The Rare Amber Rule", "body": "El ámbar cálido (gold/highlight) es el tono semántico más raro del vocabulario compartido — nunca un color decorativo de fondo suelto.", "section": "colors" },
+      { "name": "The Heading-Is-Condensed Rule", "body": "Cualquier texto en font-heading (títulos de página, de tarjeta, cifras de StatTile) usa Barlow Condensed. El cuerpo nunca hereda esta fuente.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Ninguna superficie usa box-shadow para indicar jerarquía o estado de reposo. Los anillos y bordes hacen ese trabajo, y son lo único que sobrevive a la impresión.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar el vocabulario de tono semántico (StatusTone: neutral/positive/warning/danger/highlight) para cualquier color de estado — nunca un color de badge o icono elegido ad hoc.",
+      "Do delimitar contenedores con ring-1 ring-foreground/10, no con box-shadow.",
+      "Do usar Barlow Condensed (font-heading) solo en títulos y cifras destacadas; Work Sans en todo lo demás.",
+      "Do marcar columnas de tabla de apoyo con priority en vez de esconderlas con clases de anchura sueltas."
+    ],
+    "donts": [
+      "Don't introducir sombras (box-shadow) para jerarquía o estado de reposo — el sistema es plano por definición.",
+      "Don't usar el ámbar cálido (gold/highlight) como color decorativo suelto — está reservado al tono semántico \"destacado\".",
+      "Don't mezclar Inter o Space Grotesk (o cualquier combo de plantilla genérica) con la pareja Barlow Condensed / Work Sans ya establecida.",
+      "Don't dar a los badges cualquier radio que no sea la píldora completa (rounded-4xl) — es la única forma completamente redonda del sistema."
+    ]
+  }
+}

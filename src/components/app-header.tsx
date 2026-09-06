@@ -45,6 +45,7 @@ export function AppHeader() {
           <CommandPaletteTrigger />
         </Suspense>
         <NotificationBell />
+        <Separator orientation="vertical" className="mx-1 h-4" />
         <ThemeToggle />
         {/*
           El selector de idioma lee `usePathname()`, que en el armazón estático de

@@ -83,7 +83,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             priority
           />
           <div className="leading-tight">
-            <span className="block font-semibold">{t("brand")}</span>
+            <span className="block font-heading font-semibold">{t("brand")}</span>
             <span className="block text-xs text-muted-foreground">
               {t("brandSubtitle")}
             </span>
@@ -99,7 +99,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 /**
  * Logos oficiales (versión blanca, para fondo oscuro) descargados a /public.
  * Se resuelven por el host de la URL de la federación, para no depender del
- * nombre exacto de la fila.
+ * nombre exacto de la fila. Cierre intencional a las dos federaciones que
+ * cubre el club (ver PRODUCT.md): un host no listado no es un error, cae en
+ * `federationInfo` devolviendo `null` y el ítem se pinta con el nombre real
+ * de la federación en vez de logo, sin romperse.
  */
 const FEDERATION_INFO: Record<
   string,
@@ -200,7 +203,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
             render={<HoverPrefetchLink href={item.href} />}
             isActive={active}
           >
-            <item.icon />
+            <item.icon className={active ? "text-sidebar-primary" : undefined} />
             <span>{item.title}</span>
           </SidebarMenuButton>
         )}
@@ -264,7 +267,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                         // Chip oscuro: el logo gipuzkoano es blanco (invisible
                         // sobre fondo claro), así ambos se ven bien. `--secondary`
                         // es el único token oscuro en los dos temas.
-                        <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded bg-secondary">
+                        <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-md bg-secondary">
                           <Image
                             src={info.src}
                             alt=""
@@ -297,7 +300,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{displayName}</span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate text-xs text-muted-foreground" title={roleLabel}>
                     {roleSummary}
                   </span>
                 </div>
