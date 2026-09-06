@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { fetchNotifications } from "@/app/[locale]/(app)/notification-actions";
 import type { NotificationItem } from "@/lib/notifications";
+import { TONE_VARIANT } from "@/lib/status-tone";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,9 +76,7 @@ export function NotificationBell() {
                 <div className="flex w-full flex-col gap-0.5 py-0.5">
                   <div className="flex items-center gap-2">
                     <span className="flex-1">{item.label}</span>
-                    <Badge variant={item.tone === "danger" ? "destructive" : "warning"}>
-                      {item.count}
-                    </Badge>
+                    <Badge variant={TONE_VARIANT[item.tone]}>{item.count}</Badge>
                   </div>
                   {item.hint ? (
                     <span className="text-xs text-muted-foreground">{item.hint}</span>

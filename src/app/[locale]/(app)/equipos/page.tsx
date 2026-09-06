@@ -3,7 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { seasons, teams } from "@/db/schema";
+import { seasonCategoryBirthYears, seasons, teams } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { computeRosterHealth } from "@/lib/roster-health";
 import { Link } from "@/i18n/navigation";
@@ -49,31 +49,48 @@ export default async function EquiposPage({
     allSeasons.find((s) => s.isCurrent) ??
     allSeasons[0];
 
-  const currentTeams = selectedSeason
-    ? await db.query.teams.findMany({
-        where: eq(teams.seasonId, selectedSeason.id),
-        orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
-        with: {
-          memberships: {
-            with: {
-              person: {
-                columns: {
-                  birthDate: true,
-                  medicalCertUntil: true,
+  const [currentTeams, categoryBirthYears] = selectedSeason
+    ? await Promise.all([
+        db.query.teams.findMany({
+          where: eq(teams.seasonId, selectedSeason.id),
+          orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
+          with: {
+            memberships: {
+              with: {
+                person: {
+                  columns: {
+                    birthDate: true,
+                    medicalCertUntil: true,
+                  },
                 },
               },
             },
           },
-        },
-      })
-    : [];
+        }),
+        db.query.seasonCategoryBirthYears.findMany({
+          where: eq(seasonCategoryBirthYears.seasonId, selectedSeason.id),
+        }),
+      ])
+    : [[], []];
+
+  // Rango de año de nacimiento por categoría de esta temporada: mismo dato
+  // que usa la ficha de equipo, no las columnas `minBirthYear`/`maxBirthYear`
+  // de `teams` (obsoletas, ver comentario en el esquema).
+  const birthYearsByCategory = new Map(
+    categoryBirthYears.map((c) => [c.category, c]),
+  );
 
   // Fila lista para el componente cliente: la salud de la plantilla se calcula
   // aquí (necesita las fechas de nacimiento/certificado, que no hace falta
   // mandar al cliente), pero el texto de los avisos se traduce en el cliente
   // (mismo patrón que `RosterHealth`), así que solo pasamos `alerts`.
   const rows = currentTeams.map((team) => {
-    const { alerts, hardCount, softCount } = computeRosterHealth(team.memberships, team);
+    const range = team.category ? birthYearsByCategory.get(team.category) : undefined;
+    const { alerts, hardCount, softCount } = computeRosterHealth(team.memberships, {
+      category: team.category,
+      minBirthYear: range?.minBirthYear ?? null,
+      maxBirthYear: range?.maxBirthYear ?? null,
+    });
     return {
       id: team.id,
       name: team.name,
