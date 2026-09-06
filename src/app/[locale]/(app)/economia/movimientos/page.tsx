@@ -230,7 +230,7 @@ export default async function MovimientosPage({
       />
       <EconomiaSectionNav
         current="movimientos"
-        ledger={navLedger}
+        ledger={filter}
         visible={visible}
         ledgerFilterSlot={
           <EconomiaLedgerFilter href="/economia/movimientos" filter={filter} visible={visible} />

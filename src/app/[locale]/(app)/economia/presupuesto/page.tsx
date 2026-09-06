@@ -225,7 +225,7 @@ export default async function PresupuestoPage({
       />
       <EconomiaSectionNav
         current="presupuesto"
-        ledger={ledger}
+        ledger={filter}
         visible={visible}
         ledgerFilterSlot={
           <EconomiaLedgerFilter

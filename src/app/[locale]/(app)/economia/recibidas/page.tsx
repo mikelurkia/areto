@@ -140,7 +140,7 @@ export default async function RecibidasPage({
       />
       <EconomiaSectionNav
         current="recibidas"
-        ledger={navLedger}
+        ledger={filter}
         visible={visible}
         ledgerFilterSlot={
           <EconomiaLedgerFilter href="/economia/recibidas" filter={filter} visible={visible} />
