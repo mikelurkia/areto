@@ -42,9 +42,11 @@ import { MaskedIbanText } from "@/components/masked-iban";
 import { PageHeader, SectionHeading } from "@/components/page-header";
 import { AssignMemberNumberButton } from "@/components/personas/assign-member-number-button";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
+import { DeleteDataConsentDialog } from "@/components/personas/delete-data-consent-dialog";
 import { DeleteInjuryReportDialog } from "@/components/personas/delete-injury-report-dialog";
 import { DeleteMedicalCheckupDialog } from "@/components/personas/delete-medical-checkup-dialog";
 import { DeleteQualificationDialog } from "@/components/personas/delete-qualification-dialog";
+import { DataConsentDialog } from "@/components/personas/data-consent-dialog";
 import { DocumentDialog } from "@/components/document-dialog";
 import { EntityFileTable } from "@/components/entity-file-table";
 import { FamilyPanel, type FamilyMember } from "@/components/personas/family-panel";
@@ -79,6 +81,7 @@ const PHOTO_BUCKET = "person-photos";
 const QUALIFICATIONS_BUCKET = "person-qualifications";
 const DOCUMENTS_BUCKET = "person-documents";
 const MEDICAL_CHECKUPS_BUCKET = "person-medical-checkups";
+const DATA_CONSENTS_BUCKET = "person-data-consents";
 const INJURY_REPORTS_BUCKET = "person-injury-reports";
 const FEDERATION_CARD_BUCKET = "membership-documents";
 
@@ -106,6 +109,10 @@ const getPerson = cache((personId: string) =>
       memberships: { with: { team: { with: { season: true } } } },
       qualifications: { orderBy: (q, { desc }) => [desc(q.createdAt)] },
       medicalCheckups: { orderBy: (m, { desc }) => [desc(m.occurredOn)] },
+      dataConsents: {
+        with: { season: { columns: { name: true } } },
+        orderBy: (c, { desc }) => [desc(c.createdAt)],
+      },
       injuryReports: { orderBy: (r, { desc }) => [desc(r.occurredOn)] },
       documents: { orderBy: (d, { desc }) => [desc(d.createdAt)] },
       noteEntries: { orderBy: (n, { desc }) => [desc(n.createdAt)] },
@@ -368,13 +375,19 @@ export default async function PersonDetailPage({
   // deja de esperar a que lleguen las membresías de la persona. Ya no se trae
   // la lista de personas del club: el selector de tutores los busca al escribir
   // (`GuardianPicker`), así que ver una ficha ya no descarga el listado entero.
-  const [existingTagRows, allTeams, allCategoryBirthYears] = await Promise.all([
+  const [existingTagRows, allTeams, allCategoryBirthYears, currentSeason] = await Promise.all([
     db.selectDistinct({ tag: personTags.tag }).from(personTags).orderBy(personTags.tag),
     db.query.teams.findMany({
       with: { season: true },
       orderBy: (teams, { asc }) => [asc(teams.category), asc(teams.name)],
     }),
     db.query.seasonCategoryBirthYears.findMany(),
+    canViewMedical
+      ? db.query.seasons.findFirst({
+          where: (seasons, { eq }) => eq(seasons.isCurrent, true),
+          columns: { name: true },
+        })
+      : null,
   ]);
   const birthYearsByCategory = new Map(
     allCategoryBirthYears.map((row) => [`${row.seasonId}:${row.category}`, row]),
@@ -399,6 +412,7 @@ export default async function PersonDetailPage({
     qualificationFileUrls,
     documentFileUrls,
     medicalCheckupFileUrls,
+    dataConsentFileUrls,
     injuryReportFileUrls,
     federationCardUrls,
   ] = await Promise.all([
@@ -410,6 +424,7 @@ export default async function PersonDetailPage({
     getSignedUrls(QUALIFICATIONS_BUCKET, person.qualifications, (q) => q.filePath, (q) => q.id),
     getSignedUrls(DOCUMENTS_BUCKET, person.documents, (d) => d.filePath, (d) => d.id),
     getSignedUrls(MEDICAL_CHECKUPS_BUCKET, person.medicalCheckups, (m) => m.filePath, (m) => m.id),
+    getSignedUrls(DATA_CONSENTS_BUCKET, person.dataConsents, (c) => c.filePath, (c) => c.id),
     getSignedUrls(INJURY_REPORTS_BUCKET, person.injuryReports, (r) => r.filePath, (r) => r.id),
     getSignedUrls(
       FEDERATION_CARD_BUCKET,
@@ -632,7 +647,10 @@ export default async function PersonDetailPage({
           {canViewMedical ? (
             <TabsTrigger value="medico">
               {t("tabMedical", {
-                count: person.medicalCheckups.length + person.injuryReports.length,
+                count:
+                  person.medicalCheckups.length +
+                  person.dataConsents.length +
+                  person.injuryReports.length,
               })}
             </TabsTrigger>
           ) : null}
@@ -1141,6 +1159,59 @@ export default async function PersonDetailPage({
                   )}
                 />
               </>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <SectionHeading
+              title={t("dataConsentsSection")}
+              actions={
+                canManageMedical && currentSeason ? (
+                  <DataConsentDialog
+                    mode="create"
+                    personId={person.id}
+                    currentSeasonName={currentSeason.name}
+                  />
+                ) : null
+              }
+            />
+            {person.dataConsents.length === 0 ? (
+              <SectionPlaceholder size="compact" title={t("noDataConsentsDescription")} />
+            ) : (
+              <EntityFileTable
+                items={person.dataConsents}
+                canManage={canManageMedical}
+                actionsLabel={t("colActions")}
+                viewFileLabel={t("dataConsentViewFile")}
+                fileUrl={(c) => dataConsentFileUrls.get(c.id) ?? null}
+                columns={[
+                  {
+                    header: t("dataConsentSeasonLabel"),
+                    cell: (c) => c.season.name,
+                    className: "font-medium",
+                  },
+                  {
+                    header: t("dataConsentSignedOnLabel"),
+                    priority: "secondary",
+                    cell: (c) => c.signedOn ?? "—",
+                  },
+                ]}
+                renderActions={(c) => (
+                  <>
+                    <DataConsentDialog
+                      mode="edit"
+                      consent={{
+                        id: c.id,
+                        seasonName: c.season.name,
+                        signedOn: c.signedOn,
+                        notes: c.notes,
+                      }}
+                      fileUrl={dataConsentFileUrls.get(c.id) ?? null}
+                    />
+                    <DeleteDataConsentDialog id={c.id} seasonName={c.season.name} />
+                  </>
+                )}
+              />
             )}
           </div>
 

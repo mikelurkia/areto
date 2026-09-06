@@ -204,7 +204,14 @@ export function personWhere(filters: PersonFilters) {
  * Lo que ya no viaja son las cinco marcas de tiempo de consentimiento y el
  * resto de columnas que esta pantalla no lee.
  */
-function loadRows(where: ReturnType<typeof personWhere>, page?: number) {
+async function loadRows(where: ReturnType<typeof personWhere>, page?: number) {
+  // El consentimiento de datos MUPRESFE caduca por temporada, no por fecha:
+  // hace falta saber cuál es la actual para filtrar la relación por ella (ver
+  // `dataConsentMissing` en `person-status.ts`).
+  const currentSeason = await db.query.seasons.findFirst({
+    where: eq(seasons.isCurrent, true),
+    columns: { id: true },
+  });
   return db.query.persons.findMany({
     columns: {
       id: true,
@@ -249,6 +256,14 @@ function loadRows(where: ReturnType<typeof personWhere>, page?: number) {
       },
       qualifications: { columns: { title: true, expiresOn: true } },
       tags: { columns: { tag: true } },
+      ...(currentSeason
+        ? {
+            dataConsents: {
+              where: (dc, { eq }) => eq(dc.seasonId, currentSeason.id),
+              columns: { id: true },
+            },
+          }
+        : {}),
     },
     where,
     orderBy: [asc(persons.lastName), asc(persons.firstName)],
@@ -264,8 +279,16 @@ type RawPerson = Awaited<ReturnType<typeof loadRows>>[number];
 export type PersonListRow = ReturnType<typeof toRow>;
 
 function toRow(p: RawPerson, canViewBanking: boolean) {
-  const { clubMember, guardianRows, guardianOfRows, memberships, qualifications, tags, ...rest } =
-    p;
+  const {
+    clubMember,
+    guardianRows,
+    guardianOfRows,
+    memberships,
+    qualifications,
+    tags,
+    dataConsents,
+    ...rest
+  } = p;
   return {
     ...rest,
     // Sin `personas.banking.view`, el IBAN no sale de aquí: la fila alimenta
@@ -293,6 +316,7 @@ function toRow(p: RawPerson, canViewBanking: boolean) {
     tags: tags.map((t) => t.tag),
     dependentsCount: guardianOfRows.length,
     isPastMember: isPastMember(memberships),
+    hasCurrentSeasonDataConsent: (dataConsents?.length ?? 0) > 0,
   };
 }
 

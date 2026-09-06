@@ -21,6 +21,7 @@ const BUCKET_READ_PERMISSION: Record<string, Permission> = {
   "person-documents": "personas.view",
   "person-qualifications": "personas.view",
   "person-medical-checkups": "personas.medical.view",
+  "person-data-consents": "personas.medical.view",
   "person-injury-reports": "personas.medical.view",
   "team-documents": "equipos.view",
   "membership-documents": "equipos.view",

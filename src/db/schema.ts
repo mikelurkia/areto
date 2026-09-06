@@ -441,6 +441,35 @@ export const personMedicalCheckups = pgTable(
 ).enableRLS();
 
 /**
+ * Consentimiento de tratamiento de datos personales firmado por el jugador (o
+ * su tutor/a legal) para la Mutualidad de Futbolistas (MUPRESFE), exigido
+ * junto al reconocimiento médico para tramitar la ficha federativa. Se
+ * renueva por temporada (una fila por `personId`+`seasonId`), no por fecha de
+ * caducidad: no hay columna derivada equivalente a `persons.medicalCertUntil`
+ * porque "vigente" es simplemente "existe fila para la temporada actual".
+ */
+export const personDataConsents = pgTable(
+  "person_data_consents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => persons.id, { onDelete: "cascade" }),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => seasons.id, { onDelete: "restrict" }),
+    signedOn: date("signed_on"),
+    filePath: text("file_path"), // ruta del objeto en Supabase Storage (bucket person-data-consents)
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("person_data_consents_person_idx").on(t.personId),
+    uniqueIndex("person_data_consents_person_season_idx").on(t.personId, t.seasonId),
+  ],
+).enableRLS();
+
+/**
  * Parte de lesión de un jugador/a.
  *
  * `occurredOn` se fija solo al crear el parte (hoy, no se pide en el
@@ -1922,6 +1951,7 @@ export const personsRelations = relations(persons, ({ many, one }) => ({
   payments: many(payments),
   qualifications: many(personQualifications),
   medicalCheckups: many(personMedicalCheckups),
+  dataConsents: many(personDataConsents),
   injuryReports: many(personInjuryReports),
   documents: many(personDocuments),
   noteEntries: many(personNotes),
@@ -1983,6 +2013,17 @@ export const personMedicalCheckupsRelations = relations(personMedicalCheckups, (
   person: one(persons, {
     fields: [personMedicalCheckups.personId],
     references: [persons.id],
+  }),
+}));
+
+export const personDataConsentsRelations = relations(personDataConsents, ({ one }) => ({
+  person: one(persons, {
+    fields: [personDataConsents.personId],
+    references: [persons.id],
+  }),
+  season: one(seasons, {
+    fields: [personDataConsents.seasonId],
+    references: [seasons.id],
   }),
 }));
 
