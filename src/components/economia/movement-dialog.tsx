@@ -101,7 +101,7 @@ export function MovementDialog(props: MovementDialogProps) {
           {t("createMovement")}
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {movement ? t("editMovementTitle") : t("newMovementTitle")}
@@ -110,6 +110,7 @@ export function MovementDialog(props: MovementDialogProps) {
         <form action={action}>
           {movement ? <input type="hidden" name="id" value={movement.id} /> : null}
           <FieldGroup>
+            <FormError message={state.error} />
             <div className="grid grid-cols-2 gap-3">
               <Field>
                 <FieldLabel htmlFor="movement-account">
@@ -246,7 +247,6 @@ export function MovementDialog(props: MovementDialogProps) {
                 defaultValue={movement?.notes ?? ""}
               />
             </Field>
-            <FormError message={state.error} />
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}

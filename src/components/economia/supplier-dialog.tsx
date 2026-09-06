@@ -79,13 +79,14 @@ export function SupplierDialog(props: SupplierDialogProps) {
           {t("createSupplier")}
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{supplier ? t("editSupplierTitle") : t("newSupplierTitle")}</DialogTitle>
         </DialogHeader>
         <form action={action}>
           {supplier ? <input type="hidden" name="id" value={supplier.id} /> : null}
           <FieldGroup>
+            <FormError message={state.error} />
             <div className="grid grid-cols-2 gap-3">
               <Field>
                 <FieldLabel htmlFor="supplier-name">{t("supplierNameLabel")}</FieldLabel>
@@ -172,7 +173,6 @@ export function SupplierDialog(props: SupplierDialogProps) {
                 defaultValue={supplier?.notes ?? ""}
               />
             </Field>
-            <FormError message={state.error} />
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}

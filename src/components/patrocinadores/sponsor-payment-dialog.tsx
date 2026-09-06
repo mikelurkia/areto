@@ -89,7 +89,7 @@ export function SponsorPaymentDialog(props: SponsorPaymentDialogProps) {
           <span className="sr-only">{t("editPaymentSr")}</span>
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {props.mode === "create" ? t("newPaymentTitle") : t("editPaymentTitle")}
@@ -99,6 +99,7 @@ export function SponsorPaymentDialog(props: SponsorPaymentDialogProps) {
           {props.mode === "edit" ? (
             <input type="hidden" name="id" value={payment!.id} />
           ) : null}
+          <FormError message={state.error} />
           <FieldGroup>
             {props.mode === "create" ? (
               <Field>
@@ -123,7 +124,7 @@ export function SponsorPaymentDialog(props: SponsorPaymentDialogProps) {
             ) : (
               <input type="hidden" name="termId" value={payment!.termId} />
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <Field>
                 <FieldLabel htmlFor="payment-year">{t("seasonYearLabel")}</FieldLabel>
                 <Input
@@ -210,7 +211,6 @@ export function SponsorPaymentDialog(props: SponsorPaymentDialogProps) {
               />
             </Field>
           </FieldGroup>
-          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

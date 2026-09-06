@@ -194,6 +194,13 @@ Radios de esquina progresivos pero pequeños en la base (`--radius: 0.4rem`), es
 ### Navigation
 - Sidebar shadcn con tokens propios (`--sidebar*`), fijo en escritorio, `Sheet` en móvil. Ítem activo resaltado por el href más largo que coincide con la ruta (para rutas con prefijo compartido). Marca estática (logo + nombre) pintada sin esperar a datos de sesión.
 
+### Dialogs
+- `DialogContent` por defecto es `sm:max-w-sm` (384px) — suficiente para formularios de ≤4 campos en una sola columna.
+- Con una o más filas `grid grid-cols-2` (5-10 campos), amplía a `className="sm:max-w-lg"`: si no, cada columna se queda en ~160px y los `Select` con texto libre (cuentas, proveedores, categorías) truncan en silencio.
+- Formularios muy densos (≥12 campos, varias filas de dos columnas) usan `className="sm:max-w-2xl"`.
+- Nunca dejes 3 campos dentro de un `grid-cols-2`: el tercero cae solo en la fila siguiente. Usa `grid-cols-3` si son tres.
+- El error de la Server Action (`FormError`) va como primer hijo de `FieldGroup` (o primer hijo del `form` si este ya lleva su propio `flex flex-col gap-*`), nunca justo antes de `DialogFooter`: así se ve sin tener que hacer scroll hasta el final del formulario.
+
 ### Empty States (`SectionPlaceholder`)
 - `default`: icono, caja con borde punteado, ocupa el espacio disponible — para una sección real sin datos.
 - `compact`: sin icono ni borde, texto apagado en `font-sans` normal (nunca en la tipografía de encabezado) — para "sin resultados" dentro de una tarjeta, pestaña o columna estrecha.

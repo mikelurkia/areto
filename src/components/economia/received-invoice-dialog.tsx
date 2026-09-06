@@ -111,7 +111,7 @@ export function ReceivedInvoiceDialog(props: ReceivedInvoiceDialogProps) {
           {t("createReceivedInvoice")}
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {invoice ? t("editReceivedInvoiceTitle") : t("newReceivedInvoiceTitle")}
@@ -121,6 +121,7 @@ export function ReceivedInvoiceDialog(props: ReceivedInvoiceDialogProps) {
           {invoice ? <input type="hidden" name="id" value={invoice.id} /> : null}
           {canChooseLedger ? null : <input type="hidden" name="ledger" value={defaultLedger} />}
           <FieldGroup>
+            <FormError message={state.error} />
             <div className="grid grid-cols-2 gap-3">
               <Field>
                 <FieldLabel htmlFor="invoice-supplier">{t("invoiceSupplierLabel")}</FieldLabel>
@@ -359,7 +360,6 @@ export function ReceivedInvoiceDialog(props: ReceivedInvoiceDialogProps) {
                 defaultValue={invoice?.notes ?? ""}
               />
             </Field>
-            <FormError message={state.error} />
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}

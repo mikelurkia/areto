@@ -47,7 +47,7 @@ export function GeneratePlayerChargesDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>
+      <DialogTrigger render={<Button size="sm" />}>
         <UsersIcon data-icon="inline-start" />
         {t("generatePlayerChargesAction")}
       </DialogTrigger>
@@ -58,6 +58,7 @@ export function GeneratePlayerChargesDialog({
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
           <input type="hidden" name="seasonId" value={seasonId} />
+          <FormError message={state.error} />
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="gen-player-team">{t("teamLabel")}</FieldLabel>
@@ -79,7 +80,6 @@ export function GeneratePlayerChargesDialog({
               </Select>
             </Field>
           </FieldGroup>
-          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

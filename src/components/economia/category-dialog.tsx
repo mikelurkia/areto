@@ -69,7 +69,7 @@ export function CategoryDialog(
           <span className="sr-only">{t("editCategorySr", { name: category.name })}</span>
         </DialogTrigger>
       ) : (
-        <DialogTrigger render={<Button variant="outline" size="sm" />}>
+        <DialogTrigger render={<Button size="sm" />}>
           <PlusIcon data-icon="inline-start" />
           {t("createCategory")}
         </DialogTrigger>
@@ -84,6 +84,7 @@ export function CategoryDialog(
         <form action={action}>
           {category ? <input type="hidden" name="id" value={category.id} /> : null}
           <FieldGroup>
+            <FormError message={state.error} />
             <Field>
               <FieldLabel htmlFor="category-name">{t("categoryNameLabel")}</FieldLabel>
               <Input
@@ -131,7 +132,6 @@ export function CategoryDialog(
                 {t("categoryActiveLabel")}
               </Label>
             </Field>
-            <FormError message={state.error} />
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}
