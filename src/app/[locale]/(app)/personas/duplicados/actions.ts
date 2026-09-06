@@ -8,7 +8,6 @@ import { db } from "@/db";
 import {
   clubMembers,
   memberships,
-  payments,
   personDocuments,
   personGuardians,
   personNotes,
@@ -179,11 +178,6 @@ export async function mergePersons(
           .where(eq(memberships.id, m.id));
       }
     }
-
-    await tx
-      .update(payments)
-      .set({ personId: primaryId })
-      .where(eq(payments.personId, duplicateId));
 
     // Cuenta de la app (login) ligada al duplicado, si la tuviera.
     await tx

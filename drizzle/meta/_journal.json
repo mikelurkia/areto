@@ -624,6 +624,13 @@
       "when": 1788691167277,
       "tag": "0088_amazing_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1788695741626,
+      "tag": "0089_right_lionheart",
+      "breakpoints": true
     }
   ]
 }
