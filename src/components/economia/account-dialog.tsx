@@ -86,7 +86,7 @@ export function AccountDialog(props: AccountDialogProps) {
           {t("createAccount")}
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{account ? t("editAccountTitle") : t("newAccountTitle")}</DialogTitle>
         </DialogHeader>
@@ -96,6 +96,7 @@ export function AccountDialog(props: AccountDialogProps) {
             <input type="hidden" name="ledger" value={defaultLedger} />
           )}
           <FieldGroup>
+            <FormError message={state.error} />
             <Field>
               <FieldLabel htmlFor="account-name">{t("accountNameLabel")}</FieldLabel>
               <Input
@@ -188,7 +189,6 @@ export function AccountDialog(props: AccountDialogProps) {
                 {t("accountActiveLabel")}
               </Label>
             </Field>
-            <FormError message={state.error} />
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}

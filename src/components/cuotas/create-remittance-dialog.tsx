@@ -60,6 +60,7 @@ export function CreateRemittanceDialog({
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
           <input type="hidden" name="seasonId" value={seasonId} />
+          <FormError message={state.error} />
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="rem-kind">{t("kindLabel")}</FieldLabel>
@@ -112,7 +113,6 @@ export function CreateRemittanceDialog({
               <Input id="rem-date" name="collectionDate" type="date" required />
             </Field>
           </FieldGroup>
-          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

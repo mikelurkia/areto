@@ -87,7 +87,7 @@ export function SponsorshipTermDialog(props: SponsorshipTermDialogProps) {
           <span className="sr-only">{t("editTermSr")}</span>
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {props.mode === "create" ? t("newTermTitle") : t("editTermTitle")}
@@ -99,6 +99,7 @@ export function SponsorshipTermDialog(props: SponsorshipTermDialogProps) {
           ) : (
             <input type="hidden" name="id" value={term!.id} />
           )}
+          <FormError message={state.error} />
           <FieldGroup>
             <div className="grid grid-cols-2 gap-3">
               <Field>
@@ -226,7 +227,6 @@ export function SponsorshipTermDialog(props: SponsorshipTermDialogProps) {
               />
             </Field>
           </FieldGroup>
-          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

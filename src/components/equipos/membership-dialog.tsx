@@ -115,7 +115,7 @@ export function MembershipDialog(props: MembershipDialogProps) {
           </span>
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {props.mode === "create-person"
@@ -134,6 +134,7 @@ export function MembershipDialog(props: MembershipDialogProps) {
             <input type="hidden" name="id" value={membership!.id} />
           )}
           <FieldGroup>
+            <FormError message={state.error} />
             {props.mode === "create" ? (
               <Field>
                 <FieldLabel htmlFor="membership-person">
@@ -260,7 +261,6 @@ export function MembershipDialog(props: MembershipDialogProps) {
                 </Select>
               </Field>
             ) : null}
-            <FormError message={state.error} />
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}

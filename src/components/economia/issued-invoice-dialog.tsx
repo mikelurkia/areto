@@ -148,7 +148,7 @@ export function IssuedInvoiceDialog(props: IssuedInvoiceDialogProps) {
           {t("createIssuedInvoice")}
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {invoice ? t("editIssuedInvoiceTitle") : t("newIssuedInvoiceTitle")}
@@ -161,6 +161,7 @@ export function IssuedInvoiceDialog(props: IssuedInvoiceDialogProps) {
           ) : null}
           {canChooseLedger ? null : <input type="hidden" name="ledger" value={defaultLedger} />}
           <FieldGroup>
+            <FormError message={state.error} />
             <div className="grid grid-cols-2 gap-3">
               <Field>
                 <FieldLabel htmlFor="issued-customer">{t("customerNameLabel")}</FieldLabel>
@@ -369,7 +370,6 @@ export function IssuedInvoiceDialog(props: IssuedInvoiceDialogProps) {
                 />
               </Field>
             )}
-            <FormError message={state.error} />
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}

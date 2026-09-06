@@ -70,7 +70,7 @@ export function SponsorContactDialog(props: SponsorContactDialogProps) {
           <span className="sr-only">{t("editContactSr")}</span>
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {props.mode === "create" ? t("newContactTitle") : t("editContactTitle")}
@@ -82,6 +82,7 @@ export function SponsorContactDialog(props: SponsorContactDialogProps) {
           ) : (
             <input type="hidden" name="id" value={contact!.id} />
           )}
+          <FormError message={state.error} />
           <FieldGroup>
             <div className="grid grid-cols-2 gap-3">
               <Field>
@@ -132,7 +133,6 @@ export function SponsorContactDialog(props: SponsorContactDialogProps) {
               />
             </Field>
           </FieldGroup>
-          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}
