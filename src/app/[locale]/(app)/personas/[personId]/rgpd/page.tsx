@@ -12,7 +12,6 @@ import { teamSeasonLabel } from "@/lib/team-label";
 import { BackLink } from "@/components/back-link";
 import { PrintButton } from "@/components/print-button";
 import { PrintableSheet } from "@/components/printable-sheet";
-import { formatCents } from "@/lib/money";
 
 /**
  * Todo lo que el club guarda de la persona (el informe RGPD es exhaustivo).
@@ -32,7 +31,6 @@ const getPersonRecord = cache((personId: string) =>
       qualifications: { orderBy: (q, { desc }) => [desc(q.createdAt)] },
       documents: { orderBy: (d, { desc }) => [desc(d.createdAt)] },
       tags: { orderBy: (tag, { asc }) => [asc(tag.tag)] },
-      payments: { with: { fee: { with: { season: true } } } },
     },
   }),
 );
@@ -108,7 +106,6 @@ export default async function PersonRgpdPage({
     const date = fmtConsentDate(at);
     return date ? t("consentSinceLabel", { date }) : t("rgpdYes");
   };
-  const money = (cents: number) => formatCents(cents, locale);
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -255,18 +252,6 @@ export default async function PersonRgpdPage({
         {person.tags.length > 0 ? (
           <Section title={t("rgpdTagsSection")}>
             <p className="text-[8pt]">{person.tags.map((tag) => tag.tag).join(", ")}</p>
-          </Section>
-        ) : null}
-
-        {person.payments.length > 0 ? (
-          <Section title={t("rgpdPaymentsSection")}>
-            {person.payments.map((p) => (
-              <Row
-                key={p.id}
-                label={`${p.fee.name}${p.dueDate ? ` · ${p.dueDate}` : ""}`}
-                value={`${money(p.amountCents)} · ${t(`rgpdPaymentStatus.${p.status}`)}`}
-              />
-            ))}
           </Section>
         ) : null}
 
