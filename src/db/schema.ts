@@ -238,7 +238,7 @@ export const teams = pgTable(
     /**
      * Cuota que el club cobra a cada jugador de este equipo esta temporada.
      * Es un dato de configuración: no genera cobros por sí solo — el módulo
-     * económico (`fees`/`payments`, todavía sin construir) lo leerá de aquí.
+     * de cuotas (`sepaCharges`/`sepaRemittances`) lo leerá de aquí.
      * En céntimos, nunca float, como el resto del dinero del proyecto.
      * Null = cuota sin definir todavía.
      */
@@ -799,35 +799,6 @@ export const courtEvents = pgTable(
 // ---------------------------------------------------------------------------
 // Económico: cuotas y pagos
 // ---------------------------------------------------------------------------
-
-export const fees = pgTable("fees", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  seasonId: uuid("season_id")
-    .notNull()
-    .references(() => seasons.id, { onDelete: "restrict" }),
-  name: text("name").notNull(), // "Cuota temporada 2025/26"
-  amountCents: integer("amount_cents").notNull(), // dinero en céntimos, nunca float
-  currency: text("currency").notNull().default("EUR"),
-  period: feePeriod("period").notNull().default("season"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
-
-export const payments = pgTable("payments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  feeId: uuid("fee_id")
-    .notNull()
-    .references(() => fees.id, { onDelete: "restrict" }),
-  personId: uuid("person_id")
-    .notNull()
-    .references(() => persons.id, { onDelete: "cascade" }),
-  amountCents: integer("amount_cents").notNull(),
-  status: paymentStatus("status").notNull().default("pending"),
-  dueDate: date("due_date"),
-  paidAt: timestamp("paid_at", { withTimezone: true }),
-  method: text("method"), // "cash", "transfer", "stripe"...
-  stripePaymentId: text("stripe_payment_id"), // integración futura
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}).enableRLS();
 
 /**
  * Patrocinador: identidad durable (empresa o particular). No es
@@ -1790,7 +1761,6 @@ export const sepaChargeReturns = pgTable(
 
 export const seasonsRelations = relations(seasons, ({ many }) => ({
   teams: many(teams),
-  fees: many(fees),
   categoryBirthYears: many(seasonCategoryBirthYears),
 }));
 
@@ -1921,7 +1891,6 @@ export const teamNotesRelations = relations(teamNotes, ({ one }) => ({
 
 export const personsRelations = relations(persons, ({ many, one }) => ({
   memberships: many(memberships),
-  payments: many(payments),
   qualifications: many(personQualifications),
   medicalCheckups: many(personMedicalCheckups),
   injuryReports: many(personInjuryReports),
@@ -2019,19 +1988,6 @@ export const courtEventsRelations = relations(courtEvents, ({ one }) => ({
 
 export const auditLogRelations = relations(auditLog, ({ one }) => ({
   actor: one(users, { fields: [auditLog.actorUserId], references: [users.id] }),
-}));
-
-export const feesRelations = relations(fees, ({ one, many }) => ({
-  season: one(seasons, { fields: [fees.seasonId], references: [seasons.id] }),
-  payments: many(payments),
-}));
-
-export const paymentsRelations = relations(payments, ({ one }) => ({
-  fee: one(fees, { fields: [payments.feeId], references: [fees.id] }),
-  person: one(persons, {
-    fields: [payments.personId],
-    references: [persons.id],
-  }),
 }));
 
 export const registrationsRelations = relations(registrations, ({ one, many }) => ({

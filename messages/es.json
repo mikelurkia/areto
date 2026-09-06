@@ -934,13 +934,6 @@
     "rgpdGuardianLabel": "Tutor/a legal",
     "rgpdDependentLabel": "A cargo",
     "rgpdTagsSection": "Etiquetas",
-    "rgpdPaymentsSection": "Pagos y cuotas",
-    "rgpdPaymentStatus": {
-      "pending": "Pendiente",
-      "paid": "Pagado",
-      "overdue": "Vencido",
-      "waived": "Exento"
-    },
     "rgpdFooter": "Documento generado a efectos del derecho de acceso (RGPD). Contiene los datos personales que el club conserva sobre esta persona.",
     "documentTypeColumn": "Tipo",
     "whatsappAction": "WhatsApp",

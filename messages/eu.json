@@ -934,13 +934,6 @@
     "rgpdGuardianLabel": "Legezko tutorea",
     "rgpdDependentLabel": "Ardurapean",
     "rgpdTagsSection": "Etiketak",
-    "rgpdPaymentsSection": "Ordainketak eta kuotak",
-    "rgpdPaymentStatus": {
-      "pending": "Zain",
-      "paid": "Ordainduta",
-      "overdue": "Iraungita",
-      "waived": "Salbuetsita"
-    },
     "rgpdFooter": "Sarbide-eskubidearen ondorioetarako sortutako dokumentua (DBEO). Klubak pertsona honi buruz gordetzen dituen datu pertsonalak jasotzen ditu.",
     "documentTypeColumn": "Mota",
     "whatsappAction": "WhatsApp",
