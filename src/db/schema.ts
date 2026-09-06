@@ -1382,6 +1382,8 @@ export const movementLinks = pgTable(
     sponsorPaymentId: uuid("sponsor_payment_id").references(() => sponsorPayments.id, {
       onDelete: "cascade",
     }),
+    filePath: text("file_path"),
+    fileName: text("file_name"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

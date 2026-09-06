@@ -1,9 +1,13 @@
 import { notFound } from "next/navigation";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { accountMovements, sepaRemittances } from "@/db/schema";
+import {
+  attachLinkReceipt,
+  removeLinkReceipt,
+} from "@/app/[locale]/(app)/economia/recibidas/actions";
 import {
   linkMovementToRemittance,
   unlinkRemittanceMovement,
@@ -11,7 +15,8 @@ import {
 import { MovementLinksPanel } from "@/components/economia/movement-links-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasPermission, requirePermission } from "@/lib/auth";
-import { canManageLedger, visibleLedgers } from "@/lib/economia";
+import { canManageLedger, paymentReceiptBucket, visibleLedgers } from "@/lib/economia";
+import { getSignedUrl } from "@/lib/supabase/storage";
 import { PageHeader } from "@/components/page-header";
 import { StatTile } from "@/components/stat-tile";
 import { DeleteRemittanceDialog } from "@/components/cuotas/delete-remittance-dialog";
@@ -59,7 +64,7 @@ export default async function RemittanceDetailPage({
       team: true,
       season: true,
       links: {
-        with: { movement: { columns: { concept: true, bookedOn: true } } },
+        with: { movement: { columns: { concept: true, bookedOn: true, ledger: true } } },
         orderBy: (l, { desc }) => [desc(l.createdAt)],
       },
       charges: {
@@ -87,18 +92,33 @@ export default async function RemittanceDetailPage({
   const subject =
     remittance.kind === "player" ? (remittance.team?.name ?? t("kindPlayer")) : t("kindMember");
 
+  const linkedCents = remittance.links.reduce((sum, l) => sum + l.amountCents, 0);
+  const remainingCents = totalCents - linkedCents;
+
   // Aparte del resto: los candidatos a conciliar solo hacen falta si el
   // usuario ve algún libro.
-  const candidateMovements = ledgers.length
-    ? await db.query.accountMovements.findMany({
-        where: and(
-          inArray(accountMovements.ledger, ledgers),
-          eq(accountMovements.seasonId, remittance.seasonId),
-        ),
-        columns: { id: true, concept: true, bookedOn: true, amountCents: true },
-        orderBy: (m, { desc }) => [desc(m.bookedOn)],
-      })
-    : [];
+  const [candidateMovementsRaw, receiptUrls] = await Promise.all([
+    ledgers.length
+      ? db.query.accountMovements.findMany({
+          where: and(
+            inArray(accountMovements.ledger, ledgers),
+            eq(accountMovements.seasonId, remittance.seasonId),
+            gt(accountMovements.amountCents, 0),
+          ),
+          columns: { id: true, concept: true, bookedOn: true, amountCents: true },
+        })
+      : [],
+    Promise.all(
+      remittance.links.map((l) => getSignedUrl(paymentReceiptBucket(l.movement.ledger), l.filePath)),
+    ),
+  ]);
+
+  const candidateMovements = [...candidateMovementsRaw].sort((a, b) => {
+    const diffA = Math.abs(Math.abs(a.amountCents) - remainingCents);
+    const diffB = Math.abs(Math.abs(b.amountCents) - remainingCents);
+    if (diffA !== diffB) return diffA - diffB;
+    return b.bookedOn.localeCompare(a.bookedOn);
+  });
 
   const chargeRows: ChargeRow[] = remittance.charges.map((charge) => {
     const subjectPerson =
@@ -156,13 +176,17 @@ export default async function RemittanceDetailPage({
               target={{ field: "sepaRemittanceId", id: remittance.id }}
               linkAction={linkMovementToRemittance}
               unlinkAction={unlinkRemittanceMovement}
+              attachReceiptAction={attachLinkReceipt}
+              removeReceiptAction={removeLinkReceipt}
               totalCents={totalCents}
-              links={remittance.links.map((l) => ({
+              links={remittance.links.map((l, index) => ({
                 id: l.id,
                 movementId: l.movementId,
                 amountCents: l.amountCents,
                 movementConcept: l.movement.concept,
                 movementBookedOn: l.movement.bookedOn,
+                fileUrl: receiptUrls[index],
+                fileName: l.fileName,
               }))}
               candidates={candidateMovements}
               locale={locale}

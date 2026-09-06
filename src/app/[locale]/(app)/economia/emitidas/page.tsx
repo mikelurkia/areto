@@ -122,7 +122,7 @@ export default async function EmitidasPage({
       />
       <EconomiaSectionNav
         current="emitidas"
-        ledger={navLedger}
+        ledger={filter}
         visible={visible}
         ledgerFilterSlot={
           <EconomiaLedgerFilter href="/economia/emitidas" filter={filter} visible={visible} />

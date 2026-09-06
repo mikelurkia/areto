@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
-import { LEDGER_PARAM, LEDGERS, type Ledger } from "@/lib/economia";
+import { LEDGER_PARAM, LEDGERS, type Ledger, type LedgerFilter } from "@/lib/economia";
 import { cn } from "@/lib/utils";
 
 export type EconomiaSection =
@@ -46,7 +46,8 @@ export async function EconomiaSectionNav({
   showLedgerControls = true,
 }: {
   current: EconomiaSection;
-  ledger: Ledger;
+  /** El libro (o filtro "both") que arrastran las pestañas al navegar. */
+  ledger: LedgerFilter;
   visible: readonly Ledger[];
   /** Sustituye el selector de 2 botones por un control propio (p.ej. el de 3 estados de `EconomiaLedgerFilter`). */
   ledgerFilterSlot?: ReactNode;
@@ -60,7 +61,7 @@ export async function EconomiaSectionNav({
   const t = await getTranslations("Economia");
   const showSwitcher = showLedgerControls && visible.length > 1;
 
-  const withLedger = (href: string, value: Ledger) =>
+  const withLedger = (href: string, value: LedgerFilter) =>
     showSwitcher ? `${href}?${LEDGER_PARAM}=${value}` : href;
 
   return (

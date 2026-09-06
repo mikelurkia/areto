@@ -53,6 +53,7 @@ export type MovementRow = {
   categoryName: string | null;
   source: "import" | "manual";
   notes: string | null;
+  linkedCents: number;
   invoiceLinks: { kind: "received" | "issued"; id: string; number: string }[];
 };
 

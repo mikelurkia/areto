@@ -1,12 +1,16 @@
 import { notFound } from "next/navigation";
 import { PaperclipIcon } from "lucide-react";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { accountMovements, issuedInvoices } from "@/db/schema";
 import { linkMovementToIssuedInvoice } from "@/app/[locale]/(app)/economia/emitidas/actions";
-import { unlinkMovement } from "@/app/[locale]/(app)/economia/recibidas/actions";
+import {
+  attachLinkReceipt,
+  removeLinkReceipt,
+  unlinkMovement,
+} from "@/app/[locale]/(app)/economia/recibidas/actions";
 import { IssuedInvoiceDialog } from "@/components/economia/issued-invoice-dialog";
 import { IssuedInvoiceStatusActions } from "@/components/economia/issued-invoice-status-actions";
 import { MovementLinksPanel } from "@/components/economia/movement-links-panel";
@@ -23,6 +27,7 @@ import {
   canManageLedger,
   canViewLedger,
   invoiceFileBucket,
+  paymentReceiptBucket,
   visibleLedgers,
 } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
@@ -72,24 +77,39 @@ export default async function IssuedInvoiceDetailPage({
   const canManage = canManageLedger(user, invoice.ledger);
   const visible = visibleLedgers(user);
 
-  const [fileUrl, candidateMovements] = await Promise.all([
+  const linkedCents = invoice.links.reduce((sum, l) => sum + l.amountCents, 0);
+  const remainingCents = invoice.totalCents - linkedCents;
+
+  const [fileUrl, receiptUrls, candidateMovementsRaw] = await Promise.all([
     getSignedUrl(invoiceFileBucket(invoice.ledger), invoice.filePath),
+    Promise.all(
+      invoice.links.map((l) => getSignedUrl(paymentReceiptBucket(invoice.ledger), l.filePath)),
+    ),
     db.query.accountMovements.findMany({
       where: and(
         eq(accountMovements.ledger, invoice.ledger),
         eq(accountMovements.seasonId, invoice.seasonId),
+        gt(accountMovements.amountCents, 0),
       ),
       columns: { id: true, concept: true, bookedOn: true, amountCents: true },
-      orderBy: (m, { desc }) => [desc(m.bookedOn)],
     }),
   ]);
 
-  const linkRows = invoice.links.map((l) => ({
+  const candidateMovements = [...candidateMovementsRaw].sort((a, b) => {
+    const diffA = Math.abs(Math.abs(a.amountCents) - remainingCents);
+    const diffB = Math.abs(Math.abs(b.amountCents) - remainingCents);
+    if (diffA !== diffB) return diffA - diffB;
+    return b.bookedOn.localeCompare(a.bookedOn);
+  });
+
+  const linkRows = invoice.links.map((l, index) => ({
     id: l.id,
     movementId: l.movementId,
     amountCents: l.amountCents,
     movementConcept: l.movement.concept,
     movementBookedOn: l.movement.bookedOn,
+    fileUrl: receiptUrls[index],
+    fileName: l.fileName,
   }));
 
   return (
@@ -192,6 +212,8 @@ export default async function IssuedInvoiceDetailPage({
               target={{ field: "issuedInvoiceId", id: invoice.id }}
               linkAction={linkMovementToIssuedInvoice}
               unlinkAction={unlinkMovement}
+              attachReceiptAction={attachLinkReceipt}
+              removeReceiptAction={removeLinkReceipt}
               totalCents={invoice.totalCents}
               links={linkRows}
               candidates={candidateMovements}

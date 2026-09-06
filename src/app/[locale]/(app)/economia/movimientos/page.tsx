@@ -3,7 +3,16 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { accountMovements, economicCategories, financialAccounts, seasons } from "@/db/schema";
+import {
+  accountMovements,
+  economicCategories,
+  financialAccounts,
+  issuedInvoices,
+  receivedInvoices,
+  seasons,
+} from "@/db/schema";
+import { linkMovementToInvoice } from "@/app/[locale]/(app)/economia/recibidas/actions";
+import { linkMovementToIssuedInvoice } from "@/app/[locale]/(app)/economia/emitidas/actions";
 import { EconomiaLedgerFilter } from "@/components/economia/economia-ledger-filter";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { MovementDialog } from "@/components/economia/movement-dialog";
@@ -87,6 +96,7 @@ export default async function MovimientosPage({
           account: { columns: { name: true } },
           category: { columns: { name: true } },
           links: {
+            columns: { amountCents: true },
             with: {
               receivedInvoice: { columns: { id: true, invoiceNumber: true } },
               issuedInvoice: { columns: { id: true, number: true } },
@@ -101,6 +111,28 @@ export default async function MovimientosPage({
     columns: { id: true, name: true, isActive: true, ledger: true },
     orderBy: [asc(financialAccounts.name)],
   });
+
+  // Aparte del resto: alimenta el diálogo de "vincular factura" desde el
+  // listado de movimientos, no la carga inicial de la página.
+  const [candidateReceivedInvoices, candidateIssuedInvoices] = season
+    ? await Promise.all([
+        db.query.receivedInvoices.findMany({
+          where: and(
+            inArray(receivedInvoices.ledger, ledgers),
+            eq(receivedInvoices.seasonId, season.id),
+          ),
+          columns: { id: true, invoiceNumber: true, totalCents: true, ledger: true },
+          with: { supplier: { columns: { name: true } } },
+        }),
+        db.query.issuedInvoices.findMany({
+          where: and(
+            inArray(issuedInvoices.ledger, ledgers),
+            eq(issuedInvoices.seasonId, season.id),
+          ),
+          columns: { id: true, number: true, totalCents: true, ledger: true, customerName: true },
+        }),
+      ])
+    : [[], []];
 
   const rows = movements.map((m) => ({
     id: m.id,
@@ -118,6 +150,7 @@ export default async function MovimientosPage({
     categoryName: m.category?.name ?? null,
     source: m.source,
     notes: m.notes,
+    linkedCents: m.links.reduce((sum, l) => sum + l.amountCents, 0),
     invoiceLinks: m.links.flatMap(
       (l): { kind: "received" | "issued"; id: string; number: string }[] =>
         l.receivedInvoice
@@ -138,6 +171,20 @@ export default async function MovimientosPage({
     .filter((c) => c.isActive)
     .map((c) => ({ id: c.id, name: c.name }));
   const seasonOptions = allSeasons.map((s) => ({ id: s.id, name: s.name }));
+  const receivedInvoiceOptions = candidateReceivedInvoices.map((i) => ({
+    id: i.id,
+    ledger: i.ledger,
+    number: i.invoiceNumber,
+    totalCents: i.totalCents,
+    label: i.supplier.name,
+  }));
+  const issuedInvoiceOptions = candidateIssuedInvoices.map((i) => ({
+    id: i.id,
+    ledger: i.ledger,
+    number: i.number,
+    totalCents: i.totalCents,
+    label: i.customerName,
+  }));
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -183,7 +230,7 @@ export default async function MovimientosPage({
       />
       <EconomiaSectionNav
         current="movimientos"
-        ledger={navLedger}
+        ledger={filter}
         visible={visible}
         ledgerFilterSlot={
           <EconomiaLedgerFilter href="/economia/movimientos" filter={filter} visible={visible} />
@@ -212,6 +259,10 @@ export default async function MovimientosPage({
           locale={locale}
           filter={filter}
           manageableLedgers={manageableLedgers}
+          receivedInvoices={receivedInvoiceOptions}
+          issuedInvoices={issuedInvoiceOptions}
+          linkReceivedInvoiceAction={linkMovementToInvoice}
+          linkIssuedInvoiceAction={linkMovementToIssuedInvoice}
         />
       )}
     </div>

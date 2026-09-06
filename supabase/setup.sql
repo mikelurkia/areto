@@ -205,7 +205,11 @@ insert into storage.buckets (id, name, public) values
   -- `economia.official.view` podría descargar una factura interna (ver
   -- decisión 2 de `docs/plan-modulo-economico.md`).
   ('invoice-files',            'invoice-files',            false),
-  ('invoice-files-internal',   'invoice-files-internal',   false)
+  ('invoice-files-internal',   'invoice-files-internal',   false),
+  -- Justificante de pago de un enlace movimiento↔factura (`movementLinks`),
+  -- mismo motivo de doble bucket que `invoice-files`.
+  ('payment-receipts',         'payment-receipts',         false),
+  ('payment-receipts-internal','payment-receipts-internal',false)
 on conflict (id) do nothing;
 
 -- `sponsorship-logos` es PÚBLICO a diferencia del resto: los logos no son datos
@@ -258,7 +262,9 @@ begin
       ('sponsorship-contracts',   'patrocinadores.view',   'patrocinadores.manage'),
       ('document-templates',      'club.view',             'club.manage'),
       ('invoice-files',           'economia.official.view', 'economia.official.manage'),
-      ('invoice-files-internal',  'economia.internal.view', 'economia.internal.manage')
+      ('invoice-files-internal',  'economia.internal.view', 'economia.internal.manage'),
+      ('payment-receipts',          'economia.official.view', 'economia.official.manage'),
+      ('payment-receipts-internal', 'economia.internal.view', 'economia.internal.manage')
     ) as t(bucket, read_perm, write_perm)
   loop
     prefix := replace(b.bucket, '-', '_');

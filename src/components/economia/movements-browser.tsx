@@ -3,8 +3,10 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
+import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/actions";
 import { ExportMenu } from "@/components/export-menu";
 import { FiltersBar } from "@/components/filters-bar";
+import { LinkInvoiceDialog } from "@/components/economia/link-invoice-dialog";
 import {
   DeleteMovementDialog,
   MovementDialog,
@@ -35,7 +37,7 @@ import {
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { usePagedRows } from "@/hooks/use-paged-rows";
-import type { Ledger, LedgerFilter } from "@/lib/economia";
+import { RECONCILIATION_TONE, reconciliationState, type Ledger, type LedgerFilter } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +45,9 @@ import { cn } from "@/lib/utils";
 const FILTER_DEFAULTS = { q: "", cuenta: "all", categoria: "all", signo: "all" };
 
 type AccountOption = NamedOption & { ledger: Ledger };
+
+type InvoiceOption = { id: string; ledger: Ledger; number: string; totalCents: number; label: string };
+type LinkAction = (prev: EconomiaState, formData: FormData) => Promise<EconomiaState>;
 
 export function MovementsBrowser({
   movements,
@@ -53,6 +58,10 @@ export function MovementsBrowser({
   locale,
   filter,
   manageableLedgers,
+  receivedInvoices,
+  issuedInvoices,
+  linkReceivedInvoiceAction,
+  linkIssuedInvoiceAction,
 }: {
   movements: MovementRow[];
   /**
@@ -67,6 +76,11 @@ export function MovementsBrowser({
   /** "both" mezcla filas de los dos libros en la tabla, con badge de libro. */
   filter: LedgerFilter;
   manageableLedgers: readonly Ledger[];
+  /** Candidatas para "vincular factura desde el movimiento", por libro. */
+  receivedInvoices: InvoiceOption[];
+  issuedInvoices: InvoiceOption[];
+  linkReceivedInvoiceAction: LinkAction;
+  linkIssuedInvoiceAction: LinkAction;
 }) {
   const t = useTranslations("Economia");
   const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
@@ -251,7 +265,7 @@ export function MovementsBrowser({
                   {t("balanceLabel")}
                 </TableHead>
                 {showLedgerColumn ? <TableHead priority="tertiary" /> : null}
-                {canManageAny ? <TableHead className="w-20" /> : null}
+                {canManageAny ? <TableHead className="w-28" /> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -266,18 +280,28 @@ export function MovementsBrowser({
                   <TableCell priority="secondary">
                     {m.categoryName ?? <EmptyValue />}
                   </TableCell>
-                  <TableCell priority="tertiary">
+                  <TableCell priority="tertiary" nowrap>
                     {m.invoiceLinks.length > 0 ? (
-                      <span className="flex flex-col gap-0.5">
-                        {m.invoiceLinks.map((link) => (
-                          <HoverPrefetchLink
-                            key={link.id}
-                            href={`/economia/${link.kind === "received" ? "recibidas" : "emitidas"}/${link.id}`}
-                            className="hover:underline"
-                          >
-                            {link.number}
-                          </HoverPrefetchLink>
-                        ))}
+                      <span className="flex items-center gap-2">
+                        <StatusBadge
+                          tone={RECONCILIATION_TONE[reconciliationState(m.linkedCents, m.amountCents)]}
+                          label={t(
+                            `reconciliation_${reconciliationState(m.linkedCents, m.amountCents)}`,
+                          )}
+                        />
+                        <span className="max-w-32 truncate">
+                          {m.invoiceLinks.map((link, index) => (
+                            <span key={link.id}>
+                              {index > 0 ? ", " : null}
+                              <HoverPrefetchLink
+                                href={`/economia/${link.kind === "received" ? "recibidas" : "emitidas"}/${link.id}`}
+                                className="hover:underline"
+                              >
+                                {link.number}
+                              </HoverPrefetchLink>
+                            </span>
+                          ))}
+                        </span>
                       </span>
                     ) : (
                       <EmptyValue />
@@ -309,6 +333,15 @@ export function MovementsBrowser({
                     <TableCell>
                       {manageableLedgers.includes(m.ledger) ? (
                         <span className="flex justify-end gap-1">
+                          <LinkInvoiceDialog
+                            movementId={m.id}
+                            amountCents={m.amountCents}
+                            receivedInvoices={receivedInvoices.filter((i) => i.ledger === m.ledger)}
+                            issuedInvoices={issuedInvoices.filter((i) => i.ledger === m.ledger)}
+                            linkReceivedInvoiceAction={linkReceivedInvoiceAction}
+                            linkIssuedInvoiceAction={linkIssuedInvoiceAction}
+                            locale={locale}
+                          />
                           <MovementDialog
                             mode="edit"
                             movement={m}
