@@ -8,6 +8,7 @@ import {
 import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { avatarToneClasses } from "@/lib/avatar-color";
 import { SectionHeading } from "@/components/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -58,7 +59,7 @@ async function MemberCard({
     <Card size="sm" className="flex-row items-center gap-3 px-(--card-spacing)">
       <Avatar>
         {member.photoUrl ? <AvatarImage src={member.photoUrl} alt="" /> : null}
-        <AvatarFallback>
+        <AvatarFallback className={avatarToneClasses(member.id)}>
           {initials(member.name) || <UserRoundIcon className="size-4" />}
         </AvatarFallback>
       </Avatar>

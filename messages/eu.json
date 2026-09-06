@@ -136,6 +136,10 @@
       "duplicateCaptains": "Kapitain bat baino gehiago duten taldeak",
       "duplicatePersons": "Bikoiztuta egon daitezkeen pertsonak"
     },
+    "registrationsTrendSection": "Hilabeteko inskripzioak",
+    "registrationsTrendSectionHint": "Uneko denboraldian jasotako web eskaerak.",
+    "noRegistrationsTrendDescription": "Oraindik ez dago inskripziorik denboraldi honetan.",
+    "registrationsTrendCountLabel": "Inskripzioak",
     "fixturesSection": "Hurrengo jardunaldia",
     "fixturesSectionHint": "Talde bakoitzaren hurrengo partida, kategoriaka.",
     "noFixturesDescription": "Ez dago talderik uneko denboraldian.",
