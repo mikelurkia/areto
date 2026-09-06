@@ -30,14 +30,14 @@ import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { RosterTable } from "@/components/equipos/roster-table";
 import { TeamCaptainCard } from "@/components/equipos/team-captain-card";
 import { categoryRequiresMedicalCheckup } from "@/components/equipos/team-categories";
-import { TeamForm } from "@/components/equipos/team-form";
+import { TeamEditDialog } from "@/components/equipos/team-edit-dialog";
 import { DocumentDialog } from "@/components/document-dialog";
 import { NotesLog } from "@/components/notes-log";
 import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -213,8 +213,6 @@ export default async function TeamDetailPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      {/* Solo lo mínimo identificativo: el resto de la configuración vive en
-          la pestaña "Configuración". */}
       <PageHeader
         back={{ href: backHref, label: backLabel }}
         title={team.name}
@@ -256,6 +254,21 @@ export default async function TeamDetailPage({
                 seasons={otherSeasons}
               />
             ) : null}
+            {canManage ? (
+              <TeamEditDialog
+                team={{
+                  id: team.id,
+                  name: team.name,
+                  category: team.category,
+                  gender: team.gender,
+                  federationGroup: team.federationGroup,
+                  federationCode: team.federationCode,
+                  playerFeeCents: team.playerFeeCents,
+                  playerFeePeriod: team.playerFeePeriod,
+                  playerFeeNotes: team.playerFeeNotes,
+                }}
+              />
+            ) : null}
           </>
         }
       />
@@ -271,9 +284,6 @@ export default async function TeamDetailPage({
           <TabsTrigger value="bitacora">
             {t("tabNotesLog", { count: team.noteEntries.length })}
           </TabsTrigger>
-          {canManage ? (
-            <TabsTrigger value="configuracion">{t("tabConfiguration")}</TabsTrigger>
-          ) : null}
         </TabsList>
 
         <TabsContent value="plantilla" keepMounted className="flex flex-col gap-3">
@@ -501,29 +511,6 @@ export default async function TeamDetailPage({
             }))}
           />
         </TabsContent>
-
-        {canManage ? (
-          <TabsContent value="configuracion" keepMounted>
-            <Card>
-              <CardContent>
-                <TeamForm
-                  mode="edit"
-                  team={{
-                    id: team.id,
-                    name: team.name,
-                    category: team.category,
-                    gender: team.gender,
-                    federationGroup: team.federationGroup,
-                    federationCode: team.federationCode,
-                    playerFeeCents: team.playerFeeCents,
-                    playerFeePeriod: team.playerFeePeriod,
-                    playerFeeNotes: team.playerFeeNotes,
-                  }}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ) : null}
       </Tabs>
     </div>
   );

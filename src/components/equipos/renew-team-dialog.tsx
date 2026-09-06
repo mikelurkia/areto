@@ -5,6 +5,7 @@ import { RefreshCwIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { renewTeam } from "@/app/[locale]/(app)/equipos/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,9 +85,7 @@ export function RenewTeamDialog({
                 </SelectContent>
               </Select>
             </Field>
-            {state.error ? (
-              <p className="text-sm text-destructive">{state.error}</p>
-            ) : null}
+            <FormError message={state.error} />
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}

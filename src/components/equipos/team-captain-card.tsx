@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { updateTeamCaptain } from "@/app/[locale]/(app)/equipos/[teamId]/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import {
   Select,
@@ -96,7 +97,7 @@ export function TeamCaptainCard({
           {t("saveChanges")}
         </SubmitButton>
       ) : null}
-      {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+      <FormError message={state.error} />
     </form>
   );
 }

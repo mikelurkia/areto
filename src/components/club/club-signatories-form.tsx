@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useTranslations } from "next-intl";
 
 import { updateClubSignatories, type ClubState } from "@/app/[locale]/(app)/club/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -52,7 +53,7 @@ export function ClubSignatoriesForm({
             />
           </Field>
         </div>
-        {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+        <FormError message={state.error} />
         <SubmitButton className="self-start">{t("saveClubData")}</SubmitButton>
       </FieldGroup>
     </form>

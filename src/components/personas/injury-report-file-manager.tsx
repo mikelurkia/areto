@@ -10,6 +10,7 @@ import {
 } from "@/app/[locale]/(app)/personas/actions";
 import { DeleteInjuryReportFileDialog } from "@/components/personas/delete-injury-report-file-dialog";
 import { SendInjuryReportDialog } from "@/components/personas/send-injury-report-dialog";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -117,7 +118,7 @@ function UploadCustomInjuryReportFileLink({
               required
             />
           </Field>
-          {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}
