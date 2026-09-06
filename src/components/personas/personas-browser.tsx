@@ -91,7 +91,6 @@ type PersonRow = {
   tags: string[];
   dependentsCount: number;
   isPastMember: boolean;
-  hasCurrentSeasonDataConsent: boolean;
 };
 
 type TeamOption = { id: string; label: string };

@@ -1,11 +1,11 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { BellIcon, ClipboardListIcon, ShieldHalfIcon } from "lucide-react";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { memberships, personDataConsents, seasonCategoryBirthYears, teams } from "@/db/schema";
+import { memberships, seasonCategoryBirthYears, teams } from "@/db/schema";
 import {
   addTeamDocument,
   addTeamNote,
@@ -159,17 +159,6 @@ export default async function TeamDetailPage({
   const memberIds = new Set(teamMemberships.map((m) => m.personId));
   const availablePersons = allPersons.filter((person) => !memberIds.has(person.id));
 
-  const dataConsentRows = teamMemberships.length
-    ? await db.query.personDataConsents.findMany({
-        where: and(
-          eq(personDataConsents.seasonId, team.seasonId),
-          inArray(personDataConsents.personId, [...memberIds]),
-        ),
-        columns: { personId: true },
-      })
-    : [];
-  const dataConsentPersonIds = new Set(dataConsentRows.map((r) => r.personId));
-
   // `loadSeasonRenewals` va aparte de las firmas de URLs: por debajo dispara
   // sus propias queries (cruza plantilla e inscripciones), y sumarlas al
   // mismo `Promise.all` es justo el patrón de concurrencia que causó el
@@ -202,10 +191,7 @@ export default async function TeamDetailPage({
   );
 
   const { stats: rosterStats, alerts: rosterAlerts } = computeRosterHealth(
-    teamMemberships.map((m) => ({
-      ...m,
-      person: { ...m.person, hasDataConsent: dataConsentPersonIds.has(m.personId) },
-    })),
+    teamMemberships,
     { category: team.category, minBirthYear, maxBirthYear },
   );
 
