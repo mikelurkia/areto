@@ -136,10 +136,14 @@ export default async function RemittanceDetailPage({
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-2.5 sm:grid-cols-3">
         <StatTile label={t("colChargeCount")} value={remittance.charges.length} />
         <StatTile label={t("colAmount")} value={formatCents(totalCents, locale)} />
-        <StatTile label={t("stat.pending")} value={pendingCount} />
+        <StatTile
+          label={t("stat.pending")}
+          value={pendingCount}
+          tone={pendingCount > 0 ? "warning" : "positive"}
+        />
       </div>
 
       {visibleLedgers(user).length > 0 ? (

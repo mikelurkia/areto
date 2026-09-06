@@ -138,10 +138,22 @@ export default async function CuotasPage({
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatTile label={t("stat.pending")} value={formatCents(statTotals.pending, locale)} />
-        <StatTile label={t("stat.collected")} value={formatCents(statTotals.collected, locale)} />
-        <StatTile label={t("stat.returned")} value={formatCents(statTotals.returned, locale)} />
+      <div className="grid gap-2.5 sm:grid-cols-3">
+        <StatTile
+          label={t("stat.pending")}
+          value={formatCents(statTotals.pending, locale)}
+          tone="warning"
+        />
+        <StatTile
+          label={t("stat.collected")}
+          value={formatCents(statTotals.collected, locale)}
+          tone="positive"
+        />
+        <StatTile
+          label={t("stat.returned")}
+          value={formatCents(statTotals.returned, locale)}
+          tone="danger"
+        />
       </div>
 
       {pendingGroupRows.length > 0 ? (

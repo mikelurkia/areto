@@ -86,6 +86,37 @@ export function resolveLedger(
   return visible[0] ?? null;
 }
 
+/**
+ * Filtro de libro con un tercer estado "ambos", solo para las pantallas que
+ * mezclan filas de los dos libros en una misma tabla (movimientos, facturas,
+ * presupuesto). El resto del módulo sigue con `resolveLedger`/`Ledger` sin
+ * tocar.
+ */
+export const LEDGER_FILTER_VALUES = [...LEDGERS, "both"] as const;
+export type LedgerFilter = (typeof LEDGER_FILTER_VALUES)[number];
+
+/**
+ * Libro activo a partir de `?libro=`, con "ambos" solo disponible si el
+ * usuario ve los dos libros. Cualquier otro valor cae en `resolveLedger`
+ * (mismo fallback de siempre: al primero visible).
+ */
+export function resolveLedgerFilter(
+  raw: string | string[] | undefined,
+  visible: readonly Ledger[],
+): LedgerFilter | null {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === "both" && visible.length > 1) return "both";
+  return resolveLedger(raw, visible);
+}
+
+/** Libros que entran en el `where` de la query para un filtro dado. */
+export function ledgersForFilter(
+  filter: LedgerFilter,
+  visible: readonly Ledger[],
+): Ledger[] {
+  return filter === "both" ? [...visible] : [filter];
+}
+
 export type ReceivedInvoiceStatus = "pending" | "paid" | "disputed";
 
 /** Tono por estado de factura recibida, igual en el listado y en la ficha. */
@@ -147,6 +178,7 @@ export type BudgetRow = {
   accruedCents: number;
   /** Apuntes bancarios, ya con el signo puesto del lado de la categoría. */
   cashCents: number;
+  notes: string | null;
 };
 
 type BudgetSide = { planned: number; accrued: number; cash: number };

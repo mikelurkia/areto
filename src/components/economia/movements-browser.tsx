@@ -12,10 +12,12 @@ import {
   type NamedOption,
 } from "@/components/economia/movement-dialog";
 import { EmptyValue } from "@/components/empty-value";
+import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { PaginationBar } from "@/components/pagination-bar";
 import { SearchInput } from "@/components/search-input";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { StatTile } from "@/components/stat-tile";
+import { StatusBadge } from "@/components/status-badge";
 import {
   Select,
   SelectContent,
@@ -33,10 +35,14 @@ import {
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { usePagedRows } from "@/hooks/use-paged-rows";
+import type { Ledger, LedgerFilter } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 /** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
 const FILTER_DEFAULTS = { q: "", cuenta: "all", categoria: "all", signo: "all" };
+
+type AccountOption = NamedOption & { ledger: Ledger };
 
 export function MovementsBrowser({
   movements,
@@ -45,19 +51,22 @@ export function MovementsBrowser({
   categories,
   seasonId,
   locale,
-  canManage,
+  filter,
+  manageableLedgers,
 }: {
   movements: MovementRow[];
   /**
    * Cuentas del libro: las retiradas incluidas, porque sus apuntes siguen en
    * el listado y hay que poder filtrarlos y editarlos.
    */
-  accounts: NamedOption[];
+  accounts: AccountOption[];
   seasons: NamedOption[];
   categories: NamedOption[];
   seasonId: string;
   locale: string;
-  canManage: boolean;
+  /** "both" mezcla filas de los dos libros en la tabla, con badge de libro. */
+  filter: LedgerFilter;
+  manageableLedgers: readonly Ledger[];
 }) {
   const t = useTranslations("Economia");
   const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
@@ -89,16 +98,22 @@ export function MovementsBrowser({
   }, [movements, query, account, category, sign]);
 
   // Los totales son los de lo filtrado, no los de la temporada entera: si no,
-  // filtrar por cuenta dejaría unas cifras que no cuadran con la tabla.
-  const totals = useMemo(() => {
-    let income = 0;
-    let expense = 0;
+  // filtrar por cuenta dejaría unas cifras que no cuadran con la tabla. En
+  // "ambos" se agrupan por libro primero — nunca se suman entre libros.
+  const totalsByLedger = useMemo(() => {
+    const map = new Map<Ledger, { income: number; expense: number; net: number }>();
     for (const m of filtered) {
-      if (m.amountCents > 0) income += m.amountCents;
-      else expense += m.amountCents;
+      const side = map.get(m.ledger) ?? { income: 0, expense: 0, net: 0 };
+      if (m.amountCents > 0) side.income += m.amountCents;
+      else side.expense += m.amountCents;
+      side.net = side.income + side.expense;
+      map.set(m.ledger, side);
     }
-    return { income, expense, net: income + expense };
+    return map;
   }, [filtered]);
+
+  const showLedgerColumn = filter === "both";
+  const canManageAny = manageableLedgers.length > 0;
 
   const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
@@ -134,10 +149,19 @@ export function MovementsBrowser({
 
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatTile label={t("totalIncomeLabel")} value={formatCents(totals.income, locale)} />
-        <StatTile label={t("totalExpenseLabel")} value={formatCents(totals.expense, locale)} />
-        <StatTile label={t("netLabel")} value={formatCents(totals.net, locale)} />
+      <div className={cn("grid gap-4", showLedgerColumn && "md:grid-cols-2")}>
+        {[...totalsByLedger.entries()].map(([ledger, totals]) => (
+          <div key={ledger} className="flex flex-col gap-2">
+            {showLedgerColumn ? (
+              <StatusBadge tone="neutral" label={t(`ledger_${ledger}`)} />
+            ) : null}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <StatTile label={t("totalIncomeLabel")} value={formatCents(totals.income, locale)} />
+              <StatTile label={t("totalExpenseLabel")} value={formatCents(totals.expense, locale)} />
+              <StatTile label={t("netLabel")} value={formatCents(totals.net, locale)} />
+            </div>
+          </div>
+        ))}
       </div>
 
       <FiltersBar
@@ -221,11 +245,13 @@ export function MovementsBrowser({
                 <TableHead priority="secondary">{t("movementAccountLabel")}</TableHead>
                 <TableHead priority="tertiary">{t("counterpartyLabel")}</TableHead>
                 <TableHead priority="secondary">{t("categoryLabel")}</TableHead>
+                <TableHead priority="tertiary">{t("invoiceLinkLabel")}</TableHead>
                 <TableHead className="text-right">{t("amountLabel")}</TableHead>
                 <TableHead priority="tertiary" className="text-right">
                   {t("balanceLabel")}
                 </TableHead>
-                {canManage ? <TableHead className="w-20" /> : null}
+                {showLedgerColumn ? <TableHead priority="tertiary" /> : null}
+                {canManageAny ? <TableHead className="w-20" /> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -239,6 +265,23 @@ export function MovementsBrowser({
                   </TableCell>
                   <TableCell priority="secondary">
                     {m.categoryName ?? <EmptyValue />}
+                  </TableCell>
+                  <TableCell priority="tertiary">
+                    {m.invoiceLinks.length > 0 ? (
+                      <span className="flex flex-col gap-0.5">
+                        {m.invoiceLinks.map((link) => (
+                          <HoverPrefetchLink
+                            key={link.id}
+                            href={`/economia/${link.kind === "received" ? "recibidas" : "emitidas"}/${link.id}`}
+                            className="hover:underline"
+                          >
+                            {link.number}
+                          </HoverPrefetchLink>
+                        ))}
+                      </span>
+                    ) : (
+                      <EmptyValue />
+                    )}
                   </TableCell>
                   <TableCell
                     nowrap
@@ -257,19 +300,26 @@ export function MovementsBrowser({
                       formatCents(m.balanceCents, locale)
                     )}
                   </TableCell>
-                  {canManage ? (
+                  {showLedgerColumn ? (
+                    <TableCell priority="tertiary">
+                      <StatusBadge tone="neutral" label={t(`ledger_${m.ledger}`)} />
+                    </TableCell>
+                  ) : null}
+                  {canManageAny ? (
                     <TableCell>
-                      <span className="flex justify-end gap-1">
-                        <MovementDialog
-                          mode="edit"
-                          movement={m}
-                          accounts={accounts}
-                          seasons={seasons}
-                          categories={categories}
-                          seasonId={seasonId}
-                        />
-                        <DeleteMovementDialog id={m.id} concept={m.concept} />
-                      </span>
+                      {manageableLedgers.includes(m.ledger) ? (
+                        <span className="flex justify-end gap-1">
+                          <MovementDialog
+                            mode="edit"
+                            movement={m}
+                            accounts={accounts.filter((a) => a.ledger === m.ledger)}
+                            seasons={seasons}
+                            categories={categories}
+                            seasonId={seasonId}
+                          />
+                          <DeleteMovementDialog id={m.id} concept={m.concept} />
+                        </span>
+                      ) : null}
                     </TableCell>
                   ) : null}
                 </TableRow>
