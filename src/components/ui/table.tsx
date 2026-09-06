@@ -81,7 +81,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        "border-b border-foreground/10 transition-colors hover:bg-muted/70 has-aria-expanded:bg-muted/70 data-[state=selected]:bg-muted",
         className
       )}
       {...props}
@@ -100,7 +100,7 @@ function TableHead({
       data-slot="table-head"
       data-priority={priority}
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium text-foreground [&:has([role=checkbox])]:pr-0",
+        "h-8 px-2 text-left align-middle font-medium text-foreground [&:has([role=checkbox])]:pr-0",
         nowrap && "whitespace-nowrap",
         priority && priorityClasses[priority],
         className
@@ -121,8 +121,8 @@ function TableCell({
       data-slot="table-cell"
       data-priority={priority}
       className={cn(
-        "p-2 align-middle [&:has([role=checkbox])]:pr-0",
-        nowrap && "whitespace-nowrap",
+        "px-2 py-1.5 align-middle [&:has([role=checkbox])]:pr-0",
+        nowrap && "whitespace-nowrap tabular-nums",
         priority && priorityClasses[priority],
         className
       )}

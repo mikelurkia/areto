@@ -136,6 +136,10 @@
       "duplicateCaptains": "Equipos con más de un capitán",
       "duplicatePersons": "Posibles personas duplicadas"
     },
+    "registrationsTrendSection": "Inscripciones por mes",
+    "registrationsTrendSectionHint": "Solicitudes web recibidas en la temporada actual.",
+    "noRegistrationsTrendDescription": "Aún no hay inscripciones esta temporada.",
+    "registrationsTrendCountLabel": "Inscripciones",
     "fixturesSection": "Próxima jornada",
     "fixturesSectionHint": "El siguiente partido de cada equipo, por categoría.",
     "noFixturesDescription": "No hay ningún equipo en la temporada actual.",

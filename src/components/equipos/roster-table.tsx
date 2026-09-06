@@ -17,6 +17,7 @@ import {
   type MedicalCertStatus,
 } from "@/lib/medical-status";
 import { StatusBadge } from "@/components/status-badge";
+import { avatarToneClasses } from "@/lib/avatar-color";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -168,7 +169,7 @@ export function RosterTable({
                 <div className="flex items-center gap-2">
                   <Avatar size="sm">
                     {m.photoUrl ? <AvatarImage src={m.photoUrl} alt="" /> : null}
-                    <AvatarFallback>
+                    <AvatarFallback className={avatarToneClasses(m.personId)}>
                       <UserRoundIcon className="size-3" />
                     </AvatarFallback>
                   </Avatar>

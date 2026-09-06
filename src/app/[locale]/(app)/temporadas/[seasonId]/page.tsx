@@ -205,7 +205,17 @@ export default async function TemporadaDetailPage({
           icon={ShieldHalfIcon}
           title={t("noTeamsTitle")}
           description={canManageTeams ? t("noTeamsDescription") : t("noTeamsReadonly")}
-        />
+        >
+          {canManageTeams ? (
+            <Button
+              render={<Link href={`/equipos/nuevo?season=${season.id}`} />}
+              nativeButton={false}
+            >
+              <PlusIcon data-icon="inline-start" />
+              {tEquipos("action")}
+            </Button>
+          ) : null}
+        </SectionPlaceholder>
       ) : (
         <Table>
           <TableHeader>
