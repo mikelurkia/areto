@@ -5,6 +5,7 @@ import { PaperclipIcon, PencilIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { updatePersonIdScan } from "@/app/[locale]/(app)/personas/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -84,7 +85,7 @@ export function PersonIdScanDialog({
               </Field>
             ) : null}
           </Field>
-          {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

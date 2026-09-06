@@ -7,6 +7,7 @@ import {
   updateRegistrationAvailability,
   type ClubState,
 } from "@/app/[locale]/(app)/club/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -68,7 +69,7 @@ export function RegistrationAvailabilityForm({
             defaultValue={String(memberAnnualFeeCents / 100)}
           />
         </Field>
-        {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+        <FormError message={state.error} />
         <SubmitButton className="self-start">{t("saveRegistrationSettings")}</SubmitButton>
       </FieldGroup>
     </form>

@@ -5,6 +5,7 @@ import { UsersIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { generatePlayerCharges } from "@/app/[locale]/(app)/cuotas/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,7 +79,7 @@ export function GeneratePlayerChargesDialog({
               </Select>
             </Field>
           </FieldGroup>
-          {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

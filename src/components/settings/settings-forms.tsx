@@ -10,6 +10,7 @@ import {
   updatePassword,
   type SettingsState,
 } from "@/app/[locale]/(app)/ajustes/actions";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { useActionToast } from "@/hooks/use-action-toast";
@@ -27,11 +28,6 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
 const initialState: SettingsState = {};
-
-function FormError({ state }: { state: SettingsState }) {
-  if (!state.error) return null;
-  return <p className="text-sm text-destructive">{state.error}</p>;
-}
 
 export function ProfileForm({ fullName }: { fullName: string | null }) {
   const t = useTranslations("Settings");
@@ -51,7 +47,7 @@ export function ProfileForm({ fullName }: { fullName: string | null }) {
             placeholder={t("fullNamePlaceholder")}
           />
         </Field>
-        <FormError state={state} />
+        <FormError message={state.error} />
         <SubmitButton className="self-start">{t("saveName")}</SubmitButton>
       </FieldGroup>
     </form>
@@ -77,7 +73,7 @@ export function EmailForm({ email }: { email: string }) {
             required
           />
         </Field>
-        <FormError state={state} />
+        <FormError message={state.error} />
         <SubmitButton className="self-start">{t("updateEmail")}</SubmitButton>
       </FieldGroup>
     </form>
@@ -114,7 +110,7 @@ export function PasswordForm() {
             required
           />
         </Field>
-        <FormError state={state} />
+        <FormError message={state.error} />
         <SubmitButton className="self-start">
           {t("updatePassword")}
         </SubmitButton>
@@ -155,7 +151,7 @@ export function DangerZone({ email }: { email: string }) {
                 autoComplete="off"
               />
             </Field>
-            <FormError state={state} />
+            <FormError message={state.error} />
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}

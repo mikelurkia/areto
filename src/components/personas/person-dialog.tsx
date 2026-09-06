@@ -11,6 +11,7 @@ import {
   GuardianPicker,
   type GuardianOption,
 } from "@/components/personas/guardian-picker";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -418,9 +419,7 @@ export function PersonDialog(props: PersonDialogProps) {
               ) : null}
             </FieldGroup>
           </div>
-          {state.error ? (
-            <p className="text-sm text-destructive">{state.error}</p>
-          ) : null}
+          <FormError message={state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

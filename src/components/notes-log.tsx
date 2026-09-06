@@ -5,6 +5,7 @@ import { Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { NoteActionState } from "@/lib/entity-notes";
+import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { SubmitIconButton } from "@/components/submit-icon-button";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -92,9 +93,7 @@ export function NotesLog({
             placeholder={t("noteBodyPlaceholder")}
             required
           />
-          {state.error ? (
-            <p className="text-sm text-destructive">{state.error}</p>
-          ) : null}
+          <FormError message={state.error} />
           <SubmitButton size="sm" className="self-end">
             {t("addNoteAction")}
           </SubmitButton>

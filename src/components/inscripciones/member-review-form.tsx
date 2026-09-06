@@ -10,6 +10,7 @@ import {
 } from "@/app/[locale]/(app)/inscripciones/actions";
 import { ConsentRow, MatchSelect, type PersonCandidate } from "@/components/match-select";
 import { GuardianBlock, type GuardianData } from "@/components/inscripciones/guardian-review-fields";
+import { FormError } from "@/components/form-error";
 import { MaskedIbanInput } from "@/components/masked-iban";
 import { SectionHeading } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -168,10 +169,8 @@ export function MemberReviewForm({ registration }: { registration: MemberRegistr
       <Card className="gap-4 px-(--card-spacing)">
         <SectionHeading title={t("reviewSection")} />
 
-        {editState.error ? <p className="text-sm text-destructive">{editState.error}</p> : null}
-        {approveState.error ? (
-          <p className="text-sm text-destructive">{approveState.error}</p>
-        ) : null}
+        <FormError message={editState.error} />
+        <FormError message={approveState.error} />
         <div className="flex flex-wrap gap-2">
           <SubmitButton formAction={editAction} variant="outline">
             {t("saveChangesAction")}
@@ -184,9 +183,7 @@ export function MemberReviewForm({ registration }: { registration: MemberRegistr
             <FieldLabel htmlFor="rejectionReason">{t("rejectionReasonLabel")}</FieldLabel>
             <Textarea id="rejectionReason" name="rejectionReason" placeholder={t("rejectionReasonPlaceholder")} />
           </Field>
-          {rejectState.error ? (
-            <p className="text-sm text-destructive">{rejectState.error}</p>
-          ) : null}
+          <FormError message={rejectState.error} />
           <div>
             <SubmitButton formAction={rejectAction} variant="destructive">
               {t("rejectAction")}
