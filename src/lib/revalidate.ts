@@ -47,6 +47,7 @@ export const ROUTE = {
   cuotas: "/[locale]/cuotas",
   cuotaFicha: "/[locale]/cuotas/[remittanceId]",
   economiaProveedores: "/[locale]/economia/proveedores",
+  economiaMovimientos: "/[locale]/economia/movimientos",
   economiaRecibidas: "/[locale]/economia/recibidas",
   economiaRecibidaFicha: "/[locale]/economia/recibidas/[invoiceId]",
   economiaEmitidas: "/[locale]/economia/emitidas",

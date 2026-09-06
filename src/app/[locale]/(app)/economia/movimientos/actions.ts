@@ -21,8 +21,21 @@ import {
 import { readAmountCents } from "@/lib/money";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/actions";
+import {
+  removeLinkReceiptFileObject,
+  uploadLinkReceiptFile,
+} from "@/app/[locale]/(app)/economia/recibidas/actions";
 
 type Translator = Awaited<ReturnType<typeof getTranslations>>;
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+const ALLOWED_FILE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+
+function readFile(formData: FormData): File | null {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return null;
+  return file;
+}
 
 /**
  * Campos del formulario de apunte. El libro NO se lee del formulario: lo pone
@@ -223,6 +236,10 @@ export async function linkMovementToRemittance(
   if (!movementId || !sepaRemittanceId) return { error: t("notAllowed") };
   if (amountCents === null || amountCents === 0) return { error: t("movementAmountRequired") };
 
+  const file = readFile(formData);
+  if (file && !ALLOWED_FILE_TYPES.includes(file.type)) return { error: t("invoiceFileInvalidType") };
+  if (file && file.size > MAX_FILE_BYTES) return { error: t("invoiceFileTooLarge") };
+
   const movement = await db.query.accountMovements.findFirst({
     where: eq(accountMovements.id, movementId),
     columns: { ledger: true },
@@ -230,12 +247,25 @@ export async function linkMovementToRemittance(
   if (!movement) return { error: t("movementNotFound") };
   if (!canManageLedger(user, movement.ledger)) return { error: t("notAllowed") };
 
+  let created;
   try {
-    await db.insert(movementLinks).values({ movementId, sepaRemittanceId, amountCents });
+    [created] = await db
+      .insert(movementLinks)
+      .values({ movementId, sepaRemittanceId, amountCents })
+      .returning({ id: movementLinks.id });
   } catch (error) {
     if (isPostgresError(error, FOREIGN_KEY_VIOLATION)) return { error: t("notAllowed") };
     throw error;
   }
+
+  if (file) {
+    const uploaded = await uploadLinkReceiptFile(movement.ledger, created.id, file);
+    await db
+      .update(movementLinks)
+      .set({ filePath: uploaded.path, fileName: uploaded.name })
+      .where(eq(movementLinks.id, created.id));
+  }
+
   await syncRemittanceSettlement(sepaRemittanceId);
 
   await recordAuditEvent({
@@ -266,6 +296,7 @@ export async function unlinkRemittanceMovement(
   if (!canManageLedger(user, link.movement.ledger)) return { error: t("notAllowed") };
 
   await db.delete(movementLinks).where(eq(movementLinks.id, id));
+  if (link.filePath) await removeLinkReceiptFileObject(link.movement.ledger, link.filePath);
   await syncRemittanceSettlement(link.sepaRemittanceId);
 
   await recordAuditEvent({

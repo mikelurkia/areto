@@ -97,14 +97,16 @@ export type LedgerFilter = (typeof LEDGER_FILTER_VALUES)[number];
 
 /**
  * Libro activo a partir de `?libro=`, con "ambos" solo disponible si el
- * usuario ve los dos libros. Cualquier otro valor cae en `resolveLedger`
- * (mismo fallback de siempre: al primero visible).
+ * usuario ve los dos libros. Sin `?libro=` en la URL, el valor por defecto es
+ * "ambos" (si hay más de un libro visible); cualquier otro valor explícito
+ * cae en `resolveLedger`.
  */
 export function resolveLedgerFilter(
   raw: string | string[] | undefined,
   visible: readonly Ledger[],
 ): LedgerFilter | null {
   const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === undefined && visible.length > 1) return "both";
   if (value === "both" && visible.length > 1) return "both";
   return resolveLedger(raw, visible);
 }
@@ -143,6 +145,14 @@ export const ISSUED_INVOICE_STATUS_TONE: Record<IssuedInvoiceStatus, StatusTone>
  */
 export function invoiceFileBucket(value: Ledger): string {
   return value === "internal" ? "invoice-files-internal" : "invoice-files";
+}
+
+/**
+ * Bucket del justificante de pago de un enlace (`movementLinks`), por el
+ * libro del movimiento: mismo motivo de doble bucket que `invoiceFileBucket`.
+ */
+export function paymentReceiptBucket(value: Ledger): string {
+  return value === "internal" ? "payment-receipts-internal" : "payment-receipts";
 }
 
 export type ReconciliationState = "pending" | "partial" | "settled";

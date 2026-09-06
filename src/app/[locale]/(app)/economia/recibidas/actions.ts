@@ -18,6 +18,7 @@ import {
   LEDGERS,
   canManageLedger,
   invoiceFileBucket,
+  paymentReceiptBucket,
   type Ledger,
 } from "@/lib/economia";
 import { readAmountCents } from "@/lib/money";
@@ -38,6 +39,21 @@ async function uploadInvoiceFile(ledger: Ledger, invoiceId: string, file: File) 
 
 async function removeInvoiceFileObject(ledger: Ledger, path: string) {
   await removeFile(invoiceFileBucket(ledger), path);
+}
+
+/**
+ * Justificante de pago de un enlace (`movementLinks`): compartido por las
+ * tres formas de conciliar (factura recibida, emitida y remesa), de ahí que
+ * viva aquí junto al `unlinkMovement` genérico ya reutilizado por las tres.
+ */
+export async function uploadLinkReceiptFile(ledger: Ledger, linkId: string, file: File) {
+  const path = `${linkId}/receipt.${extensionFromMimeType(file.type)}`;
+  await uploadFile(paymentReceiptBucket(ledger), path, file);
+  return { path, name: file.name };
+}
+
+export async function removeLinkReceiptFileObject(ledger: Ledger, path: string) {
+  await removeFile(paymentReceiptBucket(ledger), path);
 }
 
 function readFile(formData: FormData): File | null {
@@ -251,6 +267,10 @@ export async function linkMovementToInvoice(
   if (!movementId || !receivedInvoiceId) return { error: t("notAllowed") };
   if (amountCents === null || amountCents === 0) return { error: t("movementAmountRequired") };
 
+  const file = readFile(formData);
+  if (file && !ALLOWED_FILE_TYPES.includes(file.type)) return { error: t("invoiceFileInvalidType") };
+  if (file && file.size > MAX_FILE_BYTES) return { error: t("invoiceFileTooLarge") };
+
   const [movement, invoice] = await Promise.all([
     db.query.accountMovements.findFirst({
       where: eq(accountMovements.id, movementId),
@@ -266,11 +286,23 @@ export async function linkMovementToInvoice(
   if (movement.ledger !== invoice.ledger) return { error: t("notAllowed") };
   if (!canManageLedger(user, movement.ledger)) return { error: t("notAllowed") };
 
+  let created;
   try {
-    await db.insert(movementLinks).values({ movementId, receivedInvoiceId, amountCents });
+    [created] = await db
+      .insert(movementLinks)
+      .values({ movementId, receivedInvoiceId, amountCents })
+      .returning({ id: movementLinks.id });
   } catch (error) {
     if (isPostgresError(error, FOREIGN_KEY_VIOLATION)) return { error: t("notAllowed") };
     throw error;
+  }
+
+  if (file) {
+    const uploaded = await uploadLinkReceiptFile(movement.ledger, created.id, file);
+    await db
+      .update(movementLinks)
+      .set({ filePath: uploaded.path, fileName: uploaded.name })
+      .where(eq(movementLinks.id, created.id));
   }
 
   await recordAuditEvent({
@@ -281,7 +313,7 @@ export async function linkMovementToInvoice(
     metadata: { receivedInvoiceId, amountCents },
   });
 
-  revalidateRoutes(ROUTE.economiaRecibidaFicha);
+  revalidateRoutes(ROUTE.economiaRecibidaFicha, ROUTE.economiaMovimientos);
   return { message: t("linkCreated") };
 }
 
@@ -296,11 +328,13 @@ export async function unlinkMovement(
   const link = await db.query.movementLinks.findFirst({
     where: eq(movementLinks.id, id),
     with: { movement: { columns: { ledger: true } } },
+    columns: { receivedInvoiceId: true, filePath: true },
   });
   if (!link) return { error: t("notAllowed") };
   if (!canManageLedger(user, link.movement.ledger)) return { error: t("notAllowed") };
 
   await db.delete(movementLinks).where(eq(movementLinks.id, id));
+  if (link.filePath) await removeLinkReceiptFileObject(link.movement.ledger, link.filePath);
 
   await recordAuditEvent({
     actorUserId: user.id,
@@ -310,6 +344,86 @@ export async function unlinkMovement(
     metadata: { receivedInvoiceId: link.receivedInvoiceId },
   });
 
-  revalidateRoutes(ROUTE.economiaRecibidaFicha);
+  revalidateRoutes(ROUTE.economiaRecibidaFicha, ROUTE.economiaMovimientos);
   return { message: t("linkDeleted") };
+}
+
+// ---------------------------------------------------------------------------
+// Justificante de pago de un enlace, compartido por las tres formas de
+// conciliar (factura recibida, emitida y remesa).
+// ---------------------------------------------------------------------------
+
+export async function attachLinkReceipt(
+  _prev: EconomiaState,
+  formData: FormData,
+): Promise<EconomiaState> {
+  const t = await getTranslations("Economia");
+  const user = await requirePermission(ECONOMIA_VIEW_PERMISSIONS);
+
+  const id = String(formData.get("id") ?? "");
+  const file = readFile(formData);
+  if (!file) return { error: t("invoiceFileRequired") };
+  if (!ALLOWED_FILE_TYPES.includes(file.type)) return { error: t("invoiceFileInvalidType") };
+  if (file.size > MAX_FILE_BYTES) return { error: t("invoiceFileTooLarge") };
+
+  const link = await db.query.movementLinks.findFirst({
+    where: eq(movementLinks.id, id),
+    with: { movement: { columns: { ledger: true } } },
+    columns: { filePath: true },
+  });
+  if (!link) return { error: t("notAllowed") };
+  if (!canManageLedger(user, link.movement.ledger)) return { error: t("notAllowed") };
+
+  if (link.filePath) await removeLinkReceiptFileObject(link.movement.ledger, link.filePath);
+  const uploaded = await uploadLinkReceiptFile(link.movement.ledger, id, file);
+  await db
+    .update(movementLinks)
+    .set({ filePath: uploaded.path, fileName: uploaded.name })
+    .where(eq(movementLinks.id, id));
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "update",
+    entityType: "movement_link",
+    entityId: id,
+    metadata: { receiptAttached: true },
+  });
+
+  revalidateRoutes(ROUTE.economiaRecibidaFicha, ROUTE.economiaEmitidaFicha, ROUTE.cuotaFicha);
+  return { message: t("receiptAttached") };
+}
+
+export async function removeLinkReceipt(
+  _prev: EconomiaState,
+  formData: FormData,
+): Promise<EconomiaState> {
+  const t = await getTranslations("Economia");
+  const user = await requirePermission(ECONOMIA_VIEW_PERMISSIONS);
+
+  const id = String(formData.get("id") ?? "");
+  const link = await db.query.movementLinks.findFirst({
+    where: eq(movementLinks.id, id),
+    with: { movement: { columns: { ledger: true } } },
+    columns: { filePath: true },
+  });
+  if (!link) return { error: t("notAllowed") };
+  if (!canManageLedger(user, link.movement.ledger)) return { error: t("notAllowed") };
+  if (!link.filePath) return { error: t("notAllowed") };
+
+  await removeLinkReceiptFileObject(link.movement.ledger, link.filePath);
+  await db
+    .update(movementLinks)
+    .set({ filePath: null, fileName: null })
+    .where(eq(movementLinks.id, id));
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "update",
+    entityType: "movement_link",
+    entityId: id,
+    metadata: { receiptRemoved: true },
+  });
+
+  revalidateRoutes(ROUTE.economiaRecibidaFicha, ROUTE.economiaEmitidaFicha, ROUTE.cuotaFicha);
+  return { message: t("receiptRemoved") };
 }

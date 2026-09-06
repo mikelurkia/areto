@@ -20,6 +20,7 @@ import { readAmountCents } from "@/lib/money";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/actions";
+import { uploadLinkReceiptFile } from "@/app/[locale]/(app)/economia/recibidas/actions";
 
 type Translator = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -312,6 +313,10 @@ export async function linkMovementToIssuedInvoice(
   if (!movementId || !issuedInvoiceId) return { error: t("notAllowed") };
   if (amountCents === null || amountCents === 0) return { error: t("movementAmountRequired") };
 
+  const file = readFile(formData);
+  if (file && !ALLOWED_FILE_TYPES.includes(file.type)) return { error: t("invoiceFileInvalidType") };
+  if (file && file.size > MAX_FILE_BYTES) return { error: t("invoiceFileTooLarge") };
+
   const [movement, invoice] = await Promise.all([
     db.query.accountMovements.findFirst({
       where: eq(accountMovements.id, movementId),
@@ -327,11 +332,23 @@ export async function linkMovementToIssuedInvoice(
   if (movement.ledger !== invoice.ledger) return { error: t("notAllowed") };
   if (!canManageLedger(user, movement.ledger)) return { error: t("notAllowed") };
 
+  let created;
   try {
-    await db.insert(movementLinks).values({ movementId, issuedInvoiceId, amountCents });
+    [created] = await db
+      .insert(movementLinks)
+      .values({ movementId, issuedInvoiceId, amountCents })
+      .returning({ id: movementLinks.id });
   } catch (error) {
     if (isPostgresError(error, FOREIGN_KEY_VIOLATION)) return { error: t("notAllowed") };
     throw error;
+  }
+
+  if (file) {
+    const uploaded = await uploadLinkReceiptFile(movement.ledger, created.id, file);
+    await db
+      .update(movementLinks)
+      .set({ filePath: uploaded.path, fileName: uploaded.name })
+      .where(eq(movementLinks.id, created.id));
   }
 
   await recordAuditEvent({
@@ -342,6 +359,6 @@ export async function linkMovementToIssuedInvoice(
     metadata: { issuedInvoiceId, amountCents },
   });
 
-  revalidateRoutes(ROUTE.economiaEmitidaFicha);
+  revalidateRoutes(ROUTE.economiaEmitidaFicha, ROUTE.economiaMovimientos);
   return { message: t("linkCreated") };
 }
