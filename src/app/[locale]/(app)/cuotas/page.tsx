@@ -182,7 +182,11 @@ export default async function CuotasPage({
           icon={LandmarkIcon}
           title={t("emptyTitle")}
           description={t("emptyDescription")}
-        />
+        >
+          {canManage && currentSeason ? (
+            <CreateRemittanceDialog seasonId={currentSeason.id} teamOptions={teamOptions} />
+          ) : null}
+        </SectionPlaceholder>
       ) : (
         <Table>
           <TableHeader>
