@@ -16,7 +16,6 @@ type HealthMembership = {
   person: {
     birthDate: string | null;
     medicalCertUntil: string | null;
-    hasDataConsent: boolean;
   };
 };
 
@@ -32,7 +31,6 @@ export type RosterHealthAlerts = {
   noJersey: number;
   medicalExpired: number;
   medicalExpiring: number;
-  dataConsentMissing: number;
   ageOutOfRange: number;
 };
 
@@ -118,12 +116,6 @@ export function computeRosterHealth(
     : 0;
   const noJersey = players.filter((m) => m.jerseyNumber === null).length;
 
-  // Mismo criterio que el reconocimiento médico: quien federa por categoría
-  // necesita también el consentimiento de datos de la temporada en curso.
-  const dataConsentMissing = requiresMedicalCheckup
-    ? memberships.filter((m) => !m.person.hasDataConsent).length
-    : 0;
-
   const stats: RosterHealthStats = {
     players: players.length,
     goalkeepers: players.filter((m) => m.positions.includes("portero")).length,
@@ -135,7 +127,6 @@ export function computeRosterHealth(
     noJersey,
     medicalExpired,
     medicalExpiring,
-    dataConsentMissing,
     ageOutOfRange,
   };
 
@@ -143,10 +134,7 @@ export function computeRosterHealth(
     (duplicateJerseys.length > 0 ? 1 : 0) +
     (ageOutOfRange > 0 ? 1 : 0) +
     (medicalExpired > 0 ? 1 : 0);
-  const softCount =
-    (medicalExpiring > 0 ? 1 : 0) +
-    (noJersey > 0 ? 1 : 0) +
-    (dataConsentMissing > 0 ? 1 : 0);
+  const softCount = (medicalExpiring > 0 ? 1 : 0) + (noJersey > 0 ? 1 : 0);
 
   return { stats, alerts, hardCount, softCount };
 }

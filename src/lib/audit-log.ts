@@ -7,7 +7,6 @@ export type AuditAction = (typeof auditLog.$inferInsert)["action"];
 
 export type AuditEntityType =
   | "person_medical_checkup"
-  | "person_data_consent"
   | "person_injury_report"
   | "person_banking"
   | "user"
