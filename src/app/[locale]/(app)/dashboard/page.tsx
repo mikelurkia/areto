@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
+  AlertTriangleIcon,
   CalendarDaysIcon,
   CheckCircle2Icon,
   ClipboardListIcon,
@@ -121,13 +122,13 @@ async function AlertsGrid({ canSeeMedical }: { canSeeMedical: boolean }) {
 
   if (tiles.length === 0) {
     return (
-      <Card className="flex-row items-center gap-3 px-(--card-spacing)">
+      <div className="flex items-center gap-3">
         <CheckCircle2Icon className="size-6 shrink-0 text-success" aria-hidden />
         <div className="flex flex-col">
           <span className="font-medium">{t("allClearTitle")}</span>
           <span className="text-sm text-muted-foreground">{t("allClearDescription")}</span>
         </div>
-      </Card>
+      </div>
     );
   }
 
@@ -330,9 +331,20 @@ export default async function DashboardPage({
 
       {canSeePersonas ? (
         <>
-          <Suspense fallback={<AlertTilesSkeleton />}>
-            <AlertsGrid canSeeMedical={canSeeMedical} />
-          </Suspense>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertTriangleIcon className="size-4" />
+                {t("alertsSection")}
+              </CardTitle>
+              <CardDescription>{t("alertsSectionHint")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Suspense fallback={<AlertTilesSkeleton />}>
+                <AlertsGrid canSeeMedical={canSeeMedical} />
+              </Suspense>
+            </CardContent>
+          </Card>
           <Suspense fallback={<CardSkeleton lines={3} />}>
             <ReviewCard />
           </Suspense>
