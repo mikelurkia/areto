@@ -8,6 +8,8 @@ import { logout } from "@/app/[locale]/(auth)/actions";
 import { Link, usePathname } from "@/i18n/navigation";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { isSystemRoleKey, type Permission } from "@/lib/permissions";
+import { avatarToneClasses } from "@/lib/avatar-color";
+import { cn } from "@/lib/utils";
 import { useNavItems, type NavGroup, type NavItem } from "@/components/nav-items";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -289,7 +291,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
                 render={<SidebarMenuButton size="lg" />}
               >
                 <Avatar className="size-8 rounded-lg">
-                  <AvatarFallback className="rounded-lg">
+                  <AvatarFallback className={cn("rounded-lg", avatarToneClasses(user.email))}>
                     {initials}
                   </AvatarFallback>
                 </Avatar>

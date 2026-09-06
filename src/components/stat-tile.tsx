@@ -56,16 +56,16 @@ export function StatTile({
         {Icon ? (
           <span
             className={cn(
-              "flex size-8 shrink-0 items-center justify-center rounded-full",
+              "flex size-7 shrink-0 items-center justify-center rounded-full",
               TONE_ICON_CHIP[tone],
             )}
           >
-            <Icon className="size-4" aria-hidden />
+            <Icon className="size-3.5" aria-hidden />
           </span>
         ) : null}
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="font-heading text-xl leading-tight font-bold tabular-nums">
+          <p className="font-heading text-lg leading-tight font-bold tabular-nums">
             {value}
           </p>
           {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}

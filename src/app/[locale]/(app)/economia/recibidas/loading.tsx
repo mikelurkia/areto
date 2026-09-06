@@ -2,7 +2,6 @@ import {
   FiltersBarSkeleton,
   PageHeaderSkeleton,
   SectionNavSkeleton,
-  StatCardsSkeleton,
   TableSkeleton,
 } from "@/components/skeletons";
 
@@ -11,7 +10,6 @@ export default function Loading() {
     <div className="flex flex-1 flex-col gap-6">
       <PageHeaderSkeleton actions={2} />
       <SectionNavSkeleton widths={["w-20", "w-28", "w-28", "w-24", "w-20", "w-24", "w-20"]} />
-      <StatCardsSkeleton count={2} />
       <FiltersBarSkeleton selects={2} trailing={1} />
       <TableSkeleton
         columns={[

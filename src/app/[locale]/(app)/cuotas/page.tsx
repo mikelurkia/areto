@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { LandmarkIcon } from "lucide-react";
 
 import { db } from "@/db";
 import { sepaCharges } from "@/db/schema";
@@ -177,7 +178,15 @@ export default async function CuotasPage({
       ) : null}
 
       {remittances.length === 0 ? (
-        <SectionPlaceholder title={t("emptyTitle")} description={t("emptyDescription")} />
+        <SectionPlaceholder
+          icon={LandmarkIcon}
+          title={t("emptyTitle")}
+          description={t("emptyDescription")}
+        >
+          {canManage && currentSeason ? (
+            <CreateRemittanceDialog seasonId={currentSeason.id} teamOptions={teamOptions} />
+          ) : null}
+        </SectionPlaceholder>
       ) : (
         <Table>
           <TableHeader>

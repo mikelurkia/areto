@@ -9,6 +9,7 @@ import {
   IdCardIcon,
   ShieldAlertIcon,
   StethoscopeIcon,
+  TrendingUpIcon,
   UserPlusIcon,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ import {
   countExpiringMedicalPlayers,
   countPendingRegistrations,
 } from "@/lib/dashboard-alerts";
+import { loadMonthlyRegistrationTrend } from "@/lib/dashboard-trends";
 import {
   countDuplicatePersonGroups,
   loadDataIntegrityIssues,
@@ -26,10 +28,12 @@ import {
 } from "@/lib/data-integrity";
 import { medicalReferenceDates } from "@/lib/medical-panel-rows";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
+import { TONE_VARIANT } from "@/lib/status-tone";
 import { loadUpcomingFixtures } from "@/lib/upcoming-fixtures";
 import { Link } from "@/i18n/navigation";
 import { AlertTile } from "@/components/dashboard/alert-tile";
 import { FixtureBoard } from "@/components/dashboard/fixture-board";
+import { RegistrationTrendChart } from "@/components/dashboard/registration-trend-chart";
 import { PageHeader } from "@/components/page-header";
 import { AlertTilesSkeleton, CardSkeleton } from "@/components/skeletons";
 import { SectionPlaceholder } from "@/components/section-placeholder";
@@ -130,6 +134,51 @@ async function AlertsGrid({ canSeeMedical }: { canSeeMedical: boolean }) {
   return <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{tiles}</div>;
 }
 
+/**
+ * Mini-gráfico de inscripciones por mes de la temporada activa. Aparte del
+ * resto de secciones (su propio `await`, no metido en un `Promise.all`
+ * compartido): es una agregación con su propia consulta, mismo motivo que
+ * `renewals` en `AlertsGrid` (ver CLAUDE.md).
+ */
+async function RegistrationTrendSection({ locale }: { locale: string }) {
+  await connection();
+  const [t, currentSeason] = await Promise.all([
+    getTranslations("Dashboard"),
+    db.query.seasons.findFirst({ where: eq(seasons.isCurrent, true), columns: { id: true } }),
+  ]);
+
+  if (!currentSeason) return null;
+
+  const trend = await loadMonthlyRegistrationTrend(currentSeason.id);
+  const monthFormatter = new Intl.DateTimeFormat(locale, { month: "short" });
+  const chartData = trend.map((point) => {
+    const [year, m] = point.month.split("-").map(Number);
+    return { ...point, label: monthFormatter.format(new Date(year, m - 1, 1)) };
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <TrendingUpIcon className="size-4" />
+          {t("registrationsTrendSection")}
+        </CardTitle>
+        <CardDescription>{t("registrationsTrendSectionHint")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {trend.length === 0 ? (
+          <SectionPlaceholder size="compact" title={t("noRegistrationsTrendDescription")} />
+        ) : (
+          <RegistrationTrendChart
+            data={chartData}
+            countLabel={t("registrationsTrendCountLabel")}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 type ReviewRowKey = IntegrityIssueKey | "duplicatePersons";
 
 /**
@@ -185,7 +234,7 @@ async function ReviewCard() {
                 {t(`review.${row.key}`)}
               </Link>
               <Badge
-                variant={row.severity === "hard" ? "destructive" : "warning"}
+                variant={TONE_VARIANT[row.severity === "hard" ? "danger" : "warning"]}
                 className="ml-auto"
               >
                 {row.count}
@@ -276,7 +325,7 @@ export default async function DashboardPage({
   const canSeeCalendario = hasPermission(user, "calendario.view");
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-6">
       <PageHeader title={t("title")} description={t("subtitle")} />
 
       {canSeePersonas ? (
@@ -286,6 +335,9 @@ export default async function DashboardPage({
           </Suspense>
           <Suspense fallback={<CardSkeleton lines={3} />}>
             <ReviewCard />
+          </Suspense>
+          <Suspense fallback={<CardSkeleton lines={1} />}>
+            <RegistrationTrendSection locale={locale} />
           </Suspense>
         </>
       ) : null}
