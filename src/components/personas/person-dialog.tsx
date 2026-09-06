@@ -13,6 +13,7 @@ import {
 } from "@/components/personas/guardian-picker";
 import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
+import { avatarToneClasses } from "@/lib/avatar-color";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -126,7 +133,7 @@ export function PersonDialog(props: PersonDialogProps) {
           </span>
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {props.mode === "create" ? t("newPersonTitle") : t("editPersonTitle")}
@@ -134,163 +141,178 @@ export function PersonDialog(props: PersonDialogProps) {
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
           {person ? <input type="hidden" name="id" value={person.id} /> : null}
-          <div className="max-h-[65vh] overflow-y-auto px-1">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
             <FieldGroup>
-              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("personalDataSection")}
-              </h2>
-              <Field>
-                <FieldLabel htmlFor="person-photo">{t("photoLabel")}</FieldLabel>
-                <div className="flex items-center gap-3">
-                  <Avatar size="lg">
-                    {photoUrl ? <AvatarImage src={photoUrl} alt="" /> : null}
-                    <AvatarFallback>
-                      <UserRoundIcon className="size-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <Input
-                    id="person-photo"
-                    name="photo"
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                  />
-                </div>
-                {photoUrl ? (
-                  <Field orientation="horizontal" className="mt-1">
-                    <Checkbox id="person-remove-photo" name="removePhoto" />
-                    <Label htmlFor="person-remove-photo" className="font-normal">
-                      {t("removePhotoLabel")}
-                    </Label>
+              <FieldSet>
+                <FieldLegend
+                  variant="label"
+                  className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                >
+                  {t("personalDataSection")}
+                </FieldLegend>
+                <Field>
+                  <FieldLabel htmlFor="person-photo">{t("photoLabel")}</FieldLabel>
+                  <div className="flex items-center gap-3">
+                    <Avatar size="lg">
+                      {photoUrl ? <AvatarImage src={photoUrl} alt="" /> : null}
+                      <AvatarFallback className={person ? avatarToneClasses(person.id) : undefined}>
+                        <UserRoundIcon className="size-4" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <Input
+                      id="person-photo"
+                      name="photo"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                    />
+                  </div>
+                  {photoUrl ? (
+                    <Field orientation="horizontal" className="mt-1">
+                      <Checkbox id="person-remove-photo" name="removePhoto" />
+                      <Label htmlFor="person-remove-photo" className="font-normal">
+                        {t("removePhotoLabel")}
+                      </Label>
+                    </Field>
+                  ) : null}
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field>
+                    <FieldLabel htmlFor="person-first-name">
+                      {t("firstNameLabel")}
+                    </FieldLabel>
+                    <Input
+                      id="person-first-name"
+                      name="firstName"
+                      defaultValue={person?.firstName ?? ""}
+                      placeholder={t("firstNamePlaceholder")}
+                      required
+                    />
                   </Field>
-                ) : null}
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
+                  <Field>
+                    <FieldLabel htmlFor="person-last-name">
+                      {t("lastNameLabel")}
+                    </FieldLabel>
+                    <Input
+                      id="person-last-name"
+                      name="lastName"
+                      defaultValue={person?.lastName ?? ""}
+                      placeholder={t("lastNamePlaceholder")}
+                      required
+                    />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field>
+                    <FieldLabel htmlFor="person-email">{t("emailLabel")}</FieldLabel>
+                    <Input
+                      id="person-email"
+                      name="email"
+                      type="email"
+                      defaultValue={person?.email ?? ""}
+                      placeholder={t("emailPlaceholder")}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="person-phone">{t("phoneLabel")}</FieldLabel>
+                    <Input
+                      id="person-phone"
+                      name="phone"
+                      type="tel"
+                      defaultValue={person?.phone ?? ""}
+                      placeholder={t("phonePlaceholder")}
+                    />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field>
+                    <FieldLabel htmlFor="person-birth-date">
+                      {t("birthDateLabel")}
+                    </FieldLabel>
+                    <Input
+                      id="person-birth-date"
+                      name="birthDate"
+                      type="date"
+                      defaultValue={person?.birthDate ?? ""}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="person-national-id">
+                      {t("nationalIdLabel")}
+                    </FieldLabel>
+                    <Input
+                      id="person-national-id"
+                      name="nationalId"
+                      defaultValue={person?.nationalId ?? ""}
+                      placeholder={t("nationalIdPlaceholder")}
+                    />
+                  </Field>
+                </div>
                 <Field>
-                  <FieldLabel htmlFor="person-first-name">
-                    {t("firstNameLabel")}
+                  <FieldLabel htmlFor="person-address">
+                    {t("addressLabel")}
                   </FieldLabel>
                   <Input
-                    id="person-first-name"
-                    name="firstName"
-                    defaultValue={person?.firstName ?? ""}
-                    placeholder={t("firstNamePlaceholder")}
-                    required
+                    id="person-address"
+                    name="address"
+                    defaultValue={person?.address ?? ""}
+                    placeholder={t("addressPlaceholder")}
                   />
                 </Field>
-                <Field>
-                  <FieldLabel htmlFor="person-last-name">
-                    {t("lastNameLabel")}
-                  </FieldLabel>
-                  <Input
-                    id="person-last-name"
-                    name="lastName"
-                    defaultValue={person?.lastName ?? ""}
-                    placeholder={t("lastNamePlaceholder")}
-                    required
-                  />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="person-email">{t("emailLabel")}</FieldLabel>
-                  <Input
-                    id="person-email"
-                    name="email"
-                    type="email"
-                    defaultValue={person?.email ?? ""}
-                    placeholder={t("emailPlaceholder")}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="person-phone">{t("phoneLabel")}</FieldLabel>
-                  <Input
-                    id="person-phone"
-                    name="phone"
-                    type="tel"
-                    defaultValue={person?.phone ?? ""}
-                    placeholder={t("phonePlaceholder")}
-                  />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="person-birth-date">
-                    {t("birthDateLabel")}
-                  </FieldLabel>
-                  <Input
-                    id="person-birth-date"
-                    name="birthDate"
-                    type="date"
-                    defaultValue={person?.birthDate ?? ""}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="person-national-id">
-                    {t("nationalIdLabel")}
-                  </FieldLabel>
-                  <Input
-                    id="person-national-id"
-                    name="nationalId"
-                    defaultValue={person?.nationalId ?? ""}
-                    placeholder={t("nationalIdPlaceholder")}
-                  />
-                </Field>
-              </div>
-              <Field>
-                <FieldLabel htmlFor="person-address">
-                  {t("addressLabel")}
-                </FieldLabel>
-                <Input
-                  id="person-address"
-                  name="address"
-                  defaultValue={person?.address ?? ""}
-                  placeholder={t("addressPlaceholder")}
-                />
-              </Field>
-              <div className="grid grid-cols-[1fr_2fr] gap-3">
-                <Field>
-                  <FieldLabel htmlFor="person-postal-code">
-                    {t("postalCodeLabel")}
-                  </FieldLabel>
-                  <Input
-                    id="person-postal-code"
-                    name="postalCode"
-                    inputMode="numeric"
-                    defaultValue={person?.postalCode ?? ""}
-                    placeholder={t("postalCodePlaceholder")}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="person-city">{t("cityLabel")}</FieldLabel>
-                  <Input
-                    id="person-city"
-                    name="city"
-                    defaultValue={person?.city ?? ""}
-                    placeholder={t("cityPlaceholder")}
-                  />
-                </Field>
-              </div>
+                <div className="grid grid-cols-[1fr_2fr] gap-3">
+                  <Field>
+                    <FieldLabel htmlFor="person-postal-code">
+                      {t("postalCodeLabel")}
+                    </FieldLabel>
+                    <Input
+                      id="person-postal-code"
+                      name="postalCode"
+                      inputMode="numeric"
+                      defaultValue={person?.postalCode ?? ""}
+                      placeholder={t("postalCodePlaceholder")}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="person-city">{t("cityLabel")}</FieldLabel>
+                    <Input
+                      id="person-city"
+                      name="city"
+                      defaultValue={person?.city ?? ""}
+                      placeholder={t("cityPlaceholder")}
+                    />
+                  </Field>
+                </div>
+              </FieldSet>
 
-              <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("guardianshipSection")}
-              </h2>
-              <Field>
-                <FieldLabel htmlFor="person-guardian">
-                  {t("guardianLabel")}
-                </FieldLabel>
-                <GuardianPicker
-                  value={guardians}
-                  onValueChange={setGuardians}
-                  excludePersonId={person?.id}
-                />
-                <p className="text-xs text-muted-foreground">{t("guardianMinorExcludedHint")}</p>
-              </Field>
+              <FieldSet>
+                <FieldLegend
+                  variant="label"
+                  className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                >
+                  {t("guardianshipSection")}
+                </FieldLegend>
+                <Field>
+                  <FieldLabel htmlFor="person-guardian">
+                    {t("guardianLabel")}
+                  </FieldLabel>
+                  <GuardianPicker
+                    value={guardians}
+                    onValueChange={setGuardians}
+                    excludePersonId={person?.id}
+                  />
+                  <p className="text-xs text-muted-foreground">{t("guardianMinorExcludedHint")}</p>
+                </Field>
+              </FieldSet>
+            </FieldGroup>
 
+            <FieldGroup>
               {hasGuardians || props.canManageBanking ? (
-                <>
-                  <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                <FieldSet>
+                  <FieldLegend
+                    variant="label"
+                    className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                  >
                     {t("feeCollectionSection")}
-                  </h2>
+                  </FieldLegend>
                   {hasGuardians ? (
                     <Field>
                       <FieldLabel>{t("ibanLabel")}</FieldLabel>
@@ -313,113 +335,130 @@ export function PersonDialog(props: PersonDialogProps) {
                       />
                     </Field>
                   )}
-                </>
+                </FieldSet>
               ) : (
                 // Sin `personas.banking.manage`: el campo no se pinta, pero se
                 // conserva el IBAN actual como oculto — si no, guardar el resto
                 // de la ficha lo borraría (`readPersonFields` lee "" si falta).
                 <input type="hidden" name="iban" value={person?.iban ?? ""} />
               )}
-              <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("sportsDataSection")}
-              </h2>
-              <div className="grid grid-cols-3 gap-3">
-                <Field>
-                  <FieldLabel htmlFor="person-shirt-size">
-                    {t("shirtSizeLabel")}
-                  </FieldLabel>
-                  <Input
-                    id="person-shirt-size"
-                    name="shirtSize"
-                    defaultValue={person?.shirtSize ?? ""}
-                    placeholder="M"
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="person-pants-size">
-                    {t("pantsSizeLabel")}
-                  </FieldLabel>
-                  <Input
-                    id="person-pants-size"
-                    name="pantsSize"
-                    defaultValue={person?.pantsSize ?? ""}
-                    placeholder="M"
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="person-shoe-size">
-                    {t("shoeSizeLabel")}
-                  </FieldLabel>
-                  <Input
-                    id="person-shoe-size"
-                    name="shoeSize"
-                    defaultValue={person?.shoeSize ?? ""}
-                    placeholder="42"
-                  />
-                </Field>
-              </div>
 
-              <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("memberStatusSection")}
-              </h2>
-              <div className="grid grid-cols-2 gap-3">
+              <FieldSet>
+                <FieldLegend
+                  variant="label"
+                  className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                >
+                  {t("sportsDataSection")}
+                </FieldLegend>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field>
+                    <FieldLabel htmlFor="person-shirt-size">
+                      {t("shirtSizeLabel")}
+                    </FieldLabel>
+                    <Input
+                      id="person-shirt-size"
+                      name="shirtSize"
+                      defaultValue={person?.shirtSize ?? ""}
+                      placeholder="M"
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="person-pants-size">
+                      {t("pantsSizeLabel")}
+                    </FieldLabel>
+                    <Input
+                      id="person-pants-size"
+                      name="pantsSize"
+                      defaultValue={person?.pantsSize ?? ""}
+                      placeholder="M"
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="person-shoe-size">
+                      {t("shoeSizeLabel")}
+                    </FieldLabel>
+                    <Input
+                      id="person-shoe-size"
+                      name="shoeSize"
+                      defaultValue={person?.shoeSize ?? ""}
+                      placeholder="42"
+                    />
+                  </Field>
+                </div>
+              </FieldSet>
+
+              <FieldSet>
+                <FieldLegend
+                  variant="label"
+                  className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                >
+                  {t("memberStatusSection")}
+                </FieldLegend>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field>
+                    <FieldLabel htmlFor="person-member-number">
+                      {t("memberNumberLabel")}
+                    </FieldLabel>
+                    <Input
+                      id="person-member-number"
+                      name="memberNumber"
+                      type="number"
+                      min={1}
+                      defaultValue={person?.memberNumber ?? ""}
+                      placeholder={t("memberNumberPlaceholder")}
+                    />
+                  </Field>
+                  <Field orientation="horizontal" className="self-end pb-2">
+                    <Checkbox
+                      id="person-is-member"
+                      name="isMember"
+                      defaultChecked={person ? person.isMember : true}
+                    />
+                    <Label htmlFor="person-is-member" className="font-normal">
+                      {t("isMemberLabel")}
+                    </Label>
+                  </Field>
+                </div>
+              </FieldSet>
+
+              <FieldSet>
+                <FieldLegend
+                  variant="label"
+                  className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                >
+                  {t("otherSection")}
+                </FieldLegend>
                 <Field>
-                  <FieldLabel htmlFor="person-member-number">
-                    {t("memberNumberLabel")}
-                  </FieldLabel>
-                  <Input
-                    id="person-member-number"
-                    name="memberNumber"
-                    type="number"
-                    min={1}
-                    defaultValue={person?.memberNumber ?? ""}
-                    placeholder={t("memberNumberPlaceholder")}
+                  <FieldLabel htmlFor="person-notes">{t("notesLabel")}</FieldLabel>
+                  <Textarea
+                    id="person-notes"
+                    name="notes"
+                    defaultValue={person?.notes ?? ""}
+                    placeholder={t("notesPlaceholder")}
                   />
                 </Field>
-                <Field orientation="horizontal" className="self-end pb-2">
-                  <Checkbox
-                    id="person-is-member"
-                    name="isMember"
-                    defaultChecked={person ? person.isMember : true}
-                  />
-                  <Label htmlFor="person-is-member" className="font-normal">
-                    {t("isMemberLabel")}
-                  </Label>
-                </Field>
-              </div>
-
-              <h2 className="mt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                {t("otherSection")}
-              </h2>
-              <Field>
-                <FieldLabel htmlFor="person-notes">{t("notesLabel")}</FieldLabel>
-                <Textarea
-                  id="person-notes"
-                  name="notes"
-                  defaultValue={person?.notes ?? ""}
-                  placeholder={t("notesPlaceholder")}
-                />
-              </Field>
-
-              {pendingCandidates && pendingCandidates.length > 0 ? (
-                <Alert variant="warning" className="gap-2">
-                  <AlertTitle>{t("duplicateCandidatesTitle")}</AlertTitle>
-                  <AlertDescription>
-                    {t("duplicateCandidatesDescription")}
-                  </AlertDescription>
-                  <MatchSelect
-                    name="linkPersonId"
-                    candidates={pendingCandidates}
-                    placeholder={t("duplicateMatchLabel")}
-                    newValues={state.submittedFields ?? {}}
-                    diffFields={PERSON_MATCH_DIFF_FIELDS}
-                    keepPrefix="person"
-                  />
-                </Alert>
-              ) : null}
+              </FieldSet>
             </FieldGroup>
           </div>
-          <FormError message={state.error} />
+          {pendingCandidates && pendingCandidates.length > 0 ? (
+            <Alert variant="warning" className="gap-2">
+              <AlertTitle>{t("duplicateCandidatesTitle")}</AlertTitle>
+              <AlertDescription>
+                {t("duplicateCandidatesDescription")}
+              </AlertDescription>
+              <MatchSelect
+                name="linkPersonId"
+                candidates={pendingCandidates}
+                placeholder={t("duplicateMatchLabel")}
+                newValues={state.submittedFields ?? {}}
+                diffFields={PERSON_MATCH_DIFF_FIELDS}
+                keepPrefix="person"
+              />
+            </Alert>
+          ) : null}
+          {state.error ? (
+            <p className="text-sm text-destructive">{state.error}</p>
+          ) : null}
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}

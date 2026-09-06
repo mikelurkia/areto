@@ -1,5 +1,5 @@
 import { LandmarkIcon, PiggyBankIcon } from "lucide-react";
-import { and, asc, eq, sum } from "drizzle-orm";
+import { and, asc, eq, isNull, isNotNull, sum } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
@@ -10,6 +10,8 @@ import {
   receivedInvoices,
   seasonBudgets,
   seasons,
+  sepaRemittances,
+  sponsorPayments,
 } from "@/db/schema";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { ExecutionBar } from "@/components/economia/execution-bar";
@@ -143,6 +145,68 @@ export default async function EconomiaPage({
       }
     : null;
 
+  // Vencimientos próximos: facturas recibidas pendientes de todos los libros,
+  // más anualidades de patrocinio y remesas SEPA por liquidar, que solo
+  // existen en el libro oficial (ver `ledger="official"` en las acciones de
+  // patrocinadores y la ausencia de columna `ledger` en `sepaRemittances`).
+  // Cada fuente en su propio `await`, no en el `Promise.all` de arriba.
+  const upcomingInvoices = await db.query.receivedInvoices.findMany({
+    where: and(
+      eq(receivedInvoices.ledger, ledger),
+      eq(receivedInvoices.status, "pending"),
+      isNotNull(receivedInvoices.dueDate),
+    ),
+    orderBy: [asc(receivedInvoices.dueDate)],
+    limit: 5,
+    columns: { id: true, dueDate: true, totalCents: true },
+    with: { supplier: { columns: { name: true } } },
+  });
+
+  const upcomingSponsorPayments =
+    ledger === "official"
+      ? await db.query.sponsorPayments.findMany({
+          where: and(eq(sponsorPayments.status, "pending"), isNotNull(sponsorPayments.dueDate)),
+          orderBy: [asc(sponsorPayments.dueDate)],
+          limit: 5,
+          columns: { id: true, dueDate: true, amountCents: true },
+          with: { term: { columns: {}, with: { sponsor: { columns: { name: true } } } } },
+        })
+      : [];
+
+  const upcomingRemittances =
+    ledger === "official"
+      ? await db.query.sepaRemittances.findMany({
+          where: isNull(sepaRemittances.settledOn),
+          orderBy: [asc(sepaRemittances.collectionDate)],
+          limit: 5,
+          columns: { id: true, kind: true, collectionDate: true, totalCents: true },
+        })
+      : [];
+
+  const upcomingDueDates = [
+    ...upcomingInvoices.map((row) => ({
+      id: `invoice-${row.id}`,
+      date: row.dueDate!,
+      label: row.supplier.name,
+      amountCents: row.totalCents,
+    })),
+    ...upcomingSponsorPayments.map((row) => ({
+      id: `sponsor-${row.id}`,
+      date: row.dueDate!,
+      label: row.term.sponsor.name,
+      amountCents: row.amountCents,
+    })),
+    ...upcomingRemittances.map((row) => ({
+      id: `remittance-${row.id}`,
+      date: row.collectionDate,
+      label: t(`upcomingRemittanceLabel_${row.kind}`),
+      amountCents: row.totalCents,
+    })),
+  ]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 8);
+  const dueDateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+
   return (
     <div className="flex flex-1 flex-col gap-6">
       <PageHeader title={t("title")} description={t("subtitle")} />
@@ -205,6 +269,33 @@ export default async function EconomiaPage({
                   </div>
                 );
               })}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {upcomingDueDates.length > 0 ? (
+        <div className="flex flex-col gap-4">
+          <SectionHeading
+            title={t("upcomingDueDatesHeading")}
+            description={t("upcomingDueDatesHint")}
+          />
+          <Card size="sm">
+            <CardContent className="flex flex-col gap-0">
+              {upcomingDueDates.map((row) => (
+                <div
+                  key={row.id}
+                  className="flex items-center justify-between gap-4 border-b py-2 text-sm last:border-b-0"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium">{row.label}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {dueDateFmt.format(new Date(row.date))}
+                    </span>
+                  </div>
+                  <span className="font-medium">{formatCents(row.amountCents, locale)}</span>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>

@@ -8,7 +8,7 @@ import { db } from "@/db";
 import { receivedInvoices, seasons, suppliers } from "@/db/schema";
 import { BackLink } from "@/components/back-link";
 import { EMPTY } from "@/components/empty-value";
-import { PrintButton } from "@/components/print-button";
+import { LibroExportMenu } from "@/components/economia/libro-export-menu";
 import { PrintableSheet } from "@/components/printable-sheet";
 import { PrintableSheetBodySkeleton } from "@/components/skeletons";
 import {
@@ -125,8 +125,36 @@ async function ReceivedInvoicesDocument({
 
   const total = rows.reduce((sum, i) => sum + i.totalCents, 0);
 
+  const exportHeaders = [
+    t("invoiceNumberLabel"),
+    t("invoiceSupplierLabel"),
+    t("invoiceIssuedOnLabel"),
+    t("invoiceDueDateLabel"),
+    t("invoiceBaseLabel"),
+    t("invoiceVatLabel"),
+    t("invoiceTotalLabel"),
+    t("invoiceStatusLabel"),
+  ];
+  const exportRows = rows.map((i) => [
+    i.invoiceNumber,
+    i.supplier.name,
+    i.issuedOn,
+    i.dueDate ?? "",
+    String(i.baseCents / 100),
+    String(i.vatCents / 100),
+    String(i.totalCents / 100),
+    t(`invoiceStatus_${i.status}`),
+  ]);
+
   return (
-    <PrintableSheet>
+    <>
+      <div className="flex justify-end print:hidden">
+        <LibroExportMenu
+          filename="facturas-recibidas-libro"
+          data={{ headers: exportHeaders, rows: exportRows }}
+        />
+      </div>
+      <PrintableSheet>
       <div className="flex items-start justify-between gap-6 border-b pb-[9pt]">
         <div>
           <h1 className="text-[11pt] font-semibold tracking-tight">{t("receivedInvoicesLibroTitle")}</h1>
@@ -203,7 +231,8 @@ async function ReceivedInvoicesDocument({
           </p>
         </>
       )}
-    </PrintableSheet>
+      </PrintableSheet>
+    </>
   );
 }
 
@@ -228,7 +257,6 @@ export default async function RecibidasLibroPage({
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex items-center justify-between print:hidden">
         <BackLink href="/economia/recibidas" label={t("backToInvoices")} />
-        <PrintButton label={t("printAction")} />
       </div>
 
       <Suspense

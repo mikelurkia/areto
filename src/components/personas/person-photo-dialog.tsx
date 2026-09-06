@@ -5,6 +5,7 @@ import { PencilIcon, UserRoundIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { updatePersonPhoto } from "@/app/[locale]/(app)/personas/actions";
+import { avatarToneClasses } from "@/lib/avatar-color";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
@@ -59,7 +60,7 @@ export function PersonPhotoDialog({
             <div className="flex items-center gap-3">
               <Avatar size="lg">
                 {frozenPhotoUrl ? <AvatarImage src={frozenPhotoUrl} alt="" /> : null}
-                <AvatarFallback>
+                <AvatarFallback className={avatarToneClasses(personId)}>
                   <UserRoundIcon className="size-4" />
                 </AvatarFallback>
               </Avatar>
