@@ -17,12 +17,13 @@ export type EconomiaSection =
   | "proveedores"
   | "cuentas";
 
-const SECTIONS: { key: EconomiaSection; href: string }[] = [
+/** `bothLedgers`: la sección mezcla los dos libros en una tabla (`resolveLedgerFilter`). */
+const SECTIONS: { key: EconomiaSection; href: string; bothLedgers?: boolean }[] = [
   { key: "resumen", href: "/economia" },
-  { key: "presupuesto", href: "/economia/presupuesto" },
-  { key: "movimientos", href: "/economia/movimientos" },
-  { key: "recibidas", href: "/economia/recibidas" },
-  { key: "emitidas", href: "/economia/emitidas" },
+  { key: "presupuesto", href: "/economia/presupuesto", bothLedgers: true },
+  { key: "movimientos", href: "/economia/movimientos", bothLedgers: true },
+  { key: "recibidas", href: "/economia/recibidas", bothLedgers: true },
+  { key: "emitidas", href: "/economia/emitidas", bothLedgers: true },
   { key: "proveedores", href: "/economia/proveedores" },
   { key: "cuentas", href: "/economia/cuentas" },
 ];
@@ -34,8 +35,11 @@ const SECTIONS: { key: EconomiaSection; href: string }[] = [
  * por prop (leer `usePathname` obligaría a un límite de cliente y a un
  * `<Suspense>`), `aria-current` + `border-b-2` para marcarla.
  *
- * El libro viaja en la URL, así que cada pestaña lo arrastra. Con un solo libro
- * visible no se pinta selector — quien solo tiene `economia.official.view` no
+ * El libro viaja en la URL, así que cada pestaña lo arrastra, salvo las que
+ * tienen vista "ambos": esas se entran siempre por `?libro=both`, para no
+ * encerrar al usuario en el libro oficial al venir de resumen o cuentas (que
+ * no tienen ese estado). El libro concreto se elige allí con el selector.
+ * Con un solo libro visible no se pinta selector — quien solo tiene `economia.official.view` no
  * llega ni a saber que existe el otro.
  */
 export async function EconomiaSectionNav({
@@ -70,7 +74,7 @@ export async function EconomiaSectionNav({
         {SECTIONS.map((section) => (
           <Link
             key={section.key}
-            href={withLedger(section.href, ledger)}
+            href={withLedger(section.href, section.bothLedgers ? "both" : ledger)}
             aria-current={section.key === current ? "page" : undefined}
             className={cn(
               "-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
