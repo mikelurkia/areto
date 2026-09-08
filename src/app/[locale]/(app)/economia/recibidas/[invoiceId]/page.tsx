@@ -31,6 +31,7 @@ import {
 } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
 import { getSignedUrl } from "@/lib/supabase/storage";
+import { MaskedIbanText } from "@/components/masked-iban";
 
 export async function generateMetadata({
   params,
@@ -62,7 +63,7 @@ export default async function ReceivedInvoiceDetailPage({
   const invoice = await db.query.receivedInvoices.findFirst({
     where: eq(receivedInvoices.id, invoiceId),
     with: {
-      supplier: { columns: { id: true, name: true } },
+      supplier: { columns: { id: true, name: true, iban: true } },
       season: { columns: { id: true, name: true } },
       team: { columns: { id: true, name: true } },
       category: { columns: { id: true, name: true } },
@@ -147,6 +148,10 @@ export default async function ReceivedInvoiceDetailPage({
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             <InfoRow label={t("invoiceSupplierLabel")} value={invoice.supplier.name} />
+            <InfoRow
+              label={t("accountIbanLabel")}
+              value={invoice.supplier.iban ? <MaskedIbanText value={invoice.supplier.iban} /> : <EmptyValue />}
+            />
             <InfoRow label={t("movementSeasonLabel")} value={invoice.season.name} />
             <InfoRow label={t("invoiceTeamLabel")} value={invoice.team?.name ?? <EmptyValue />} />
             <InfoRow label={t("categoryLabel")} value={invoice.category?.name ?? <EmptyValue />} />

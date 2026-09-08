@@ -38,43 +38,51 @@ export function LinkInvoiceDialog({
   amountCents,
   receivedInvoices,
   issuedInvoices,
+  purchaseReceipts,
   linkReceivedInvoiceAction,
   linkIssuedInvoiceAction,
+  linkPurchaseReceiptAction,
   locale,
 }: {
   movementId: string;
   amountCents: number;
   receivedInvoices: InvoiceOption[];
   issuedInvoices: InvoiceOption[];
+  purchaseReceipts: InvoiceOption[];
   linkReceivedInvoiceAction: LinkAction;
   linkIssuedInvoiceAction: LinkAction;
+  linkPurchaseReceiptAction: LinkAction;
   locale: string;
 }) {
   const t = useTranslations("Economia");
   const [open, setOpen] = useDialogParam(`vincular:${movementId}`);
-  // Un apunte negativo casa con una factura recibida (gasto); uno positivo,
-  // con una emitida (cobro) — igual que el filtro de signo de los candidatos
-  // en la ficha de factura.
-  const [kind, setKind] = useState<"received" | "issued">(
+  // Un apunte negativo casa con una factura recibida o un ticket (gasto); uno
+  // positivo, con una emitida (cobro) — igual que el filtro de signo de los
+  // candidatos en la ficha de factura.
+  const [kind, setKind] = useState<"received" | "issued" | "receipt">(
     amountCents < 0 ? "received" : "issued",
   );
-  const options = kind === "received" ? receivedInvoices : issuedInvoices;
+  const optionsByKind = { received: receivedInvoices, issued: issuedInvoices, receipt: purchaseReceipts };
+  const options = optionsByKind[kind];
   const [invoiceId, setInvoiceId] = useState(options[0]?.id ?? "");
 
   const [receivedState, receivedAction] = useActionState(linkReceivedInvoiceAction, {});
   const [issuedState, issuedAction] = useActionState(linkIssuedInvoiceAction, {});
-  const state = kind === "received" ? receivedState : issuedState;
+  const [receiptState, receiptAction] = useActionState(linkPurchaseReceiptAction, {});
+  const actionByKind = { received: receivedAction, issued: issuedAction, receipt: receiptAction };
+  const state = kind === "received" ? receivedState : kind === "issued" ? issuedState : receiptState;
   useActionToast(receivedState);
   useActionToast(issuedState);
+  useActionToast(receiptState);
   useCloseOnActionSuccess(receivedState, setOpen);
   useCloseOnActionSuccess(issuedState, setOpen);
+  useCloseOnActionSuccess(receiptState, setOpen);
 
   const suggestedAmount = String(Math.abs(amountCents) / 100);
 
-  function changeKind(value: "received" | "issued") {
+  function changeKind(value: "received" | "issued" | "receipt") {
     setKind(value);
-    const next = value === "received" ? receivedInvoices : issuedInvoices;
-    setInvoiceId(next[0]?.id ?? "");
+    setInvoiceId(optionsByKind[value][0]?.id ?? "");
   }
 
   return (
@@ -87,27 +95,41 @@ export function LinkInvoiceDialog({
         <DialogHeader>
           <DialogTitle>{t("linkInvoiceFromMovementTitle")}</DialogTitle>
         </DialogHeader>
-        <form action={kind === "received" ? receivedAction : issuedAction}>
+        <form action={actionByKind[kind]}>
           <input type="hidden" name="movementId" value={movementId} />
           <input
             type="hidden"
-            name={kind === "received" ? "receivedInvoiceId" : "issuedInvoiceId"}
+            name={
+              kind === "received"
+                ? "receivedInvoiceId"
+                : kind === "issued"
+                  ? "issuedInvoiceId"
+                  : "purchaseReceiptId"
+            }
             value={invoiceId}
           />
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="link-invoice-kind">{t("invoiceKindLabel")}</FieldLabel>
-              <Select value={kind} onValueChange={(v) => changeKind(v as "received" | "issued")}>
+              <Select
+                value={kind}
+                onValueChange={(v) => changeKind(v as "received" | "issued" | "receipt")}
+              >
                 <SelectTrigger id="link-invoice-kind" className="w-full">
                   <SelectValue>
                     {(value: string) =>
-                      value === "received" ? t("receivedInvoiceKind") : t("issuedInvoiceKind")
+                      value === "received"
+                        ? t("receivedInvoiceKind")
+                        : value === "issued"
+                          ? t("issuedInvoiceKind")
+                          : t("purchaseReceiptKind")
                     }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="received">{t("receivedInvoiceKind")}</SelectItem>
                   <SelectItem value="issued">{t("issuedInvoiceKind")}</SelectItem>
+                  <SelectItem value="receipt">{t("purchaseReceiptKind")}</SelectItem>
                 </SelectContent>
               </Select>
             </Field>

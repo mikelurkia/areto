@@ -48,7 +48,7 @@ export type CandidateMovement = { id: string; concept: string; bookedOn: string;
  * Action que lo inserta, que llega por prop desde el Server Component.
  */
 export type LinkTarget = {
-  field: "receivedInvoiceId" | "issuedInvoiceId" | "sepaRemittanceId";
+  field: "receivedInvoiceId" | "issuedInvoiceId" | "sepaRemittanceId" | "purchaseReceiptId";
   id: string;
 };
 
@@ -171,10 +171,19 @@ export function MovementLinksPanel({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">{t("reconciliationLabel")}</span>
-        <StatusBadge
-          tone={RECONCILIATION_TONE[reconciliation]}
-          label={t(`reconciliation_${reconciliation}`)}
-        />
+        <span className="flex items-center gap-2">
+          {remainingCents > 0 ? (
+            <span className="text-sm text-muted-foreground">
+              {t("reconciliationRemainingLabel", {
+                amount: formatCents(remainingCents, locale),
+              })}
+            </span>
+          ) : null}
+          <StatusBadge
+            tone={RECONCILIATION_TONE[reconciliation]}
+            label={t(`reconciliation_${reconciliation}`)}
+          />
+        </span>
       </div>
 
       {links.length > 0 ? (

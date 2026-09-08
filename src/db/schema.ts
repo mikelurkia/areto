@@ -1268,6 +1268,39 @@ export const receivedInvoices = pgTable(
 ).enableRLS();
 
 /**
+ * Ticket de compra: gasto menor sin proveedor dado de alta ni numeración
+ * fiscal, como mucho con quien lo pagó (`paidByPersonId`). Hermana de
+ * `receivedInvoices` pero deliberadamente sin su desglose fiscal
+ * (`base/vat/withholding`) ni `status` propio: el estado de conciliación ya
+ * sale de `reconciliationState()` sobre `movement_links`, igual que allí.
+ */
+export const purchaseReceipts = pgTable(
+  "purchase_receipts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledger: ledger("ledger").notNull().default("official"),
+    seasonId: uuid("season_id")
+      .notNull()
+      .references(() => seasons.id, { onDelete: "restrict" }),
+    teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
+    categoryId: uuid("category_id").references(() => economicCategories.id, {
+      onDelete: "set null",
+    }),
+    paidByPersonId: uuid("paid_by_person_id").references(() => persons.id, {
+      onDelete: "set null",
+    }),
+    purchasedOn: date("purchased_on").notNull(),
+    description: text("description").notNull(),
+    totalCents: integer("total_cents").notNull(),
+    filePath: text("file_path"),
+    fileName: text("file_name"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("purchase_receipts_season_idx").on(t.seasonId)],
+).enableRLS();
+
+/**
  * Factura emitida: el registro fiscal ÚNICO del club. Un club no puede tener
  * dos libros de facturas emitidas compartiendo numeración, así que aquí entran
  * también las de patrocinio (decisión 7 del plan); `sponsor_payments` enlaza
@@ -1353,6 +1386,9 @@ export const movementLinks = pgTable(
     sponsorPaymentId: uuid("sponsor_payment_id").references(() => sponsorPayments.id, {
       onDelete: "cascade",
     }),
+    purchaseReceiptId: uuid("purchase_receipt_id").references(() => purchaseReceipts.id, {
+      onDelete: "cascade",
+    }),
     filePath: text("file_path"),
     fileName: text("file_name"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1361,13 +1397,15 @@ export const movementLinks = pgTable(
     index("movement_links_movement_idx").on(t.movementId),
     index("movement_links_received_invoice_idx").on(t.receivedInvoiceId),
     index("movement_links_issued_invoice_idx").on(t.issuedInvoiceId),
+    index("movement_links_purchase_receipt_idx").on(t.purchaseReceiptId),
     check(
       "movement_links_target_xor",
       sql`(
         (case when ${t.receivedInvoiceId} is not null then 1 else 0 end) +
         (case when ${t.issuedInvoiceId} is not null then 1 else 0 end) +
         (case when ${t.sepaRemittanceId} is not null then 1 else 0 end) +
-        (case when ${t.sponsorPaymentId} is not null then 1 else 0 end)
+        (case when ${t.sponsorPaymentId} is not null then 1 else 0 end) +
+        (case when ${t.purchaseReceiptId} is not null then 1 else 0 end)
       ) = 1`,
     ),
   ],
@@ -2113,6 +2151,20 @@ export const receivedInvoicesRelations = relations(receivedInvoices, ({ one, man
   links: many(movementLinks),
 }));
 
+export const purchaseReceiptsRelations = relations(purchaseReceipts, ({ one, many }) => ({
+  season: one(seasons, { fields: [purchaseReceipts.seasonId], references: [seasons.id] }),
+  team: one(teams, { fields: [purchaseReceipts.teamId], references: [teams.id] }),
+  category: one(economicCategories, {
+    fields: [purchaseReceipts.categoryId],
+    references: [economicCategories.id],
+  }),
+  paidByPerson: one(persons, {
+    fields: [purchaseReceipts.paidByPersonId],
+    references: [persons.id],
+  }),
+  links: many(movementLinks),
+}));
+
 export const issuedInvoicesRelations = relations(issuedInvoices, ({ one, many }) => ({
   season: one(seasons, { fields: [issuedInvoices.seasonId], references: [seasons.id] }),
   category: one(economicCategories, {
@@ -2150,6 +2202,10 @@ export const movementLinksRelations = relations(movementLinks, ({ one }) => ({
   sponsorPayment: one(sponsorPayments, {
     fields: [movementLinks.sponsorPaymentId],
     references: [sponsorPayments.id],
+  }),
+  purchaseReceipt: one(purchaseReceipts, {
+    fields: [movementLinks.purchaseReceiptId],
+    references: [purchaseReceipts.id],
   }),
 }));
 

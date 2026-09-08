@@ -54,7 +54,7 @@ export type MovementRow = {
   source: "import" | "manual";
   notes: string | null;
   linkedCents: number;
-  invoiceLinks: { kind: "received" | "issued"; id: string; number: string }[];
+  invoiceLinks: { kind: "received" | "issued" | "receipt"; id: string; number: string }[];
 };
 
 export type NamedOption = { id: string; name: string };

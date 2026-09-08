@@ -60,8 +60,10 @@ export function MovementsBrowser({
   manageableLedgers,
   receivedInvoices,
   issuedInvoices,
+  purchaseReceipts,
   linkReceivedInvoiceAction,
   linkIssuedInvoiceAction,
+  linkPurchaseReceiptAction,
 }: {
   movements: MovementRow[];
   /**
@@ -79,8 +81,10 @@ export function MovementsBrowser({
   /** Candidatas para "vincular factura desde el movimiento", por libro. */
   receivedInvoices: InvoiceOption[];
   issuedInvoices: InvoiceOption[];
+  purchaseReceipts: InvoiceOption[];
   linkReceivedInvoiceAction: LinkAction;
   linkIssuedInvoiceAction: LinkAction;
+  linkPurchaseReceiptAction: LinkAction;
 }) {
   const t = useTranslations("Economia");
   const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
@@ -294,7 +298,13 @@ export function MovementsBrowser({
                             <span key={link.id}>
                               {index > 0 ? ", " : null}
                               <HoverPrefetchLink
-                                href={`/economia/${link.kind === "received" ? "recibidas" : "emitidas"}/${link.id}`}
+                                href={`/economia/${
+                                  link.kind === "received"
+                                    ? "recibidas"
+                                    : link.kind === "issued"
+                                      ? "emitidas"
+                                      : "tickets"
+                                }/${link.id}`}
                                 className="hover:underline"
                               >
                                 {link.number}
@@ -338,8 +348,10 @@ export function MovementsBrowser({
                             amountCents={m.amountCents}
                             receivedInvoices={receivedInvoices.filter((i) => i.ledger === m.ledger)}
                             issuedInvoices={issuedInvoices.filter((i) => i.ledger === m.ledger)}
+                            purchaseReceipts={purchaseReceipts.filter((i) => i.ledger === m.ledger)}
                             linkReceivedInvoiceAction={linkReceivedInvoiceAction}
                             linkIssuedInvoiceAction={linkIssuedInvoiceAction}
+                            linkPurchaseReceiptAction={linkPurchaseReceiptAction}
                             locale={locale}
                           />
                           <MovementDialog
