@@ -4,14 +4,18 @@ import { eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
   AlertTriangleIcon,
+  ArrowRightLeftIcon,
   CalendarDaysIcon,
   CheckCircle2Icon,
   ClipboardListIcon,
+  FileTextIcon,
   IdCardIcon,
+  ReceiptTextIcon,
   ShieldAlertIcon,
   StethoscopeIcon,
   TrendingUpIcon,
   UserPlusIcon,
+  ZapIcon,
 } from "lucide-react";
 
 import { db } from "@/db";
@@ -27,6 +31,7 @@ import {
   loadDataIntegrityIssues,
   type IntegrityIssueKey,
 } from "@/lib/data-integrity";
+import { canManageLedger, LEDGERS } from "@/lib/economia";
 import { medicalReferenceDates } from "@/lib/medical-panel-rows";
 import { loadSeasonRenewals } from "@/lib/season-renewals";
 import { TONE_VARIANT } from "@/lib/status-tone";
@@ -39,6 +44,7 @@ import { PageHeader } from "@/components/page-header";
 import { AlertTilesSkeleton, CardSkeleton } from "@/components/skeletons";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -180,6 +186,58 @@ async function RegistrationTrendSection({ locale }: { locale: string }) {
   );
 }
 
+/**
+ * Atajos al alta de los documentos económicos que se registran a diario. Sin
+ * consulta propia: el permiso de gestión ya viaja en `user` desde
+ * `getCurrentUser()`, así que no añade ninguna query a la carga del panel.
+ */
+async function QuickActionsSection() {
+  const t = await getTranslations("Dashboard");
+
+  const actions = [
+    {
+      key: "movement",
+      href: "/economia/movimientos?libro=both",
+      icon: ArrowRightLeftIcon,
+    },
+    {
+      key: "ticket",
+      href: "/economia/tickets?libro=both",
+      icon: ReceiptTextIcon,
+    },
+    {
+      key: "invoice",
+      href: "/economia/recibidas?libro=both",
+      icon: FileTextIcon,
+    },
+  ] as const;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ZapIcon className="size-4" />
+          {t("quickActionsSection")}
+        </CardTitle>
+        <CardDescription>{t("quickActionsSectionHint")}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2">
+        {actions.map(({ key, href, icon: Icon }) => (
+          <Button
+            key={key}
+            variant="secondary"
+            nativeButton={false}
+            render={<Link href={href} />}
+          >
+            <Icon data-icon="inline-start" />
+            {t(`quickAction_${key}`)}
+          </Button>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 type ReviewRowKey = IntegrityIssueKey | "duplicatePersons";
 
 /**
@@ -303,8 +361,9 @@ export async function generateMetadata({
 /**
  * El armazón (título) solo necesita el rol, así que aparece de inmediato y cada
  * sección con consultas propias fluye después, a su ritmo. Orden pensado para
- * actuar rápido: primero las alertas del día, luego lo que conviene revisar de
- * vez en cuando, y al final el cuadro de la próxima jornada.
+ * actuar rápido: primero los atajos de alta, luego las alertas del día, después
+ * lo que conviene revisar de vez en cuando, y al final el cuadro de la próxima
+ * jornada.
  */
 export default async function DashboardPage({
   params,
@@ -324,10 +383,17 @@ export default async function DashboardPage({
   const canSeePersonas = hasPermission(user, "personas.view");
   const canSeeMedical = hasPermission(user, "personas.medical.view");
   const canSeeCalendario = hasPermission(user, "calendario.view");
+  const canManageEconomia = LEDGERS.some((ledger) => canManageLedger(user, ledger));
 
   return (
     <div className="flex flex-1 flex-col gap-6">
       <PageHeader title={t("title")} description={t("subtitle")} />
+
+      {canManageEconomia ? (
+        <Suspense fallback={<CardSkeleton lines={1} />}>
+          <QuickActionsSection />
+        </Suspense>
+      ) : null}
 
       {canSeePersonas ? (
         <>

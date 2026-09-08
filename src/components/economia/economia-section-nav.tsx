@@ -10,9 +10,11 @@ import { cn } from "@/lib/utils";
 
 export type EconomiaSection =
   | "resumen"
+  | "pagos"
   | "presupuesto"
   | "movimientos"
   | "recibidas"
+  | "tickets"
   | "emitidas"
   | "proveedores"
   | "cuentas";
@@ -20,9 +22,11 @@ export type EconomiaSection =
 /** `bothLedgers`: la sección mezcla los dos libros en una tabla (`resolveLedgerFilter`). */
 const SECTIONS: { key: EconomiaSection; href: string; bothLedgers?: boolean }[] = [
   { key: "resumen", href: "/economia" },
+  { key: "pagos", href: "/economia/pagos", bothLedgers: true },
   { key: "presupuesto", href: "/economia/presupuesto", bothLedgers: true },
   { key: "movimientos", href: "/economia/movimientos", bothLedgers: true },
   { key: "recibidas", href: "/economia/recibidas", bothLedgers: true },
+  { key: "tickets", href: "/economia/tickets", bothLedgers: true },
   { key: "emitidas", href: "/economia/emitidas", bothLedgers: true },
   { key: "proveedores", href: "/economia/proveedores" },
   { key: "cuentas", href: "/economia/cuentas" },
