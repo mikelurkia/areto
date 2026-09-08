@@ -1,0 +1,2 @@
+CREATE TYPE "public"."team_registration_status" AS ENUM('not_registered', 'pending', 'rejected', 'registered');--> statement-breakpoint
+ALTER TABLE "teams" ADD COLUMN "registration_status" "team_registration_status" DEFAULT 'not_registered' NOT NULL;

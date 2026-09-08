@@ -19,6 +19,7 @@ import { useActionResult, useActionToast } from "@/hooks/use-action-toast";
 import { TEAM_CATEGORIES } from "@/components/equipos/team-categories";
 import { TEAM_GENDERS } from "@/components/equipos/team-genders";
 import { FEE_PERIODS } from "@/components/equipos/fee-periods";
+import { TEAM_REGISTRATION_STATUSES } from "@/lib/team-registration-status";
 
 type Team = {
   id: string;
@@ -27,6 +28,7 @@ type Team = {
   gender: string | null;
   federationGroup: string | null;
   federationCode: string | null;
+  registrationStatus: string;
   playerFeeCents: number | null;
   playerFeePeriod: string;
   playerFeeNotes: string | null;
@@ -159,6 +161,31 @@ export function TeamForm(props: TeamFormProps) {
             />
           </Field>
         </div>
+        {props.mode === "edit" ? (
+          <Field>
+            <FieldLabel htmlFor="team-registration-status">
+              {t("registrationStatusLabel")}
+            </FieldLabel>
+            <Select
+              key={props.team.registrationStatus}
+              name="registrationStatus"
+              defaultValue={props.team.registrationStatus}
+            >
+              <SelectTrigger id="team-registration-status" className="w-full">
+                <SelectValue>
+                  {(value: string) => t(`registrationStatus.${value}`)}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {TEAM_REGISTRATION_STATUSES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {t(`registrationStatus.${status}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        ) : null}
         <div className="grid grid-cols-2 gap-3">
           <Field>
             <FieldLabel htmlFor="team-player-fee">
