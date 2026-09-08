@@ -1,6 +1,6 @@
 import { StatusBadge } from "@/components/status-badge";
 import { notFound, redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
@@ -15,6 +15,7 @@ import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { ReviewForm, type RegistrationDetail } from "@/components/inscripciones/review-form";
 import { ReviewedRegistrationPanel } from "@/components/inscripciones/reviewed-registration-panel";
 import { PlayerRegistrationSummary } from "@/components/inscripciones/registration-summary";
+import { RegistrationPendingNav } from "@/components/inscripciones/registration-pending-nav";
 import { PageHeader, SectionHeading } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 
@@ -52,6 +53,21 @@ export default async function RegistrationDetailPage({
   // Esta pantalla es solo de inscripciones de equipo; las de socio se validan
   // en /socios, con su propio formulario más corto.
   if (registration.kind !== "player") redirect(`/${locale}/socios/${registrationId}`);
+
+  // Mismo orden que /inscripciones, para poder ir a la anterior/siguiente
+  // pendiente sin volver a la lista — solo tiene sentido mientras está
+  // pendiente, que es cuando se revisa en lote.
+  const pendingIds =
+    registration.status === "pending"
+      ? (
+          await db.query.registrations.findMany({
+            where: and(eq(registrations.kind, "player"), eq(registrations.status, "pending")),
+            orderBy: (r, { desc }) => [desc(r.createdAt)],
+            columns: { id: true },
+          })
+        ).map((r) => r.id)
+      : [];
+  const pendingIndex = pendingIds.indexOf(registrationId);
 
   const [allPersons, seasonTeams, seasonCategoryRanges, photoUrl, idFrontUrl, idBackUrl] = await Promise.all([
     db.query.persons.findMany({
@@ -94,13 +110,19 @@ export default async function RegistrationDetailPage({
   ]);
 
   // Solo la persona principal tiene foto/DNI nuevos que comparar (los tutores
-  // no llevan ficheros en el formulario), así que solo resolvemos las URLs de
-  // sus propias coincidencias — un conjunto pequeño, no toda la tabla de personas.
+  // no llevan ficheros en el formulario), así que solo resolvemos DNI de sus
+  // propias coincidencias. La foto sí se resuelve también para los tutores:
+  // sirve para confirmar visualmente al candidato aunque no haya diff.
   const mainCandidates = findCandidates(registration, allPersons);
+  const guardianCandidatesByGuardian = registration.guardians.map((g) => findCandidates(g, allPersons));
+  const allCandidatesForPhoto = [
+    ...mainCandidates,
+    ...guardianCandidatesByGuardian.flat(),
+  ];
   const [candidatePhotoUrls, candidateIdFrontUrls, candidateIdBackUrls] = await Promise.all([
     getSignedUrls(
       PERSON_PHOTO_BUCKET,
-      mainCandidates,
+      allCandidatesForPhoto,
       (p) => (p.photoPath ? personPhotoThumbPath(p.photoPath) : null),
       (p) => p.id,
     ),
@@ -139,7 +161,7 @@ export default async function RegistrationDetailPage({
       idFrontUrl: candidateIdFrontUrls.get(c.id) ?? null,
       idBackUrl: candidateIdBackUrls.get(c.id) ?? null,
     })),
-    guardians: registration.guardians.map((g) => ({
+    guardians: registration.guardians.map((g, i) => ({
       id: g.id,
       firstName: g.firstName,
       lastName: g.lastName,
@@ -150,7 +172,10 @@ export default async function RegistrationDetailPage({
       postalCode: g.postalCode,
       phone: g.phone,
       email: g.email,
-      candidates: findCandidates(g, allPersons),
+      candidates: guardianCandidatesByGuardian[i].map((c) => ({
+        ...c,
+        photoUrl: candidatePhotoUrls.get(c.id) ?? null,
+      })),
     })),
   };
 
@@ -185,6 +210,16 @@ export default async function RegistrationDetailPage({
               {t("submittedOn", { date: formatDateTime(registration.createdAt, locale) })}
             </span>
           </>
+        }
+        actions={
+          pendingIndex >= 0 ? (
+            <RegistrationPendingNav
+              prevId={pendingIndex > 0 ? pendingIds[pendingIndex - 1] : null}
+              nextId={pendingIndex < pendingIds.length - 1 ? pendingIds[pendingIndex + 1] : null}
+              position={pendingIndex + 1}
+              total={pendingIds.length}
+            />
+          ) : undefined
         }
       />
 
