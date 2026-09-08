@@ -35,6 +35,8 @@ import { DocumentDialog } from "@/components/document-dialog";
 import { NotesLog } from "@/components/notes-log";
 import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { StatusBadge } from "@/components/status-badge";
+import { STATUS_TONE } from "@/lib/team-registration-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -223,6 +225,12 @@ export default async function TeamDetailPage({
         ]
           .filter(Boolean)
           .join(" · ")}
+        badges={
+          <StatusBadge
+            tone={STATUS_TONE[team.registrationStatus]}
+            label={t(`registrationStatus.${team.registrationStatus}`)}
+          />
+        }
         actions={
           <>
             {hasPermission(user, "equipos.acta") ? (
@@ -263,6 +271,7 @@ export default async function TeamDetailPage({
                   gender: team.gender,
                   federationGroup: team.federationGroup,
                   federationCode: team.federationCode,
+                  registrationStatus: team.registrationStatus,
                   playerFeeCents: team.playerFeeCents,
                   playerFeePeriod: team.playerFeePeriod,
                   playerFeeNotes: team.playerFeeNotes,

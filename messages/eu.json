@@ -1324,6 +1324,13 @@
     "federationCodeLabel": "Federazio kodea",
     "federationCodePlaceholder": "Adib. 12345",
     "federationCodeShort": "Kod. {code}",
+    "registrationStatusLabel": "Liga/federazio-izena ematea",
+    "registrationStatus": {
+      "not_registered": "Izena eman gabe",
+      "pending": "Onartzeke",
+      "rejected": "Baztertua",
+      "registered": "Izena emanda"
+    },
     "playerFeeLabel": "Jokalariaren kuota",
     "playerFeePlaceholder": "45,50",
     "playerFeePeriodLabel": "Maiztasuna",

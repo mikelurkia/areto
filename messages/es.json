@@ -1324,6 +1324,13 @@
     "federationCodeLabel": "Código federación",
     "federationCodePlaceholder": "Ej. 12345",
     "federationCodeShort": "Cód. {code}",
+    "registrationStatusLabel": "Inscripción liga/federación",
+    "registrationStatus": {
+      "not_registered": "Sin inscribir",
+      "pending": "Pendiente de aceptar",
+      "rejected": "Rechazado",
+      "registered": "Inscrito"
+    },
     "playerFeeLabel": "Cuota del jugador",
     "playerFeePlaceholder": "45,50",
     "playerFeePeriodLabel": "Periodicidad",

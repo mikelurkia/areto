@@ -125,6 +125,15 @@ export const sponsorshipAgreementStatus = pgEnum("sponsorship_agreement_status",
   "lost", // perdido / no cuaja
 ]);
 
+/** Estado de la inscripción del equipo en la liga/federación. Lo actualiza el
+ * staff a mano según la respuesta de la federación (no hay integración). */
+export const teamRegistrationStatus = pgEnum("team_registration_status", [
+  "not_registered",
+  "pending",
+  "rejected",
+  "registered",
+]);
+
 /** Tipo de solicitud de inscripción: alta de equipo (jugador o cuerpo
  * técnico, el rol se decide al aprobar) o alta de socio. */
 export const registrationKind = pgEnum("registration_kind", ["player", "member"]);
@@ -235,6 +244,10 @@ export const teams = pgTable(
     federationGroup: text("federation_group"),
     /** Código/identificador del equipo en la federación, para actas y trámites. */
     federationCode: text("federation_code"),
+    /** Estado de la inscripción del equipo en la liga/federación esta temporada. */
+    registrationStatus: teamRegistrationStatus("registration_status")
+      .notNull()
+      .default("not_registered"),
     /**
      * Cuota que el club cobra a cada jugador de este equipo esta temporada.
      * Es un dato de configuración: no genera cobros por sí solo — el módulo

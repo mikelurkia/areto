@@ -21,6 +21,7 @@ type Team = {
   gender: string | null;
   federationGroup: string | null;
   federationCode: string | null;
+  registrationStatus: string;
   playerFeeCents: number | null;
   playerFeePeriod: string;
   playerFeeNotes: string | null;
