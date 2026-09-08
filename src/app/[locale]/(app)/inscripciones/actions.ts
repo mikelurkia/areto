@@ -22,7 +22,7 @@ import { resizeImageToWebp } from "@/lib/image-resize";
 import { isValidNationalId } from "@/lib/national-id";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { resolvePayerFields } from "@/lib/payer";
-import { readGuardians } from "@/lib/registration-guardians";
+import { findGuardianIdentityConflict, readGuardians } from "@/lib/registration-guardians";
 import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
 import { copyFileBetweenBuckets, downloadFile, removeFile, uploadFile } from "@/lib/supabase/storage";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
@@ -163,12 +163,21 @@ function readEditableFields(formData: FormData) {
  * comprobación en vez de duplicarla. */
 function validateEditableFields(
   fields: ReturnType<typeof readEditableFields>,
+  guardians: ReturnType<typeof readGuardians>,
   t: Awaited<ReturnType<typeof getTranslations>>,
 ): string | null {
   if (!fields.firstName) return t("firstNameRequired");
   if (!fields.lastName) return t("lastNameRequired");
   if (fields.nationalId && !isValidNationalId(fields.nationalId)) return t("nationalIdInvalid");
   if (fields.iban && !isValidIban(fields.iban)) return t("ibanInvalid");
+  const identityConflict = findGuardianIdentityConflict(fields, guardians);
+  if (identityConflict) {
+    return t(
+      identityConflict.field === "email"
+        ? "playerGuardianEmailConflict"
+        : "playerGuardianNationalIdConflict",
+    );
+  }
   return null;
 }
 
@@ -255,7 +264,7 @@ export async function updateRegistration(
 
   const kind = String(formData.get("kind") ?? "player");
   const fields = readEditableFields(formData);
-  const validationError = validateEditableFields(fields, t);
+  const validationError = validateEditableFields(fields, readGuardians(formData), t);
   if (validationError) return { error: validationError };
 
   await db.transaction((tx) => applyRegistrationEdits(tx, id, kind, fields, formData));
@@ -295,7 +304,7 @@ export async function approveRegistration(
   // hay en pantalla en ese momento, no lo que quedó guardado la última vez
   // (por eso ya no hace falta pulsar "Guardar cambios" antes de aprobar).
   const editedFields = readEditableFields(formData);
-  const validationError = validateEditableFields(editedFields, t);
+  const validationError = validateEditableFields(editedFields, readGuardians(formData), t);
   if (validationError) return { error: validationError };
 
   let personId: string;
@@ -542,11 +551,11 @@ export async function approveRegistration(
       return personId;
     });
   } catch (err) {
-    if (
-      isUniqueViolation(err, "persons_email_idx") ||
-      isUniqueViolation(err, "persons_national_id_idx")
-    ) {
-      return { error: t("duplicatePersonFound") };
+    if (isUniqueViolation(err, "persons_email_idx")) {
+      return { error: t("duplicatePersonFoundEmail") };
+    }
+    if (isUniqueViolation(err, "persons_national_id_idx")) {
+      return { error: t("duplicatePersonFoundNationalId") };
     }
     throw err;
   }
