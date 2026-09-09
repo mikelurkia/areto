@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { TriangleAlertIcon, UserRoundIcon } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { EyeIcon, EyeOffIcon, TriangleAlertIcon, UserRoundIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useFilterParams } from "@/hooks/use-filter-params";
@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { avatarToneClasses } from "@/lib/avatar-color";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -65,7 +66,7 @@ export type RosterTableRow = {
   postalCode: string | null;
 };
 
-const FILTER_DEFAULTS = { vista: "roster" };
+export const ROSTER_FILTER_DEFAULTS = { vista: "roster", foco: "" };
 
 /**
  * Tabla de plantilla con vista conmutable: mismas filas (ya cargadas en la
@@ -98,10 +99,31 @@ export function RosterTable({
 }) {
   const t = useTranslations("Equipos");
   const tMedico = useTranslations("Medico");
-  const [{ vista }, setFilters] = useFilterParams(FILTER_DEFAULTS, { navigate: false });
+  const [{ vista, foco }, setFilters] = useFilterParams(ROSTER_FILTER_DEFAULTS, {
+    navigate: false,
+  });
   const view: RosterView = vista === "datos" && !canManage ? "roster" : (vista as RosterView);
   const today = new Date().toISOString().slice(0, 10);
   const cutoff = medicalCutoff();
+  const [revealedIds, setRevealedIds] = useState<ReadonlySet<string>>(new Set());
+
+  const focoIds = useMemo(
+    () => (foco ? new Set(foco.split(",").filter(Boolean)) : null),
+    [foco],
+  );
+  const visibleItems = focoIds ? items.filter((m) => focoIds.has(m.id)) : items;
+
+  function toggleRevealed(id: string) {
+    setRevealedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   const viewLabel: Record<RosterView, string> = {
     roster: t("viewRosterOption"),
@@ -114,17 +136,32 @@ export function RosterTable({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex flex-wrap items-center gap-2">{headerActions}</div>
-        <Select value={view} onValueChange={(value) => value && setFilters({ vista: value })}>
-          <SelectTrigger className="w-48" aria-label={t("viewLabel")}>
-            <SelectValue>{(value: RosterView) => viewLabel[value]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="roster">{t("viewRosterOption")}</SelectItem>
-            <SelectItem value="medico">{t("viewMedicoOption")}</SelectItem>
-            <SelectItem value="tallas">{t("viewTallasOption")}</SelectItem>
-            {canManage ? <SelectItem value="datos">{t("viewDatosOption")}</SelectItem> : null}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          {focoIds ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                {t("rosterFocoShowing", {
+                  shown: visibleItems.length,
+                  total: items.length,
+                })}
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => setFilters({ foco: "" })}>
+                {t("rosterFocoClear")}
+              </Button>
+            </div>
+          ) : null}
+          <Select value={view} onValueChange={(value) => value && setFilters({ vista: value })}>
+            <SelectTrigger className="w-48" aria-label={t("viewLabel")}>
+              <SelectValue>{(value: RosterView) => viewLabel[value]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="roster">{t("viewRosterOption")}</SelectItem>
+              <SelectItem value="medico">{t("viewMedicoOption")}</SelectItem>
+              <SelectItem value="tallas">{t("viewTallasOption")}</SelectItem>
+              {canManage ? <SelectItem value="datos">{t("viewDatosOption")}</SelectItem> : null}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Table>
@@ -152,9 +189,13 @@ export function RosterTable({
             ) : null}
             {view === "datos" ? (
               <>
-                <TableHead>{t("colNationalId")}</TableHead>
-                <TableHead priority="secondary">{t("colPhone")}</TableHead>
-                <TableHead priority="tertiary">{t("colAddress")}</TableHead>
+                <TableHead className="print:hidden">{t("colNationalId")}</TableHead>
+                <TableHead priority="secondary" className="print:hidden">
+                  {t("colPhone")}
+                </TableHead>
+                <TableHead priority="tertiary" className="print:hidden">
+                  {t("colAddress")}
+                </TableHead>
               </>
             ) : null}
             {canManage ? (
@@ -163,7 +204,7 @@ export function RosterTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((m) => (
+          {visibleItems.map((m) => (
             <TableRow key={m.id}>
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
@@ -267,9 +308,35 @@ export function RosterTable({
               ) : null}
               {view === "datos" ? (
                 <>
-                  <TableCell>{m.nationalId ?? <EmptyValue />}</TableCell>
-                  <TableCell priority="secondary">{m.phone ?? <EmptyValue />}</TableCell>
-                  <TableCell priority="tertiary">
+                  <TableCell className="print:hidden">
+                    {m.nationalId ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="tabular-nums">
+                          {revealedIds.has(m.id) ? m.nationalId : maskNationalId(m.nationalId)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleRevealed(m.id)}
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label={
+                            revealedIds.has(m.id) ? t("rosterHideNationalId") : t("rosterRevealNationalId")
+                          }
+                        >
+                          {revealedIds.has(m.id) ? (
+                            <EyeOffIcon className="size-3.5" />
+                          ) : (
+                            <EyeIcon className="size-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <EmptyValue />
+                    )}
+                  </TableCell>
+                  <TableCell priority="secondary" className="print:hidden">
+                    {m.phone ?? <EmptyValue />}
+                  </TableCell>
+                  <TableCell priority="tertiary" className="print:hidden">
                     {[m.address, m.postalCode, m.city].filter(Boolean).join(", ") || (
                       <EmptyValue />
                     )}
@@ -322,6 +389,12 @@ function MedicalBadge({
             ? t("statusExpiringBadge", { date: date! })
             : t("statusOkBadge", { date: date! });
   return <StatusBadge tone={MEDICAL_CERT_TONE[status]} label={label} />;
+}
+
+/** Oculta todo salvo los 3 últimos caracteres, para no dejar el DNI/NIE a la vista por defecto. */
+function maskNationalId(value: string): string {
+  if (value.length <= 3) return value;
+  return "•".repeat(value.length - 3) + value.slice(-3);
 }
 
 /** Ventana de aviso del certificado médico, calculada en cliente al pintar la tabla. */

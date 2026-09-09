@@ -38,7 +38,7 @@ type TeamRow = {
   gender: string | null;
   playerFeeCents: number | null;
   playerFeePeriod: string;
-  roster: { role: string }[];
+  roster: { role: string; jerseyNumber: number | null }[];
   alerts: RosterHealthAlerts;
   hardCount: number;
   softCount: number;
@@ -83,7 +83,7 @@ export function EquiposBrowser({
     return lines;
   }
 
-  function roleCounts(roster: { role: string }[]) {
+  function roleCounts(roster: { role: string; jerseyNumber: number | null }[]) {
     return ["player", "coach", "staff"].map((role) => ({
       role,
       count: roster.filter((m) => m.role === role).length,
@@ -97,7 +97,10 @@ export function EquiposBrowser({
       const categoryLabel = team.category ? t(`category.${team.category}`) : "";
       return (
         team.name.toLowerCase().includes(needle) ||
-        categoryLabel.toLowerCase().includes(needle)
+        categoryLabel.toLowerCase().includes(needle) ||
+        team.roster.some(
+          (m) => m.jerseyNumber !== null && String(m.jerseyNumber) === needle,
+        )
       );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -228,7 +231,11 @@ export function EquiposBrowser({
                   {canManage ? (
                     <TableCell>
                       <div className="flex justify-end gap-1">
-                        <DeleteTeamDialog id={team.id} name={team.name} />
+                        <DeleteTeamDialog
+                          id={team.id}
+                          name={team.name}
+                          rosterCount={team.roster.length}
+                        />
                       </div>
                     </TableCell>
                   ) : null}

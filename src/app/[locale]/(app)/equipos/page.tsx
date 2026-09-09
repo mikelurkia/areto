@@ -98,7 +98,7 @@ export default async function EquiposPage({
       gender: team.gender,
       playerFeeCents: team.playerFeeCents,
       playerFeePeriod: team.playerFeePeriod,
-      roster: team.memberships.map((m) => ({ role: m.role })),
+      roster: team.memberships.map((m) => ({ role: m.role, jerseyNumber: m.jerseyNumber })),
       alerts,
       hardCount,
       softCount,
