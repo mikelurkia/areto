@@ -21,7 +21,7 @@ export type EconomiaSection =
 
 /** `bothLedgers`: la sección mezcla los dos libros en una tabla (`resolveLedgerFilter`). */
 const SECTIONS: { key: EconomiaSection; href: string; bothLedgers?: boolean }[] = [
-  { key: "resumen", href: "/economia" },
+  { key: "resumen", href: "/economia", bothLedgers: true },
   { key: "pagos", href: "/economia/pagos", bothLedgers: true },
   { key: "presupuesto", href: "/economia/presupuesto", bothLedgers: true },
   { key: "movimientos", href: "/economia/movimientos", bothLedgers: true },
