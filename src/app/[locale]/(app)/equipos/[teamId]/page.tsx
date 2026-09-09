@@ -296,33 +296,48 @@ export default async function TeamDetailPage({
         </TabsList>
 
         <TabsContent value="plantilla" keepMounted className="flex flex-col gap-3">
-          {teamWebRegistrationMissing > 0 ? (
-            <Card className="flex-row flex-wrap items-center justify-between gap-4 px-(--card-spacing) print:hidden">
-              <div className="flex items-center gap-3">
-                <BellIcon className="size-5 shrink-0 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">{t("webRegistrationSectionTitle")}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t("webRegistrationSummary", {
-                      missing: teamWebRegistrationMissing,
-                      total: teamWebRegistration.length,
-                    })}
-                  </p>
+          {teamWebRegistrationMissing > 0 || teamMemberships.length > 0 ? (
+            <Card size="sm" className="flex flex-col gap-3 px-(--card-spacing)">
+              {teamWebRegistrationMissing > 0 ? (
+                <div className="flex flex-row flex-wrap items-center justify-between gap-4 print:hidden">
+                  <div className="flex items-center gap-3">
+                    <BellIcon className="size-5 shrink-0 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{t("webRegistrationSectionTitle")}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {t("webRegistrationSummary", {
+                          missing: teamWebRegistrationMissing,
+                          total: teamWebRegistration.length,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    render={
+                      <Link href={`/temporadas/${team.seasonId}/pendientes?team=${team.id}`} />
+                    }
+                    nativeButton={false}
+                  >
+                    {t("viewWebRegistrationAction")}
+                  </Button>
                 </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                render={<Link href={`/temporadas/${team.seasonId}/pendientes?team=${team.id}`} />}
-                nativeButton={false}
-              >
-                {t("viewWebRegistrationAction")}
-              </Button>
-            </Card>
-          ) : null}
+              ) : null}
 
-          {teamMemberships.length > 0 ? (
-            <RosterHealth stats={rosterStats} alerts={rosterAlerts} />
+              {teamMemberships.length > 0 ? (
+                <RosterHealth
+                  bare
+                  stats={rosterStats}
+                  alerts={rosterAlerts}
+                  className={
+                    teamWebRegistrationMissing > 0
+                      ? "border-t border-foreground/10 pt-3 print:border-t-0 print:pt-0"
+                      : undefined
+                  }
+                />
+              ) : null}
+            </Card>
           ) : null}
 
           {teamMemberships.length === 0 ? (

@@ -10,6 +10,7 @@ import {
  * servidor.
  */
 type HealthMembership = {
+  id: string;
   role: string;
   jerseyNumber: number | null;
   positions: string[];
@@ -28,10 +29,15 @@ export type RosterHealthStats = {
 
 export type RosterHealthAlerts = {
   duplicateJerseys: number[];
+  duplicateJerseyIds: string[];
   noJersey: number;
+  noJerseyIds: string[];
   medicalExpired: number;
+  medicalExpiredIds: string[];
   medicalExpiring: number;
+  medicalExpiringIds: string[];
   ageOutOfRange: number;
+  ageOutOfRangeIds: string[];
 };
 
 export type RosterHealth = {
@@ -89,32 +95,43 @@ export function computeRosterHealth(
     .filter(([, count]) => count > 1)
     .map(([number]) => number)
     .sort((a, b) => a - b);
+  const duplicateJerseyIds = players
+    .filter((m) => m.jerseyNumber !== null && (jerseyCounts.get(m.jerseyNumber) ?? 0) > 1)
+    .map((m) => m.id);
 
-  const ageOutOfRange =
+  const ageOutOfRangeMembers =
     team.minBirthYear !== null && team.maxBirthYear !== null
       ? players.filter((m) => {
           if (!m.person.birthDate) return false;
           const year = Number(m.person.birthDate.slice(0, 4));
           return year < team.minBirthYear! || year > team.maxBirthYear!;
-        }).length
-      : 0;
+        })
+      : [];
+  const ageOutOfRange = ageOutOfRangeMembers.length;
+  const ageOutOfRangeIds = ageOutOfRangeMembers.map((m) => m.id);
 
   // Por debajo de cadete no se exige certificado médico (ver
   // `categoryRequiresMedicalCheckup`), así que su caducidad no genera aviso.
-  const medicalExpired = requiresMedicalCheckup
+  const medicalExpiredMembers = requiresMedicalCheckup
     ? memberships.filter(
         (m) => m.person.medicalCertUntil !== null && m.person.medicalCertUntil < today,
-      ).length
-    : 0;
-  const medicalExpiring = requiresMedicalCheckup
+      )
+    : [];
+  const medicalExpiringMembers = requiresMedicalCheckup
     ? memberships.filter(
         (m) =>
           m.person.medicalCertUntil !== null &&
           m.person.medicalCertUntil >= today &&
           m.person.medicalCertUntil <= soonStr,
-      ).length
-    : 0;
-  const noJersey = players.filter((m) => m.jerseyNumber === null).length;
+      )
+    : [];
+  const medicalExpired = medicalExpiredMembers.length;
+  const medicalExpiredIds = medicalExpiredMembers.map((m) => m.id);
+  const medicalExpiring = medicalExpiringMembers.length;
+  const medicalExpiringIds = medicalExpiringMembers.map((m) => m.id);
+  const noJerseyMembers = players.filter((m) => m.jerseyNumber === null);
+  const noJersey = noJerseyMembers.length;
+  const noJerseyIds = noJerseyMembers.map((m) => m.id);
 
   const stats: RosterHealthStats = {
     players: players.length,
@@ -124,10 +141,15 @@ export function computeRosterHealth(
   };
   const alerts: RosterHealthAlerts = {
     duplicateJerseys,
+    duplicateJerseyIds,
     noJersey,
+    noJerseyIds,
     medicalExpired,
+    medicalExpiredIds,
     medicalExpiring,
+    medicalExpiringIds,
     ageOutOfRange,
+    ageOutOfRangeIds,
   };
 
   const hardCount =

@@ -6,9 +6,11 @@ import { DeleteEntityDialog } from "@/components/delete-entity-dialog";
 export function DeleteTeamDialog({
   id,
   name,
+  rosterCount,
 }: {
   id: string;
   name: string;
+  rosterCount: number;
 }) {
   return (
     <DeleteEntityDialog
@@ -16,7 +18,7 @@ export function DeleteTeamDialog({
       namespace="Equipos"
       entityKey="Team"
       paramKey="borrar-equipo"
-      values={{ name }}
+      values={{ name, rosterCount: String(rosterCount) }}
       deleteAction={deleteTeam}
     />
   );
