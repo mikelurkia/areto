@@ -5,6 +5,7 @@ import { EyeIcon, EyeOffIcon, TriangleAlertIcon, UserRoundIcon } from "lucide-re
 import { useTranslations } from "next-intl";
 
 import { useFilterParams } from "@/hooks/use-filter-params";
+import { BulkRemoveMembershipsDialog } from "@/components/equipos/bulk-remove-memberships-dialog";
 import { DeleteMembershipDialog } from "@/components/equipos/delete-membership-dialog";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { MembershipFederationCardDialog } from "@/components/equipos/membership-federation-card-dialog";
@@ -21,13 +22,8 @@ import { avatarToneClasses } from "@/lib/avatar-color";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -113,6 +109,28 @@ export function RosterTable({
   );
   const visibleItems = focoIds ? items.filter((m) => focoIds.has(m.id)) : items;
 
+  /**
+   * Selección de plantilla para "quitar en bloque", solo con `foco` activo:
+   * fuera de un aviso de salud concreto la tabla completa es demasiado grande
+   * para que "seleccionar todo" sea una acción segura.
+   */
+  const bulkSelectable = canManage && focoIds !== null;
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [selectionFoco, setSelectionFoco] = useState(foco);
+  if (foco !== selectionFoco) {
+    setSelectionFoco(foco);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelected(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
   function toggleRevealed(id: string) {
     setRevealedIds((prev) => {
       const next = new Set(prev);
@@ -124,13 +142,6 @@ export function RosterTable({
       return next;
     });
   }
-
-  const viewLabel: Record<RosterView, string> = {
-    roster: t("viewRosterOption"),
-    medico: t("viewMedicoOption"),
-    tallas: t("viewTallasOption"),
-    datos: t("viewDatosOption"),
-  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -150,23 +161,50 @@ export function RosterTable({
               </Button>
             </div>
           ) : null}
-          <Select value={view} onValueChange={(value) => value && setFilters({ vista: value })}>
-            <SelectTrigger className="w-48" aria-label={t("viewLabel")}>
-              <SelectValue>{(value: RosterView) => viewLabel[value]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="roster">{t("viewRosterOption")}</SelectItem>
-              <SelectItem value="medico">{t("viewMedicoOption")}</SelectItem>
-              <SelectItem value="tallas">{t("viewTallasOption")}</SelectItem>
-              {canManage ? <SelectItem value="datos">{t("viewDatosOption")}</SelectItem> : null}
-            </SelectContent>
-          </Select>
+          {bulkSelectable && selectedIds.size > 0 ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{t("rosterBulkSelectedCount", { count: selectedIds.size })}</span>
+              <BulkRemoveMembershipsDialog
+                ids={[...selectedIds]}
+                onSuccess={() => setSelectedIds(new Set())}
+              />
+            </div>
+          ) : null}
+          <Tabs
+            value={view}
+            onValueChange={(value) => setFilters({ vista: value as RosterView })}
+            aria-label={t("viewLabel")}
+          >
+            <TabsList variant="default">
+              <TabsTrigger value="roster">{t("viewRosterOption")}</TabsTrigger>
+              <TabsTrigger value="medico">{t("viewMedicoOption")}</TabsTrigger>
+              <TabsTrigger value="tallas">{t("viewTallasOption")}</TabsTrigger>
+              {canManage ? (
+                <TabsTrigger value="datos">{t("viewDatosOption")}</TabsTrigger>
+              ) : null}
+            </TabsList>
+          </Tabs>
         </div>
       </div>
 
       <Table>
         <TableHeader>
           <TableRow>
+            {bulkSelectable ? (
+              <TableHead className="w-8 print:hidden">
+                <Checkbox
+                  checked={
+                    visibleItems.length > 0 && selectedIds.size === visibleItems.length
+                  }
+                  onCheckedChange={(checked) =>
+                    setSelectedIds(
+                      checked === true ? new Set(visibleItems.map((m) => m.id)) : new Set(),
+                    )
+                  }
+                  aria-label={t("rosterBulkSelectAllSr")}
+                />
+              </TableHead>
+            ) : null}
             <TableHead>{t("colPerson")}</TableHead>
             <TableHead>{t("colJersey")}</TableHead>
             {view === "roster" ? (
@@ -206,6 +244,15 @@ export function RosterTable({
         <TableBody>
           {visibleItems.map((m) => (
             <TableRow key={m.id}>
+              {bulkSelectable ? (
+                <TableCell className="print:hidden">
+                  <Checkbox
+                    checked={selectedIds.has(m.id)}
+                    onCheckedChange={(checked) => toggleSelected(m.id, checked === true)}
+                    aria-label={t("rosterBulkSelectRowSr", { name: m.name })}
+                  />
+                </TableCell>
+              ) : null}
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
                   <Avatar size="sm">
@@ -237,8 +284,13 @@ export function RosterTable({
                         min: minBirthYear!,
                         max: maxBirthYear!,
                       })}
+                      aria-label={t("ageOutOfRangeLabel", {
+                        year: m.birthYear!,
+                        min: minBirthYear!,
+                        max: maxBirthYear!,
+                      })}
                     >
-                      <TriangleAlertIcon className="size-4 text-destructive" />
+                      <TriangleAlertIcon className="size-4 text-destructive" aria-hidden />
                     </span>
                   ) : null}
                 </div>
