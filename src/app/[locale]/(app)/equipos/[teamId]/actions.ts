@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
@@ -176,6 +176,34 @@ export async function removeMembership(
   updateTag(SEASON_RENEWALS_TAG);
   revalidateRoutes(ROUTE.equipoFicha, ROUTE.equipos, ROUTE.personaFicha, ROUTE.dashboard);
   return { message: t("memberRemoved") };
+}
+
+export async function removeMemberships(
+  _prev: MembershipState,
+  formData: FormData,
+): Promise<MembershipState> {
+  const t = await getTranslations("Equipos");
+  await requirePermission("equipos.manage");
+
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+  if (ids.length === 0) return {};
+
+  const existing = await db.query.memberships.findMany({
+    where: inArray(memberships.id, ids),
+    columns: { federationCardPath: true },
+  });
+
+  await db.delete(memberships).where(inArray(memberships.id, ids));
+  await Promise.all(
+    existing
+      .filter((m) => m.federationCardPath)
+      .map((m) => removeFile(FEDERATION_CARD_BUCKET, m.federationCardPath!)),
+  );
+
+  updateTag(INTEGRITY_ISSUES_TAG);
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidateRoutes(ROUTE.equipoFicha, ROUTE.equipos, ROUTE.personaFicha, ROUTE.dashboard);
+  return { message: t("membersRemoved", { count: ids.length }) };
 }
 
 const FEDERATION_CARD_BUCKET = "membership-documents";

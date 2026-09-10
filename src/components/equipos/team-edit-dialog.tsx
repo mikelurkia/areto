@@ -37,7 +37,7 @@ export function TeamEditDialog({ team }: { team: Team }) {
         <PencilIcon />
         <span className="sr-only">{t("editTeamSr", { name: team.name })}</span>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t("editTeamTitle", { name: team.name })}</DialogTitle>
         </DialogHeader>

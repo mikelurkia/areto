@@ -63,6 +63,7 @@ export function TeamForm(props: TeamFormProps) {
         <input type="hidden" name="seasonId" value={props.seasonId} />
       )}
       <FieldGroup>
+        <FormError message={state.error} />
         <Field>
           <FieldLabel htmlFor="team-name">{t("nameLabel")}</FieldLabel>
           <Input
@@ -242,7 +243,6 @@ export function TeamForm(props: TeamFormProps) {
             }
           />
         </Field>
-        <FormError message={state.error} />
         <SubmitButton className="self-start">
           {props.mode === "create" ? t("action") : t("saveChanges")}
         </SubmitButton>
