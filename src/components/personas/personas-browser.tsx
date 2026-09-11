@@ -368,6 +368,7 @@ export function PersonasBrowser({
                 }
                 if (value === "guardian") return t("filterRoleGuardian");
                 if (value === "minorWithoutGuardian") return t("filterRoleMinorWithoutGuardian");
+                if (value === "orphanPlayer") return t("filterRoleOrphanPlayer");
                 return t("filterRoleAll");
               }}
             </SelectValue>
@@ -382,6 +383,7 @@ export function PersonasBrowser({
             <SelectItem value="minorWithoutGuardian">
               {t("filterRoleMinorWithoutGuardian")}
             </SelectItem>
+            <SelectItem value="orphanPlayer">{t("filterRoleOrphanPlayer")}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={expiry} onValueChange={handleExpiryChange}>

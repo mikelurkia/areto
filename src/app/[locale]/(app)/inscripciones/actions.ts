@@ -611,6 +611,13 @@ export async function approveRegistration(
     ROUTE.equipoFicha,
     ROUTE.dashboard,
   );
+  // Aprobar sin equipo es legítimo (la plantilla puede no estar armada
+  // todavía), pero no debe pasar desapercibido: se avisa con un mensaje
+  // distinto, y la persona queda visible como "sin equipo" en el dashboard
+  // (`countOrphanPlayers`) y en el panel de la solicitud ya revisada.
+  if (existing.kind === "player" && !teamId) {
+    return { message: t("registrationApprovedNoTeam") };
+  }
   return { message: t("registrationApproved") };
 }
 
