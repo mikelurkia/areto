@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
-import { registrations, seasonCategoryBirthYears, teams } from "@/db/schema";
+import { memberships, registrations, seasonCategoryBirthYears, teams } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format-date";
 import { findCandidates } from "@/lib/person-matching";
@@ -68,6 +68,19 @@ export default async function RegistrationDetailPage({
         ).map((r) => r.id)
       : [];
   const pendingIndex = pendingIds.indexOf(registrationId);
+
+  // Solo hace falta para el panel de solicitud ya revisada (ver
+  // `ReviewedRegistrationPanel`), así que se saca del `Promise.all` de abajo
+  // en vez de dispararla también en la rama pendiente, donde no se usa.
+  const hasTeam =
+    registration.status !== "pending" && registration.matchedPerson
+      ? Boolean(
+          await db.query.memberships.findFirst({
+            where: eq(memberships.personId, registration.matchedPerson.id),
+            columns: { id: true },
+          }),
+        )
+      : undefined;
 
   const [allPersons, seasonTeams, seasonCategoryRanges, photoUrl, idFrontUrl, idBackUrl] = await Promise.all([
     db.query.persons.findMany({
@@ -280,6 +293,7 @@ export default async function RegistrationDetailPage({
           matchedPerson={registration.matchedPerson}
           backHref={`/inscripciones/${registrationId}`}
           canManage={canManage}
+          hasTeam={hasTeam}
         />
       )}
     </div>
