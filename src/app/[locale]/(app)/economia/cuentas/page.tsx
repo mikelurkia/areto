@@ -148,7 +148,7 @@ export default async function CuentasPage({
                       </TableCell>
                       <TableCell>
                         {canManage ? (
-                          <span className="flex justify-end gap-1">
+                          <span className="flex justify-end gap-2">
                             <AccountDialog
                               mode="edit"
                               account={account}

@@ -132,7 +132,7 @@ export function TemporadasBrowser({
                   <TableCell>{season.teamsCount}</TableCell>
                   {canManage ? (
                     <TableCell>
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-end gap-2">
                         <SeasonDialog mode="edit" season={season} />
                         <DeleteSeasonDialog id={season.id} name={season.name} />
                       </div>

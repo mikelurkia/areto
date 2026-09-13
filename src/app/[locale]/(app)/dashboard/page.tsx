@@ -255,10 +255,8 @@ async function ReviewCard() {
     db.query.seasons.findFirst({ where: eq(seasons.isCurrent, true), columns: { id: true } }),
   ]);
 
-  const [issues, duplicatePersonsCount] = await Promise.all([
-    loadDataIntegrityIssues(currentSeason?.id ?? null),
-    countDuplicatePersonGroups(),
-  ]);
+  const issues = await loadDataIntegrityIssues(currentSeason?.id ?? null);
+  const duplicatePersonsCount = await countDuplicatePersonGroups();
 
   const rows: { key: ReviewRowKey; count: number; severity: "hard" | "soft"; href: string }[] = [
     ...issues,

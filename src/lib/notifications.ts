@@ -54,12 +54,10 @@ export async function loadNotificationAlerts(user: CurrentUser): Promise<Notific
     db.query.seasons.findFirst({ where: eq(seasons.isCurrent, true), columns: { id: true } }),
   ]);
   // Aparte del `Promise.all` anterior por el mismo motivo que en el
-  // dashboard: es una agregación con sus propias queries internas.
+  // dashboard: son agregaciones con sus propias queries internas.
   const renewals = currentSeason ? await loadSeasonRenewals(currentSeason.id) : null;
-  const [issues, duplicatePersonsCount] = await Promise.all([
-    loadDataIntegrityIssues(currentSeason?.id ?? null),
-    countDuplicatePersonGroups(),
-  ]);
+  const issues = await loadDataIntegrityIssues(currentSeason?.id ?? null);
+  const duplicatePersonsCount = await countDuplicatePersonGroups();
 
   const items: NotificationItem[] = [];
 

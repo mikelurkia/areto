@@ -84,7 +84,7 @@ export function EntityFileTable<T extends { id: string }>({
                 )}
               </TableCell>
               {canManage ? (
-                <TableCell className="flex justify-end gap-1 print:hidden">
+                <TableCell className="flex justify-end gap-2 print:hidden">
                   {renderActions(item)}
                 </TableCell>
               ) : null}

@@ -74,7 +74,7 @@ export function TeamForm(props: TeamFormProps) {
             required
           />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="team-category">
               {t("categoryLabel")}
@@ -134,7 +134,7 @@ export function TeamForm(props: TeamFormProps) {
             </Select>
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="team-federation-group">
               {t("federationGroupLabel")}
@@ -187,7 +187,7 @@ export function TeamForm(props: TeamFormProps) {
             </Select>
           </Field>
         ) : null}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="team-player-fee">
               {t("playerFeeLabel")}

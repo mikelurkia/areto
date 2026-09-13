@@ -223,7 +223,7 @@ export default async function CuotasPage({
                   <TableCell nowrap className="text-right font-medium">
                     {formatCents(total, locale)}
                   </TableCell>
-                  <TableCell className="flex justify-end gap-1">
+                  <TableCell className="flex justify-end gap-2">
                     <DownloadRemittanceXmlButton remittanceId={remittance.id} />
                     {canManage ? (
                       <DeleteRemittanceDialog id={remittance.id} messageId={remittance.messageId} />

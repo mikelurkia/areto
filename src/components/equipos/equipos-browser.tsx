@@ -230,7 +230,7 @@ export function EquiposBrowser({
                   </TableCell>
                   {canManage ? (
                     <TableCell>
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-end gap-2">
                         <DeleteTeamDialog
                           id={team.id}
                           name={team.name}

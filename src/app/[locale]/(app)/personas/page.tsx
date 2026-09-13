@@ -54,8 +54,10 @@ export default async function PersonasPage({
   // solo suben las 25 filas de la página. El diálogo de alta ya no recibe la
   // lista de personas del club para elegir tutor; la busca al escribir.
   const filters = parsePersonFilters(await searchParams);
-  const [personPage, teamOptions, tagOptions] = await Promise.all([
-    loadPersonPage(filters, canViewBanking),
+  // `loadPersonPage` es una agregación (cuenta + filas propias): fuera del
+  // `Promise.all` de las queries directas, mismo motivo que en el dashboard.
+  const personPage = await loadPersonPage(filters, canViewBanking);
+  const [teamOptions, tagOptions] = await Promise.all([
     loadCurrentTeamOptions(),
     loadPersonTagOptions(),
   ]);

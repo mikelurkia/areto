@@ -45,6 +45,7 @@ function ComboboxClear({ className, ...props }: ComboboxPrimitive.Clear.Props) {
       {...props}
     >
       <XIcon className="pointer-events-none" />
+      <span className="sr-only">Clear</span>
     </ComboboxPrimitive.Clear>
   )
 }

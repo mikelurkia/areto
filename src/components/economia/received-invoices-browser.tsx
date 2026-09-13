@@ -260,7 +260,7 @@ export function ReceivedInvoicesBrowser({
                   {canManageAny ? (
                     <TableCell>
                       {manageableLedgers.includes(i.ledger) ? (
-                        <span className="flex justify-end gap-1">
+                        <span className="flex justify-end gap-2">
                           <ReceivedInvoiceDialog
                             mode="edit"
                             invoice={i}

@@ -490,7 +490,7 @@ export default async function TeamDetailPage({
                         )}
                       </TableCell>
                       {canManage ? (
-                        <TableCell className="flex justify-end gap-1">
+                        <TableCell className="flex justify-end gap-2">
                           <DocumentDialog
                             mode="edit"
                             namespace="Equipos"

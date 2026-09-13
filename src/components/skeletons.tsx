@@ -286,7 +286,7 @@ export function TableSkeleton({
             {cols.map(({ width, priority }, i) => (
               <TableCell key={i} priority={priority}>
                 {i === actionsIndex ? (
-                  <div className="flex justify-end gap-1">
+                  <div className="flex justify-end gap-2">
                     <Skeleton className="size-7 rounded-md" />
                     <Skeleton className="size-7 rounded-md" />
                   </div>

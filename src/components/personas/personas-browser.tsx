@@ -790,7 +790,7 @@ export function PersonasBrowser({
                     </TableCell>
                     {canManage ? (
                       <TableCell>
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-2">
                           <PersonDialog
                             mode="edit"
                             person={person}
