@@ -27,6 +27,7 @@ import {
   RECEIVED_INVOICE_STATUS_TONE,
   invoiceFileBucket,
   paymentReceiptBucket,
+  sortCandidateMovementsByAmountProximity,
   visibleLedgers,
 } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
@@ -96,12 +97,10 @@ export default async function ReceivedInvoiceDetailPage({
     }),
   ]);
 
-  const candidateMovements = [...candidateMovementsRaw].sort((a, b) => {
-    const diffA = Math.abs(Math.abs(a.amountCents) - remainingCents);
-    const diffB = Math.abs(Math.abs(b.amountCents) - remainingCents);
-    if (diffA !== diffB) return diffA - diffB;
-    return b.bookedOn.localeCompare(a.bookedOn);
-  });
+  const candidateMovements = sortCandidateMovementsByAmountProximity(
+    candidateMovementsRaw,
+    remainingCents,
+  );
 
   const linkRows = invoice.links.map((l, index) => ({
     id: l.id,

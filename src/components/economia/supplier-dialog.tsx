@@ -87,7 +87,7 @@ export function SupplierDialog(props: SupplierDialogProps) {
           {supplier ? <input type="hidden" name="id" value={supplier.id} /> : null}
           <FieldGroup>
             <FormError message={state.error} />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="supplier-name">{t("supplierNameLabel")}</FieldLabel>
                 <Input
@@ -111,7 +111,7 @@ export function SupplierDialog(props: SupplierDialogProps) {
                 placeholder={t("accountIbanPlaceholder")}
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="supplier-contact-name">
                   {t("supplierContactNameLabel")}

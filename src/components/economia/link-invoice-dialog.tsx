@@ -33,6 +33,110 @@ type InvoiceOption = { id: string; number: string; totalCents: number; label: st
 
 type LinkAction = (prev: EconomiaState, formData: FormData) => Promise<EconomiaState>;
 
+type InvoiceKind = "received" | "issued" | "receipt";
+
+function LinkInvoiceForm({
+  kind,
+  action,
+  movementId,
+  invoiceId,
+  setInvoiceId,
+  options,
+  suggestedAmount,
+  locale,
+  onKindChange,
+  setOpen,
+}: {
+  kind: InvoiceKind;
+  action: LinkAction;
+  movementId: string;
+  invoiceId: string;
+  setInvoiceId: (id: string) => void;
+  options: InvoiceOption[];
+  suggestedAmount: string;
+  locale: string;
+  onKindChange: (kind: InvoiceKind) => void;
+  setOpen: (open: boolean) => void;
+}) {
+  const t = useTranslations("Economia");
+  const [state, formAction] = useActionState(action, {});
+  useActionToast(state);
+  useCloseOnActionSuccess(state, setOpen);
+
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="movementId" value={movementId} />
+      <input
+        type="hidden"
+        name={
+          kind === "received"
+            ? "receivedInvoiceId"
+            : kind === "issued"
+              ? "issuedInvoiceId"
+              : "purchaseReceiptId"
+        }
+        value={invoiceId}
+      />
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="link-invoice-kind">{t("invoiceKindLabel")}</FieldLabel>
+          <Select value={kind} onValueChange={(v) => onKindChange(v as InvoiceKind)}>
+            <SelectTrigger id="link-invoice-kind" className="w-full">
+              <SelectValue>
+                {(value: string) =>
+                  value === "received"
+                    ? t("receivedInvoiceKind")
+                    : value === "issued"
+                      ? t("issuedInvoiceKind")
+                      : t("purchaseReceiptKind")
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="received">{t("receivedInvoiceKind")}</SelectItem>
+              <SelectItem value="issued">{t("issuedInvoiceKind")}</SelectItem>
+              <SelectItem value="receipt">{t("purchaseReceiptKind")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="link-invoice-select">{t("invoiceLabel")}</FieldLabel>
+          <Select value={invoiceId} onValueChange={(v) => setInvoiceId(v ?? "")}>
+            <SelectTrigger id="link-invoice-select" className="w-full">
+              <SelectValue>
+                {(value: string) => options.find((o) => o.id === value)?.number ?? ""}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.number} · {o.label} ({formatCents(o.totalCents, locale)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="link-invoice-amount">{t("amountLabel")}</FieldLabel>
+          <Input
+            id="link-invoice-amount"
+            name="amount"
+            inputMode="decimal"
+            defaultValue={suggestedAmount}
+            required
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="link-invoice-file">{t("receiptFileLabel")}</FieldLabel>
+          <Input id="link-invoice-file" name="file" type="file" />
+        </Field>
+        <SubmitButton disabled={!invoiceId}>{t("linkAction")}</SubmitButton>
+      </FieldGroup>
+      <FormError message={state.error} />
+    </form>
+  );
+}
+
 export function LinkInvoiceDialog({
   movementId,
   amountCents,
@@ -59,28 +163,18 @@ export function LinkInvoiceDialog({
   // Un apunte negativo casa con una factura recibida o un ticket (gasto); uno
   // positivo, con una emitida (cobro) — igual que el filtro de signo de los
   // candidatos en la ficha de factura.
-  const [kind, setKind] = useState<"received" | "issued" | "receipt">(
-    amountCents < 0 ? "received" : "issued",
-  );
+  const [kind, setKind] = useState<InvoiceKind>(amountCents < 0 ? "received" : "issued");
   const optionsByKind = { received: receivedInvoices, issued: issuedInvoices, receipt: purchaseReceipts };
+  const actionByKind = {
+    received: linkReceivedInvoiceAction,
+    issued: linkIssuedInvoiceAction,
+    receipt: linkPurchaseReceiptAction,
+  };
   const options = optionsByKind[kind];
   const [invoiceId, setInvoiceId] = useState(options[0]?.id ?? "");
-
-  const [receivedState, receivedAction] = useActionState(linkReceivedInvoiceAction, {});
-  const [issuedState, issuedAction] = useActionState(linkIssuedInvoiceAction, {});
-  const [receiptState, receiptAction] = useActionState(linkPurchaseReceiptAction, {});
-  const actionByKind = { received: receivedAction, issued: issuedAction, receipt: receiptAction };
-  const state = kind === "received" ? receivedState : kind === "issued" ? issuedState : receiptState;
-  useActionToast(receivedState);
-  useActionToast(issuedState);
-  useActionToast(receiptState);
-  useCloseOnActionSuccess(receivedState, setOpen);
-  useCloseOnActionSuccess(issuedState, setOpen);
-  useCloseOnActionSuccess(receiptState, setOpen);
-
   const suggestedAmount = String(Math.abs(amountCents) / 100);
 
-  function changeKind(value: "received" | "issued" | "receipt") {
+  function changeKind(value: InvoiceKind) {
     setKind(value);
     setInvoiceId(optionsByKind[value][0]?.id ?? "");
   }
@@ -95,79 +189,19 @@ export function LinkInvoiceDialog({
         <DialogHeader>
           <DialogTitle>{t("linkInvoiceFromMovementTitle")}</DialogTitle>
         </DialogHeader>
-        <form action={actionByKind[kind]}>
-          <input type="hidden" name="movementId" value={movementId} />
-          <input
-            type="hidden"
-            name={
-              kind === "received"
-                ? "receivedInvoiceId"
-                : kind === "issued"
-                  ? "issuedInvoiceId"
-                  : "purchaseReceiptId"
-            }
-            value={invoiceId}
-          />
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="link-invoice-kind">{t("invoiceKindLabel")}</FieldLabel>
-              <Select
-                value={kind}
-                onValueChange={(v) => changeKind(v as "received" | "issued" | "receipt")}
-              >
-                <SelectTrigger id="link-invoice-kind" className="w-full">
-                  <SelectValue>
-                    {(value: string) =>
-                      value === "received"
-                        ? t("receivedInvoiceKind")
-                        : value === "issued"
-                          ? t("issuedInvoiceKind")
-                          : t("purchaseReceiptKind")
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="received">{t("receivedInvoiceKind")}</SelectItem>
-                  <SelectItem value="issued">{t("issuedInvoiceKind")}</SelectItem>
-                  <SelectItem value="receipt">{t("purchaseReceiptKind")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="link-invoice-select">{t("invoiceLabel")}</FieldLabel>
-              <Select value={invoiceId} onValueChange={(v) => setInvoiceId(v ?? "")}>
-                <SelectTrigger id="link-invoice-select" className="w-full">
-                  <SelectValue>
-                    {(value: string) => options.find((o) => o.id === value)?.number ?? ""}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {options.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>
-                      {o.number} · {o.label} ({formatCents(o.totalCents, locale)})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="link-invoice-amount">{t("amountLabel")}</FieldLabel>
-              <Input
-                id="link-invoice-amount"
-                name="amount"
-                inputMode="decimal"
-                defaultValue={suggestedAmount}
-                required
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="link-invoice-file">{t("receiptFileLabel")}</FieldLabel>
-              <Input id="link-invoice-file" name="file" type="file" />
-            </Field>
-            <SubmitButton disabled={!invoiceId}>{t("linkAction")}</SubmitButton>
-          </FieldGroup>
-          <FormError message={state.error} />
-        </form>
+        <LinkInvoiceForm
+          key={kind}
+          kind={kind}
+          action={actionByKind[kind]}
+          movementId={movementId}
+          invoiceId={invoiceId}
+          setInvoiceId={setInvoiceId}
+          options={options}
+          suggestedAmount={suggestedAmount}
+          locale={locale}
+          onKindChange={changeKind}
+          setOpen={setOpen}
+        />
       </DialogContent>
     </Dialog>
   );

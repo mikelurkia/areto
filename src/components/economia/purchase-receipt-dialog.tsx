@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { ChevronDownIcon, ChevronUpIcon, PaperclipIcon, PencilIcon, PlusIcon } from "lucide-react";
+import { PaperclipIcon, PencilIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -18,7 +18,6 @@ import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogClose,
@@ -130,7 +129,7 @@ export function PurchaseReceiptDialog(props: PurchaseReceiptDialogProps) {
                 required
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="ticket-paid-by">{t("ticketPaidByLabel")}</FieldLabel>
                 <PurchaseReceiptPersonCombobox
@@ -225,70 +224,48 @@ export function PurchaseReceiptDialog(props: PurchaseReceiptDialogProps) {
                 </Field>
               ) : null}
             </Field>
-            <Collapsible
-              defaultOpen={Boolean(receipt?.teamId || receipt?.categoryId || receipt?.notes)}
-              className="flex flex-col gap-3"
-            >
-              <CollapsibleTrigger
-                render={<button type="button" />}
-                className="group/ticket-details flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-              >
-                <ChevronDownIcon className="size-4 shrink-0 group-aria-expanded/ticket-details:hidden" />
-                <ChevronUpIcon className="hidden size-4 shrink-0 group-aria-expanded/ticket-details:block" />
-                {t("ticketMoreDetailsLabel")}
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <FieldGroup>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field>
-                      <FieldLabel htmlFor="ticket-team">{t("invoiceTeamLabel")}</FieldLabel>
-                      <Select name="teamId" defaultValue={receipt?.teamId ?? "none"}>
-                        <SelectTrigger id="ticket-team" className="w-full">
-                          <SelectValue>
-                            {(value: string) => nameOf(props.teams, value) || t("invoiceTeamNone")}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">{t("invoiceTeamNone")}</SelectItem>
-                          {props.teams.map((team) => (
-                            <SelectItem key={team.id} value={team.id}>
-                              {team.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="ticket-category">{t("categoryLabel")}</FieldLabel>
-                      <Select name="categoryId" defaultValue={receipt?.categoryId ?? "none"}>
-                        <SelectTrigger id="ticket-category" className="w-full">
-                          <SelectValue>
-                            {(value: string) => nameOf(props.categories, value) || t("categoryNone")}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">{t("categoryNone")}</SelectItem>
-                          {props.categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                  </div>
-                  <Field>
-                    <FieldLabel htmlFor="ticket-notes">{t("notesLabel")}</FieldLabel>
-                    <Textarea
-                      id="ticket-notes"
-                      name="notes"
-                      rows={2}
-                      defaultValue={receipt?.notes ?? ""}
-                    />
-                  </Field>
-                </FieldGroup>
-              </CollapsibleContent>
-            </Collapsible>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="ticket-team">{t("invoiceTeamLabel")}</FieldLabel>
+                <Select name="teamId" defaultValue={receipt?.teamId ?? "none"}>
+                  <SelectTrigger id="ticket-team" className="w-full">
+                    <SelectValue>
+                      {(value: string) => nameOf(props.teams, value) || t("invoiceTeamNone")}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("invoiceTeamNone")}</SelectItem>
+                    {props.teams.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="ticket-category">{t("categoryLabel")}</FieldLabel>
+                <Select name="categoryId" defaultValue={receipt?.categoryId ?? "none"}>
+                  <SelectTrigger id="ticket-category" className="w-full">
+                    <SelectValue>
+                      {(value: string) => nameOf(props.categories, value) || t("categoryNone")}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("categoryNone")}</SelectItem>
+                    {props.categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+            <Field>
+              <FieldLabel htmlFor="ticket-notes">{t("notesLabel")}</FieldLabel>
+              <Textarea id="ticket-notes" name="notes" rows={2} defaultValue={receipt?.notes ?? ""} />
+            </Field>
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}

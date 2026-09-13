@@ -111,7 +111,7 @@ export function MovementDialog(props: MovementDialogProps) {
           {movement ? <input type="hidden" name="id" value={movement.id} /> : null}
           <FieldGroup>
             <FormError message={state.error} />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="movement-account">
                   {t("movementAccountLabel")}
@@ -154,7 +154,7 @@ export function MovementDialog(props: MovementDialogProps) {
                 </Select>
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="movement-booked-on">{t("bookedOnLabel")}</FieldLabel>
                 <Input
@@ -195,7 +195,7 @@ export function MovementDialog(props: MovementDialogProps) {
                 placeholder={t("counterpartyPlaceholder")}
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="movement-amount">{t("amountLabel")}</FieldLabel>
                 <Input

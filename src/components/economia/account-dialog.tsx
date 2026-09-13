@@ -106,7 +106,7 @@ export function AccountDialog(props: AccountDialogProps) {
                 required
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="account-kind">{t("accountKindLabel")}</FieldLabel>
                 <Select name="kind" defaultValue={account?.kind ?? "bank"}>
@@ -152,7 +152,7 @@ export function AccountDialog(props: AccountDialogProps) {
                 placeholder={t("accountIbanPlaceholder")}
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="account-opening-balance">
                   {t("openingBalanceLabel")}

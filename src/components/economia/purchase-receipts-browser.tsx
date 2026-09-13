@@ -10,6 +10,7 @@ import {
   type PurchaseReceiptRow,
 } from "@/components/economia/purchase-receipt-dialog";
 import type { PersonOption } from "@/components/economia/purchase-receipt-person-combobox";
+import { LedgerColumnCell, LedgerColumnHead, LedgerTotalsGrid } from "@/components/economia/ledger-totals-grid";
 import { EmptyValue } from "@/components/empty-value";
 import { FiltersBar } from "@/components/filters-bar";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
@@ -34,11 +35,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { useLocaleDateFormat } from "@/hooks/use-locale-date-format";
 import { usePagedRows } from "@/hooks/use-paged-rows";
 import type { Ledger, LedgerFilter, ReconciliationState } from "@/lib/economia";
 import { RECONCILIATION_TONE } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
-import { cn } from "@/lib/utils";
 
 const FILTER_DEFAULTS = { q: "", equipo: "all", categoria: "all" };
 
@@ -110,24 +111,17 @@ export function PurchaseReceiptsBrowser({
 
   const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
-  const dateFmt = useMemo(
-    () => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
-    [locale],
-  );
-  const formatDate = (value: string) => dateFmt.format(new Date(`${value}T00:00:00`));
+  const formatDate = useLocaleDateFormat(locale);
 
   return (
     <>
-      <div className={cn("grid gap-4", showLedgerColumn && "md:grid-cols-2")}>
-        {[...totalsByLedger.entries()].map(([ledger, total]) => (
-          <div key={ledger} className="flex flex-col gap-2">
-            {showLedgerColumn ? (
-              <StatusBadge tone="neutral" label={t(`ledger_${ledger}`)} />
-            ) : null}
-            <StatTile label={t("invoiceTotalLabel")} value={formatCents(total, locale)} />
-          </div>
-        ))}
-      </div>
+      <LedgerTotalsGrid
+        entries={[...totalsByLedger.entries()]}
+        showLedgerColumn={showLedgerColumn}
+        renderStats={(total) => (
+          <StatTile label={t("invoiceTotalLabel")} value={formatCents(total, locale)} />
+        )}
+      />
 
       <FiltersBar>
         <SearchInput
@@ -192,7 +186,7 @@ export function PurchaseReceiptsBrowser({
                 <TableHead priority="secondary">{t("ticketPurchasedOnLabel")}</TableHead>
                 <TableHead className="text-right">{t("invoiceTotalLabel")}</TableHead>
                 <TableHead priority="secondary">{t("reconciliationLabel")}</TableHead>
-                {showLedgerColumn ? <TableHead priority="tertiary" /> : null}
+                <LedgerColumnHead show={showLedgerColumn} />
                 {canManageAny ? <TableHead className="w-20" /> : null}
               </TableRow>
             </TableHeader>
@@ -220,11 +214,7 @@ export function PurchaseReceiptsBrowser({
                       label={t(`reconciliation_${r.reconciliation}`)}
                     />
                   </TableCell>
-                  {showLedgerColumn ? (
-                    <TableCell priority="tertiary">
-                      <StatusBadge tone="neutral" label={t(`ledger_${r.ledger}`)} />
-                    </TableCell>
-                  ) : null}
+                  <LedgerColumnCell show={showLedgerColumn} ledger={r.ledger} />
                   {canManageAny ? (
                     <TableCell>
                       {manageableLedgers.includes(r.ledger) ? (
