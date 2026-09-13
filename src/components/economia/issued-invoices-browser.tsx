@@ -8,6 +8,7 @@ import {
   type IssuedInvoiceRow,
   type NamedOption,
 } from "@/components/economia/issued-invoice-dialog";
+import { LedgerColumnCell, LedgerColumnHead, LedgerTotalsGrid } from "@/components/economia/ledger-totals-grid";
 import { EmptyValue } from "@/components/empty-value";
 import { ExportMenu } from "@/components/export-menu";
 import { FiltersBar } from "@/components/filters-bar";
@@ -33,10 +34,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { useLocaleDateFormat } from "@/hooks/use-locale-date-format";
 import { usePagedRows } from "@/hooks/use-paged-rows";
 import { ISSUED_INVOICE_STATUS_TONE, LEDGER_PARAM, type Ledger, type LedgerFilter } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
-import { cn } from "@/lib/utils";
 
 const FILTER_DEFAULTS = { q: "", estado: "all" };
 
@@ -97,11 +98,7 @@ export function IssuedInvoicesBrowser({
 
   const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
-  const dateFmt = useMemo(
-    () => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
-    [locale],
-  );
-  const formatDate = (value: string) => dateFmt.format(new Date(`${value}T00:00:00`));
+  const formatDate = useLocaleDateFormat(locale);
 
   // Los filtros viven en estado local y viajan al libro imprimible por la URL,
   // que es lo que le permite reproducir en servidor la misma selección.
@@ -134,19 +131,16 @@ export function IssuedInvoicesBrowser({
 
   return (
     <>
-      <div className={cn("grid gap-4", showLedgerColumn && "md:grid-cols-2")}>
-        {[...totalsByLedger.entries()].map(([ledger, totals]) => (
-          <div key={ledger} className="flex flex-col gap-2">
-            {showLedgerColumn ? (
-              <StatusBadge tone="neutral" label={t(`ledger_${ledger}`)} />
-            ) : null}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <StatTile label={t("totalIssuedLabel")} value={formatCents(totals.issued, locale)} />
-              <StatTile label={t("invoiceCountLabel")} value={String(totals.count)} />
-            </div>
+      <LedgerTotalsGrid
+        entries={[...totalsByLedger.entries()]}
+        showLedgerColumn={showLedgerColumn}
+        renderStats={(totals) => (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <StatTile label={t("totalIssuedLabel")} value={formatCents(totals.issued, locale)} />
+            <StatTile label={t("invoiceCountLabel")} value={String(totals.count)} />
           </div>
-        ))}
-      </div>
+        )}
+      />
 
       <FiltersBar
         trailing={
@@ -193,7 +187,7 @@ export function IssuedInvoicesBrowser({
                 <TableHead priority="tertiary">{t("invoiceDueDateLabel")}</TableHead>
                 <TableHead className="text-right">{t("invoiceTotalLabel")}</TableHead>
                 <TableHead priority="secondary">{t("invoiceStatusLabel")}</TableHead>
-                {showLedgerColumn ? <TableHead priority="tertiary" /> : null}
+                <LedgerColumnHead show={showLedgerColumn} />
                 {canManageAny ? <TableHead className="w-12" /> : null}
               </TableRow>
             </TableHeader>
@@ -224,11 +218,7 @@ export function IssuedInvoicesBrowser({
                       label={t(`issuedInvoiceStatus_${i.status}`)}
                     />
                   </TableCell>
-                  {showLedgerColumn ? (
-                    <TableCell priority="tertiary">
-                      <StatusBadge tone="neutral" label={t(`ledger_${i.ledger}`)} />
-                    </TableCell>
-                  ) : null}
+                  <LedgerColumnCell show={showLedgerColumn} ledger={i.ledger} />
                   {canManageAny ? (
                     <TableCell>
                       {manageableLedgers.includes(i.ledger) ? (

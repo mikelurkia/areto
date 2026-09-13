@@ -176,6 +176,21 @@ export const RECONCILIATION_TONE: Record<ReconciliationState, StatusTone> = {
   settled: "positive",
 };
 
+/**
+ * Ordena movimientos candidatos a enlazar por cercanía al importe pendiente
+ * (más probable primero), y a igualdad de cercanía por fecha más reciente.
+ */
+export function sortCandidateMovementsByAmountProximity<
+  T extends { bookedOn: string; amountCents: number },
+>(movements: readonly T[], remainingCents: number): T[] {
+  return [...movements].sort((a, b) => {
+    const diffA = Math.abs(Math.abs(a.amountCents) - remainingCents);
+    const diffB = Math.abs(Math.abs(b.amountCents) - remainingCents);
+    if (diffA !== diffB) return diffA - diffB;
+    return b.bookedOn.localeCompare(a.bookedOn);
+  });
+}
+
 /** Una categoría en la tabla de presupuesto, con su ejecución al lado. */
 export type BudgetRow = {
   categoryId: string;
