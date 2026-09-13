@@ -316,7 +316,7 @@ export function SponsorsBrowser({
                     )}
                   </TableCell>
                   {canManage ? (
-                    <TableCell className="flex justify-end gap-1 print:hidden">
+                    <TableCell className="flex justify-end gap-2 print:hidden">
                       <SponsorDialog
                         mode="edit"
                         sponsor={s}

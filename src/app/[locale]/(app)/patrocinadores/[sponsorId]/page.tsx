@@ -633,7 +633,7 @@ export default async function SponsorDetailPage({
                                     )}
                                   </TableCell>
                                   {canManage ? (
-                                    <TableCell className="flex justify-end gap-1 print:hidden">
+                                    <TableCell className="flex justify-end gap-2 print:hidden">
                                       {payment.status !== "paid" ? (
                                         <MarkPaymentPaidButton id={payment.id} />
                                       ) : null}
@@ -745,7 +745,7 @@ export default async function SponsorDetailPage({
                     <TableCell priority="secondary">{contact.email ?? "—"}</TableCell>
                     <TableCell priority="secondary">{contact.phone ?? "—"}</TableCell>
                     {canManage ? (
-                      <TableCell className="flex justify-end gap-1 print:hidden">
+                      <TableCell className="flex justify-end gap-2 print:hidden">
                         <SponsorContactDialog mode="edit" contact={contact} />
                         <DeleteSponsorContactDialog id={contact.id} />
                       </TableCell>
@@ -823,7 +823,7 @@ export default async function SponsorDetailPage({
                         )}
                       </TableCell>
                       {canManage ? (
-                        <TableCell className="flex justify-end gap-1 print:hidden">
+                        <TableCell className="flex justify-end gap-2 print:hidden">
                           <DocumentDialog
                             mode="edit"
                             namespace="Patrocinadores"

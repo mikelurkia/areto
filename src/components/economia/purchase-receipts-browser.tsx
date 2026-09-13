@@ -228,7 +228,7 @@ export function PurchaseReceiptsBrowser({
                   {canManageAny ? (
                     <TableCell>
                       {manageableLedgers.includes(r.ledger) ? (
-                        <span className="flex justify-end gap-1">
+                        <span className="flex justify-end gap-2">
                           <PurchaseReceiptDialog
                             mode="edit"
                             receipt={r}

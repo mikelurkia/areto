@@ -484,8 +484,8 @@ const sidebarMenuButtonVariants = cva(
           "bg-background ring-1 ring-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:ring-sidebar-accent",
       },
       size: {
-        default: "h-8 text-sm",
-        sm: "h-7 text-xs",
+        default: "h-8 text-sm in-data-[mobile=true]:h-11",
+        sm: "h-7 text-xs in-data-[mobile=true]:h-11",
         lg: "h-12 text-sm group-data-[collapsible=icon]:p-0!",
       },
     },

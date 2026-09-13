@@ -287,7 +287,7 @@ export function SociosBrowser({
                   </TableCell>
                   {canManage ? (
                     <TableCell>
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-end gap-2">
                         {s.memberNumber === null ? (
                           <AssignMemberNumberButton personId={s.id} />
                         ) : null}

@@ -396,7 +396,7 @@ export function RosterTable({
                 </>
               ) : null}
               {canManage ? (
-                <TableCell className="flex justify-end gap-1 print:hidden">
+                <TableCell className="flex justify-end gap-2 print:hidden">
                   <MembershipDialog
                     mode="edit"
                     membership={{

@@ -342,7 +342,7 @@ export function MovementsBrowser({
                   {canManageAny ? (
                     <TableCell>
                       {manageableLedgers.includes(m.ledger) ? (
-                        <span className="flex justify-end gap-1">
+                        <span className="flex justify-end gap-2">
                           <LinkInvoiceDialog
                             movementId={m.id}
                             amountCents={m.amountCents}

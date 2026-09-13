@@ -55,6 +55,7 @@ export type LinkTarget = {
 type LinkAction = (prev: EconomiaState, formData: FormData) => Promise<EconomiaState>;
 
 function UnlinkButton({ id, unlinkAction }: { id: string; unlinkAction: LinkAction }) {
+  const t = useTranslations("Economia");
   const [state, action] = useActionState(unlinkAction, {});
   useActionToast(state);
   return (
@@ -62,6 +63,7 @@ function UnlinkButton({ id, unlinkAction }: { id: string; unlinkAction: LinkActi
       <input type="hidden" name="id" value={id} />
       <SubmitButton variant="ghost" size="icon-sm">
         <Trash2Icon />
+        <span className="sr-only">{t("unlinkMovementSr")}</span>
       </SubmitButton>
     </form>
   );
@@ -100,11 +102,13 @@ function ReceiptCell({
         </a>
         <Button type="button" variant="ghost" size="icon-sm" onClick={() => setReplacing(true)}>
           <UploadIcon />
+          <span className="sr-only">{t("replaceReceiptSr")}</span>
         </Button>
         <form action={removeAction}>
           <input type="hidden" name="id" value={link.id} />
           <SubmitButton variant="ghost" size="icon-sm">
             <Trash2Icon />
+            <span className="sr-only">{t("removeReceiptSr")}</span>
           </SubmitButton>
         </form>
       </div>
@@ -117,6 +121,7 @@ function ReceiptCell({
       <Input type="file" name="file" required className="h-8 w-40 text-xs" />
       <SubmitButton variant="ghost" size="icon-sm">
         <UploadIcon />
+        <span className="sr-only">{t("attachReceiptSr")}</span>
       </SubmitButton>
       {link.fileUrl ? (
         <Button type="button" variant="ghost" size="sm" onClick={() => setReplacing(false)}>
