@@ -158,6 +158,16 @@ export default async function TeamDetailPage({
 
   const otherSeasons = allSeasons.filter((season) => season.id !== team.seasonId);
 
+  // Equipos destino para "mover jugador a otro equipo": misma temporada,
+  // excluyendo el actual. Consulta aparte y barata, fuera del `Promise.all`
+  // de arriba (depende de `team.seasonId`, igual que `categoryBirthYears`).
+  const moveTargetTeams = (
+    await db.query.teams.findMany({
+      where: eq(teams.seasonId, team.seasonId),
+      columns: { id: true, name: true },
+    })
+  ).filter((candidate) => candidate.id !== team.id);
+
   const memberIds = new Set(teamMemberships.map((m) => m.personId));
   const availablePersons = allPersons.filter((person) => !memberIds.has(person.id));
 
@@ -367,6 +377,7 @@ export default async function TeamDetailPage({
               installmentsMode={team.playerFeePeriod === "installments"}
               minBirthYear={minBirthYear}
               maxBirthYear={maxBirthYear}
+              moveTargetTeams={moveTargetTeams}
               headerActions={
                 canManage ? (
                   <>
