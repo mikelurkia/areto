@@ -9,6 +9,7 @@ import { BulkRemoveMembershipsDialog } from "@/components/equipos/bulk-remove-me
 import { DeleteMembershipDialog } from "@/components/equipos/delete-membership-dialog";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { MembershipFederationCardDialog } from "@/components/equipos/membership-federation-card-dialog";
+import { MoveMembershipDialog } from "@/components/equipos/move-membership-dialog";
 import { EmptyValue } from "@/components/empty-value";
 import { Link } from "@/i18n/navigation";
 import {
@@ -80,6 +81,7 @@ export function RosterTable({
   installmentsMode,
   minBirthYear,
   maxBirthYear,
+  moveTargetTeams,
   items,
   headerActions,
 }: {
@@ -90,6 +92,7 @@ export function RosterTable({
   installmentsMode: boolean;
   minBirthYear: number | null;
   maxBirthYear: number | null;
+  moveTargetTeams: { id: string; name: string }[];
   items: readonly RosterTableRow[];
   headerActions?: ReactNode;
 }) {
@@ -410,6 +413,7 @@ export function RosterTable({
                     }}
                     installmentsMode={installmentsMode}
                   />
+                  <MoveMembershipDialog id={m.id} name={m.name} teams={moveTargetTeams} />
                   <DeleteMembershipDialog id={m.id} name={m.name} />
                 </TableCell>
               ) : null}

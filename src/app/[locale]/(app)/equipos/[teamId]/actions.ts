@@ -86,6 +86,42 @@ export async function addMembership(
   return { message: t("memberAdded") };
 }
 
+/**
+ * Mueve una membresía a otro equipo: `UPDATE teamId` sobre la misma fila, no
+ * borrar+crear. Así se conserva el dorsal, los puestos, la ficha federativa
+ * (su ruta cuelga del id de la membership, no del equipo) y cualquier cuota
+ * SEPA ya generada, que de otro modo bloquearía el borrado
+ * (`sepaCharges.membershipId` es `onDelete: "restrict"`).
+ */
+export async function moveMembership(
+  _prev: MembershipState,
+  formData: FormData,
+): Promise<MembershipState> {
+  const t = await getTranslations("Equipos");
+  await requirePermission("equipos.manage");
+
+  const id = String(formData.get("id") ?? "");
+  const targetTeamId = String(formData.get("targetTeamId") ?? "");
+  if (!targetTeamId) return { error: t("teamRequired") };
+
+  try {
+    await db
+      .update(memberships)
+      .set({ teamId: targetTeamId, isCaptain: false })
+      .where(eq(memberships.id, id));
+  } catch (error) {
+    if (isPostgresError(error, UNIQUE_VIOLATION)) {
+      return { error: t("memberAlreadyInTeam") };
+    }
+    throw error;
+  }
+
+  updateTag(INTEGRITY_ISSUES_TAG);
+  updateTag(SEASON_RENEWALS_TAG);
+  revalidateRoutes(ROUTE.equipoFicha, ROUTE.equipos, ROUTE.personaFicha, ROUTE.dashboard);
+  return { message: t("memberMoved") };
+}
+
 export async function updateMembership(
   _prev: MembershipState,
   formData: FormData,
