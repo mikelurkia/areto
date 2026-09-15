@@ -7,7 +7,7 @@ import { findDuplicatePersonGroups } from "@/lib/person-matching";
 import { Link } from "@/i18n/navigation";
 import { EMPTY } from "@/components/empty-value";
 import { PageHeader } from "@/components/page-header";
-import { MergeDuplicatesDialog } from "@/components/personas/merge-duplicates-dialog";
+import { MergePersonsDialog } from "@/components/personas/merge-persons-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,7 +84,7 @@ export default async function PersonDuplicatesPage({
                   ) : null}
                 </CardTitle>
                 {canManage ? (
-                  <MergeDuplicatesDialog candidates={group.persons} />
+                  <MergePersonsDialog candidates={group.persons} />
                 ) : null}
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
