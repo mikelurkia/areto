@@ -9,6 +9,7 @@ import {
   type NamedOption,
   type ReceivedInvoiceRow,
 } from "@/components/economia/received-invoice-dialog";
+import { LedgerColumnCell, LedgerColumnHead, LedgerTotalsGrid } from "@/components/economia/ledger-totals-grid";
 import { EmptyValue } from "@/components/empty-value";
 import { ExportMenu } from "@/components/export-menu";
 import { FiltersBar } from "@/components/filters-bar";
@@ -34,10 +35,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { useLocaleDateFormat } from "@/hooks/use-locale-date-format";
 import { usePagedRows } from "@/hooks/use-paged-rows";
 import { LEDGER_PARAM, RECEIVED_INVOICE_STATUS_TONE, type Ledger, type LedgerFilter } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
-import { cn } from "@/lib/utils";
 
 const FILTER_DEFAULTS = { q: "", proveedor: "all", estado: "all" };
 
@@ -106,11 +107,7 @@ export function ReceivedInvoicesBrowser({
 
   const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
-  const dateFmt = useMemo(
-    () => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
-    [locale],
-  );
-  const formatDate = (value: string) => dateFmt.format(new Date(`${value}T00:00:00`));
+  const formatDate = useLocaleDateFormat(locale);
 
   // Los filtros viven en estado local, así que viajan al libro imprimible por
   // la URL: es lo que le permite reproducir en servidor la misma selección
@@ -145,19 +142,16 @@ export function ReceivedInvoicesBrowser({
 
   return (
     <>
-      <div className={cn("grid gap-4", showLedgerColumn && "md:grid-cols-2")}>
-        {[...totalsByLedger.entries()].map(([ledger, totals]) => (
-          <div key={ledger} className="flex flex-col gap-2">
-            {showLedgerColumn ? (
-              <StatusBadge tone="neutral" label={t(`ledger_${ledger}`)} />
-            ) : null}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <StatTile label={t("totalPendingLabel")} value={formatCents(totals.pending, locale)} />
-              <StatTile label={t("totalPaidLabel")} value={formatCents(totals.paid, locale)} />
-            </div>
+      <LedgerTotalsGrid
+        entries={[...totalsByLedger.entries()]}
+        showLedgerColumn={showLedgerColumn}
+        renderStats={(totals) => (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <StatTile label={t("totalPendingLabel")} value={formatCents(totals.pending, locale)} />
+            <StatTile label={t("totalPaidLabel")} value={formatCents(totals.paid, locale)} />
           </div>
-        ))}
-      </div>
+        )}
+      />
 
       <FiltersBar
         trailing={
@@ -221,7 +215,7 @@ export function ReceivedInvoicesBrowser({
                 <TableHead priority="tertiary">{t("invoiceDueDateLabel")}</TableHead>
                 <TableHead className="text-right">{t("invoiceTotalLabel")}</TableHead>
                 <TableHead priority="secondary">{t("invoiceStatusLabel")}</TableHead>
-                {showLedgerColumn ? <TableHead priority="tertiary" /> : null}
+                <LedgerColumnHead show={showLedgerColumn} />
                 {canManageAny ? <TableHead className="w-20" /> : null}
               </TableRow>
             </TableHeader>
@@ -252,15 +246,11 @@ export function ReceivedInvoicesBrowser({
                       label={t(`invoiceStatus_${i.status}`)}
                     />
                   </TableCell>
-                  {showLedgerColumn ? (
-                    <TableCell priority="tertiary">
-                      <StatusBadge tone="neutral" label={t(`ledger_${i.ledger}`)} />
-                    </TableCell>
-                  ) : null}
+                  <LedgerColumnCell show={showLedgerColumn} ledger={i.ledger} />
                   {canManageAny ? (
                     <TableCell>
                       {manageableLedgers.includes(i.ledger) ? (
-                        <span className="flex justify-end gap-1">
+                        <span className="flex justify-end gap-2">
                           <ReceivedInvoiceDialog
                             mode="edit"
                             invoice={i}

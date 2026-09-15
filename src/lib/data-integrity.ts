@@ -214,7 +214,12 @@ export async function loadDataIntegrityIssues(
     ]);
 
   const issues: IntegrityIssue[] = [
-    { key: "orphanPlayers", count: orphanPlayers, severity: "hard", href: "/personas" },
+    {
+      key: "orphanPlayers",
+      count: orphanPlayers,
+      severity: "hard",
+      href: "/personas?rol=orphanPlayer",
+    },
     { key: "missingNationalId", count: missingNationalId, severity: "soft", href: "/personas" },
     {
       key: "medicalCertMismatch",

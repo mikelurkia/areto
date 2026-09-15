@@ -21,6 +21,7 @@ type Team = {
   gender: string | null;
   federationGroup: string | null;
   federationCode: string | null;
+  registrationStatus: string;
   playerFeeCents: number | null;
   playerFeePeriod: string;
   playerFeeNotes: string | null;
@@ -36,7 +37,7 @@ export function TeamEditDialog({ team }: { team: Team }) {
         <PencilIcon />
         <span className="sr-only">{t("editTeamSr", { name: team.name })}</span>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t("editTeamTitle", { name: team.name })}</DialogTitle>
         </DialogHeader>

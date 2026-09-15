@@ -6,12 +6,12 @@ import { useTranslations } from "next-intl";
 
 import {
   approveRegistration,
-  rejectRegistration,
   updateRegistration,
 } from "@/app/[locale]/(app)/inscripciones/actions";
 import { isBirthYearOutOfRange } from "@/lib/roster-health";
 import { ConsentRow, MatchSelect, type PersonCandidate } from "@/components/match-select";
 import { GuardianBlock, type GuardianData } from "@/components/inscripciones/guardian-review-fields";
+import { RejectRegistrationDialog } from "@/components/inscripciones/reject-registration-dialog";
 import { FormError } from "@/components/form-error";
 import { MaskedIbanInput } from "@/components/masked-iban";
 import { SectionHeading } from "@/components/page-header";
@@ -27,7 +27,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SubmitButton } from "@/components/submit-button";
-import { Textarea } from "@/components/ui/textarea";
 import { useActionToast } from "@/hooks/use-action-toast";
 
 /** Campos que `approveRegistration` sobrescribe hoy al vincular con una
@@ -102,8 +101,6 @@ export function ReviewForm({
   useActionToast(editState);
   const [approveState, approveAction] = useActionState(approveRegistration, {});
   useActionToast(approveState);
-  const [rejectState, rejectAction] = useActionState(rejectRegistration, {});
-  useActionToast(rejectState);
 
   const [installments, setInstallments] = useState(
     registration.installmentsChosen === 2 ? "2" : "1",
@@ -311,26 +308,20 @@ export function ReviewForm({
 
         <FormError message={editState.error} />
         <FormError message={approveState.error} />
-        <div className="flex flex-wrap gap-2">
-          <SubmitButton formAction={editAction} variant="outline">
-            {t("saveChangesAction")}
-          </SubmitButton>
-          <SubmitButton formAction={approveAction}>{t("approveAction")}</SubmitButton>
-        </div>
-
-        <div className="flex flex-col gap-3 border-t pt-4">
-          <Field>
-            <FieldLabel htmlFor="rejectionReason">{t("rejectionReasonLabel")}</FieldLabel>
-            <Textarea id="rejectionReason" name="rejectionReason" placeholder={t("rejectionReasonPlaceholder")} />
-          </Field>
-          <FormError message={rejectState.error} />
-          <div>
-            <SubmitButton formAction={rejectAction} variant="destructive">
-              {t("rejectAction")}
-            </SubmitButton>
-          </div>
-        </div>
       </Card>
+
+      <div className="sticky bottom-0 -mx-4 flex flex-wrap items-center gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
+        <SubmitButton formAction={editAction} variant="outline">
+          {t("saveChangesAction")}
+        </SubmitButton>
+        <SubmitButton formAction={approveAction}>{t("approveAction")}</SubmitButton>
+        <div className="ml-auto">
+          <RejectRegistrationDialog
+            registrationId={registration.id}
+            fullName={`${registration.firstName} ${registration.lastName}`}
+          />
+        </div>
+      </div>
     </form>
   );
 }

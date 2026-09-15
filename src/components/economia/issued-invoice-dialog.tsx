@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { PaperclipIcon, PencilIcon, PlusIcon, ReceiptTextIcon } from "lucide-react";
+import { PencilIcon, PlusIcon, ReceiptTextIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -10,9 +10,9 @@ import {
 } from "@/app/[locale]/(app)/economia/emitidas/actions";
 import { issueSponsorInvoice } from "@/app/[locale]/(app)/patrocinadores/actions";
 import { FormError } from "@/components/form-error";
+import { InvoiceAttachmentFields, InvoiceFiscalFields } from "@/components/economia/invoice-form-fields";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogClose,
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -32,7 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useDialogParam } from "@/hooks/use-dialog-param";
@@ -162,7 +160,7 @@ export function IssuedInvoiceDialog(props: IssuedInvoiceDialogProps) {
           {canChooseLedger ? null : <input type="hidden" name="ledger" value={defaultLedger} />}
           <FieldGroup>
             <FormError message={state.error} />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="issued-customer">{t("customerNameLabel")}</FieldLabel>
                 <Input
@@ -195,7 +193,7 @@ export function IssuedInvoiceDialog(props: IssuedInvoiceDialogProps) {
                 />
               </Field>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="issued-season">{t("movementSeasonLabel")}</FieldLabel>
                 <Select
@@ -256,7 +254,7 @@ export function IssuedInvoiceDialog(props: IssuedInvoiceDialogProps) {
                 </Select>
               </Field>
             ) : null}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="issued-issued-on">{t("invoiceIssuedOnLabel")}</FieldLabel>
                 <Input
@@ -277,50 +275,14 @@ export function IssuedInvoiceDialog(props: IssuedInvoiceDialogProps) {
                 />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <FieldLabel htmlFor="issued-base">{t("invoiceBaseLabel")}</FieldLabel>
-                <Input
-                  id="issued-base"
-                  name="base"
-                  inputMode="decimal"
-                  defaultValue={defaultTotal}
-                  required
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="issued-vat">{t("invoiceVatLabel")}</FieldLabel>
-                <Input
-                  id="issued-vat"
-                  name="vat"
-                  inputMode="decimal"
-                  defaultValue={invoice ? amountValue(invoice.vatCents) : "0"}
-                />
-              </Field>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <FieldLabel htmlFor="issued-withholding">
-                  {t("invoiceWithholdingLabel")}
-                </FieldLabel>
-                <Input
-                  id="issued-withholding"
-                  name="withholding"
-                  inputMode="decimal"
-                  defaultValue={invoice ? amountValue(invoice.withholdingCents) : "0"}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="issued-total">{t("invoiceTotalLabel")}</FieldLabel>
-                <Input
-                  id="issued-total"
-                  name="total"
-                  inputMode="decimal"
-                  defaultValue={defaultTotal}
-                  required
-                />
-              </Field>
-            </div>
+            <InvoiceFiscalFields
+              idPrefix="issued"
+              t={t}
+              baseDefault={defaultTotal}
+              vatDefault={invoice ? amountValue(invoice.vatCents) : "0"}
+              withholdingDefault={invoice ? amountValue(invoice.withholdingCents) : "0"}
+              totalDefault={defaultTotal}
+            />
             <Field>
               <FieldLabel htmlFor="issued-concept">{t("conceptLabel")}</FieldLabel>
               <Input
@@ -330,45 +292,13 @@ export function IssuedInvoiceDialog(props: IssuedInvoiceDialogProps) {
               />
             </Field>
             {sponsorDefaults ? null : (
-              <Field>
-                <FieldLabel htmlFor="issued-file">{t("invoiceFileLabel")}</FieldLabel>
-                {props.mode === "edit" && props.fileUrl ? (
-                  <a
-                    href={props.fileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1 text-sm text-primary hover:underline"
-                  >
-                    <PaperclipIcon className="size-3.5" />
-                    {props.fileName ?? t("invoiceFileLabel")}
-                  </a>
-                ) : null}
-                <Input
-                  id="issued-file"
-                  name="file"
-                  type="file"
-                  accept="application/pdf,image/jpeg,image/png,image/webp"
-                />
-                {props.mode === "edit" && props.fileUrl ? (
-                  <Field orientation="horizontal" className="mt-1">
-                    <Checkbox id="issued-remove-file" name="removeFile" />
-                    <Label htmlFor="issued-remove-file" className="font-normal">
-                      {t("removeFileLabel")}
-                    </Label>
-                  </Field>
-                ) : null}
-              </Field>
-            )}
-            {sponsorDefaults ? null : (
-              <Field>
-                <FieldLabel htmlFor="issued-notes">{t("notesLabel")}</FieldLabel>
-                <Textarea
-                  id="issued-notes"
-                  name="notes"
-                  rows={2}
-                  defaultValue={invoice?.notes ?? ""}
-                />
-              </Field>
+              <InvoiceAttachmentFields
+                idPrefix="issued"
+                t={t}
+                fileUrl={props.mode === "edit" ? props.fileUrl : null}
+                fileName={props.mode === "edit" ? props.fileName : null}
+                notes={invoice?.notes ?? null}
+              />
             )}
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>

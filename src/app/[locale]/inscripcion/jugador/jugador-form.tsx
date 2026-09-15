@@ -321,8 +321,9 @@ export function JugadorForm({
               required
               defaultValue={submitted?.firstName ?? ""}
               aria-invalid={fieldErrors.firstName ? true : undefined}
+              aria-describedby={fieldErrors.firstName ? "firstName-error" : undefined}
             />
-            {fieldErrors.firstName ? <FieldError>{fieldErrors.firstName}</FieldError> : null}
+            {fieldErrors.firstName ? <FieldError id="firstName-error">{fieldErrors.firstName}</FieldError> : null}
           </Field>
           <Field data-invalid={fieldErrors.lastName ? true : undefined}>
             <FieldLabel htmlFor="lastName">
@@ -335,8 +336,9 @@ export function JugadorForm({
               required
               defaultValue={submitted?.lastName ?? ""}
               aria-invalid={fieldErrors.lastName ? true : undefined}
+              aria-describedby={fieldErrors.lastName ? "lastName-error" : undefined}
             />
-            {fieldErrors.lastName ? <FieldError>{fieldErrors.lastName}</FieldError> : null}
+            {fieldErrors.lastName ? <FieldError id="lastName-error">{fieldErrors.lastName}</FieldError> : null}
           </Field>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -353,8 +355,9 @@ export function JugadorForm({
               value={birthDate}
               onChange={(e) => setBirthDate(e.target.value)}
               aria-invalid={fieldErrors.birthDate ? true : undefined}
+              aria-describedby={fieldErrors.birthDate ? "birthDate-error" : undefined}
             />
-            {fieldErrors.birthDate ? <FieldError>{fieldErrors.birthDate}</FieldError> : null}
+            {fieldErrors.birthDate ? <FieldError id="birthDate-error">{fieldErrors.birthDate}</FieldError> : null}
           </Field>
           <Field data-invalid={fieldErrors.nationalId ? true : undefined}>
             <FieldLabel htmlFor="nationalId">{t("nationalIdLabel")}</FieldLabel>
@@ -364,8 +367,9 @@ export function JugadorForm({
               placeholder={t("nationalIdPlaceholder")}
               defaultValue={submitted?.nationalId ?? ""}
               aria-invalid={fieldErrors.nationalId ? true : undefined}
+              aria-describedby={fieldErrors.nationalId ? "nationalId-error" : undefined}
             />
-            {fieldErrors.nationalId ? <FieldError>{fieldErrors.nationalId}</FieldError> : null}
+            {fieldErrors.nationalId ? <FieldError id="nationalId-error">{fieldErrors.nationalId}</FieldError> : null}
           </Field>
         </div>
         <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
@@ -380,8 +384,9 @@ export function JugadorForm({
               required
               defaultValue={submitted?.address ?? ""}
               aria-invalid={fieldErrors.address ? true : undefined}
+              aria-describedby={fieldErrors.address ? "address-error" : undefined}
             />
-            {fieldErrors.address ? <FieldError>{fieldErrors.address}</FieldError> : null}
+            {fieldErrors.address ? <FieldError id="address-error">{fieldErrors.address}</FieldError> : null}
           </Field>
           <Field data-invalid={fieldErrors.postalCode ? true : undefined}>
             <FieldLabel htmlFor="postalCode">
@@ -395,8 +400,9 @@ export function JugadorForm({
               required
               defaultValue={submitted?.postalCode ?? ""}
               aria-invalid={fieldErrors.postalCode ? true : undefined}
+              aria-describedby={fieldErrors.postalCode ? "postalCode-error" : undefined}
             />
-            {fieldErrors.postalCode ? <FieldError>{fieldErrors.postalCode}</FieldError> : null}
+            {fieldErrors.postalCode ? <FieldError id="postalCode-error">{fieldErrors.postalCode}</FieldError> : null}
           </Field>
           <Field data-invalid={fieldErrors.city ? true : undefined}>
             <FieldLabel htmlFor="city">
@@ -409,8 +415,9 @@ export function JugadorForm({
               required
               defaultValue={submitted?.city ?? ""}
               aria-invalid={fieldErrors.city ? true : undefined}
+              aria-describedby={fieldErrors.city ? "city-error" : undefined}
             />
-            {fieldErrors.city ? <FieldError>{fieldErrors.city}</FieldError> : null}
+            {fieldErrors.city ? <FieldError id="city-error">{fieldErrors.city}</FieldError> : null}
           </Field>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -426,8 +433,9 @@ export function JugadorForm({
               required
               defaultValue={submitted?.phone ?? ""}
               aria-invalid={fieldErrors.phone ? true : undefined}
+              aria-describedby={fieldErrors.phone ? "phone-error" : undefined}
             />
-            {fieldErrors.phone ? <FieldError>{fieldErrors.phone}</FieldError> : null}
+            {fieldErrors.phone ? <FieldError id="phone-error">{fieldErrors.phone}</FieldError> : null}
           </Field>
           <Field data-invalid={fieldErrors.email ? true : undefined}>
             <FieldLabel htmlFor="email">
@@ -441,8 +449,9 @@ export function JugadorForm({
               required
               defaultValue={submitted?.email ?? ""}
               aria-invalid={fieldErrors.email ? true : undefined}
+              aria-describedby={fieldErrors.email ? "email-error" : undefined}
             />
-            {fieldErrors.email ? <FieldError>{fieldErrors.email}</FieldError> : null}
+            {fieldErrors.email ? <FieldError id="email-error">{fieldErrors.email}</FieldError> : null}
           </Field>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -456,6 +465,7 @@ export function JugadorForm({
                 id="shirtSize"
                 className="w-full"
                 aria-invalid={fieldErrors.shirtSize ? true : undefined}
+                aria-describedby={fieldErrors.shirtSize ? "shirtSize-error" : undefined}
               >
                 <SelectValue placeholder={t("sizePlaceholder")}>
                   {(v: string) => v || t("sizePlaceholder")}
@@ -470,7 +480,7 @@ export function JugadorForm({
               </SelectContent>
             </Select>
             <input type="hidden" name="shirtSize" value={shirtSize} />
-            {fieldErrors.shirtSize ? <FieldError>{fieldErrors.shirtSize}</FieldError> : null}
+            {fieldErrors.shirtSize ? <FieldError id="shirtSize-error">{fieldErrors.shirtSize}</FieldError> : null}
           </Field>
           <Field data-invalid={fieldErrors.pantsSize ? true : undefined}>
             <FieldLabel htmlFor="pantsSize">
@@ -482,6 +492,7 @@ export function JugadorForm({
                 id="pantsSize"
                 className="w-full"
                 aria-invalid={fieldErrors.pantsSize ? true : undefined}
+                aria-describedby={fieldErrors.pantsSize ? "pantsSize-error" : undefined}
               >
                 <SelectValue placeholder={t("sizePlaceholder")}>
                   {(v: string) => v || t("sizePlaceholder")}
@@ -496,7 +507,7 @@ export function JugadorForm({
               </SelectContent>
             </Select>
             <input type="hidden" name="pantsSize" value={pantsSize} />
-            {fieldErrors.pantsSize ? <FieldError>{fieldErrors.pantsSize}</FieldError> : null}
+            {fieldErrors.pantsSize ? <FieldError id="pantsSize-error">{fieldErrors.pantsSize}</FieldError> : null}
           </Field>
           <Field data-invalid={fieldErrors.shoeSize ? true : undefined}>
             <FieldLabel htmlFor="shoeSize">
@@ -508,6 +519,7 @@ export function JugadorForm({
                 id="shoeSize"
                 className="w-full"
                 aria-invalid={fieldErrors.shoeSize ? true : undefined}
+                aria-describedby={fieldErrors.shoeSize ? "shoeSize-error" : undefined}
               >
                 <SelectValue placeholder={t("sizePlaceholder")}>
                   {(v: string) => v || t("sizePlaceholder")}
@@ -522,7 +534,7 @@ export function JugadorForm({
               </SelectContent>
             </Select>
             <input type="hidden" name="shoeSize" value={shoeSize} />
-            {fieldErrors.shoeSize ? <FieldError>{fieldErrors.shoeSize}</FieldError> : null}
+            {fieldErrors.shoeSize ? <FieldError id="shoeSize-error">{fieldErrors.shoeSize}</FieldError> : null}
           </Field>
         </div>
       </FieldGroup>
@@ -544,7 +556,7 @@ export function JugadorForm({
           </div>
           <p className="text-sm text-muted-foreground">{t("guardiansHint")}</p>
           <p className="text-sm text-muted-foreground">{t("guardiansPayerHint")}</p>
-          {fieldErrors.guardians ? <FieldError>{fieldErrors.guardians}</FieldError> : null}
+          {fieldErrors.guardians ? <FieldError id="guardians-error">{fieldErrors.guardians}</FieldError> : null}
           {guardianKeys.map((key, i) => {
             const nameError = fieldErrors[`guardian-${i}-name`];
             const birthDateError = fieldErrors[`guardian-${i}-birthDate`];
@@ -585,6 +597,7 @@ export function JugadorForm({
                       required={showGuardians}
                       defaultValue={existing?.firstName ?? ""}
                       aria-invalid={nameError ? true : undefined}
+                      aria-describedby={nameError ? `guardian-${key}-name-error` : undefined}
                     />
                   </Field>
                   <Field data-invalid={nameError ? true : undefined}>
@@ -598,8 +611,9 @@ export function JugadorForm({
                       required={showGuardians}
                       defaultValue={existing?.lastName ?? ""}
                       aria-invalid={nameError ? true : undefined}
+                      aria-describedby={nameError ? `guardian-${key}-name-error` : undefined}
                     />
-                    {nameError ? <FieldError>{nameError}</FieldError> : null}
+                    {nameError ? <FieldError id={`guardian-${key}-name-error`}>{nameError}</FieldError> : null}
                   </Field>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -615,8 +629,9 @@ export function JugadorForm({
                       required={showGuardians}
                       defaultValue={existing?.birthDate ?? ""}
                       aria-invalid={birthDateError ? true : undefined}
+                      aria-describedby={birthDateError ? `guardian-${key}-birthDate-error` : undefined}
                     />
-                    {birthDateError ? <FieldError>{birthDateError}</FieldError> : null}
+                    {birthDateError ? <FieldError id={`guardian-${key}-birthDate-error`}>{birthDateError}</FieldError> : null}
                   </Field>
                   <Field>
                     <FieldLabel htmlFor={`guardian-${key}-nationalId`}>
@@ -641,8 +656,9 @@ export function JugadorForm({
                       required={showGuardians}
                       defaultValue={existing?.address ?? ""}
                       aria-invalid={addressError ? true : undefined}
+                      aria-describedby={addressError ? `guardian-${key}-address-error` : undefined}
                     />
-                    {addressError ? <FieldError>{addressError}</FieldError> : null}
+                    {addressError ? <FieldError id={`guardian-${key}-address-error`}>{addressError}</FieldError> : null}
                   </Field>
                   <Field data-invalid={postalCodeError ? true : undefined}>
                     <FieldLabel htmlFor={`guardian-${key}-postalCode`}>
@@ -656,8 +672,9 @@ export function JugadorForm({
                       required={showGuardians}
                       defaultValue={existing?.postalCode ?? ""}
                       aria-invalid={postalCodeError ? true : undefined}
+                      aria-describedby={postalCodeError ? `guardian-${key}-postalCode-error` : undefined}
                     />
-                    {postalCodeError ? <FieldError>{postalCodeError}</FieldError> : null}
+                    {postalCodeError ? <FieldError id={`guardian-${key}-postalCode-error`}>{postalCodeError}</FieldError> : null}
                   </Field>
                   <Field data-invalid={cityError ? true : undefined}>
                     <FieldLabel htmlFor={`guardian-${key}-city`}>
@@ -670,8 +687,9 @@ export function JugadorForm({
                       required={showGuardians}
                       defaultValue={existing?.city ?? ""}
                       aria-invalid={cityError ? true : undefined}
+                      aria-describedby={cityError ? `guardian-${key}-city-error` : undefined}
                     />
-                    {cityError ? <FieldError>{cityError}</FieldError> : null}
+                    {cityError ? <FieldError id={`guardian-${key}-city-error`}>{cityError}</FieldError> : null}
                   </Field>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -687,8 +705,9 @@ export function JugadorForm({
                       required={showGuardians}
                       defaultValue={existing?.phone ?? ""}
                       aria-invalid={phoneError ? true : undefined}
+                      aria-describedby={phoneError ? `guardian-${key}-phone-error` : undefined}
                     />
-                    {phoneError ? <FieldError>{phoneError}</FieldError> : null}
+                    {phoneError ? <FieldError id={`guardian-${key}-phone-error`}>{phoneError}</FieldError> : null}
                   </Field>
                   <Field data-invalid={emailError ? true : undefined}>
                     <FieldLabel htmlFor={`guardian-${key}-email`}>
@@ -702,8 +721,9 @@ export function JugadorForm({
                       required={showGuardians}
                       defaultValue={existing?.email ?? ""}
                       aria-invalid={emailError ? true : undefined}
+                      aria-describedby={emailError ? `guardian-${key}-email-error` : undefined}
                     />
-                    {emailError ? <FieldError>{emailError}</FieldError> : null}
+                    {emailError ? <FieldError id={`guardian-${key}-email-error`}>{emailError}</FieldError> : null}
                   </Field>
                 </div>
               </Card>
@@ -733,12 +753,13 @@ export function JugadorForm({
               placeholder="ES00 0000 0000 00 0000000000"
               required
               aria-invalid={fieldErrors.iban ? true : undefined}
+              aria-describedby={fieldErrors.iban ? "iban-error" : undefined}
               {...iban}
             />
             <p className="text-xs text-muted-foreground">
               {t(showGuardians ? "playerIbanHintMinor" : "playerIbanHintAdult")}
             </p>
-            {fieldErrors.iban ? <FieldError>{fieldErrors.iban}</FieldError> : null}
+            {fieldErrors.iban ? <FieldError id="iban-error">{fieldErrors.iban}</FieldError> : null}
           </Field>
           <Field>
             <FieldLabel htmlFor="installmentsChosen">{t("installmentsLabel")}</FieldLabel>

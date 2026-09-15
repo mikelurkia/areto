@@ -272,8 +272,12 @@ export default async function TemporadaDetailPage({
                   </div>
                 </TableCell>
                 {canManageTeams ? (
-                  <TableCell className="flex justify-end gap-1">
-                    <DeleteTeamDialog id={team.id} name={team.name} />
+                  <TableCell className="flex justify-end gap-2">
+                    <DeleteTeamDialog
+                      id={team.id}
+                      name={team.name}
+                      rosterCount={team.memberships.length}
+                    />
                   </TableCell>
                 ) : null}
               </TableRow>

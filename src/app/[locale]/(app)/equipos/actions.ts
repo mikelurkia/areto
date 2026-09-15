@@ -14,6 +14,10 @@ import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
 import { TEAM_CATEGORIES, type TeamCategoryValue } from "@/components/equipos/team-categories";
 import { TEAM_GENDERS, type TeamGenderValue } from "@/components/equipos/team-genders";
 import { FEE_PERIODS, type FeePeriodValue } from "@/components/equipos/fee-periods";
+import {
+  TEAM_REGISTRATION_STATUSES,
+  type TeamRegistrationStatus,
+} from "@/lib/team-registration-status";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 
 export type TeamState = {
@@ -33,6 +37,13 @@ function readGender(formData: FormData): TeamGenderValue | null {
   return (TEAM_GENDERS as readonly string[]).includes(value)
     ? (value as TeamGenderValue)
     : null;
+}
+
+function readRegistrationStatus(formData: FormData): TeamRegistrationStatus {
+  const value = String(formData.get("registrationStatus") ?? "");
+  return (TEAM_REGISTRATION_STATUSES as readonly string[]).includes(value)
+    ? (value as TeamRegistrationStatus)
+    : "not_registered";
 }
 
 function readFeePeriod(formData: FormData): FeePeriodValue {
@@ -115,6 +126,7 @@ export async function updateTeam(
   const gender = readGender(formData);
   const federationGroup = String(formData.get("federationGroup") ?? "").trim();
   const federationCode = String(formData.get("federationCode") ?? "").trim();
+  const registrationStatus = readRegistrationStatus(formData);
   const fee = readPlayerFee(formData);
 
   if (!name) return { error: t("nameRequired") };
@@ -128,6 +140,7 @@ export async function updateTeam(
       gender,
       federationGroup: federationGroup || null,
       federationCode: federationCode || null,
+      registrationStatus,
       playerFeeCents: fee.cents,
       playerFeePeriod: fee.period,
       playerFeeNotes: fee.notes,

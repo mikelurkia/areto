@@ -38,6 +38,7 @@ type EntityKey =
   | "Movement"
   | "Supplier"
   | "ReceivedInvoice"
+  | "PurchaseReceipt"
   | "MovementLink";
 
 /** Forma común de las Server Actions de borrado (documentos, titulaciones, médico, lesiones...). */

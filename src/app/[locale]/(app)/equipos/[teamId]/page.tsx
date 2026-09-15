@@ -35,6 +35,8 @@ import { DocumentDialog } from "@/components/document-dialog";
 import { NotesLog } from "@/components/notes-log";
 import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
+import { StatusBadge } from "@/components/status-badge";
+import { STATUS_TONE } from "@/lib/team-registration-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -156,6 +158,16 @@ export default async function TeamDetailPage({
 
   const otherSeasons = allSeasons.filter((season) => season.id !== team.seasonId);
 
+  // Equipos destino para "mover jugador a otro equipo": misma temporada,
+  // excluyendo el actual. Consulta aparte y barata, fuera del `Promise.all`
+  // de arriba (depende de `team.seasonId`, igual que `categoryBirthYears`).
+  const moveTargetTeams = (
+    await db.query.teams.findMany({
+      where: eq(teams.seasonId, team.seasonId),
+      columns: { id: true, name: true },
+    })
+  ).filter((candidate) => candidate.id !== team.id);
+
   const memberIds = new Set(teamMemberships.map((m) => m.personId));
   const availablePersons = allPersons.filter((person) => !memberIds.has(person.id));
 
@@ -223,6 +235,12 @@ export default async function TeamDetailPage({
         ]
           .filter(Boolean)
           .join(" · ")}
+        badges={
+          <StatusBadge
+            tone={STATUS_TONE[team.registrationStatus]}
+            label={t(`registrationStatus.${team.registrationStatus}`)}
+          />
+        }
         actions={
           <>
             {hasPermission(user, "equipos.acta") ? (
@@ -263,6 +281,7 @@ export default async function TeamDetailPage({
                   gender: team.gender,
                   federationGroup: team.federationGroup,
                   federationCode: team.federationCode,
+                  registrationStatus: team.registrationStatus,
                   playerFeeCents: team.playerFeeCents,
                   playerFeePeriod: team.playerFeePeriod,
                   playerFeeNotes: team.playerFeeNotes,
@@ -287,33 +306,48 @@ export default async function TeamDetailPage({
         </TabsList>
 
         <TabsContent value="plantilla" keepMounted className="flex flex-col gap-3">
-          {teamWebRegistrationMissing > 0 ? (
-            <Card className="flex-row flex-wrap items-center justify-between gap-4 px-(--card-spacing) print:hidden">
-              <div className="flex items-center gap-3">
-                <BellIcon className="size-5 shrink-0 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">{t("webRegistrationSectionTitle")}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t("webRegistrationSummary", {
-                      missing: teamWebRegistrationMissing,
-                      total: teamWebRegistration.length,
-                    })}
-                  </p>
+          {teamWebRegistrationMissing > 0 || teamMemberships.length > 0 ? (
+            <Card size="sm" className="flex flex-col gap-3 px-(--card-spacing)">
+              {teamWebRegistrationMissing > 0 ? (
+                <div className="flex flex-row flex-wrap items-center justify-between gap-4 print:hidden">
+                  <div className="flex items-center gap-3">
+                    <BellIcon className="size-5 shrink-0 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{t("webRegistrationSectionTitle")}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {t("webRegistrationSummary", {
+                          missing: teamWebRegistrationMissing,
+                          total: teamWebRegistration.length,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    render={
+                      <Link href={`/temporadas/${team.seasonId}/pendientes?team=${team.id}`} />
+                    }
+                    nativeButton={false}
+                  >
+                    {t("viewWebRegistrationAction")}
+                  </Button>
                 </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                render={<Link href={`/temporadas/${team.seasonId}/pendientes?team=${team.id}`} />}
-                nativeButton={false}
-              >
-                {t("viewWebRegistrationAction")}
-              </Button>
-            </Card>
-          ) : null}
+              ) : null}
 
-          {teamMemberships.length > 0 ? (
-            <RosterHealth stats={rosterStats} alerts={rosterAlerts} />
+              {teamMemberships.length > 0 ? (
+                <RosterHealth
+                  bare
+                  stats={rosterStats}
+                  alerts={rosterAlerts}
+                  className={
+                    teamWebRegistrationMissing > 0
+                      ? "border-t border-foreground/10 pt-3 print:border-t-0 print:pt-0"
+                      : undefined
+                  }
+                />
+              ) : null}
+            </Card>
           ) : null}
 
           {teamMemberships.length === 0 ? (
@@ -343,6 +377,7 @@ export default async function TeamDetailPage({
               installmentsMode={team.playerFeePeriod === "installments"}
               minBirthYear={minBirthYear}
               maxBirthYear={maxBirthYear}
+              moveTargetTeams={moveTargetTeams}
               headerActions={
                 canManage ? (
                   <>
@@ -466,7 +501,7 @@ export default async function TeamDetailPage({
                         )}
                       </TableCell>
                       {canManage ? (
-                        <TableCell className="flex justify-end gap-1">
+                        <TableCell className="flex justify-end gap-2">
                           <DocumentDialog
                             mode="edit"
                             namespace="Equipos"

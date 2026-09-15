@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { PaperclipIcon, PencilIcon, PlusIcon } from "lucide-react";
+import { PencilIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -11,9 +11,9 @@ import {
 } from "@/app/[locale]/(app)/economia/recibidas/actions";
 import { DeleteEntityDialog } from "@/components/delete-entity-dialog";
 import { FormError } from "@/components/form-error";
+import { InvoiceAttachmentFields, InvoiceFiscalFields } from "@/components/economia/invoice-form-fields";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogClose,
@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -33,7 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useActionToast } from "@/hooks/use-action-toast";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useDialogParam } from "@/hooks/use-dialog-param";
@@ -122,7 +120,7 @@ export function ReceivedInvoiceDialog(props: ReceivedInvoiceDialogProps) {
           {canChooseLedger ? null : <input type="hidden" name="ledger" value={defaultLedger} />}
           <FieldGroup>
             <FormError message={state.error} />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="invoice-supplier">{t("invoiceSupplierLabel")}</FieldLabel>
                 <Select
@@ -153,7 +151,7 @@ export function ReceivedInvoiceDialog(props: ReceivedInvoiceDialogProps) {
                 />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="invoice-season">{t("movementSeasonLabel")}</FieldLabel>
                 <Select name="seasonId" defaultValue={invoice?.seasonId ?? props.seasons[0]?.id ?? ""}>
@@ -209,7 +207,7 @@ export function ReceivedInvoiceDialog(props: ReceivedInvoiceDialogProps) {
                 </Select>
               </Field>
             ) : null}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="invoice-issued-on">{t("invoiceIssuedOnLabel")}</FieldLabel>
                 <Input
@@ -230,51 +228,15 @@ export function ReceivedInvoiceDialog(props: ReceivedInvoiceDialogProps) {
                 />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <FieldLabel htmlFor="invoice-base">{t("invoiceBaseLabel")}</FieldLabel>
-                <Input
-                  id="invoice-base"
-                  name="base"
-                  inputMode="decimal"
-                  defaultValue={invoice ? amountValue(invoice.baseCents) : ""}
-                  required
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="invoice-vat">{t("invoiceVatLabel")}</FieldLabel>
-                <Input
-                  id="invoice-vat"
-                  name="vat"
-                  inputMode="decimal"
-                  defaultValue={invoice ? amountValue(invoice.vatCents) : "0"}
-                />
-              </Field>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <FieldLabel htmlFor="invoice-withholding">
-                  {t("invoiceWithholdingLabel")}
-                </FieldLabel>
-                <Input
-                  id="invoice-withholding"
-                  name="withholding"
-                  inputMode="decimal"
-                  defaultValue={invoice ? amountValue(invoice.withholdingCents) : "0"}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="invoice-total">{t("invoiceTotalLabel")}</FieldLabel>
-                <Input
-                  id="invoice-total"
-                  name="total"
-                  inputMode="decimal"
-                  defaultValue={invoice ? amountValue(invoice.totalCents) : ""}
-                  required
-                />
-              </Field>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+            <InvoiceFiscalFields
+              idPrefix="invoice"
+              t={t}
+              baseDefault={invoice ? amountValue(invoice.baseCents) : ""}
+              vatDefault={invoice ? amountValue(invoice.vatCents) : "0"}
+              withholdingDefault={invoice ? amountValue(invoice.withholdingCents) : "0"}
+              totalDefault={invoice ? amountValue(invoice.totalCents) : ""}
+            />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="invoice-category">{t("categoryLabel")}</FieldLabel>
                 <Select name="categoryId" defaultValue={invoice?.categoryId ?? "none"}>
@@ -323,43 +285,13 @@ export function ReceivedInvoiceDialog(props: ReceivedInvoiceDialogProps) {
                 defaultValue={invoice?.description ?? ""}
               />
             </Field>
-            <Field>
-              <FieldLabel htmlFor="invoice-file">{t("invoiceFileLabel")}</FieldLabel>
-              {props.mode === "edit" && props.fileUrl ? (
-                <a
-                  href={props.fileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1 text-sm text-primary hover:underline"
-                >
-                  <PaperclipIcon className="size-3.5" />
-                  {props.fileName ?? t("invoiceFileLabel")}
-                </a>
-              ) : null}
-              <Input
-                id="invoice-file"
-                name="file"
-                type="file"
-                accept="application/pdf,image/jpeg,image/png,image/webp"
-              />
-              {props.mode === "edit" && props.fileUrl ? (
-                <Field orientation="horizontal" className="mt-1">
-                  <Checkbox id="invoice-remove-file" name="removeFile" />
-                  <Label htmlFor="invoice-remove-file" className="font-normal">
-                    {t("removeFileLabel")}
-                  </Label>
-                </Field>
-              ) : null}
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="invoice-notes">{t("notesLabel")}</FieldLabel>
-              <Textarea
-                id="invoice-notes"
-                name="notes"
-                rows={2}
-                defaultValue={invoice?.notes ?? ""}
-              />
-            </Field>
+            <InvoiceAttachmentFields
+              idPrefix="invoice"
+              t={t}
+              fileUrl={props.mode === "edit" ? props.fileUrl : null}
+              fileName={props.mode === "edit" ? props.fileName : null}
+              notes={invoice?.notes ?? null}
+            />
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
                 {t("cancel")}

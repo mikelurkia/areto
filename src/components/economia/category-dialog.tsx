@@ -94,7 +94,7 @@ export function CategoryDialog(
                 required
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="category-kind">{t("categoryKindLabel")}</FieldLabel>
                 <Select name="kind" defaultValue={category?.kind ?? "expense"}>

@@ -1,4 +1,4 @@
-import { LandmarkIcon, PiggyBankIcon } from "lucide-react";
+import { AlertTriangleIcon, FileClockIcon, LandmarkIcon, RefreshCwIcon } from "lucide-react";
 import { and, asc, eq, isNull, isNotNull, sum } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
@@ -14,19 +14,20 @@ import {
   sponsorPayments,
 } from "@/db/schema";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
-import { ExecutionBar } from "@/components/economia/execution-bar";
-import { PageHeader, SectionHeading } from "@/components/page-header";
+import { LedgerCashflowPanel, type NeedsAttentionItem } from "@/components/economia/ledger-cashflow-panel";
+import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
-import { StatGrid, StatTile } from "@/components/stat-tile";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { requirePermission } from "@/lib/auth";
 import {
   ECONOMIA_VIEW_PERMISSIONS,
-  LEDGER_PARAM,
-  resolveLedger,
+  type CashflowEntry,
+  type Ledger,
   visibleLedgers,
+  weeklyCashflowBuckets,
 } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 export async function generateMetadata({
   params,
@@ -38,32 +39,20 @@ export async function generateMetadata({
   return { title: t("economia") };
 }
 
-export default async function EconomiaPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ locale: string }>;
-  searchParams: Promise<{ libro?: string }>;
-}) {
-  const { locale } = await params;
-  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
-  setRequestLocale(locale);
-  const user = await requirePermission(ECONOMIA_VIEW_PERMISSIONS);
-  const t = await getTranslations("Economia");
+type Translator = Awaited<ReturnType<typeof getTranslations>>;
 
-  const visible = visibleLedgers(user);
-  const ledger = resolveLedger((await searchParams)[LEDGER_PARAM], visible)!;
-
-  // El filtro por libro va en el `where`, nunca en el render: pedir
-  // `?libro=internal` sin el permiso cae en el libro oficial y no trae ni una
-  // fila del otro.
+/**
+ * Todo lo que un panel de libro necesita: saldo, línea de tiempo de caja y
+ * "necesita atención". Una llamada por libro, siempre en su propio `await`
+ * (ninguna de estas queries entra en un `Promise.all` con otro libro: dos
+ * libros a la vez ya duplican las queries de una carga de página).
+ */
+async function loadLedgerPanel(ledger: Ledger, locale: string, t: Translator) {
   const accounts = await db.query.financialAccounts.findMany({
     where: eq(financialAccounts.ledger, ledger),
     orderBy: [asc(financialAccounts.name)],
   });
 
-  // Agregación aparte de la query directa de arriba, no dentro de un
-  // `Promise.all` con ella (convención de concurrencia del proyecto).
   const movementTotals = await db
     .select({
       accountId: accountMovements.accountId,
@@ -73,8 +62,6 @@ export default async function EconomiaPage({
     .where(eq(accountMovements.ledger, ledger))
     .groupBy(accountMovements.accountId);
 
-  // `sum()` de Postgres llega como texto (numeric), y como `null` si la cuenta
-  // no tiene ni un apunte.
   const movedByAccount = new Map(
     movementTotals.map((row) => [row.accountId, Number(row.totalCents ?? 0)]),
   );
@@ -83,14 +70,10 @@ export default async function EconomiaPage({
     .filter((account) => account.isActive)
     .map((account) => ({
       ...account,
-      balanceCents:
-        account.openingBalanceCents + (movedByAccount.get(account.id) ?? 0),
+      balanceCents: account.openingBalanceCents + (movedByAccount.get(account.id) ?? 0),
     }));
   const totalCents = openAccounts.reduce((total, a) => total + a.balanceCents, 0);
 
-  // Comparativa presupuesto vs. real de la temporada en curso. Cada consulta
-  // va en su propio `await`, no en el `Promise.all` de arriba (convención de
-  // concurrencia del proyecto).
   const season = await db.query.seasons.findFirst({ where: eq(seasons.isCurrent, true) });
 
   const budget = season
@@ -105,8 +88,9 @@ export default async function EconomiaPage({
       })
     : undefined;
 
-  // Solo las `issued`: una rectificada sigue en el libro, pero el documento
-  // vivo es su rectificativa y sumar las dos duplicaría el importe.
+  // Ingreso devengado = emitidas `issued` (una rectificada sigue en el libro,
+  // pero el documento vivo es su rectificativa); gasto devengado = recibidas.
+  // Mismas dos queries que llevaba el resumen anterior, cada una aparte.
   const [accruedIncomeRow] = season
     ? await db
         .select({ total: sum(issuedInvoices.totalCents) })
@@ -135,171 +119,216 @@ export default async function EconomiaPage({
     { income: 0, expense: 0 },
   );
 
-  const budgetSummary = season
-    ? {
-        income: { planned: plannedByKind.income, accrued: Number(accruedIncomeRow?.total ?? 0) },
-        expense: {
-          planned: plannedByKind.expense,
-          accrued: Number(accruedExpenseRow?.total ?? 0),
-        },
-      }
-    : null;
-
-  // Vencimientos próximos: facturas recibidas pendientes de todos los libros,
-  // más anualidades de patrocinio y remesas SEPA por liquidar, que solo
-  // existen en el libro oficial (ver `ledger="official"` en las acciones de
-  // patrocinadores y la ausencia de columna `ledger` en `sepaRemittances`).
-  // Cada fuente en su propio `await`, no en el `Promise.all` de arriba.
-  const upcomingInvoices = await db.query.receivedInvoices.findMany({
+  // Vencimientos pendientes: facturas recibidas de todos los libros, más
+  // anualidades de patrocinio y remesas SEPA, que solo existen en el libro
+  // oficial. Alimentan tanto el flujo de caja como "necesita atención".
+  const pendingInvoices = await db.query.receivedInvoices.findMany({
     where: and(
       eq(receivedInvoices.ledger, ledger),
       eq(receivedInvoices.status, "pending"),
       isNotNull(receivedInvoices.dueDate),
     ),
     orderBy: [asc(receivedInvoices.dueDate)],
-    limit: 5,
     columns: { id: true, dueDate: true, totalCents: true },
     with: { supplier: { columns: { name: true } } },
   });
 
-  const upcomingSponsorPayments =
+  const pendingSponsorPayments =
     ledger === "official"
       ? await db.query.sponsorPayments.findMany({
           where: and(eq(sponsorPayments.status, "pending"), isNotNull(sponsorPayments.dueDate)),
           orderBy: [asc(sponsorPayments.dueDate)],
-          limit: 5,
           columns: { id: true, dueDate: true, amountCents: true },
           with: { term: { columns: {}, with: { sponsor: { columns: { name: true } } } } },
         })
       : [];
 
-  const upcomingRemittances =
+  const unsettledRemittances =
     ledger === "official"
       ? await db.query.sepaRemittances.findMany({
           where: isNull(sepaRemittances.settledOn),
           orderBy: [asc(sepaRemittances.collectionDate)],
-          limit: 5,
           columns: { id: true, kind: true, collectionDate: true, totalCents: true },
         })
       : [];
 
-  const upcomingDueDates = [
-    ...upcomingInvoices.map((row) => ({
-      id: `invoice-${row.id}`,
+  const budgetSummary = season
+    ? {
+        income: { planned: plannedByKind.income, accrued: Number(accruedIncomeRow?.total ?? 0) },
+        expense: { planned: plannedByKind.expense, accrued: Number(accruedExpenseRow?.total ?? 0) },
+      }
+    : null;
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const cashflowEntries: CashflowEntry[] = [
+    ...pendingInvoices.map((row): CashflowEntry => ({
       date: row.dueDate!,
-      label: row.supplier.name,
       amountCents: row.totalCents,
+      kind: "expense",
     })),
-    ...upcomingSponsorPayments.map((row) => ({
-      id: `sponsor-${row.id}`,
+    ...pendingSponsorPayments.map((row): CashflowEntry => ({
       date: row.dueDate!,
-      label: row.term.sponsor.name,
       amountCents: row.amountCents,
+      kind: "income",
     })),
-    ...upcomingRemittances.map((row) => ({
-      id: `remittance-${row.id}`,
+    ...unsettledRemittances.map((row): CashflowEntry => ({
       date: row.collectionDate,
-      label: t(`upcomingRemittanceLabel_${row.kind}`),
       amountCents: row.totalCents,
+      kind: "income",
     })),
-  ]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 8);
+  ];
+
+  const buckets = weeklyCashflowBuckets(totalCents, cashflowEntries);
+  const weekFmt = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" });
+  const cashflowData = buckets.map((bucket) => ({
+    weekLabel: weekFmt.format(new Date(bucket.weekStart)),
+    incomeCents: bucket.incomeCents,
+    expenseCents: bucket.expenseCents,
+    projectedBalanceCents: bucket.projectedBalanceCents,
+  }));
+
   const dueDateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+
+  const needsAttention: NeedsAttentionItem[] = [
+    ...pendingInvoices
+      .filter((row) => row.dueDate! < todayIso)
+      .map((row): NeedsAttentionItem => ({
+        id: `invoice-${row.id}`,
+        icon: AlertTriangleIcon,
+        tone: "danger",
+        label: row.supplier.name,
+        hint: t("needsAttentionOverdueHint", { date: dueDateFmt.format(new Date(row.dueDate!)) }),
+        href: `/economia/recibidas/${row.id}`,
+      })),
+    ...unsettledRemittances.map(
+      (row): NeedsAttentionItem => ({
+        id: `remittance-${row.id}`,
+        icon: RefreshCwIcon,
+        tone: "warning",
+        label: t(`upcomingRemittanceLabel_${row.kind}`),
+        hint: t("needsAttentionRemittanceHint", {
+          date: dueDateFmt.format(new Date(row.collectionDate)),
+        }),
+        href: `/cuotas/${row.id}`,
+      }),
+    ),
+    ...(budget && budget.status === "draft"
+      ? [
+          {
+            id: "budget-draft",
+            icon: FileClockIcon,
+            tone: "warning",
+            label: t("needsAttentionDraftBudgetLabel"),
+            hint: t("needsAttentionDraftBudgetHint"),
+            href: `/economia/presupuesto?libro=${ledger}`,
+          } satisfies NeedsAttentionItem,
+        ]
+      : []),
+  ];
+
+  return {
+    openAccounts,
+    totalCents,
+    budgetSummary,
+    cashflowData,
+    needsAttention,
+  };
+}
+
+export default async function EconomiaPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  // Renderizado estático: fija el idioma sin tener que leer cabeceras.
+  setRequestLocale(locale);
+  const user = await requirePermission(ECONOMIA_VIEW_PERMISSIONS);
+  const t = await getTranslations("Economia");
+
+  const visible = visibleLedgers(user);
+
+  // Un panel por libro visible, en su propio `await` cada uno (convención de
+  // concurrencia del proyecto: dos libros a la vez duplicarían de golpe las
+  // queries de una carga de página).
+  const panels: { ledger: Ledger; data: Awaited<ReturnType<typeof loadLedgerPanel>> }[] = [];
+  for (const ledger of visible) {
+    panels.push({ ledger, data: await loadLedgerPanel(ledger, locale, t) });
+  }
+
+  const hasAnyAccounts = panels.some((panel) => panel.data.openAccounts.length > 0);
+  const navLedger = visible[0] ?? "official";
 
   return (
     <div className="flex flex-1 flex-col gap-6">
       <PageHeader title={t("title")} description={t("subtitle")} />
-      <EconomiaSectionNav current="resumen" ledger={ledger} visible={visible} />
+      <EconomiaSectionNav current="resumen" ledger={navLedger} visible={visible} showLedgerControls={false} />
 
-      {openAccounts.length === 0 ? (
+      {!hasAnyAccounts ? (
         <SectionPlaceholder
           icon={LandmarkIcon}
           title={t("noAccountsTitle")}
           description={t("noAccountsDescription")}
         />
       ) : (
-        <div className="flex flex-col gap-4">
-          <SectionHeading
-            title={t("balancesHeading")}
-            description={t("balancesHint")}
-          />
-          <StatGrid>
-            <StatTile
-              label={t("totalBalanceLabel")}
-              value={formatCents(totalCents, locale)}
-              icon={PiggyBankIcon}
-              tone="highlight"
-            />
-            {openAccounts.map((account) => (
-              <StatTile
-                key={account.id}
-                label={account.name}
-                value={formatCents(account.balanceCents, locale)}
-                hint={t(`accountKind_${account.kind}`)}
+        <div className={cn("grid gap-6", panels.length > 1 ? "xl:grid-cols-2" : undefined)}>
+          {panels.map(({ ledger, data }) =>
+            data.openAccounts.length === 0 ? (
+              <Card key={ledger}>
+                <SectionPlaceholder
+                  icon={LandmarkIcon}
+                  title={t("noAccountsTitle")}
+                  description={t("noAccountsDescription")}
+                  size="compact"
+                />
+              </Card>
+            ) : (
+              <LedgerCashflowPanel
+                key={ledger}
+                title={t(`ledger_${ledger}`)}
+                internalBadgeLabel={ledger === "internal" ? t("internalLedgerBadge") : undefined}
+                totalBalanceLabel={t("totalBalanceLabel")}
+                totalBalanceValue={formatCents(data.totalCents, locale)}
+                accounts={data.openAccounts.map((account) => ({
+                  id: account.id,
+                  name: account.name,
+                  value: formatCents(account.balanceCents, locale),
+                  hint: t(`accountKind_${account.kind}`),
+                }))}
+                cashflowHeading={t("cashflowHeading")}
+                cashflowHint={t("cashflowHint")}
+                cashflowData={data.cashflowData}
+                locale={locale}
+                incomeLabel={t("cashflowIncomeLabel")}
+                expenseLabel={t("cashflowExpenseLabel")}
+                projectedBalanceLabel={t("cashflowProjectedBalanceLabel")}
+                budgetHeading={t("budgetSummaryHeading")}
+                budgetHint={t("budgetSummaryHint")}
+                budgetRows={
+                  data.budgetSummary
+                    ? (["income", "expense"] as const).map((kind) => {
+                        const side = data.budgetSummary![kind];
+                        return {
+                          kind,
+                          label: t(`categoryKind_${kind}`),
+                          figures: t("budgetSummaryFigures", {
+                            accrued: formatCents(side.accrued, locale),
+                            planned: formatCents(side.planned, locale),
+                          }),
+                          pct: side.planned ? (side.accrued / side.planned) * 100 : null,
+                        };
+                      })
+                    : null
+                }
+                needsAttentionHeading={t("needsAttentionHeading")}
+                needsAttentionEmpty={t("needsAttentionEmpty")}
+                needsAttentionItems={data.needsAttention}
               />
-            ))}
-          </StatGrid>
+            ),
+          )}
         </div>
       )}
-
-      {budgetSummary ? (
-        <div className="flex flex-col gap-4">
-          <SectionHeading
-            title={t("budgetSummaryHeading")}
-            description={t("budgetSummaryHint")}
-          />
-          <Card size="sm">
-            <CardContent className="flex flex-col gap-4">
-              {(["income", "expense"] as const).map((kind) => {
-                const side = budgetSummary[kind];
-                const pct = side.planned ? (side.accrued / side.planned) * 100 : null;
-                return (
-                  <div key={kind} className="flex flex-col gap-1.5">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                      <span className="text-sm font-medium">{t(`categoryKind_${kind}`)}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {t("budgetSummaryFigures", {
-                          accrued: formatCents(side.accrued, locale),
-                          planned: formatCents(side.planned, locale),
-                        })}
-                      </span>
-                    </div>
-                    <ExecutionBar kind={kind} pct={pct} label={t(`categoryKind_${kind}`)} />
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
-
-      {upcomingDueDates.length > 0 ? (
-        <div className="flex flex-col gap-4">
-          <SectionHeading
-            title={t("upcomingDueDatesHeading")}
-            description={t("upcomingDueDatesHint")}
-          />
-          <Card size="sm">
-            <CardContent className="flex flex-col gap-0">
-              {upcomingDueDates.map((row) => (
-                <div
-                  key={row.id}
-                  className="flex items-center justify-between gap-4 border-b py-2 text-sm last:border-b-0"
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium">{row.label}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {dueDateFmt.format(new Date(row.date))}
-                    </span>
-                  </div>
-                  <span className="font-medium">{formatCents(row.amountCents, locale)}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
     </div>
   );
 }

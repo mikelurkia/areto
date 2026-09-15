@@ -32,6 +32,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 type Federation = { id: string; name: string; url: string };
@@ -159,6 +160,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
   const t = useTranslations("Sidebar");
   const tNav = useTranslations("Nav");
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
   // El correo solo hace de recambio: se muestra el nombre siempre que el
   // usuario lo tenga puesto.
   const displayName = user.fullName?.trim() || user.email;
@@ -200,7 +202,12 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
           </SidebarMenuButton>
         ) : (
           <SidebarMenuButton
-            render={<HoverPrefetchLink href={item.href} />}
+            render={
+              <HoverPrefetchLink
+                href={item.href}
+                onClick={() => isMobile && setOpenMobile(false)}
+              />
+            }
             isActive={active}
           >
             <item.icon className={active ? "text-sidebar-primary" : undefined} />

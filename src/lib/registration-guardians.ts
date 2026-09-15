@@ -31,3 +31,31 @@ export function readGuardians(formData: FormData) {
     }))
     .filter((g) => g.firstName || g.lastName);
 }
+
+export type GuardianIdentityConflict = { field: "email" | "nationalId" };
+
+/**
+ * Email y DNI/NIE identifican a una persona en `persons` (índices únicos
+ * `persons_email_idx`/`persons_national_id_idx`); a diferencia del teléfono
+ * o la dirección, no pueden repetirse entre el jugador/socio y sus tutores,
+ * ni entre tutores, sin que la creación de las dos personas choque contra
+ * esos índices al aprobar. Frecuente cuando el jugador es menor y no tiene
+ * email propio: el padre/madre reutiliza el suyo.
+ */
+export function findGuardianIdentityConflict(
+  main: { email: string; nationalId: string },
+  guardians: { email: string; nationalId: string }[],
+): GuardianIdentityConflict | null {
+  const all = [main, ...guardians];
+  for (let i = 0; i < all.length; i++) {
+    for (let j = i + 1; j < all.length; j++) {
+      const emailA = all[i].email.trim().toLowerCase();
+      const emailB = all[j].email.trim().toLowerCase();
+      if (emailA && emailB && emailA === emailB) return { field: "email" };
+      const idA = all[i].nationalId.trim().toUpperCase();
+      const idB = all[j].nationalId.trim().toUpperCase();
+      if (idA && idB && idA === idB) return { field: "nationalId" };
+    }
+  }
+  return null;
+}

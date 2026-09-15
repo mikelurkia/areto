@@ -152,6 +152,17 @@ export function personWhere(filters: PersonFilters) {
       select 1 from memberships m
       where m.person_id = ${persons.id} and m.role = ${filters.role}
     )`);
+  } else if (filters.role === "orphanPlayer") {
+    // Mismo criterio que `countOrphanPlayers` (src/lib/data-integrity.ts):
+    // aprobado desde una inscripción de jugador y sin ninguna membership.
+    // No basta con `equipo=none`: ese filtro también encuentra a cualquier
+    // otra persona sin equipo (p. ej. un socio), no solo a estos.
+    parts.push(sql`exists (
+      select 1 from registrations r
+      where r.matched_person_id = ${persons.id}
+        and r.kind = 'player' and r.status = 'approved'
+    )`);
+    parts.push(sql`not ${hasAnyMembership}`);
   } else if (filters.role === "guardian") {
     parts.push(sql`exists (
       select 1 from person_guardians pg where pg.guardian_id = ${persons.id}

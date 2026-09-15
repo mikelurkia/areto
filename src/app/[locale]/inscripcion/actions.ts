@@ -17,7 +17,7 @@ import {
   type RegistrationState,
   type SubmittedFields,
 } from "@/lib/registration-form-data";
-import { readGuardians } from "@/lib/registration-guardians";
+import { findGuardianIdentityConflict, readGuardians } from "@/lib/registration-guardians";
 import { resizeImageToWebp } from "@/lib/image-resize";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getRegistrationAvailability } from "@/lib/registration-settings";
@@ -173,6 +173,18 @@ export async function submitTeamRegistration(
     });
   }
 
+  const identityConflict = findGuardianIdentityConflict(
+    { email: submitted.email, nationalId: submitted.nationalId },
+    guardians,
+  );
+  if (identityConflict) {
+    errors[identityConflict.field] = t(
+      identityConflict.field === "email"
+        ? "playerGuardianEmailConflict"
+        : "playerGuardianNationalIdConflict",
+    );
+  }
+
   if (Object.keys(errors).length > 0) {
     return { error: t("formHasErrors"), fieldErrors: errors, submitted };
   }
@@ -309,6 +321,20 @@ export async function submitMemberRegistration(
     if (!g.city) return { error: t("guardianCityRequired"), submitted };
     if (!g.postalCode) return { error: t("guardianPostalCodeRequired"), submitted };
     if (!isValidPostalCode(g.postalCode)) return { error: t("postalCodeInvalid"), submitted };
+  }
+  const identityConflict = findGuardianIdentityConflict(
+    { email: fields.email, nationalId: fields.nationalId },
+    guardians,
+  );
+  if (identityConflict) {
+    return {
+      error: t(
+        identityConflict.field === "email"
+          ? "playerGuardianEmailConflict"
+          : "playerGuardianNationalIdConflict",
+      ),
+      submitted,
+    };
   }
 
   const { seasonId, memberOpen } = await getRegistrationAvailability();

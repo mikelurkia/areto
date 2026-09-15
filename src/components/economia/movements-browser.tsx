@@ -7,6 +7,7 @@ import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/action
 import { ExportMenu } from "@/components/export-menu";
 import { FiltersBar } from "@/components/filters-bar";
 import { LinkInvoiceDialog } from "@/components/economia/link-invoice-dialog";
+import { LedgerColumnCell, LedgerColumnHead, LedgerTotalsGrid } from "@/components/economia/ledger-totals-grid";
 import {
   DeleteMovementDialog,
   MovementDialog,
@@ -36,10 +37,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { useLocaleDateFormat } from "@/hooks/use-locale-date-format";
 import { usePagedRows } from "@/hooks/use-paged-rows";
 import { RECONCILIATION_TONE, reconciliationState, type Ledger, type LedgerFilter } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
-import { cn } from "@/lib/utils";
 
 /** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
 const FILTER_DEFAULTS = { q: "", cuenta: "all", categoria: "all", signo: "all" };
@@ -60,8 +61,10 @@ export function MovementsBrowser({
   manageableLedgers,
   receivedInvoices,
   issuedInvoices,
+  purchaseReceipts,
   linkReceivedInvoiceAction,
   linkIssuedInvoiceAction,
+  linkPurchaseReceiptAction,
 }: {
   movements: MovementRow[];
   /**
@@ -79,8 +82,10 @@ export function MovementsBrowser({
   /** Candidatas para "vincular factura desde el movimiento", por libro. */
   receivedInvoices: InvoiceOption[];
   issuedInvoices: InvoiceOption[];
+  purchaseReceipts: InvoiceOption[];
   linkReceivedInvoiceAction: LinkAction;
   linkIssuedInvoiceAction: LinkAction;
+  linkPurchaseReceiptAction: LinkAction;
 }) {
   const t = useTranslations("Economia");
   const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
@@ -131,11 +136,7 @@ export function MovementsBrowser({
 
   const { page, pageCount, setPage, pageRows } = usePagedRows(filtered);
 
-  const dateFmt = useMemo(
-    () => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
-    [locale],
-  );
-  const formatDate = (value: string) => dateFmt.format(new Date(`${value}T00:00:00`));
+  const formatDate = useLocaleDateFormat(locale);
 
   function exportData() {
     const headers = [
@@ -163,20 +164,17 @@ export function MovementsBrowser({
 
   return (
     <>
-      <div className={cn("grid gap-4", showLedgerColumn && "md:grid-cols-2")}>
-        {[...totalsByLedger.entries()].map(([ledger, totals]) => (
-          <div key={ledger} className="flex flex-col gap-2">
-            {showLedgerColumn ? (
-              <StatusBadge tone="neutral" label={t(`ledger_${ledger}`)} />
-            ) : null}
-            <div className="grid gap-3 sm:grid-cols-3">
-              <StatTile label={t("totalIncomeLabel")} value={formatCents(totals.income, locale)} />
-              <StatTile label={t("totalExpenseLabel")} value={formatCents(totals.expense, locale)} />
-              <StatTile label={t("netLabel")} value={formatCents(totals.net, locale)} />
-            </div>
+      <LedgerTotalsGrid
+        entries={[...totalsByLedger.entries()]}
+        showLedgerColumn={showLedgerColumn}
+        renderStats={(totals) => (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatTile label={t("totalIncomeLabel")} value={formatCents(totals.income, locale)} />
+            <StatTile label={t("totalExpenseLabel")} value={formatCents(totals.expense, locale)} />
+            <StatTile label={t("netLabel")} value={formatCents(totals.net, locale)} />
           </div>
-        ))}
-      </div>
+        )}
+      />
 
       <FiltersBar
         trailing={<ExportMenu filename="movimientos" getData={exportData} />}
@@ -264,7 +262,7 @@ export function MovementsBrowser({
                 <TableHead priority="tertiary" className="text-right">
                   {t("balanceLabel")}
                 </TableHead>
-                {showLedgerColumn ? <TableHead priority="tertiary" /> : null}
+                <LedgerColumnHead show={showLedgerColumn} />
                 {canManageAny ? <TableHead className="w-28" /> : null}
               </TableRow>
             </TableHeader>
@@ -294,7 +292,13 @@ export function MovementsBrowser({
                             <span key={link.id}>
                               {index > 0 ? ", " : null}
                               <HoverPrefetchLink
-                                href={`/economia/${link.kind === "received" ? "recibidas" : "emitidas"}/${link.id}`}
+                                href={`/economia/${
+                                  link.kind === "received"
+                                    ? "recibidas"
+                                    : link.kind === "issued"
+                                      ? "emitidas"
+                                      : "tickets"
+                                }/${link.id}`}
                                 className="hover:underline"
                               >
                                 {link.number}
@@ -324,22 +328,20 @@ export function MovementsBrowser({
                       formatCents(m.balanceCents, locale)
                     )}
                   </TableCell>
-                  {showLedgerColumn ? (
-                    <TableCell priority="tertiary">
-                      <StatusBadge tone="neutral" label={t(`ledger_${m.ledger}`)} />
-                    </TableCell>
-                  ) : null}
+                  <LedgerColumnCell show={showLedgerColumn} ledger={m.ledger} />
                   {canManageAny ? (
                     <TableCell>
                       {manageableLedgers.includes(m.ledger) ? (
-                        <span className="flex justify-end gap-1">
+                        <span className="flex justify-end gap-2">
                           <LinkInvoiceDialog
                             movementId={m.id}
                             amountCents={m.amountCents}
                             receivedInvoices={receivedInvoices.filter((i) => i.ledger === m.ledger)}
                             issuedInvoices={issuedInvoices.filter((i) => i.ledger === m.ledger)}
+                            purchaseReceipts={purchaseReceipts.filter((i) => i.ledger === m.ledger)}
                             linkReceivedInvoiceAction={linkReceivedInvoiceAction}
                             linkIssuedInvoiceAction={linkIssuedInvoiceAction}
+                            linkPurchaseReceiptAction={linkPurchaseReceiptAction}
                             locale={locale}
                           />
                           <MovementDialog

@@ -344,7 +344,7 @@ export async function unlinkMovement(
     metadata: { receivedInvoiceId: link.receivedInvoiceId },
   });
 
-  revalidateRoutes(ROUTE.economiaRecibidaFicha, ROUTE.economiaMovimientos);
+  revalidateRoutes(ROUTE.economiaRecibidaFicha, ROUTE.economiaTicketFicha, ROUTE.economiaMovimientos);
   return { message: t("linkDeleted") };
 }
 
@@ -389,7 +389,12 @@ export async function attachLinkReceipt(
     metadata: { receiptAttached: true },
   });
 
-  revalidateRoutes(ROUTE.economiaRecibidaFicha, ROUTE.economiaEmitidaFicha, ROUTE.cuotaFicha);
+  revalidateRoutes(
+    ROUTE.economiaRecibidaFicha,
+    ROUTE.economiaEmitidaFicha,
+    ROUTE.economiaTicketFicha,
+    ROUTE.cuotaFicha,
+  );
   return { message: t("receiptAttached") };
 }
 
@@ -424,6 +429,11 @@ export async function removeLinkReceipt(
     metadata: { receiptRemoved: true },
   });
 
-  revalidateRoutes(ROUTE.economiaRecibidaFicha, ROUTE.economiaEmitidaFicha, ROUTE.cuotaFicha);
+  revalidateRoutes(
+    ROUTE.economiaRecibidaFicha,
+    ROUTE.economiaEmitidaFicha,
+    ROUTE.economiaTicketFicha,
+    ROUTE.cuotaFicha,
+  );
   return { message: t("receiptRemoved") };
 }

@@ -37,6 +37,13 @@ export type PersonCandidate = {
   photoUrl?: string | null;
   idFrontUrl?: string | null;
   idBackUrl?: string | null;
+  matchReason?: "dni" | "email" | "name";
+};
+
+const MATCH_REASON_LABEL_KEYS: Record<"dni" | "email" | "name", string> = {
+  dni: "matchReasonDni",
+  email: "matchReasonEmail",
+  name: "matchReasonName",
 };
 
 const FIELD_LABEL_KEYS: Record<string, string> = {
@@ -89,12 +96,20 @@ function PhotoDiffRow({
         <div className="flex flex-col items-center gap-1">
           <span className="text-xs text-muted-foreground">{t("currentValueLabel")}</span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={currentUrl} alt="" className="h-16 w-16 rounded-lg border object-cover" />
+          <img
+            src={currentUrl}
+            alt={`${t("currentValueLabel")}: ${label}`}
+            className="h-16 w-16 rounded-lg border object-cover"
+          />
         </div>
         <div className="flex flex-col items-center gap-1">
           <span className="text-xs text-muted-foreground">{t("newValueLabel")}</span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={newUrl} alt="" className="h-16 w-16 rounded-lg border object-cover" />
+          <img
+            src={newUrl}
+            alt={`${t("newValueLabel")}: ${label}`}
+            className="h-16 w-16 rounded-lg border object-cover"
+          />
         </div>
         <p className="font-medium">{label}</p>
       </div>
@@ -166,6 +181,10 @@ export function MatchSelect({
   const photoRows = photoCandidates.filter(
     (row): row is { key: string; label: string; current: string; next: string } => !!row.current && !!row.next,
   );
+  // Los tutores no llevan foto/DNI nuevos que comparar (solo la persona
+  // principal), pero sí conviene ver la foto del candidato para confirmar
+  // visualmente que es la misma persona antes de vincularlo.
+  const candidatePhotoUrl = !photoDiff ? (selected?.photoUrl ?? null) : null;
 
   return (
     <Field>
@@ -205,10 +224,22 @@ export function MatchSelect({
                   {t("possibleMatchBadge")}: {c.firstName} {c.lastName}
                   {age != null ? ` · ${t("ageYears", { count: age })}` : ""}
                   {c.nationalId ? ` · ${c.nationalId}` : ""}
+                  {c.matchReason ? ` · ${t(MATCH_REASON_LABEL_KEYS[c.matchReason])}` : ""}
                 </Badge>
               </Link>
             );
           })}
+        </div>
+      ) : null}
+      {candidatePhotoUrl && selected ? (
+        <div className="flex flex-col items-center gap-1 self-start">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={candidatePhotoUrl}
+            alt={`${t("photoLabel")}: ${selected.firstName} ${selected.lastName}`}
+            className="h-16 w-16 rounded-lg border object-cover"
+          />
+          <span className="text-xs text-muted-foreground">{t("photoLabel")}</span>
         </div>
       ) : null}
       {selected && (changedFields.length > 0 || photoRows.length > 0) ? (

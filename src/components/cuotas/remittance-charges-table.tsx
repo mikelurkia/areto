@@ -81,7 +81,7 @@ export function RemittanceChargesTable({
                 <p className="mt-1 text-xs text-muted-foreground">{charge.returnReason}</p>
               ) : null}
             </TableCell>
-            <TableCell className="flex justify-end gap-1">
+            <TableCell className="flex justify-end gap-2">
               {canManage && charge.status === "pending" ? (
                 <>
                   <MarkChargeCollectedButton id={charge.id} />

@@ -118,7 +118,7 @@ export default async function ProveedoresPage({
                     </TableCell>
                     <TableCell>
                       {canManage ? (
-                        <span className="flex justify-end gap-1">
+                        <span className="flex justify-end gap-2">
                           <SupplierDialog mode="edit" supplier={supplier} categories={categories} />
                           <DeleteSupplierDialog id={supplier.id} name={supplier.name} />
                         </span>

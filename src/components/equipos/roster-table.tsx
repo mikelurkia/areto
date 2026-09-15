@@ -1,13 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { TriangleAlertIcon, UserRoundIcon } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { EyeIcon, EyeOffIcon, TriangleAlertIcon, UserRoundIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useFilterParams } from "@/hooks/use-filter-params";
+import { BulkRemoveMembershipsDialog } from "@/components/equipos/bulk-remove-memberships-dialog";
 import { DeleteMembershipDialog } from "@/components/equipos/delete-membership-dialog";
 import { MembershipDialog } from "@/components/equipos/membership-dialog";
 import { MembershipFederationCardDialog } from "@/components/equipos/membership-federation-card-dialog";
+import { MoveMembershipDialog } from "@/components/equipos/move-membership-dialog";
 import { EmptyValue } from "@/components/empty-value";
 import { Link } from "@/i18n/navigation";
 import {
@@ -20,13 +22,9 @@ import { StatusBadge } from "@/components/status-badge";
 import { avatarToneClasses } from "@/lib/avatar-color";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -65,7 +63,7 @@ export type RosterTableRow = {
   postalCode: string | null;
 };
 
-const FILTER_DEFAULTS = { vista: "roster" };
+export const ROSTER_FILTER_DEFAULTS = { vista: "roster", foco: "" };
 
 /**
  * Tabla de plantilla con vista conmutable: mismas filas (ya cargadas en la
@@ -83,6 +81,7 @@ export function RosterTable({
   installmentsMode,
   minBirthYear,
   maxBirthYear,
+  moveTargetTeams,
   items,
   headerActions,
 }: {
@@ -93,43 +92,122 @@ export function RosterTable({
   installmentsMode: boolean;
   minBirthYear: number | null;
   maxBirthYear: number | null;
+  moveTargetTeams: { id: string; name: string }[];
   items: readonly RosterTableRow[];
   headerActions?: ReactNode;
 }) {
   const t = useTranslations("Equipos");
   const tMedico = useTranslations("Medico");
-  const [{ vista }, setFilters] = useFilterParams(FILTER_DEFAULTS, { navigate: false });
+  const [{ vista, foco }, setFilters] = useFilterParams(ROSTER_FILTER_DEFAULTS, {
+    navigate: false,
+  });
   const view: RosterView = vista === "datos" && !canManage ? "roster" : (vista as RosterView);
   const today = new Date().toISOString().slice(0, 10);
   const cutoff = medicalCutoff();
+  const [revealedIds, setRevealedIds] = useState<ReadonlySet<string>>(new Set());
 
-  const viewLabel: Record<RosterView, string> = {
-    roster: t("viewRosterOption"),
-    medico: t("viewMedicoOption"),
-    tallas: t("viewTallasOption"),
-    datos: t("viewDatosOption"),
-  };
+  const focoIds = useMemo(
+    () => (foco ? new Set(foco.split(",").filter(Boolean)) : null),
+    [foco],
+  );
+  const visibleItems = focoIds ? items.filter((m) => focoIds.has(m.id)) : items;
+
+  /**
+   * Selección de plantilla para "quitar en bloque", solo con `foco` activo:
+   * fuera de un aviso de salud concreto la tabla completa es demasiado grande
+   * para que "seleccionar todo" sea una acción segura.
+   */
+  const bulkSelectable = canManage && focoIds !== null;
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [selectionFoco, setSelectionFoco] = useState(foco);
+  if (foco !== selectionFoco) {
+    setSelectionFoco(foco);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelected(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleRevealed(id: string) {
+    setRevealedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex flex-wrap items-center gap-2">{headerActions}</div>
-        <Select value={view} onValueChange={(value) => value && setFilters({ vista: value })}>
-          <SelectTrigger className="w-48" aria-label={t("viewLabel")}>
-            <SelectValue>{(value: RosterView) => viewLabel[value]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="roster">{t("viewRosterOption")}</SelectItem>
-            <SelectItem value="medico">{t("viewMedicoOption")}</SelectItem>
-            <SelectItem value="tallas">{t("viewTallasOption")}</SelectItem>
-            {canManage ? <SelectItem value="datos">{t("viewDatosOption")}</SelectItem> : null}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          {focoIds ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                {t("rosterFocoShowing", {
+                  shown: visibleItems.length,
+                  total: items.length,
+                })}
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => setFilters({ foco: "" })}>
+                {t("rosterFocoClear")}
+              </Button>
+            </div>
+          ) : null}
+          {bulkSelectable && selectedIds.size > 0 ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{t("rosterBulkSelectedCount", { count: selectedIds.size })}</span>
+              <BulkRemoveMembershipsDialog
+                ids={[...selectedIds]}
+                onSuccess={() => setSelectedIds(new Set())}
+              />
+            </div>
+          ) : null}
+          <Tabs
+            value={view}
+            onValueChange={(value) => setFilters({ vista: value as RosterView })}
+            aria-label={t("viewLabel")}
+          >
+            <TabsList variant="default">
+              <TabsTrigger value="roster">{t("viewRosterOption")}</TabsTrigger>
+              <TabsTrigger value="medico">{t("viewMedicoOption")}</TabsTrigger>
+              <TabsTrigger value="tallas">{t("viewTallasOption")}</TabsTrigger>
+              {canManage ? (
+                <TabsTrigger value="datos">{t("viewDatosOption")}</TabsTrigger>
+              ) : null}
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       <Table>
         <TableHeader>
           <TableRow>
+            {bulkSelectable ? (
+              <TableHead className="w-8 print:hidden">
+                <Checkbox
+                  checked={
+                    visibleItems.length > 0 && selectedIds.size === visibleItems.length
+                  }
+                  onCheckedChange={(checked) =>
+                    setSelectedIds(
+                      checked === true ? new Set(visibleItems.map((m) => m.id)) : new Set(),
+                    )
+                  }
+                  aria-label={t("rosterBulkSelectAllSr")}
+                />
+              </TableHead>
+            ) : null}
             <TableHead>{t("colPerson")}</TableHead>
             <TableHead>{t("colJersey")}</TableHead>
             {view === "roster" ? (
@@ -152,9 +230,13 @@ export function RosterTable({
             ) : null}
             {view === "datos" ? (
               <>
-                <TableHead>{t("colNationalId")}</TableHead>
-                <TableHead priority="secondary">{t("colPhone")}</TableHead>
-                <TableHead priority="tertiary">{t("colAddress")}</TableHead>
+                <TableHead className="print:hidden">{t("colNationalId")}</TableHead>
+                <TableHead priority="secondary" className="print:hidden">
+                  {t("colPhone")}
+                </TableHead>
+                <TableHead priority="tertiary" className="print:hidden">
+                  {t("colAddress")}
+                </TableHead>
               </>
             ) : null}
             {canManage ? (
@@ -163,8 +245,17 @@ export function RosterTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((m) => (
+          {visibleItems.map((m) => (
             <TableRow key={m.id}>
+              {bulkSelectable ? (
+                <TableCell className="print:hidden">
+                  <Checkbox
+                    checked={selectedIds.has(m.id)}
+                    onCheckedChange={(checked) => toggleSelected(m.id, checked === true)}
+                    aria-label={t("rosterBulkSelectRowSr", { name: m.name })}
+                  />
+                </TableCell>
+              ) : null}
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
                   <Avatar size="sm">
@@ -196,8 +287,13 @@ export function RosterTable({
                         min: minBirthYear!,
                         max: maxBirthYear!,
                       })}
+                      aria-label={t("ageOutOfRangeLabel", {
+                        year: m.birthYear!,
+                        min: minBirthYear!,
+                        max: maxBirthYear!,
+                      })}
                     >
-                      <TriangleAlertIcon className="size-4 text-destructive" />
+                      <TriangleAlertIcon className="size-4 text-destructive" aria-hidden />
                     </span>
                   ) : null}
                 </div>
@@ -267,9 +363,35 @@ export function RosterTable({
               ) : null}
               {view === "datos" ? (
                 <>
-                  <TableCell>{m.nationalId ?? <EmptyValue />}</TableCell>
-                  <TableCell priority="secondary">{m.phone ?? <EmptyValue />}</TableCell>
-                  <TableCell priority="tertiary">
+                  <TableCell className="print:hidden">
+                    {m.nationalId ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="tabular-nums">
+                          {revealedIds.has(m.id) ? m.nationalId : maskNationalId(m.nationalId)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleRevealed(m.id)}
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label={
+                            revealedIds.has(m.id) ? t("rosterHideNationalId") : t("rosterRevealNationalId")
+                          }
+                        >
+                          {revealedIds.has(m.id) ? (
+                            <EyeOffIcon className="size-3.5" />
+                          ) : (
+                            <EyeIcon className="size-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <EmptyValue />
+                    )}
+                  </TableCell>
+                  <TableCell priority="secondary" className="print:hidden">
+                    {m.phone ?? <EmptyValue />}
+                  </TableCell>
+                  <TableCell priority="tertiary" className="print:hidden">
                     {[m.address, m.postalCode, m.city].filter(Boolean).join(", ") || (
                       <EmptyValue />
                     )}
@@ -277,7 +399,7 @@ export function RosterTable({
                 </>
               ) : null}
               {canManage ? (
-                <TableCell className="flex justify-end gap-1 print:hidden">
+                <TableCell className="flex justify-end gap-2 print:hidden">
                   <MembershipDialog
                     mode="edit"
                     membership={{
@@ -291,6 +413,7 @@ export function RosterTable({
                     }}
                     installmentsMode={installmentsMode}
                   />
+                  <MoveMembershipDialog id={m.id} name={m.name} teams={moveTargetTeams} />
                   <DeleteMembershipDialog id={m.id} name={m.name} />
                 </TableCell>
               ) : null}
@@ -322,6 +445,12 @@ function MedicalBadge({
             ? t("statusExpiringBadge", { date: date! })
             : t("statusOkBadge", { date: date! });
   return <StatusBadge tone={MEDICAL_CERT_TONE[status]} label={label} />;
+}
+
+/** Oculta todo salvo los 3 últimos caracteres, para no dejar el DNI/NIE a la vista por defecto. */
+function maskNationalId(value: string): string {
+  if (value.length <= 3) return value;
+  return "•".repeat(value.length - 3) + value.slice(-3);
 }
 
 /** Ventana de aviso del certificado médico, calculada en cliente al pintar la tabla. */

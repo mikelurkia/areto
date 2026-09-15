@@ -8,11 +8,13 @@ import {
   economicCategories,
   financialAccounts,
   issuedInvoices,
+  purchaseReceipts,
   receivedInvoices,
   seasons,
 } from "@/db/schema";
 import { linkMovementToInvoice } from "@/app/[locale]/(app)/economia/recibidas/actions";
 import { linkMovementToIssuedInvoice } from "@/app/[locale]/(app)/economia/emitidas/actions";
+import { linkMovementToPurchaseReceipt } from "@/app/[locale]/(app)/economia/tickets/actions";
 import { EconomiaLedgerFilter } from "@/components/economia/economia-ledger-filter";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { MovementDialog } from "@/components/economia/movement-dialog";
@@ -100,6 +102,7 @@ export default async function MovimientosPage({
             with: {
               receivedInvoice: { columns: { id: true, invoiceNumber: true } },
               issuedInvoice: { columns: { id: true, number: true } },
+              purchaseReceipt: { columns: { id: true, description: true } },
             },
           },
         },
@@ -114,7 +117,7 @@ export default async function MovimientosPage({
 
   // Aparte del resto: alimenta el diálogo de "vincular factura" desde el
   // listado de movimientos, no la carga inicial de la página.
-  const [candidateReceivedInvoices, candidateIssuedInvoices] = season
+  const [candidateReceivedInvoices, candidateIssuedInvoices, candidatePurchaseReceipts] = season
     ? await Promise.all([
         db.query.receivedInvoices.findMany({
           where: and(
@@ -131,8 +134,16 @@ export default async function MovimientosPage({
           ),
           columns: { id: true, number: true, totalCents: true, ledger: true, customerName: true },
         }),
+        db.query.purchaseReceipts.findMany({
+          where: and(
+            inArray(purchaseReceipts.ledger, ledgers),
+            eq(purchaseReceipts.seasonId, season.id),
+          ),
+          columns: { id: true, description: true, totalCents: true, ledger: true },
+          with: { paidByPerson: { columns: { firstName: true, lastName: true } } },
+        }),
       ])
-    : [[], []];
+    : [[], [], []];
 
   const rows = movements.map((m) => ({
     id: m.id,
@@ -152,12 +163,14 @@ export default async function MovimientosPage({
     notes: m.notes,
     linkedCents: m.links.reduce((sum, l) => sum + l.amountCents, 0),
     invoiceLinks: m.links.flatMap(
-      (l): { kind: "received" | "issued"; id: string; number: string }[] =>
+      (l): { kind: "received" | "issued" | "receipt"; id: string; number: string }[] =>
         l.receivedInvoice
           ? [{ kind: "received", id: l.receivedInvoice.id, number: l.receivedInvoice.invoiceNumber }]
           : l.issuedInvoice
             ? [{ kind: "issued", id: l.issuedInvoice.id, number: l.issuedInvoice.number }]
-            : [],
+            : l.purchaseReceipt
+              ? [{ kind: "receipt", id: l.purchaseReceipt.id, number: l.purchaseReceipt.description }]
+              : [],
     ),
   }));
 
@@ -184,6 +197,15 @@ export default async function MovimientosPage({
     number: i.number,
     totalCents: i.totalCents,
     label: i.customerName,
+  }));
+  const purchaseReceiptOptions = candidatePurchaseReceipts.map((r) => ({
+    id: r.id,
+    ledger: r.ledger,
+    number: r.description,
+    totalCents: r.totalCents,
+    label: r.paidByPerson
+      ? `${r.paidByPerson.firstName} ${r.paidByPerson.lastName}`.trim()
+      : "",
   }));
 
   return (
@@ -261,8 +283,10 @@ export default async function MovimientosPage({
           manageableLedgers={manageableLedgers}
           receivedInvoices={receivedInvoiceOptions}
           issuedInvoices={issuedInvoiceOptions}
+          purchaseReceipts={purchaseReceiptOptions}
           linkReceivedInvoiceAction={linkMovementToInvoice}
           linkIssuedInvoiceAction={linkMovementToIssuedInvoice}
+          linkPurchaseReceiptAction={linkMovementToPurchaseReceipt}
         />
       )}
     </div>

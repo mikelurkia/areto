@@ -7,6 +7,7 @@ import {
   accountMovements,
   economicCategories,
   issuedInvoices,
+  purchaseReceipts,
   receivedInvoices,
   seasonBudgets,
   seasons,
@@ -30,7 +31,6 @@ import {
   type BudgetRow,
   type Ledger,
 } from "@/lib/economia";
-import { formatCents } from "@/lib/money";
 
 export async function generateMetadata({
   params,
@@ -105,7 +105,7 @@ export default async function PresupuestoPage({
         })
       : undefined;
 
-    const accruedExpense = season
+    const accruedExpenseInvoices = season
       ? totalsByCategory(
           await db
             .select({
@@ -122,6 +122,34 @@ export default async function PresupuestoPage({
             .groupBy(receivedInvoices.categoryId),
         )
       : new Map<string, number>();
+
+    // Consulta aparte (no en el mismo `Promise.all`): ver comentario de la
+    // función sobre la convención de concurrencia del proyecto.
+    const accruedExpenseTickets = season
+      ? totalsByCategory(
+          await db
+            .select({
+              categoryId: purchaseReceipts.categoryId,
+              total: sum(purchaseReceipts.totalCents),
+            })
+            .from(purchaseReceipts)
+            .where(
+              and(
+                eq(purchaseReceipts.ledger, ledger),
+                eq(purchaseReceipts.seasonId, season.id),
+              ),
+            )
+            .groupBy(purchaseReceipts.categoryId),
+        )
+      : new Map<string, number>();
+
+    const accruedExpense = new Map<string, number>();
+    for (const [categoryId, total] of accruedExpenseInvoices) {
+      accruedExpense.set(categoryId, (accruedExpense.get(categoryId) ?? 0) + total);
+    }
+    for (const [categoryId, total] of accruedExpenseTickets) {
+      accruedExpense.set(categoryId, (accruedExpense.get(categoryId) ?? 0) + total);
+    }
 
     // Solo las `issued`: una rectificada sigue en el libro, pero el documento
     // vivo es su rectificativa y sumar las dos duplicaría el importe.

@@ -159,7 +159,7 @@ export default async function CalendarioPage({
         <TableCell priority="tertiary" className="text-muted-foreground">
           {event.notes ?? "—"}
         </TableCell>
-        <TableCell className="flex justify-end gap-1 print:hidden">
+        <TableCell className="flex justify-end gap-2 print:hidden">
           {editable ? (
             <>
               <CourtEventDialog

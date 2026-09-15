@@ -1,4 +1,4 @@
-import { MailIcon, MessageCircleIcon } from "lucide-react";
+import { MailIcon, MessageCircleIcon, TriangleAlertIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { mailtoLink, whatsappLink } from "@/lib/contact-links";
@@ -6,6 +6,7 @@ import { formatDateTime } from "@/lib/format-date";
 import { Link } from "@/i18n/navigation";
 import { DeleteRegistrationDialog } from "@/components/inscripciones/delete-registration-dialog";
 import { ReopenRegistrationButton } from "@/components/inscripciones/reopen-registration-button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -25,6 +26,10 @@ type Props = {
    * `from`/`fromLabel` del enlace a la persona resultante. */
   backHref: string;
   canManage: boolean;
+  /** Solo aplica a `kind === "player"`: si la persona vinculada no tiene
+   * ninguna `membership`, se avisa aquí en vez de dejarlo solo en el recuento
+   * de incoherencias del dashboard. */
+  hasTeam?: boolean;
 };
 
 /**
@@ -47,6 +52,7 @@ export async function ReviewedRegistrationPanel({
   matchedPerson,
   backHref,
   canManage,
+  hasTeam,
 }: Props) {
   const t = await getTranslations("Inscripciones");
   const messageKey =
@@ -73,6 +79,20 @@ export async function ReviewedRegistrationPanel({
             {matchedPerson.firstName} {matchedPerson.lastName}
           </Link>
         </p>
+      ) : null}
+      {kind === "player" && status === "approved" && matchedPerson && hasTeam === false ? (
+        <Alert variant="warning">
+          <TriangleAlertIcon className="size-3.5" />
+          <AlertDescription className="text-xs text-foreground">
+            {t("noTeamAssignedWarning")}{" "}
+            <Link
+              href={`/personas/${matchedPerson.id}?tab=equipos`}
+              className="text-primary hover:underline"
+            >
+              {t("assignTeamAction")}
+            </Link>
+          </AlertDescription>
+        </Alert>
       ) : null}
       {status === "rejected" && rejectionReason ? (
         <p className="text-muted-foreground">

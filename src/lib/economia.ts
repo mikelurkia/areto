@@ -176,6 +176,21 @@ export const RECONCILIATION_TONE: Record<ReconciliationState, StatusTone> = {
   settled: "positive",
 };
 
+/**
+ * Ordena movimientos candidatos a enlazar por cercanía al importe pendiente
+ * (más probable primero), y a igualdad de cercanía por fecha más reciente.
+ */
+export function sortCandidateMovementsByAmountProximity<
+  T extends { bookedOn: string; amountCents: number },
+>(movements: readonly T[], remainingCents: number): T[] {
+  return [...movements].sort((a, b) => {
+    const diffA = Math.abs(Math.abs(a.amountCents) - remainingCents);
+    const diffB = Math.abs(Math.abs(b.amountCents) - remainingCents);
+    if (diffA !== diffB) return diffA - diffB;
+    return b.bookedOn.localeCompare(a.bookedOn);
+  });
+}
+
 /** Una categoría en la tabla de presupuesto, con su ejecución al lado. */
 export type BudgetRow = {
   categoryId: string;
@@ -236,4 +251,68 @@ export function budgetTotals(rows: readonly BudgetRow[]): {
 export function executionPct(row: BudgetRow): number | null {
   if (!row.plannedCents) return null;
   return (row.accruedCents / row.plannedCents) * 100;
+}
+
+/** Un vencimiento (cobro o pago) de cara al flujo de caja proyectado. */
+export type CashflowEntry = {
+  date: string;
+  amountCents: number;
+  kind: "income" | "expense";
+};
+
+export type CashflowBucket = {
+  weekStart: string;
+  incomeCents: number;
+  expenseCents: number;
+  /** Saldo acumulado tras esta semana, partiendo del saldo actual. */
+  projectedBalanceCents: number;
+};
+
+/** Lunes de la semana de `date`, a medianoche. */
+function startOfWeek(date: Date): Date {
+  const dayIndex = (date.getDay() + 6) % 7;
+  const monday = new Date(date);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(date.getDate() - dayIndex);
+  return monday;
+}
+
+/**
+ * Agrupa los vencimientos en cubos semanales a partir de hoy, con el saldo
+ * proyectado (`startingBalanceCents` + entradas − salidas acumuladas) al
+ * cierre de cada semana. Pura y sin dependencia de `recharts`: la gráfica solo
+ * dibuja lo que esto calcula.
+ */
+export function weeklyCashflowBuckets(
+  startingBalanceCents: number,
+  entries: readonly CashflowEntry[],
+  { weeks = 10, referenceDate = new Date() }: { weeks?: number; referenceDate?: Date } = {},
+): CashflowBucket[] {
+  const firstWeekStart = startOfWeek(referenceDate);
+  const buckets = Array.from({ length: weeks }, (_, i) => {
+    const weekStart = new Date(firstWeekStart);
+    weekStart.setDate(firstWeekStart.getDate() + i * 7);
+    return { weekStart, incomeCents: 0, expenseCents: 0 };
+  });
+
+  for (const entry of entries) {
+    const weekIndex = Math.round(
+      (startOfWeek(new Date(entry.date)).getTime() - firstWeekStart.getTime()) /
+        (7 * 24 * 60 * 60 * 1000),
+    );
+    if (weekIndex < 0 || weekIndex >= weeks) continue;
+    if (entry.kind === "income") buckets[weekIndex].incomeCents += entry.amountCents;
+    else buckets[weekIndex].expenseCents += entry.amountCents;
+  }
+
+  let runningBalanceCents = startingBalanceCents;
+  return buckets.map((bucket) => {
+    runningBalanceCents += bucket.incomeCents - bucket.expenseCents;
+    return {
+      weekStart: bucket.weekStart.toISOString().slice(0, 10),
+      incomeCents: bucket.incomeCents,
+      expenseCents: bucket.expenseCents,
+      projectedBalanceCents: runningBalanceCents,
+    };
+  });
 }
