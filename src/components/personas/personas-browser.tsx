@@ -26,6 +26,7 @@ import { ALERT_ICON, ALERT_TONE, personAlerts } from "@/lib/person-status";
 import { TONE_ICON } from "@/lib/status-tone";
 import { cn } from "@/lib/utils";
 import { BulkActionsBar } from "@/components/bulk-actions-bar";
+import { MergePersonsDialog } from "@/components/personas/merge-persons-dialog";
 import { EmptyValue } from "@/components/empty-value";
 import { FiltersBar } from "@/components/filters-bar";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
@@ -54,6 +55,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type PersonRow = {
   id: string;
@@ -221,6 +227,22 @@ export function PersonasBrowser({
   // Sin selección la lista se vacía por derivación, no con un `setState` en el
   // cuerpo del efecto (renders en cascada, y lo prohíbe el lint).
   const bulkEmails = selectedIds.size === 0 ? [] : fetchedEmails;
+
+  // Las dos fichas a fusionar. La selección sobrevive al cambio de página, así
+  // que puede haber una marcada que ya no está entre las filas cargadas: el
+  // diálogo completa sus datos desde el servidor.
+  const mergeCandidates =
+    selectedIds.size === 2
+      ? [...selectedIds].map(
+          (id) =>
+            persons.find((p) => p.id === id) ?? {
+              id,
+              firstName: "",
+              lastName: "",
+              nationalId: null,
+            },
+        )
+      : [];
   const bulkEmailHref = `mailto:?bcc=${encodeURIComponent(bulkEmails.join(","))}`;
 
   function toggleSelected(id: string, checked: boolean) {
@@ -512,6 +534,32 @@ export function PersonasBrowser({
           >
             {t("bulkAddToTeamAction")}
           </Button>
+          {mergeCandidates.length === 2 ? (
+            <MergePersonsDialog
+              candidates={mergeCandidates}
+              triggerLabel={t("bulkMergeAction")}
+              onMerged={() => setSelectedIds(new Set())}
+            />
+          ) : (
+            <Tooltip>
+              {/* `aria-disabled` y no `disabled`: un botón deshabilitado de
+                  verdad no recibe el hover, y entonces el aviso de que hay que
+                  marcar exactamente dos no se llega a ver nunca. */}
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-disabled
+                    className="opacity-50"
+                  />
+                }
+              >
+                {t("bulkMergeAction")}
+              </TooltipTrigger>
+              <TooltipContent>{t("bulkMergeHint")}</TooltipContent>
+            </Tooltip>
+          )}
         </BulkActionsBar>
       ) : null}
 

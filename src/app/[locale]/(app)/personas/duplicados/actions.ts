@@ -1,19 +1,27 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { updateTag } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
 import {
   clubMembers,
+  issuedInvoices,
   memberships,
   personDocuments,
   personGuardians,
+  personInjuryReports,
+  personMedicalCheckups,
   personNotes,
   personQualifications,
   personTags,
   persons,
+  registrationGuardians,
+  registrations,
+  sepaCharges,
+  sepaMandates,
+  sponsors,
   users,
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
@@ -28,6 +36,95 @@ export type MergeState = {
 };
 
 const PHOTO_BUCKET = "person-photos";
+
+/**
+ * Campos que la fusión puede tomar de una ficha o de la otra. El diálogo manda
+ * un `campo.<nombre>` por cada uno; si no llega ninguno —fusión sin elección—
+ * se mantiene el criterio de siempre: gana el valor de la principal y el del
+ * duplicado solo rellena huecos.
+ *
+ * Fuera quedan a propósito los consentimientos (`photoConsent`, `sepaConsent`):
+ * no se eligen, se suman, porque un consentimiento dado no se puede retirar
+ * marcando la otra columna.
+ */
+const MERGEABLE_FIELDS = [
+  "firstName",
+  "lastName",
+  "email",
+  "phone",
+  "birthDate",
+  "nationalId",
+  "address",
+  "city",
+  "postalCode",
+  "iban",
+  "medicalCertUntil",
+  "shirtSize",
+  "pantsSize",
+  "shoeSize",
+  "photoPath",
+] as const;
+
+export type MergeableField = (typeof MERGEABLE_FIELDS)[number];
+
+type PersonRow = typeof persons.$inferSelect;
+
+/** Qué ficha aporta un campo, según lo marcado en el diálogo. */
+function chosen<F extends MergeableField>(
+  formData: FormData,
+  field: F,
+  primary: PersonRow,
+  duplicate: PersonRow,
+): PersonRow[F] {
+  const choice = formData.get(`campo.${field}`);
+  if (choice === "duplicate") return duplicate[field];
+  if (choice === "primary") return primary[field];
+  return primary[field] ?? duplicate[field];
+}
+
+export type MergePairPerson = Pick<
+  typeof persons.$inferSelect,
+  MergeableField | "id" | "notes"
+>;
+
+/**
+ * Las dos fichas a comparar en el diálogo. No valen las filas que el listado ya
+ * tiene en el cliente: solo sube 25 por página y la selección sobrevive al
+ * cambio de página, así que una de las dos puede no estar.
+ */
+export async function loadMergePair(
+  idA: string,
+  idB: string,
+): Promise<MergePairPerson[]> {
+  await requirePermission("personas.manage");
+  if (!idA || !idB || idA === idB) return [];
+
+  const rows = await db.query.persons.findMany({
+    where: inArray(persons.id, [idA, idB]),
+    columns: {
+      id: true,
+      notes: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      birthDate: true,
+      nationalId: true,
+      address: true,
+      city: true,
+      postalCode: true,
+      iban: true,
+      medicalCertUntil: true,
+      shirtSize: true,
+      pantsSize: true,
+      shoeSize: true,
+      photoPath: true,
+    },
+  });
+  if (rows.length !== 2) return [];
+  // El orden del `IN` no es el pedido: el diálogo espera [A, B].
+  return [rows.find((r) => r.id === idA)!, rows.find((r) => r.id === idB)!];
+}
 
 export async function mergePersons(
   _prev: MergeState,
@@ -48,50 +145,59 @@ export async function mergePersons(
   ]);
   if (!primary || !duplicate) return { error: t("mergeInvalidSelection") };
 
+  // Dos cuentas de la app no se pueden fusionar sin decidir cuál se cierra, y
+  // eso no se decide desde aquí (`users.personId` es único).
+  const accounts = await db.query.users.findMany({
+    where: inArray(users.personId, [primaryId, duplicateId]),
+    columns: { id: true },
+  });
+  if (accounts.length > 1) return { error: t("mergeBothHaveAccount") };
+
+  const merged = Object.fromEntries(
+    MERGEABLE_FIELDS.map((field) => [field, chosen(formData, field, primary, duplicate)]),
+  ) as Pick<typeof persons.$inferInsert, MergeableField>;
+
+  const notesChoice = formData.get("campo.notes");
+  const notes =
+    notesChoice === "primary"
+      ? primary.notes
+      : notesChoice === "duplicate"
+        ? duplicate.notes
+        : [primary.notes, duplicate.notes].filter(Boolean).join(" · ") || null;
+
+  // Si las dos tenían foto, la que no se queda pierde su única referencia: hay
+  // que sacarla de Storage al terminar.
   let orphanedPhotoPath: string | null = null;
-  if (primary.photoPath && duplicate.photoPath) {
-    orphanedPhotoPath = duplicate.photoPath;
+  if (primary.photoPath && duplicate.photoPath && primary.photoPath !== duplicate.photoPath) {
+    orphanedPhotoPath =
+      merged.photoPath === duplicate.photoPath ? primary.photoPath : duplicate.photoPath;
   }
 
   await db.transaction(async (tx) => {
-    // `email` y `nationalId` son únicos: si el duplicado tiene un valor que el
-    // principal no tiene, hay que liberarlo del duplicado ANTES de copiarlo al
-    // principal, porque el índice único se comprueba al ejecutar cada UPDATE,
-    // no al final de la transacción — con las dos filas vivas a la vez, copiar
-    // el valor al principal mientras el duplicado todavía lo tiene rompe el
-    // índice aunque el duplicado se vaya a borrar dos pasos después.
-    if (duplicate.email && !primary.email) {
-      await tx.update(persons).set({ email: null }).where(eq(persons.id, duplicateId));
-    }
-    if (duplicate.nationalId && !primary.nationalId) {
-      await tx.update(persons).set({ nationalId: null }).where(eq(persons.id, duplicateId));
-    }
+    // `email` y `nationalId` son únicos: hay que liberarlos del duplicado ANTES
+    // de copiarlos a la principal, porque el índice único se comprueba al
+    // ejecutar cada UPDATE, no al final de la transacción — con las dos filas
+    // vivas a la vez, copiar el valor a la principal mientras el duplicado
+    // todavía lo tiene rompe el índice aunque el duplicado se vaya a borrar dos
+    // pasos después.
+    await tx
+      .update(persons)
+      .set({ email: null, nationalId: null })
+      .where(eq(persons.id, duplicateId));
 
     await tx
       .update(persons)
       .set({
-        email: primary.email ?? duplicate.email,
-        phone: primary.phone ?? duplicate.phone,
-        birthDate: primary.birthDate ?? duplicate.birthDate,
-        nationalId: primary.nationalId ?? duplicate.nationalId,
-        address: primary.address ?? duplicate.address,
-        city: primary.city ?? duplicate.city,
-        postalCode: primary.postalCode ?? duplicate.postalCode,
-        iban: primary.iban ?? duplicate.iban,
-        medicalCertUntil: primary.medicalCertUntil ?? duplicate.medicalCertUntil,
-        shirtSize: primary.shirtSize ?? duplicate.shirtSize,
-        pantsSize: primary.pantsSize ?? duplicate.pantsSize,
-        shoeSize: primary.shoeSize ?? duplicate.shoeSize,
-        photoPath: primary.photoPath ?? duplicate.photoPath,
-        notes: [primary.notes, duplicate.notes].filter(Boolean).join(" · ") || null,
+        ...merged,
+        notes,
         photoConsent: primary.photoConsent || duplicate.photoConsent,
         sepaConsent: primary.sepaConsent || duplicate.sepaConsent,
       })
       .where(eq(persons.id, primaryId));
 
-    // Condición de socio: si ambas tenían fila, gana la del principal (mismo
-    // criterio "primary wins" que el resto de campos); si solo la tenía el
-    // duplicado, se reasigna en vez de perderla.
+    // Condición de socio: si ambas tenían fila, gana la de la principal (mismo
+    // criterio que el resto de campos); si solo la tenía el duplicado, se
+    // reasigna en vez de perderla.
     const [primaryMember, duplicateMember] = await Promise.all([
       tx.query.clubMembers.findFirst({ where: eq(clubMembers.personId, primaryId) }),
       tx.query.clubMembers.findFirst({ where: eq(clubMembers.personId, duplicateId) }),
@@ -107,7 +213,7 @@ export async function mergePersons(
       }
     }
 
-    // Tutores del duplicado (como tutelado): pasan al principal, salvo que ya
+    // Tutores del duplicado (como tutelado): pasan a la principal, salvo que ya
     // tuviera ese mismo tutor (índice único personId+guardianId).
     const dupAsWard = await tx.query.personGuardians.findMany({
       where: eq(personGuardians.personId, duplicateId),
@@ -127,12 +233,12 @@ export async function mergePersons(
           .set({ personId: primaryId })
           .where(eq(personGuardians.id, row.id));
       } else {
-        // El duplicado tenía como tutor al propio principal: no tiene sentido tras la fusión.
+        // El duplicado tenía como tutor a la propia principal: no tiene sentido tras la fusión.
         await tx.delete(personGuardians).where(eq(personGuardians.id, row.id));
       }
     }
 
-    // Filas donde el duplicado era tutor de alguien: pasan al principal.
+    // Filas donde el duplicado era tutor de alguien: pasan a la principal.
     const dupAsGuardian = await tx.query.personGuardians.findMany({
       where: eq(personGuardians.guardianId, duplicateId),
     });
@@ -158,7 +264,7 @@ export async function mergePersons(
     }
 
     // Fichas de equipo: reasignar, y si ya existe la misma (persona, equipo)
-    // en el principal, descartar la del duplicado en vez de chocar con el índice único.
+    // en la principal, descartar la del duplicado en vez de chocar con el índice único.
     const dupMemberships = await tx.query.memberships.findMany({
       where: eq(memberships.personId, duplicateId),
     });
@@ -179,13 +285,14 @@ export async function mergePersons(
       }
     }
 
-    // Cuenta de la app (login) ligada al duplicado, si la tuviera.
+    // Cuenta de la app (login) ligada al duplicado, si la tuviera. Que las dos
+    // tengan una ya se ha descartado antes de abrir la transacción.
     await tx
       .update(users)
       .set({ personId: primaryId })
       .where(eq(users.personId, duplicateId));
 
-    // Etiquetas: reasignar, salvo que el principal ya tuviera la misma
+    // Etiquetas: reasignar, salvo que la principal ya tuviera la misma
     // (índice único personId+tag).
     const dupTags = await tx.query.personTags.findMany({
       where: eq(personTags.personId, duplicateId),
@@ -201,8 +308,12 @@ export async function mergePersons(
       }
     }
 
-    // Notas, documentos y titulaciones: sin restricción única, se reasignan
-    // sin más para no perderlas al borrar el duplicado.
+    // El resto de lo que cuelga del duplicado, sin restricción única de por
+    // medio. Sin esto, el borrado final se lo lleva por delante: lo que es
+    // `cascade` (notas, documentos, titulaciones, médico, lesiones) desaparece
+    // en silencio, lo que es `restrict` (mandatos y cobros SEPA) hace fallar la
+    // fusión entera, y lo que es `set null` (facturas emitidas, inscripciones
+    // emparejadas, contacto de patrocinador) pierde el vínculo.
     await tx
       .update(personNotes)
       .set({ personId: primaryId })
@@ -215,6 +326,45 @@ export async function mergePersons(
       .update(personQualifications)
       .set({ personId: primaryId })
       .where(eq(personQualifications.personId, duplicateId));
+    await tx
+      .update(personMedicalCheckups)
+      .set({ personId: primaryId })
+      .where(eq(personMedicalCheckups.personId, duplicateId));
+    await tx
+      .update(personInjuryReports)
+      .set({ personId: primaryId })
+      .where(eq(personInjuryReports.personId, duplicateId));
+    await tx
+      .update(sepaMandates)
+      .set({ payerPersonId: primaryId })
+      .where(eq(sepaMandates.payerPersonId, duplicateId));
+    await tx
+      .update(sepaCharges)
+      .set({ payerPersonId: primaryId })
+      .where(eq(sepaCharges.payerPersonId, duplicateId));
+    await tx
+      .update(issuedInvoices)
+      .set({ personId: primaryId })
+      .where(eq(issuedInvoices.personId, duplicateId));
+    await tx
+      .update(registrations)
+      .set({ matchedPersonId: primaryId })
+      .where(eq(registrations.matchedPersonId, duplicateId));
+    await tx
+      .update(registrationGuardians)
+      .set({ matchedPersonId: primaryId })
+      .where(eq(registrationGuardians.matchedPersonId, duplicateId));
+    await tx
+      .update(sponsors)
+      .set({ contactPersonId: primaryId })
+      .where(eq(sponsors.contactPersonId, duplicateId));
+
+    // Terceros que pagaban a través del duplicado pasan a pagar a través de la
+    // principal; el `ne` evita dejarla pagándose a sí misma.
+    await tx
+      .update(persons)
+      .set({ payerPersonId: primaryId })
+      .where(and(eq(persons.payerPersonId, duplicateId), ne(persons.id, primaryId)));
 
     await tx.delete(persons).where(eq(persons.id, duplicateId));
   });
@@ -228,6 +378,14 @@ export async function mergePersons(
 
   updateTag(DUPLICATE_PERSONS_TAG);
   updateTag(INTEGRITY_ISSUES_TAG);
-  revalidateRoutes(ROUTE.personas, ROUTE.personaFicha, ROUTE.personasDuplicados);
+  revalidateRoutes(
+    ROUTE.personas,
+    ROUTE.personaFicha,
+    ROUTE.personasDuplicados,
+    ROUTE.socios,
+    ROUTE.medico,
+    ROUTE.equipos,
+    ROUTE.cuotas,
+  );
   return { message: t("mergeSuccess") };
 }
