@@ -1,0 +1,1 @@
+ALTER TABLE "club_settings" ADD COLUMN "federation_payment_code" text;

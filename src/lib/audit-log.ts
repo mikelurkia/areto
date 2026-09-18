@@ -9,6 +9,7 @@ export type AuditEntityType =
   | "person_medical_checkup"
   | "person_injury_report"
   | "person_banking"
+  | "club_payment_method"
   | "user"
   | "user_role"
   | "role_permissions"
@@ -37,7 +38,8 @@ type RecordAuditEventInput = {
 
 /**
  * Deja constancia de una acción sensible (médico, bancario, usuarios/roles,
- * inscripciones). Un simple insert — sin esto repetido en cada Server Action,
+ * inscripciones). Casi siempre son escrituras; la única lectura que se registra
+ * es revelar el número de una tarjeta del club (`action: "view"`). Un simple insert — sin esto repetido en cada Server Action,
  * y sin que un fallo aquí tumbe la acción que audita (se traga el error: la
  * mutación ya se hizo, perder la fila de auditoría no debe deshacerla).
  */

@@ -26,11 +26,12 @@ import { usePagedRows } from "@/hooks/use-paged-rows";
 export type AuditLogRow = {
   id: string;
   createdAt: string;
-  action: "create" | "update" | "delete" | "approve" | "reject";
+  action: "create" | "update" | "delete" | "approve" | "reject" | "view";
   entityType:
     | "person_medical_checkup"
     | "person_injury_report"
     | "person_banking"
+    | "club_payment_method"
     | "user"
     | "user_role"
     | "role_permissions"
@@ -44,13 +45,14 @@ const ENTITY_TYPES = [
   "person_medical_checkup",
   "person_injury_report",
   "person_banking",
+  "club_payment_method",
   "user",
   "user_role",
   "role_permissions",
   "registration",
 ] as const;
 
-const ACTIONS = ["create", "update", "delete", "approve", "reject"] as const;
+const ACTIONS = ["create", "update", "delete", "approve", "reject", "view"] as const;
 
 const FILTER_DEFAULTS = { tipo: "all", accion: "all" };
 

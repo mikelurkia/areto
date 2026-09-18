@@ -116,6 +116,8 @@ export async function updateClubFederationSettings(
 
   await upsertClubSettings({
     federationCode: String(formData.get("federationCode") ?? "").trim() || null,
+    federationPaymentCode:
+      String(formData.get("federationPaymentCode") ?? "").trim() || null,
     updatedAt: new Date(),
   });
   return { message: t("clubFederationSaved") };
