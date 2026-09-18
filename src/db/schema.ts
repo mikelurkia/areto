@@ -1020,6 +1020,36 @@ export const federationAccounts = pgTable(
 ).enableRLS();
 
 /**
+ * Tarjetas de débito/crédito del club, con las que se pagan sobre todo los
+ * trámites federativos. Son dos o tres filas; se ordenan por `label` y no
+ * necesitan índice.
+ *
+ * NO SE GUARDA NI EL PIN NI EL CVV, y no se deben añadir: las normas de las
+ * marcas de tarjeta (PCI DSS) lo prohíben expresamente, y ante un fraude el
+ * banco puede negarse a devolver el dinero alegando que la clave se compartió.
+ * Quien paga pone la clave.
+ *
+ * `numberEncrypted` lo escribe y lo lee únicamente `src/lib/secret-box.ts`
+ * (AES-256-GCM). `last4` va en claro a propósito: permite pintar la lista sin
+ * descifrar nada, sigue sirviendo si la clave se pierde, y el PAN truncado a
+ * cuatro dígitos es justo lo que PCI DSS sí permite almacenar y mostrar.
+ */
+export const clubPaymentMethods = pgTable("club_payment_methods", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  label: text("label").notNull(), // alias con el que la conoce la junta
+  holderName: text("holder_name"),
+  numberEncrypted: text("number_encrypted").notNull(),
+  last4: text("last4").notNull(),
+  // Caducidad en dos enteros y no en un "MM/AA": el aviso de "caduca pronto" es
+  // una comparación ordenada, y con texto habría que parsear en cada sitio.
+  expiryMonth: integer("expiry_month").notNull(),
+  expiryYear: integer("expiry_year").notNull(),
+  notes: text("notes"), // banco u observaciones
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
+
+/**
  * Contador de facturas por año, para numeración correlativa sin huecos
  * (2026/0001, 2026/0002...). Una fila por año; `lastNumber` es el último
  * número asignado. Se incrementa atómicamente al emitir una factura (UPSERT
@@ -1487,6 +1517,10 @@ export const auditAction = pgEnum("audit_action", [
   "delete",
   "approve",
   "reject",
+  // Única LECTURA que se audita: revelar el número completo de una tarjeta del
+  // club. El resto del registro son escrituras — si algún día se audita alguna
+  // lectura más, este es el valor que le toca.
+  "view",
 ]);
 
 export const auditLog = pgTable(

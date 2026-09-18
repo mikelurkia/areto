@@ -39,7 +39,8 @@ type EntityKey =
   | "Supplier"
   | "ReceivedInvoice"
   | "PurchaseReceipt"
-  | "MovementLink";
+  | "MovementLink"
+  | "PaymentMethod";
 
 /** Forma común de las Server Actions de borrado (documentos, titulaciones, médico, lesiones...). */
 type DeleteActionState = { error?: string; message?: string };
@@ -70,7 +71,8 @@ export function DeleteEntityDialog({
     | "Patrocinadores"
     | "Temporadas"
     | "Cuotas"
-    | "Economia";
+    | "Economia"
+    | "Club";
   entityKey: EntityKey;
   verb?: "delete" | "remove";
   paramKey: string;
