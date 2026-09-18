@@ -2522,7 +2522,9 @@
     "federationUserCopied": "Erabiltzailea kopiatuta",
     "federationCopyPassword": "Kopiatu pasahitza",
     "federationCopied": "Kopiatuta",
-    "copyValue": "Kopiatu {label}"
+    "copyValue": "Kopiatu {label}",
+    "clubFederationPaymentCodeLabel": "Federazioan ordaintzeko kodea",
+    "clubFederationPaymentCodeHint": "Klubaren profilaren identifikazioa izapide federatiboak ordaintzeko. Klub-zenbakia ez bezalakoa."
   },
   "Temporadas": {
     "title": "Denboraldiak",

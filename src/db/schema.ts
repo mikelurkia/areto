@@ -973,6 +973,10 @@ export const clubSettings = pgTable("club_settings", {
   phone: text("phone"),
   iban: text("iban"),
   federationCode: text("federation_code").default("2022"), // código de club en la federación (Nº Club en los impresos federativos)
+  // Identificador del perfil del club con el que se pagan los trámites en la
+  // federación. Es OTRO código, distinto del Nº Club de arriba: aquel numera al
+  // club en los impresos, este identifica al pagador.
+  federationPaymentCode: text("federation_payment_code"),
   // Datos que pide la cabecera del parte de lesión de la Mutualidad. Viven aquí
   // y no en cada parte porque son constantes del club: la delegación no cambia,
   // y el directivo que firma los partes es el mismo todo el año.

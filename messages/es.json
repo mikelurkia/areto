@@ -2522,7 +2522,9 @@
     "federationUserCopied": "Usuario copiado",
     "federationCopyPassword": "Copiar contraseña",
     "federationCopied": "Copiada",
-    "copyValue": "Copiar {label}"
+    "copyValue": "Copiar {label}",
+    "clubFederationPaymentCodeLabel": "Código de pago en la federación",
+    "clubFederationPaymentCodeHint": "Identificación del perfil del club para pagar los trámites federativos. Distinto del Nº de club."
   },
   "Temporadas": {
     "title": "Temporadas",

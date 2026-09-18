@@ -297,12 +297,19 @@ export default async function ClubPage({
         </CardHeader>
         <CardContent>
           {canManage ? (
-            <ClubFederationForm federationCode={clubSettings?.federationCode ?? null} />
+            <ClubFederationForm
+              federationCode={clubSettings?.federationCode ?? null}
+              federationPaymentCode={clubSettings?.federationPaymentCode ?? null}
+            />
           ) : (
             <dl className="grid gap-4 sm:grid-cols-2">
               <InfoRow
                 label={t("clubFederationCodeLabel")}
                 value={clubSettings?.federationCode}
+              />
+              <InfoRow
+                label={t("clubFederationPaymentCodeLabel")}
+                value={clubSettings?.federationPaymentCode}
               />
             </dl>
           )}
