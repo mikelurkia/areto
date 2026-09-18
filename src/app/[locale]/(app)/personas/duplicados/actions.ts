@@ -24,7 +24,7 @@ import {
   sponsors,
   users,
 } from "@/db/schema";
-import { requirePermission } from "@/lib/auth";
+import { hasPermission, requirePermission } from "@/lib/auth";
 import { DUPLICATE_PERSONS_TAG, INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { createClient } from "@/lib/supabase/server";
@@ -96,8 +96,9 @@ export async function loadMergePair(
   idA: string,
   idB: string,
 ): Promise<MergePairPerson[]> {
-  await requirePermission("personas.manage");
+  const user = await requirePermission("personas.manage");
   if (!idA || !idB || idA === idB) return [];
+  const canViewBanking = hasPermission(user, "personas.banking.view");
 
   const rows = await db.query.persons.findMany({
     where: inArray(persons.id, [idA, idB]),
@@ -122,8 +123,12 @@ export async function loadMergePair(
     },
   });
   if (rows.length !== 2) return [];
+  // Sin `personas.banking.view` el IBAN no sale de aquí: el diálogo es un
+  // componente cliente y viajaría en el payload. Con los dos a `null`, la fila
+  // del IBAN ni se pinta (`!a && !b` la descarta).
+  const visible = canViewBanking ? rows : rows.map((r) => ({ ...r, iban: null }));
   // El orden del `IN` no es el pedido: el diálogo espera [A, B].
-  return [rows.find((r) => r.id === idA)!, rows.find((r) => r.id === idB)!];
+  return [visible.find((r) => r.id === idA)!, visible.find((r) => r.id === idB)!];
 }
 
 export async function mergePersons(
@@ -131,7 +136,7 @@ export async function mergePersons(
   formData: FormData,
 ): Promise<MergeState> {
   const t = await getTranslations("Personas");
-  await requirePermission("personas.manage");
+  const user = await requirePermission("personas.manage");
 
   const primaryId = String(formData.get("primaryId") ?? "");
   const duplicateId = String(formData.get("duplicateId") ?? "");
@@ -153,8 +158,17 @@ export async function mergePersons(
   });
   if (accounts.length > 1) return { error: t("mergeBothHaveAccount") };
 
+  // Sin `personas.banking.manage`, la elección de IBAN que venga en el
+  // formulario se ignora: quien no puede verlo tampoco decide cuál sobrevive.
+  // Queda el criterio por defecto, el de la principal rellenando huecos.
+  const canManageBanking = hasPermission(user, "personas.banking.manage");
   const merged = Object.fromEntries(
-    MERGEABLE_FIELDS.map((field) => [field, chosen(formData, field, primary, duplicate)]),
+    MERGEABLE_FIELDS.map((field) => [
+      field,
+      field === "iban" && !canManageBanking
+        ? (primary.iban ?? duplicate.iban)
+        : chosen(formData, field, primary, duplicate),
+    ]),
   ) as Pick<typeof persons.$inferInsert, MergeableField>;
 
   const notesChoice = formData.get("campo.notes");

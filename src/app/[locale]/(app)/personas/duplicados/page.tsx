@@ -84,7 +84,17 @@ export default async function PersonDuplicatesPage({
                   ) : null}
                 </CardTitle>
                 {canManage ? (
-                  <MergePersonsDialog candidates={group.persons} />
+                  <MergePersonsDialog
+                    // Solo los cuatro campos que el diálogo pinta: la fila trae
+                    // además el IBAN —lo necesita el detector— y el diálogo es
+                    // cliente, así que entera viajaría en el payload.
+                    candidates={group.persons.map((p) => ({
+                      id: p.id,
+                      firstName: p.firstName,
+                      lastName: p.lastName,
+                      nationalId: p.nationalId,
+                    }))}
+                  />
                 ) : null}
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
