@@ -4,7 +4,6 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { economicCategories, receivedInvoices, seasons, suppliers, teams } from "@/db/schema";
-import { EconomiaLedgerFilter } from "@/components/economia/economia-ledger-filter";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { ReceivedInvoiceDialog } from "@/components/economia/received-invoice-dialog";
 import { ReceivedInvoicesBrowser } from "@/components/economia/received-invoices-browser";
@@ -138,14 +137,7 @@ export default async function RecibidasPage({
           </>
         }
       />
-      <EconomiaSectionNav
-        current="recibidas"
-        ledger={filter}
-        visible={visible}
-        ledgerFilterSlot={
-          <EconomiaLedgerFilter href="/economia/recibidas" filter={filter} visible={visible} />
-        }
-      />
+      <EconomiaSectionNav current="recibidas" ledger={filter} visible={visible} />
 
       {supplierRows.length === 0 ? (
         <SectionPlaceholder

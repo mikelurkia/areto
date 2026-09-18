@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -206,6 +206,9 @@ export function MovementDialog(props: MovementDialogProps) {
                   placeholder={t("amountPlaceholder")}
                   required
                 />
+                {/* La regla del signo vivía en el mensaje de error, es decir,
+                    después de equivocarse. Aquí se lee antes de escribir. */}
+                <FieldDescription>{t("amountHint")}</FieldDescription>
               </Field>
               <Field>
                 <FieldLabel htmlFor="movement-balance">{t("balanceLabel")}</FieldLabel>
@@ -216,6 +219,7 @@ export function MovementDialog(props: MovementDialogProps) {
                   defaultValue={movement ? amountValue(movement.balanceCents) : ""}
                   placeholder={t("balancePlaceholder")}
                 />
+                <FieldDescription>{t("balanceHint")}</FieldDescription>
               </Field>
             </div>
             <Field>

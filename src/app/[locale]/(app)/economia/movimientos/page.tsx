@@ -15,7 +15,6 @@ import {
 import { linkMovementToInvoice } from "@/app/[locale]/(app)/economia/recibidas/actions";
 import { linkMovementToIssuedInvoice } from "@/app/[locale]/(app)/economia/emitidas/actions";
 import { linkMovementToPurchaseReceipt } from "@/app/[locale]/(app)/economia/tickets/actions";
-import { EconomiaLedgerFilter } from "@/components/economia/economia-ledger-filter";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { MovementDialog } from "@/components/economia/movement-dialog";
 import { MovementsBrowser } from "@/components/economia/movements-browser";
@@ -250,14 +249,7 @@ export default async function MovimientosPage({
           </>
         }
       />
-      <EconomiaSectionNav
-        current="movimientos"
-        ledger={filter}
-        visible={visible}
-        ledgerFilterSlot={
-          <EconomiaLedgerFilter href="/economia/movimientos" filter={filter} visible={visible} />
-        }
-      />
+      <EconomiaSectionNav current="movimientos" ledger={filter} visible={visible} />
 
       {accounts.length === 0 ? (
         <SectionPlaceholder

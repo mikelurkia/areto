@@ -14,7 +14,6 @@ import {
 } from "@/db/schema";
 import { BudgetEditor } from "@/components/economia/budget-editor";
 import { BudgetStatusActions } from "@/components/economia/budget-status-actions";
-import { EconomiaLedgerFilter } from "@/components/economia/economia-ledger-filter";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { SeasonSelect } from "@/components/equipos/season-select";
 import { PageHeader } from "@/components/page-header";
@@ -24,9 +23,8 @@ import { requirePermission } from "@/lib/auth";
 import {
   ECONOMIA_VIEW_PERMISSIONS,
   LEDGER_PARAM,
-  LEDGERS,
   canManageLedger,
-  resolveLedgerFilter,
+  resolveLedger,
   visibleLedgers,
   type BudgetRow,
   type Ledger,
@@ -79,12 +77,11 @@ export default async function PresupuestoPage({
   ]);
 
   // El filtro por libro va en el `where`, nunca en el render: pedir
-  // `?libro=internal` sin el permiso cae en el libro oficial. Esta página no
-  // ofrece "ambos" como opción del filtro (ver `EconomiaLedgerFilter` más
-  // abajo), pero por si llega un `?libro=both` a mano, se resuelve al primer
-  // libro visible igual que el resto de casos no reconocidos.
-  const filter = resolveLedgerFilter(query[LEDGER_PARAM], visible)!;
-  const ledger: Ledger = filter === "both" ? visible[0] : filter;
+  // `?libro=internal` sin el permiso cae en el libro oficial. Un presupuesto es
+  // siempre de un libro concreto, así que aquí se resuelve a `Ledger` — un
+  // `?libro=both` escrito a mano cae en el primer libro visible, como cualquier
+  // otro valor no reconocido.
+  const ledger: Ledger = resolveLedger(query[LEDGER_PARAM], visible)!;
   const season =
     allSeasons.find((s) => s.id === query.season) ??
     allSeasons.find((s) => s.isCurrent) ??
@@ -251,19 +248,7 @@ export default async function PresupuestoPage({
           </>
         }
       />
-      <EconomiaSectionNav
-        current="presupuesto"
-        ledger={filter}
-        visible={visible}
-        ledgerFilterSlot={
-          <EconomiaLedgerFilter
-            href="/economia/presupuesto"
-            filter={filter}
-            visible={visible}
-            values={LEDGERS}
-          />
-        }
-      />
+      <EconomiaSectionNav current="presupuesto" ledger={ledger} visible={visible} />
 
       {!season ? (
         <SectionPlaceholder

@@ -6,7 +6,6 @@ import { db } from "@/db";
 import {
   accountMovements,
   financialAccounts,
-  issuedInvoices,
   receivedInvoices,
   seasonBudgets,
   seasons,
@@ -14,7 +13,12 @@ import {
   sponsorPayments,
 } from "@/db/schema";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
-import { LedgerCashflowPanel, type NeedsAttentionItem } from "@/components/economia/ledger-cashflow-panel";
+import { LedgerCashflowPanel } from "@/components/economia/ledger-cashflow-panel";
+import {
+  NeedsAttentionCard,
+  sortNeedsAttention,
+  type NeedsAttentionItem,
+} from "@/components/economia/needs-attention-card";
 import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Card } from "@/components/ui/card";
@@ -76,48 +80,14 @@ async function loadLedgerPanel(ledger: Ledger, locale: string, t: Translator) {
 
   const season = await db.query.seasons.findFirst({ where: eq(seasons.isCurrent, true) });
 
+  // Solo el estado: la ejecución del presupuesto se lee en su pestaña, aquí
+  // basta con saber si sigue en borrador para poder avisar.
   const budget = season
     ? await db.query.seasonBudgets.findFirst({
         where: and(eq(seasonBudgets.seasonId, season.id), eq(seasonBudgets.ledger, ledger)),
-        with: {
-          lines: {
-            columns: { plannedCents: true },
-            with: { category: { columns: { kind: true } } },
-          },
-        },
+        columns: { status: true },
       })
     : undefined;
-
-  // Ingreso devengado = emitidas `issued` (una rectificada sigue en el libro,
-  // pero el documento vivo es su rectificativa); gasto devengado = recibidas.
-  // Mismas dos queries que llevaba el resumen anterior, cada una aparte.
-  const [accruedIncomeRow] = season
-    ? await db
-        .select({ total: sum(issuedInvoices.totalCents) })
-        .from(issuedInvoices)
-        .where(
-          and(
-            eq(issuedInvoices.ledger, ledger),
-            eq(issuedInvoices.seasonId, season.id),
-            eq(issuedInvoices.status, "issued"),
-          ),
-        )
-    : [];
-
-  const [accruedExpenseRow] = season
-    ? await db
-        .select({ total: sum(receivedInvoices.totalCents) })
-        .from(receivedInvoices)
-        .where(and(eq(receivedInvoices.ledger, ledger), eq(receivedInvoices.seasonId, season.id)))
-    : [];
-
-  const plannedByKind = (budget?.lines ?? []).reduce(
-    (acc, line) => {
-      acc[line.category.kind] += line.plannedCents;
-      return acc;
-    },
-    { income: 0, expense: 0 },
-  );
 
   // Vencimientos pendientes: facturas recibidas de todos los libros, más
   // anualidades de patrocinio y remesas SEPA, que solo existen en el libro
@@ -151,13 +121,6 @@ async function loadLedgerPanel(ledger: Ledger, locale: string, t: Translator) {
           columns: { id: true, kind: true, collectionDate: true, totalCents: true },
         })
       : [];
-
-  const budgetSummary = season
-    ? {
-        income: { planned: plannedByKind.income, accrued: Number(accruedIncomeRow?.total ?? 0) },
-        expense: { planned: plannedByKind.expense, accrued: Number(accruedExpenseRow?.total ?? 0) },
-      }
-    : null;
 
   const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -200,6 +163,7 @@ async function loadLedgerPanel(ledger: Ledger, locale: string, t: Translator) {
         label: row.supplier.name,
         hint: t("needsAttentionOverdueHint", { date: dueDateFmt.format(new Date(row.dueDate!)) }),
         href: `/economia/recibidas/${row.id}`,
+        date: row.dueDate!,
       })),
     ...unsettledRemittances.map(
       (row): NeedsAttentionItem => ({
@@ -211,6 +175,7 @@ async function loadLedgerPanel(ledger: Ledger, locale: string, t: Translator) {
           date: dueDateFmt.format(new Date(row.collectionDate)),
         }),
         href: `/cuotas/${row.id}`,
+        date: row.collectionDate,
       }),
     ),
     ...(budget && budget.status === "draft"
@@ -222,18 +187,13 @@ async function loadLedgerPanel(ledger: Ledger, locale: string, t: Translator) {
             label: t("needsAttentionDraftBudgetLabel"),
             hint: t("needsAttentionDraftBudgetHint"),
             href: `/economia/presupuesto?libro=${ledger}`,
+            date: todayIso,
           } satisfies NeedsAttentionItem,
         ]
       : []),
   ];
 
-  return {
-    openAccounts,
-    totalCents,
-    budgetSummary,
-    cashflowData,
-    needsAttention,
-  };
+  return { openAccounts, totalCents, cashflowData, needsAttention };
 }
 
 export default async function EconomiaPage({
@@ -260,10 +220,21 @@ export default async function EconomiaPage({
   const hasAnyAccounts = panels.some((panel) => panel.data.openAccounts.length > 0);
   const navLedger = visible[0] ?? "official";
 
+  // Una sola lista para los dos libros: la pregunta que trae aquí es "qué hago
+  // ahora", y esa no se contesta leyendo dos listas en paralelo.
+  const needsAttention = sortNeedsAttention(
+    panels.flatMap(({ ledger, data }) =>
+      data.needsAttention.map((item) => ({
+        ...item,
+        ledgerLabel: visible.length > 1 ? t(`ledger_${ledger}`) : undefined,
+      })),
+    ),
+  );
+
   return (
     <div className="flex flex-1 flex-col gap-6">
       <PageHeader title={t("title")} description={t("subtitle")} />
-      <EconomiaSectionNav current="resumen" ledger={navLedger} visible={visible} showLedgerControls={false} />
+      <EconomiaSectionNav current="resumen" ledger={navLedger} visible={visible} />
 
       {!hasAnyAccounts ? (
         <SectionPlaceholder
@@ -272,62 +243,48 @@ export default async function EconomiaPage({
           description={t("noAccountsDescription")}
         />
       ) : (
-        <div className={cn("grid gap-6", panels.length > 1 ? "xl:grid-cols-2" : undefined)}>
-          {panels.map(({ ledger, data }) =>
-            data.openAccounts.length === 0 ? (
-              <Card key={ledger}>
-                <SectionPlaceholder
-                  icon={LandmarkIcon}
-                  title={t("noAccountsTitle")}
-                  description={t("noAccountsDescription")}
-                  size="compact"
+        <>
+          <NeedsAttentionCard
+            heading={t("needsAttentionHeading")}
+            emptyLabel={t("needsAttentionEmpty")}
+            items={needsAttention}
+          />
+          <div className={cn("grid gap-6", panels.length > 1 ? "xl:grid-cols-2" : undefined)}>
+            {panels.map(({ ledger, data }) =>
+              data.openAccounts.length === 0 ? (
+                <Card key={ledger}>
+                  <SectionPlaceholder
+                    icon={LandmarkIcon}
+                    title={t("noAccountsTitle")}
+                    description={t("noAccountsDescription")}
+                    size="compact"
+                  />
+                </Card>
+              ) : (
+                <LedgerCashflowPanel
+                  key={ledger}
+                  title={t(`ledger_${ledger}`)}
+                  internalBadgeLabel={ledger === "internal" ? t("internalLedgerBadge") : undefined}
+                  totalBalanceLabel={t("totalBalanceLabel")}
+                  totalBalanceValue={formatCents(data.totalCents, locale)}
+                  accounts={data.openAccounts.map((account) => ({
+                    id: account.id,
+                    name: account.name,
+                    value: formatCents(account.balanceCents, locale),
+                    hint: t(`accountKind_${account.kind}`),
+                  }))}
+                  cashflowHeading={t("cashflowHeading")}
+                  cashflowHint={t("cashflowHint")}
+                  cashflowData={data.cashflowData}
+                  locale={locale}
+                  incomeLabel={t("cashflowIncomeLabel")}
+                  expenseLabel={t("cashflowExpenseLabel")}
+                  projectedBalanceLabel={t("cashflowProjectedBalanceLabel")}
                 />
-              </Card>
-            ) : (
-              <LedgerCashflowPanel
-                key={ledger}
-                title={t(`ledger_${ledger}`)}
-                internalBadgeLabel={ledger === "internal" ? t("internalLedgerBadge") : undefined}
-                totalBalanceLabel={t("totalBalanceLabel")}
-                totalBalanceValue={formatCents(data.totalCents, locale)}
-                accounts={data.openAccounts.map((account) => ({
-                  id: account.id,
-                  name: account.name,
-                  value: formatCents(account.balanceCents, locale),
-                  hint: t(`accountKind_${account.kind}`),
-                }))}
-                cashflowHeading={t("cashflowHeading")}
-                cashflowHint={t("cashflowHint")}
-                cashflowData={data.cashflowData}
-                locale={locale}
-                incomeLabel={t("cashflowIncomeLabel")}
-                expenseLabel={t("cashflowExpenseLabel")}
-                projectedBalanceLabel={t("cashflowProjectedBalanceLabel")}
-                budgetHeading={t("budgetSummaryHeading")}
-                budgetHint={t("budgetSummaryHint")}
-                budgetRows={
-                  data.budgetSummary
-                    ? (["income", "expense"] as const).map((kind) => {
-                        const side = data.budgetSummary![kind];
-                        return {
-                          kind,
-                          label: t(`categoryKind_${kind}`),
-                          figures: t("budgetSummaryFigures", {
-                            accrued: formatCents(side.accrued, locale),
-                            planned: formatCents(side.planned, locale),
-                          }),
-                          pct: side.planned ? (side.accrued / side.planned) * 100 : null,
-                        };
-                      })
-                    : null
-                }
-                needsAttentionHeading={t("needsAttentionHeading")}
-                needsAttentionEmpty={t("needsAttentionEmpty")}
-                needsAttentionItems={data.needsAttention}
-              />
-            ),
-          )}
-        </div>
+              ),
+            )}
+          </div>
+        </>
       )}
     </div>
   );

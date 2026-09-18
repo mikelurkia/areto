@@ -197,7 +197,7 @@ export function PurchaseReceiptDialog(props: PurchaseReceiptDialogProps) {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="ticket-file">{t("invoiceFileLabel")}</FieldLabel>
+              <FieldLabel htmlFor="ticket-file">{t("ticketFileLabel")}</FieldLabel>
               {props.mode === "edit" && props.fileUrl ? (
                 <a
                   href={props.fileUrl}
@@ -206,7 +206,7 @@ export function PurchaseReceiptDialog(props: PurchaseReceiptDialogProps) {
                   className="flex items-center gap-1 text-sm text-primary hover:underline"
                 >
                   <PaperclipIcon className="size-3.5" />
-                  {props.fileName ?? t("invoiceFileLabel")}
+                  {props.fileName ?? t("ticketFileLabel")}
                 </a>
               ) : null}
               <Input
