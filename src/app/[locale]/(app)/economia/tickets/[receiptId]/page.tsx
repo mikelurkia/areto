@@ -186,7 +186,7 @@ export default async function PurchaseReceiptDetailPage({
                 className="mt-2 flex items-center gap-1 text-sm text-primary hover:underline"
               >
                 <PaperclipIcon className="size-3.5" />
-                {receipt.fileName ?? t("invoiceFileLabel")}
+                {receipt.fileName ?? t("ticketFileLabel")}
               </a>
             ) : null}
           </CardContent>

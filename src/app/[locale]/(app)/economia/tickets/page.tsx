@@ -3,7 +3,6 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { economicCategories, persons, purchaseReceipts, seasons, teams } from "@/db/schema";
-import { EconomiaLedgerFilter } from "@/components/economia/economia-ledger-filter";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { PurchaseReceiptDialog } from "@/components/economia/purchase-receipt-dialog";
 import { PurchaseReceiptsBrowser } from "@/components/economia/purchase-receipts-browser";
@@ -145,14 +144,7 @@ export default async function TicketsPage({
           </>
         }
       />
-      <EconomiaSectionNav
-        current="tickets"
-        ledger={filter}
-        visible={visible}
-        ledgerFilterSlot={
-          <EconomiaLedgerFilter href="/economia/tickets" filter={filter} visible={visible} />
-        }
-      />
+      <EconomiaSectionNav current="tickets" ledger={filter} visible={visible} />
 
       {rows.length === 0 ? (
         <SectionPlaceholder

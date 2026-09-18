@@ -18,16 +18,6 @@ function LedgerPanelSkeleton() {
           <Skeleton className="h-3 w-40" />
           <Skeleton className="h-40 w-full rounded-lg" />
         </div>
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-3 w-40" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-        </div>
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-3 w-32" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
       </CardContent>
     </Card>
   );
@@ -37,7 +27,14 @@ export default function Loading() {
   return (
     <div className="flex flex-1 flex-col gap-6">
       <PageHeaderSkeleton />
-      <SectionNavSkeleton widths={["w-20", "w-28", "w-28", "w-24", "w-20", "w-24", "w-20"]} />
+      <SectionNavSkeleton widths={["w-20", "w-14", "w-24", "w-24", "w-20", "w-14", "w-18"]} />
+      <Card size="sm" aria-hidden>
+        <CardContent className="flex flex-col gap-3">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </CardContent>
+      </Card>
       <div className="grid gap-6 xl:grid-cols-2" aria-hidden>
         <LedgerPanelSkeleton />
         <LedgerPanelSkeleton />

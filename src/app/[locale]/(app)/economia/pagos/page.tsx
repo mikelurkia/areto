@@ -4,7 +4,6 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { purchaseReceipts, receivedInvoices, seasons } from "@/db/schema";
-import { EconomiaLedgerFilter } from "@/components/economia/economia-ledger-filter";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { EmptyValue } from "@/components/empty-value";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
@@ -161,14 +160,7 @@ export default async function PagosPage({
           />
         }
       />
-      <EconomiaSectionNav
-        current="pagos"
-        ledger={filter}
-        visible={visible}
-        ledgerFilterSlot={
-          <EconomiaLedgerFilter href="/economia/pagos" filter={filter} visible={visible} />
-        }
-      />
+      <EconomiaSectionNav current="pagos" ledger={filter} visible={visible} />
 
       {rows.length === 0 ? (
         <SectionPlaceholder

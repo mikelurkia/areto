@@ -9,7 +9,7 @@ export default function Loading() {
   return (
     <div className="flex flex-1 flex-col gap-6">
       <PageHeaderSkeleton actions={2} />
-      <SectionNavSkeleton widths={["w-20", "w-28", "w-28", "w-24", "w-20", "w-24", "w-20"]} />
+      <SectionNavSkeleton widths={["w-20", "w-14", "w-24", "w-24", "w-20", "w-14", "w-18"]} />
       <FiltersBarSkeleton selects={2} />
       <TableSkeleton
         columns={[
