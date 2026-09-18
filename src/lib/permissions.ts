@@ -61,6 +61,10 @@ export const PERMISSIONS = [
   // Club
   "club.view",
   "club.manage",
+  // Métodos de pago del club: par aparte, como el bancario de personas. Ver el
+  // número de una tarjeta no va con administrar los datos fiscales del club.
+  "club.payments.view",
+  "club.payments.manage",
   // Sugerencias (peticiones de funcionalidad)
   "sugerencias.view",
   "sugerencias.manage",
@@ -156,7 +160,10 @@ export const PERMISSION_MODULES: readonly {
       "economia.internal.manage",
     ],
   },
-  { key: "club", permissions: ["club.view", "club.manage"] },
+  {
+    key: "club",
+    permissions: ["club.view", "club.manage", "club.payments.view", "club.payments.manage"],
+  },
   { key: "sugerencias", permissions: ["sugerencias.view", "sugerencias.manage"] },
   {
     key: "administracion",
@@ -207,13 +214,17 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, readonly Permission[
   admin: [...PERMISSIONS],
   // `staff` (Secretaría) lleva el libro oficial pero NO el interno: la junta se
   // modela como un rol al que se le marcan los `internal` desde la matriz.
+  // Tampoco lleva las tarjetas del club: eso es de quien lleva la economía, y
+  // se concede desde la matriz a quien toque.
   staff: PERMISSIONS.filter(
     (p) =>
       p !== "usuarios.manage" &&
       p !== "roles.manage" &&
       p !== "sugerencias.manage" &&
       p !== "economia.internal.view" &&
-      p !== "economia.internal.manage",
+      p !== "economia.internal.manage" &&
+      p !== "club.payments.view" &&
+      p !== "club.payments.manage",
   ),
   coach: [
     "equipos.view",

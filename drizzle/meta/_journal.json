@@ -645,6 +645,20 @@
       "when": 1788900917808,
       "tag": "0091_cuddly_doctor_faustus",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1789711807351,
+      "tag": "0092_curious_jetstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1789729600045,
+      "tag": "0093_illegal_screwball",
+      "breakpoints": true
     }
   ]
 }

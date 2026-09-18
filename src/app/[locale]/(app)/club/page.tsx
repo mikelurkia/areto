@@ -6,12 +6,15 @@ import { ClubImageUploadForm } from "@/components/club/club-image-upload-form";
 import { ClubMedicalForm } from "@/components/club/club-medical-form";
 import { ClubSignatoriesForm } from "@/components/club/club-signatories-form";
 import { ClubTabs } from "@/components/club/club-tabs";
+import { PaymentMethodDialog } from "@/components/club/payment-method-dialog";
+import { PaymentMethodsList } from "@/components/club/payment-methods-list";
 import { FederationAccountsList } from "@/components/club/federation-accounts-list";
 import { InjuryReportTemplateForm } from "@/components/club/injury-report-template-form";
 import { RegistrationAvailabilityForm } from "@/components/club/registration-availability-form";
 import { InfoRow } from "@/components/info-row";
 import { MaskedIbanText } from "@/components/masked-iban";
 import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -22,6 +25,8 @@ import {
 } from "@/components/ui/card";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { getClubBrandingAssets, getClubSettings, getFederationAccounts } from "@/lib/club";
+import { getClubPaymentMethods } from "@/lib/club-payment-methods";
+import { isEncryptionConfigured } from "@/lib/secret-box";
 import {
   DOCUMENT_TEMPLATES_BUCKET,
   INJURY_REPORT_TEMPLATE_PATH,
@@ -50,6 +55,8 @@ export default async function ClubPage({
   setRequestLocale(locale);
   const user = await requirePermission("club.view");
   const canManage = hasPermission(user, "club.manage");
+  const canViewPayments = hasPermission(user, "club.payments.view");
+  const canManagePayments = hasPermission(user, "club.payments.manage");
   const t = await getTranslations("Club");
   const [clubSettings, federationAccounts, hasInjuryTemplate] = await Promise.all([
     getClubSettings(),
@@ -63,6 +70,8 @@ export default async function ClubPage({
   // Storage propias, y sumarlas a las de la página ha colgado el pooler
   // transaccional de Supabase alguna vez (ver CLAUDE.md).
   const branding = await getClubBrandingAssets();
+  // Sin permiso ni se consulta la tabla: el dato no debe existir en el árbol.
+  const paymentMethods = canViewPayments ? await getClubPaymentMethods() : [];
 
   const datosTab = (
     <Card>
@@ -224,6 +233,29 @@ export default async function ClubPage({
     </Card>
   );
 
+  const pagosTab = canViewPayments ? (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("paymentMethodsSection")}</CardTitle>
+        <CardDescription>{t("paymentMethodsDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {isEncryptionConfigured() ? null : (
+          <Alert variant="warning">
+            <AlertTitle>{t("encryptionKeyMissingTitle")}</AlertTitle>
+            <AlertDescription>{t("encryptionKeyMissingDescription")}</AlertDescription>
+          </Alert>
+        )}
+        <PaymentMethodsList methods={paymentMethods} canManage={canManagePayments} />
+        {canManagePayments ? (
+          <div>
+            <PaymentMethodDialog mode="create" />
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  ) : undefined;
+
   const medicoTab = (
     <div className="grid gap-4">
       <Card>
@@ -265,12 +297,19 @@ export default async function ClubPage({
         </CardHeader>
         <CardContent>
           {canManage ? (
-            <ClubFederationForm federationCode={clubSettings?.federationCode ?? null} />
+            <ClubFederationForm
+              federationCode={clubSettings?.federationCode ?? null}
+              federationPaymentCode={clubSettings?.federationPaymentCode ?? null}
+            />
           ) : (
             <dl className="grid gap-4 sm:grid-cols-2">
               <InfoRow
                 label={t("clubFederationCodeLabel")}
                 value={clubSettings?.federationCode}
+              />
+              <InfoRow
+                label={t("clubFederationPaymentCodeLabel")}
+                value={clubSettings?.federationPaymentCode}
               />
             </dl>
           )}
@@ -298,6 +337,7 @@ export default async function ClubPage({
           datos={datosTab}
           firmantes={firmantesTab}
           inscripciones={inscripcionesTab}
+          pagos={pagosTab}
           medico={medicoTab}
           federaciones={federacionesTab}
         />
