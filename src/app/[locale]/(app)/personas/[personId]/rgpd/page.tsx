@@ -108,7 +108,7 @@ export default async function PersonRgpdPage({
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <div className="flex items-center justify-between print:hidden">
         <BackLink href={`/personas/${person.id}`} label={t("backToPersona")} />
         <PrintButton label={t("printAction")} />

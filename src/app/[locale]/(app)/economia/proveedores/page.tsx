@@ -65,7 +65,7 @@ export default async function ProveedoresPage({
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         title={t("suppliersTitle")}
         description={t("suppliersSubtitle")}

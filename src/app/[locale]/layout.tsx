@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Work_Sans, Barlow_Condensed } from "next/font/google";
+import { Archivo } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -9,19 +9,14 @@ import "../globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 
-// Cuerpo: Work Sans (humanista, cálida). Títulos: Barlow Condensed (con
-// carácter atlético — evita el combo Inter/Space Grotesk de plantilla).
-const workSans = Work_Sans({
+// Una sola familia para todo — Archivo, una grotesca geométrica con
+// carácter propio (evita el combo Inter/Space Grotesk de plantilla). Los
+// títulos no llevan una segunda tipografía: se diferencian por peso
+// (font-heading se resuelve a la misma variable en globals.css).
+const archivo = Archivo({
   variable: "--font-sans",
   subsets: ["latin"],
   weight: "variable",
-  display: "swap",
-});
-
-const barlowCondensed = Barlow_Condensed({
-  variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
   display: "swap",
 });
 
@@ -50,7 +45,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${workSans.variable} ${barlowCondensed.variable} h-full antialiased`}
+      className={`${archivo.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

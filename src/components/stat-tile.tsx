@@ -14,8 +14,8 @@ import type { StatusTone } from "@/lib/status-tone";
  *
  * El valor entra **ya formateado**: el `Intl.NumberFormat` con la moneda y el
  * locale vive en la página, que es quien conoce el idioma de la petición. La
- * cifra usa `font-heading` (la misma fuente condensada de los títulos, no la
- * de cuerpo) para que se lea como un dato destacado y no como texto corrido.
+ * cifra usa el mismo peso que los títulos (`font-heading`) en vez del peso
+ * de cuerpo, para que se lea como un dato destacado y no como texto corrido.
  */
 
 // Mismo vocabulario que StatusBadge (`lib/status-tone.ts`), pero en icono +
@@ -65,7 +65,7 @@ export function StatTile({
         ) : null}
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="font-heading text-lg leading-tight font-bold tabular-nums">
+          <p className="font-heading text-2xl leading-tight font-bold tabular-nums">
             {value}
           </p>
           {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}

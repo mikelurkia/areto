@@ -72,8 +72,9 @@ export function PageHeader({
             <div className="flex flex-wrap items-center gap-2">
               <Heading
                 className={cn(
-                  "truncate font-semibold tracking-tight",
-                  size === "compact" ? "text-xl" : "text-2xl"
+                  "truncate tracking-tight",
+                  size === "compact" ? "text-xl" : "font-heading text-3xl font-extrabold",
+                  size === "compact" && "font-semibold"
                 )}
               >
                 {title}

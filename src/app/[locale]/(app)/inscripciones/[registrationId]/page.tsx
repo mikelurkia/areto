@@ -208,7 +208,7 @@ export default async function RegistrationDetailPage({
   const fullName = `${registration.firstName} ${registration.lastName}`;
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         back={{ href: "/inscripciones", label: t("backToList") }}
         title={fullName}

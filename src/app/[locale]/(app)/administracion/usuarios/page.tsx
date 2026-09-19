@@ -135,7 +135,7 @@ export default async function UsuariosPage({
   const defaultRole = allRoles.find((r) => r.isDefault) ?? allRoles[0];
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         title={t("title")}
         description={t("usersSubtitle")}

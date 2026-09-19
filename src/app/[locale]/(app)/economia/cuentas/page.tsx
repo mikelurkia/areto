@@ -84,7 +84,7 @@ export default async function CuentasPage({
   ]);
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader title={t("accountsTitle")} description={t("accountsSubtitle")} />
       <EconomiaSectionNav current="cuentas" ledger={ledger} visible={visible} />
 

@@ -148,7 +148,7 @@ export default async function PagosPage({
   const formatDate = (value: string) => dateFmt.format(new Date(`${value}T00:00:00`));
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         title={t("pendingPaymentsTitle")}
         description={t("pendingPaymentsSubtitle")}

@@ -49,7 +49,7 @@ export default async function AuditoriaPage({
   }));
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader title={t("title")} description={t("auditSubtitle")} />
 
       <AdminSectionNav

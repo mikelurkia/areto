@@ -102,7 +102,7 @@ un `div` con clases, busca en esta tabla:
 
 Y tres invariantes:
 
-- La raíz de una página de la app es `flex flex-1 flex-col gap-6`.
+- La raíz de una página de la app es `flex flex-1 flex-col gap-4`.
 - Toda ruta de la app lleva su `loading.tsx` compuesto con piezas de
   `skeletons.tsx`, **con la geometría de su página** — filtros, sub-navegación y
   número de columnas incluidos. Un esqueleto que no cuadra es peor que ninguno.

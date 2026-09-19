@@ -6,7 +6,7 @@ const FILTER_WIDTHS = ["w-48", "w-40", "w-40", "w-40"];
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       {/* La acción de la derecha es "imprimir", solo en la vista de lista. */}
       <PageHeaderSkeleton actions={1} />
 

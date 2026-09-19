@@ -615,7 +615,10 @@ export function PersonasBrowser({
                     />
                   </TableHead>
                 ) : null}
-                <TableHead>{t("colName")}</TableHead>
+                {/* Compite por ancho con Equipo y Estado, que también truncan
+                    (`max-w-0`); sin mínimo, el reparto de `table-layout: auto`
+                    a veces dejaba el nombre casi sin espacio. */}
+                <TableHead className="min-w-40">{t("colName")}</TableHead>
                 <TableHead priority="tertiary">{t("colNationalId")}</TableHead>
                 <TableHead priority="secondary">{t("colTeam")}</TableHead>
                 <TableHead className="w-20">{t("colAlerts")}</TableHead>

@@ -115,7 +115,7 @@ export default async function MedicoPage({
     .sort((a, b) => b.occurredOn.localeCompare(a.occurredOn));
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader title={t("title")} description={t("subtitle")} />
 
       {certRows.length === 0 ? (

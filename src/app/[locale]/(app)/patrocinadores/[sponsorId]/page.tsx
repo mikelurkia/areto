@@ -226,7 +226,7 @@ export default async function SponsorDetailPage({
       : t("backToSponsorships");
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         back={{ href: backHref, label: backLabel }}
         title={sponsor.name}

@@ -2,7 +2,7 @@ import { FiltersBarSkeleton, PageHeaderSkeleton, TableSkeleton } from "@/compone
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeaderSkeleton />
       <div className="flex flex-col gap-4">
         <FiltersBarSkeleton selects={1} trailing={1} />

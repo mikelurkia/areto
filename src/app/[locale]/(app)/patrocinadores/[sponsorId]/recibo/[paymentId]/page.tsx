@@ -61,7 +61,7 @@ export default async function SponsorInvoicePage({
       : t("sponsorshipConcept", { name: payment.term.sponsor.name }));
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <div className="flex items-center justify-between print:hidden">
         <BackLink href={`/patrocinadores/${sponsorId}`} label={t("backToSponsor")} />
         <PrintButton label={t("printAction")} />

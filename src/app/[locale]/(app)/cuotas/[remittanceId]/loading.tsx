@@ -6,7 +6,7 @@ import {
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <DetailHeaderSkeleton back actions={2} />
       <StatCardsSkeleton count={3} />
       <TableSkeleton

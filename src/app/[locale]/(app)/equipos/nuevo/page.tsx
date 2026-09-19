@@ -45,7 +45,7 @@ export default async function NewTeamPage({
   if (!selectedSeason) notFound();
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         size="compact"
         back={{ href: `/equipos?season=${selectedSeason.id}`, label: t("backToTeams") }}

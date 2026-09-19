@@ -14,7 +14,7 @@ function FieldSkeleton({ labelWidth = "w-20" }: { labelWidth?: string }) {
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeaderSkeleton back titleWidth="w-32" />
       <Card aria-hidden>
         <CardContent className="flex flex-col gap-4">

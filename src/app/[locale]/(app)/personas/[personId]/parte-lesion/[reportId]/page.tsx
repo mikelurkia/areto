@@ -123,7 +123,7 @@ export default async function InjuryReportFederationPage({
   const noTeam = teamOptions.length === 0;
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         back={{
           href: `/personas/${personId}?tab=medico`,
