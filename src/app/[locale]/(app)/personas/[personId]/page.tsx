@@ -4,12 +4,10 @@ import { notFound } from "next/navigation";
 import {
   ClipboardListIcon,
   CreditCardIcon,
-  DownloadIcon,
   MailIcon,
   MessageCircleIcon,
   PhoneIcon,
   PlusIcon,
-  ShieldCheckIcon,
   TriangleAlertIcon,
   UserRoundIcon,
 } from "lucide-react";
@@ -41,6 +39,7 @@ import { MembershipTable } from "@/components/equipos/membership-table";
 import { MaskedIbanText } from "@/components/masked-iban";
 import { PageHeader, SectionHeading } from "@/components/page-header";
 import { AssignMemberNumberButton } from "@/components/personas/assign-member-number-button";
+import { PersonActionsMenu } from "@/components/personas/person-actions-menu";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { DeleteInjuryReportDialog } from "@/components/personas/delete-injury-report-dialog";
 import { DeleteMedicalCheckupDialog } from "@/components/personas/delete-medical-checkup-dialog";
@@ -58,7 +57,6 @@ import { RevokeMandateDialog } from "@/components/personas/revoke-mandate-dialog
 import { NotesLog } from "@/components/notes-log";
 import { PersonTagsEditor } from "@/components/personas/person-tags-editor";
 import { QualificationDialog } from "@/components/personas/qualification-dialog";
-import { PrintButton } from "@/components/print-button";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -532,7 +530,7 @@ export default async function PersonDetailPage({
                 {t("guardianOfBadge", { count: person.guardianOfRows.length })}
               </Badge>
             ) : null}
-            {isMinor(person.birthDate) ? (
+            {isMinor(person.birthDate) && !isMinorWithoutGuardian ? (
               <Badge variant="outline">{t("minorTag")}</Badge>
             ) : null}
             {isMinorWithoutGuardian ? (
@@ -566,27 +564,15 @@ export default async function PersonDetailPage({
               <CreditCardIcon data-icon="inline-start" />
               {t("memberCardAction")}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              render={<Link href={`/personas/${person.id}/rgpd`} />}
-              nativeButton={false}
-            >
-              <ShieldCheckIcon data-icon="inline-start" />
-              {t("rgpdExportAction")}
-            </Button>
-            {photoUrl ? (
-              <Button
-                variant="outline"
-                size="sm"
-                render={<a href={photoDownloadUrl!} download={photoDownloadName ?? undefined} />}
-                nativeButton={false}
-              >
-                <DownloadIcon data-icon="inline-start" />
-                {t("downloadOriginalPhotoAction")}
-              </Button>
-            ) : null}
-            <PrintButton label={t("printAction")} />
+            <PersonActionsMenu
+              rgpdHref={`/personas/${person.id}/rgpd`}
+              rgpdLabel={t("rgpdExportAction")}
+              photoDownloadUrl={photoDownloadUrl}
+              photoDownloadName={photoDownloadName}
+              downloadPhotoLabel={t("downloadOriginalPhotoAction")}
+              printLabel={t("printAction")}
+              triggerLabel={t("moreActionsLabel")}
+            />
             {canManage ? (
               <PersonDialog
                 mode="edit"
@@ -722,6 +708,9 @@ export default async function PersonDetailPage({
                   }
                 />
                 <InfoRow label={t("nationalIdLabel")} value={person.nationalId} />
+                <InfoRow label={t("shirtSizeLabel")} value={person.shirtSize} />
+                <InfoRow label={t("pantsSizeLabel")} value={person.pantsSize} />
+                <InfoRow label={t("shoeSizeLabel")} value={person.shoeSize} />
               </dl>
             </div>
 
@@ -836,15 +825,6 @@ export default async function PersonDetailPage({
                     </div>
                   }
                 />
-              </dl>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <SectionHeading title={t("sizesSection")} />
-              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <InfoRow label={t("shirtSizeLabel")} value={person.shirtSize} />
-                <InfoRow label={t("pantsSizeLabel")} value={person.pantsSize} />
-                <InfoRow label={t("shoeSizeLabel")} value={person.shoeSize} />
               </dl>
             </div>
 
