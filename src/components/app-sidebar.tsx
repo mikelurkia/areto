@@ -210,7 +210,7 @@ export function AppSidebarBody({ user, federations = [] }: AppSidebarBodyProps) 
             }
             isActive={active}
           >
-            <item.icon className={active ? "text-sidebar-primary" : undefined} />
+            <item.icon />
             <span>{item.title}</span>
           </SidebarMenuButton>
         )}

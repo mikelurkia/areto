@@ -24,17 +24,17 @@ colors:
     light: "oklch(0.85 0.015 200)"
     dark: "oklch(1 0 0 / 12%)"
   success:
-    light: "oklch(0.55 0.12 145)"
+    light: "oklch(0.5 0.12 145)"
     dark: "oklch(0.74 0.13 145)"
   warning:
     light: "oklch(0.62 0.13 75)"
     dark: "oklch(0.78 0.13 75)"
   destructive:
-    light: "oklch(0.58 0.215 25)"
+    light: "oklch(0.5 0.215 25)"
     dark: "oklch(0.7 0.2 25)"
   gold:
-    light: "oklch(0.55 0.16 75)"
-    dark: "oklch(0.68 0.16 75)"
+    light: "oklch(0.55 0.16 95)"
+    dark: "oklch(0.68 0.16 95)"
 typography:
   sans:
     fontFamily: "Archivo, sans-serif"
@@ -125,7 +125,7 @@ Una sola familia de gris fría (hue ~200) recorre fondo, texto y bordes, para qu
 - **Petróleo Saturado** (`oklch(0.4 0.15 195)` claro / `oklch(0.78 0.14 195)` oscuro): color de marca y acción — botones primarios, enlaces, anillo de foco, indicador de pestaña activa, iniciales de `Avatar`, checks de `Select`/`DropdownMenu`/`Combobox`. Con convicción deliberada: no es un azul-gris apenas distinguible del institucional que reemplaza.
 
 ### Secondary
-- **Ámbar** (`oklch(0.55 0.16 75)` claro / `oklch(0.68 0.16 75)` oscuro, `gold` en el código): tono `highlight` del vocabulario semántico (`lib/status-tone.ts`) — reservado a lo que de verdad destaca, nunca decorativo suelto.
+- **Dorado** (`oklch(0.55 0.16 95)` claro / `oklch(0.68 0.16 95)` oscuro, `gold` en el código): tono `highlight` del vocabulario semántico (`lib/status-tone.ts`) — reservado a lo que de verdad destaca, nunca decorativo suelto. Hue 95, separado del hue 75 de `warning`, para que "destacado" y "pendiente/aviso" no compartan un mismo tono de ámbar.
 
 ### Neutral
 - **Fondo** (`oklch(0.985 0.005 200)` claro / `oklch(0.15 0.016 200)` oscuro): fondo de página, del mismo hue frío que el acento.
@@ -134,9 +134,9 @@ Una sola familia de gris fría (hue ~200) recorre fondo, texto y bordes, para qu
 - **Borde** (`oklch(0.85 0.015 200)` claro / `oklch(1 0 0 / 12%)` oscuro): borde y anillo de `Card`, divisores de tabla.
 
 ### Semánticos (estado)
-- **Éxito** (`oklch(0.55 0.12 145)`): cobrado, aprobado, vigente.
+- **Éxito** (`oklch(0.5 0.12 145)`): cobrado, aprobado, vigente.
 - **Aviso** (`oklch(0.62 0.13 75)`): pendiente, por vencer.
-- **Peligro** (`oklch(0.58 0.215 25)`): rechazado, caducado, error.
+- **Peligro** (`oklch(0.5 0.215 25)`): rechazado, caducado, error.
 
 ### Named Rules
 **The Same-Hue Rule.** La escala de grises (fondo, tarjeta, texto, borde) comparte el mismo hue frío (~200) que el acento petróleo (~195), para que todo el sistema suene a una sola paleta en vez de a dos tintes superpuestos.

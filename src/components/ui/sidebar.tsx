@@ -234,7 +234,10 @@ function Sidebar({
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
+            : /* La frontera con el contenido es la única señal de límite del sidebar
+                 (variante sin cromo propio): con el `--border` genérico da 1.5:1 de
+                 contraste contra el fondo, bajo el 3:1 recomendado para límites de UI. */
+              "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l border-foreground/45",
           className
         )}
         {...props}
