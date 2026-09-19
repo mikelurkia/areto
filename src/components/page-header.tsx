@@ -73,9 +73,8 @@ export function PageHeader({
               <Heading
                 className={cn(
                   "truncate tracking-tight",
-                  size === "compact"
-                    ? "text-xl font-semibold"
-                    : "font-heading text-3xl font-extrabold"
+                  size === "compact" ? "text-xl" : "font-heading text-3xl font-extrabold",
+                  size === "compact" && "font-semibold"
                 )}
               >
                 {title}
