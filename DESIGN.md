@@ -1,52 +1,57 @@
 ---
 name: Areto
-description: Gestión de club de fútbol sala — azul institucional, acento ámbar, tipografía condensada atlética
+description: Gestión de club de fútbol sala — grotesca única Archivo, acento petróleo saturado, forma rectangular
 colors:
-  institutional-navy:
-    light: "oklch(0.32 0.09 258)"
-    dark: "oklch(0.68 0.13 258)"
-  warm-amber:
-    light: "oklch(0.55 0.16 75)"
-    dark: "oklch(0.68 0.16 75)"
+  petrol-primary:
+    light: "oklch(0.4 0.15 195)"
+    dark: "oklch(0.78 0.14 195)"
+  petrol-accent-soft:
+    light: "oklch(0.9 0.035 195)"
+    dark: "oklch(0.32 0.05 195)"
   neutral-bg:
-    light: "oklch(0.985 0.004 250)"
-    dark: "oklch(0.17 0.014 258)"
+    light: "oklch(0.985 0.005 200)"
+    dark: "oklch(0.15 0.016 200)"
   neutral-card:
-    light: "oklch(0.995 0.003 250)"
-    dark: "oklch(0.22 0.016 258)"
+    light: "oklch(0.995 0.004 200)"
+    dark: "oklch(0.19 0.018 200)"
   neutral-foreground:
-    light: "oklch(0.22 0.02 258)"
-    dark: "oklch(0.96 0.008 250)"
+    light: "oklch(0.16 0.02 200)"
+    dark: "oklch(0.96 0.008 200)"
   neutral-muted:
-    light: "oklch(0.95 0.012 245)"
-    dark: "oklch(0.28 0.016 258)"
+    light: "oklch(0.955 0.01 200)"
+    dark: "oklch(0.26 0.018 200)"
   neutral-border:
-    light: "oklch(0.88 0.012 250)"
-    dark: "oklch(1 0 0 / 10%)"
+    light: "oklch(0.85 0.015 200)"
+    dark: "oklch(1 0 0 / 12%)"
   success:
     light: "oklch(0.55 0.12 145)"
     dark: "oklch(0.74 0.13 145)"
   warning:
-    light: "oklch(0.78 0.13 75)"
+    light: "oklch(0.62 0.13 75)"
     dark: "oklch(0.78 0.13 75)"
   destructive:
     light: "oklch(0.58 0.215 25)"
     dark: "oklch(0.7 0.2 25)"
+  gold:
+    light: "oklch(0.55 0.16 75)"
+    dark: "oklch(0.68 0.16 75)"
 typography:
-  heading:
-    fontFamily: "Barlow Condensed, sans-serif"
-    fontWeight: 600
-    lineHeight: 1.2
-  body:
-    fontFamily: "Work Sans, sans-serif"
+  sans:
+    fontFamily: "Archivo, sans-serif"
     fontWeight: 400
     lineHeight: 1.5
+  heading:
+    fontFamily: "Archivo, sans-serif"
+    fontWeight: 800
+    lineHeight: 1.2
 rounded:
-  sm: "0.24rem"
-  md: "0.32rem"
-  lg: "0.4rem"
-  xl: "0.56rem"
-  pill: "9999px"
+  sm: "0.225rem"
+  md: "0.3rem"
+  lg: "0.375rem"
+  xl: "0.525rem"
+  2xl: "0.675rem"
+  3xl: "0.825rem"
+  4xl: "0.975rem"
 spacing:
   xs: "0.375rem"
   sm: "0.5rem"
@@ -54,21 +59,21 @@ spacing:
   lg: "1rem"
 components:
   button-primary:
-    backgroundColor: "{colors.institutional-navy}"
+    backgroundColor: "{colors.petrol-primary}"
     textColor: "{colors.neutral-bg}"
     rounded: "{rounded.lg}"
     padding: "0 10px"
     height: "32px"
   button-primary-hover:
-    backgroundColor: "{colors.institutional-navy}"
+    backgroundColor: "{colors.petrol-primary}"
   button-outline:
     backgroundColor: "transparent"
     textColor: "{colors.neutral-foreground}"
     rounded: "{rounded.lg}"
-  badge-highlight:
-    backgroundColor: "{colors.warm-amber}"
+  badge-default:
+    backgroundColor: "{colors.petrol-primary}"
     textColor: "{colors.neutral-bg}"
-    rounded: "{rounded.pill}"
+    rounded: "{rounded.sm}"
     padding: "2px 8px"
   card:
     backgroundColor: "{colors.neutral-card}"
@@ -81,144 +86,171 @@ components:
 
 ## Overview
 
-**Creative North Star: "Secretaría de Federación"**
+**Creative North Star: "El acta con convicción tipográfica"**
 
-Areto es una herramienta de gestión interna para la junta y los entrenadores
-de un club de fútbol sala — no un producto de cara al público, sino el
-cuaderno operativo del club. La estética responde a eso: seria pero cálida,
-con carácter deportivo contenido en vez de gráfico corporativo genérico o
-deportivo estridente. El azul institucional es el color del papeleo
-federativo serio (actas, sellos, credenciales), no un azul de startup; el
-ámbar cálido es el detalle de medalla, reservado para lo que de verdad
-destaca. La tipografía condensada de los títulos (Barlow Condensed) aporta
-carácter atlético sin caer en la plantilla Inter/Space Grotesk que domina el
-software B2B genérico — decisión tomada explícitamente al construir el
-sistema.
+Areto es la herramienta de gestión interna de la junta directiva y los
+entrenadores de un club de fútbol sala: papeleo federativo, cuotas y
+personas, usada a diario y a menudo bajo prisa. El rediseño (segunda tirada,
+tras rechazar explícitamente un primer mundo temático de "pizarra de
+vestuario" con cinta adhesiva) elimina toda metáfora de objeto físico y toda
+decoración: la personalidad viene solo de la tipografía, la paleta y la
+forma. Una sola familia — Archivo, una grotesca geométrica con carácter
+propio, no Inter/Work Sans genérica — cubre cuerpo (400/500) y titulares/
+cifras (700/800), sin segunda tipografía condensada de adorno. El acento es
+un azul-petróleo saturado y con convicción, no el azul-gris apenas
+distinguible del azul institucional que precedió a este mundo.
 
-El sistema es **plano y preciso**: sin sombras a nivel de reposo (las tarjetas
-se delimitan con un anillo fino, no con elevación), esquinas apenas
-suavizadas, densidad de datos por encima del adorno. Todo está optimizado para
-que una junta de 4-8 personas lea tablas, cifras y estados de un vistazo —
-nunca para impresionar a un visitante.
+El sistema sigue siendo **plano y preciso** (herencia explícita del mundo
+anterior: sin sombras a nivel de reposo, superficies delimitadas por un
+anillo, densidad de datos por encima del adorno), pero suma una anillo algo
+más presente (`ring-foreground/15`, antes `/10`) y controles que hablan todos
+en el mismo registro de peso (`font-semibold`, no `font-medium`) para que
+botones, badges y pestañas activas sumen convicción tipográfica en vez de
+apoyarse en el color solo.
 
 **Key Characteristics:**
-- Azul institucional como color de marca y acción, nunca un azul "SaaS" saturado.
-- Ámbar cálido como acento raro, reservado para lo que destaca de verdad (`highlight`).
-- Cero sombras a nivel de reposo: los bordes y el anillo (`ring-1`) hacen el trabajo de delimitar.
-- Radios de esquina pequeños y consistentes, salvo en badges (píldora completa).
-- Titulares en tipografía condensada; cuerpo en una humanista cálida — nunca la misma familia para ambos.
-- Todas las vistas imprimibles (actas, listados médicos) comparten exactamente los mismos tokens que la pantalla, con overrides puntuales para lo que el papel no puede reproducir (sombras, colores oscuros).
+- Una sola familia tipográfica (Archivo) para toda la interfaz — sin pareja display/body.
+- Acento azul-petróleo saturado (`oklch(0.4 0.15 195)` claro / `oklch(0.78 0.14 195)` oscuro), no un azul-gris institucional apagado.
+- Controles interactivos (botones, badges, pestaña activa) en `font-semibold`, nunca `font-medium`.
+- Badges rectangulares (`rounded-sm`), nunca píldora.
+- Cero sombras a nivel de reposo: el anillo (`ring-1 ring-foreground/15`) delimita las superficies.
+- Cabeceras de tabla y de menú en versalitas pequeñas con tracking ancho, apagadas en `text-muted-foreground`.
+- Sidebar sin cromo propio: sigue el fondo del tema activo, la personalización vive en el componente, no en la región.
 
 ## Colors
 
-Paleta de gestión federativa: azul institucional como base de marca, ámbar cálido como acento raro, y un fondo neutro casi blanco (con un matiz frío apenas perceptible) para el resto.
+Una sola familia de gris fría (hue ~200) recorre fondo, texto y bordes, para que el acento petróleo (hue ~195) suene a la misma paleta y no a un tinte superpuesto sobre un gris neutro genérico.
 
 ### Primary
-- **Azul Institucional** (`oklch(0.32 0.09 258)` claro / `oklch(0.68 0.13 258)` oscuro): color de marca y acción — botones primarios, anillo de foco, enlaces, iconografía de navegación activa.
+- **Petróleo Saturado** (`oklch(0.4 0.15 195)` claro / `oklch(0.78 0.14 195)` oscuro): color de marca y acción — botones primarios, enlaces, anillo de foco, indicador de pestaña activa, iniciales de `Avatar`, checks de `Select`/`DropdownMenu`/`Combobox`. Con convicción deliberada: no es un azul-gris apenas distinguible del institucional que reemplaza.
 
 ### Secondary
-- **Ámbar Cálido** (`oklch(0.55 0.16 75)` claro / `oklch(0.68 0.16 75)` oscuro): acento `highlight` del vocabulario de tono semántico (`lib/status-tone.ts`) — solo para lo que de verdad destaca (una cifra clave, un badge de estado especial). Nunca decorativo suelto.
+- **Ámbar** (`oklch(0.55 0.16 75)` claro / `oklch(0.68 0.16 75)` oscuro, `gold` en el código): tono `highlight` del vocabulario semántico (`lib/status-tone.ts`) — reservado a lo que de verdad destaca, nunca decorativo suelto.
 
 ### Neutral
-- **Fondo** (`oklch(0.985 0.004 250)` claro / `oklch(0.17 0.014 258)` oscuro): fondo de página — casi blanco, con un matiz azulado apenas perceptible, nunca gris neutro puro.
-- **Tarjeta** (`oklch(0.995 0.003 250)` claro / `oklch(0.22 0.016 258)` oscuro): fondo de `Card`, ligeramente distinto del fondo de página.
-- **Texto** (`oklch(0.22 0.02 258)` claro / `oklch(0.96 0.008 250)` oscuro): texto principal.
-- **Borde** (`oklch(0.88 0.012 250)` claro / `oklch(1 0 0 / 10%)` oscuro): borde y anillo de `Card`, divisores de tabla.
+- **Fondo** (`oklch(0.985 0.005 200)` claro / `oklch(0.15 0.016 200)` oscuro): fondo de página, del mismo hue frío que el acento.
+- **Tarjeta** (`oklch(0.995 0.004 200)` claro / `oklch(0.19 0.018 200)` oscuro): fondo de `Card`, ligeramente distinto del fondo de página.
+- **Texto** (`oklch(0.16 0.02 200)` claro / `oklch(0.96 0.008 200)` oscuro): texto principal.
+- **Borde** (`oklch(0.85 0.015 200)` claro / `oklch(1 0 0 / 12%)` oscuro): borde y anillo de `Card`, divisores de tabla.
 
 ### Semánticos (estado)
 - **Éxito** (`oklch(0.55 0.12 145)`): cobrado, aprobado, vigente.
-- **Aviso** (`oklch(0.78 0.13 75)`): pendiente, por vencer.
+- **Aviso** (`oklch(0.62 0.13 75)`): pendiente, por vencer.
 - **Peligro** (`oklch(0.58 0.215 25)`): rechazado, caducado, error.
 
 ### Named Rules
-**The Ring-Not-Shadow Rule.** `Card` se delimita con `ring-1 ring-foreground/10`, nunca con `box-shadow`. En impresión el anillo se sustituye por un borde real (`border: 1px solid var(--border)`), porque los navegadores no imprimen sombras ni la mayoría de anillos.
+**The Same-Hue Rule.** La escala de grises (fondo, tarjeta, texto, borde) comparte el mismo hue frío (~200) que el acento petróleo (~195), para que todo el sistema suene a una sola paleta en vez de a dos tintes superpuestos.
 
-**The Rare Amber Rule.** El ámbar cálido (`gold` en el código) es el tono `highlight` del vocabulario semántico compartido — se usa en menos casos que éxito/aviso/peligro, nunca como color decorativo de fondo.
+**The Conviction-Not-Grayscale Rule.** El acento primario es un azul-petróleo saturado, no una versión atenuada casi indistinguible de un azul institucional genérico. La saturación es la decisión, no un descuido.
+
+**The Ring-Not-Shadow Rule.** `Card` y los popovers (`Select`, `DropdownMenu`, `Combobox`) se delimitan con `ring-1 ring-foreground/15`, nunca con `box-shadow` visible en reposo. En impresión el anillo se sustituye por un borde real, porque los navegadores no imprimen sombras ni la mayoría de anillos.
 
 ## Typography
 
-**Display/Heading Font:** Barlow Condensed (con `sans-serif` de reserva)
-**Body Font:** Work Sans, peso variable (con `sans-serif` de reserva)
+**Font (única):** Archivo, peso variable (con `sans-serif` de reserva) — misma variable (`--font-sans`) sirve tanto `font-sans` como `font-heading`; no hay una segunda familia de titulares.
 
-**Character:** Pareo deliberado de una condensada "atlética" para títulos con una humanista cálida para el cuerpo — evita a propósito el combo por defecto Inter/Space Grotesk del software de plantilla.
+**Character:** Una sola grotesca geométrica con rango de peso amplio (400 a 800) sustituye la pareja anterior de condensada + humanista. La jerarquía se lee por peso y tamaño, no por cambio de familia.
 
 ### Hierarchy
-- **Título de página** (semibold, `text-2xl`/`text-xl` en modo `compact`): `PageHeader`, un h1/h2 por página.
-- **Título de tarjeta** (medium, `text-base`/`text-sm` en `size="sm"`): `CardTitle`, en `font-heading`.
-- **Cifra destacada** (bold, `text-lg`, `tabular-nums`): `StatTile`, en `font-heading` para que se lea como dato y no como texto corrido.
-- **Encabezado de sección** (semibold, `text-xs`, versalitas, tracking ancho): `SectionHeading`, apagado en `text-muted-foreground`.
-- **Cuerpo** (regular, `text-sm`): tablas, descripciones, texto corrido — en Work Sans.
+- **Título de página** (extrabold 800, `text-3xl`, `font-heading`): `PageHeader` en su tamaño por defecto — un h1 por página de listado o dashboard.
+- **Título de página compacto** (semibold, `text-xl`): `PageHeader size="compact"` — fichas y sub-páginas de detalle.
+- **Título de tarjeta** (semibold, `text-base`/`text-sm` en `size="sm"`, `font-heading`): `CardTitle`.
+- **Cifra destacada** (bold 700, `text-2xl`, `tabular-nums`, `font-heading`): `StatTile` — antes `text-lg`, ahora lee como titular de dato, no como texto corrido.
+- **Encabezado de sección** (semibold, `text-xs`, versalitas, tracking ancho): `SectionHeading`, cabeceras de tabla (`TableHead`) y de menú (`SelectLabel`/`DropdownMenuLabel`/`ComboboxLabel`), todo apagado en `text-muted-foreground`.
+- **Controles** (semibold, `text-sm`): `Button`, `Badge`, pestaña activa de `Tabs` — antes `font-medium`, ahora en el mismo registro de convicción que los títulos.
+- **Cuerpo** (regular/medium, `text-sm`): tablas, descripciones, texto corrido.
 
 ### Named Rules
-**The Heading-Is-Condensed Rule.** Cualquier texto en `font-heading` (títulos de página, de tarjeta, cifras de `StatTile`) usa Barlow Condensed. El cuerpo nunca hereda esta fuente.
+**The One-Voice Rule.** Toda la interfaz usa una sola familia (Archivo); `font-heading` y `font-sans` resuelven a la misma variable. La jerarquía nunca se marca con un cambio de familia, solo de peso y tamaño.
+
+**The Semibold-Controls Rule.** Cualquier control interactivo con texto propio (`Button`, `Badge`, pestaña activa) usa `font-semibold`, nunca `font-medium`. Excepción conocida y deliberada: `SelectTrigger`/`ComboboxTrigger` se dejan en peso por defecto porque muestran un valor de formulario ya elegido, no actúan como botón — fuera de alcance de este pase, no una inconsistencia a corregir sin más contexto.
 
 ## Layout
 
-Raíz de página: `flex flex-1 flex-col gap-6`, invariante en toda la app interna. Sidebar de navegación fijo en escritorio (colapsa a `Sheet` en móvil, decisión de hidratación tomada en el servidor). Tablas envueltas en un contenedor con scroll horizontal propio (`data-slot="table-container"`) — la página nunca hace scroll horizontal. Columnas de tabla con prioridad (`primary`/`secondary`/`lg`/`tertiary`) que ocultan las de apoyo en pantallas estrechas, pero siempre presentes en impresión vía `data-priority`. Vistas imprimibles reservan una hoja A4 con su propio componente (`PrintableSheet`), padding de 14mm, sin margen de documento por defecto.
+Raíz de página: `flex flex-1 flex-col gap-6`, invariante en toda la app interna. Sidebar de navegación fijo en escritorio (colapsa a `Sheet` en móvil). Tablas envueltas en un contenedor con scroll horizontal propio (`data-slot="table-container"`) — la página nunca hace scroll horizontal. Columnas de tabla con prioridad (`primary`/`secondary`/`tertiary`) que ocultan las de apoyo en pantallas estrechas, pero siempre presentes en impresión vía `data-priority`. Vistas imprimibles reservan una hoja A4 con `PrintableSheet`, padding de 14mm, sin margen de documento por defecto.
 
 ## Elevation & Depth
 
-Sistema plano por defecto: no hay vocabulario de sombras para estado de reposo. `Card` usa un anillo (`ring-1 ring-foreground/10`) para delimitarse en vez de elevación — la profundidad no es una dimensión que este sistema use. La única sombra real es la del anillo de foco (`focus-visible:ring-3`), que es de accesibilidad, no de jerarquía visual.
+Sistema plano por defecto, heredado y reforzado: no hay vocabulario de sombras para estado de reposo. `Card` y los popovers de overlay (`Select`, `DropdownMenu`, `Combobox`) usan un anillo (`ring-1 ring-foreground/15`, subido desde `/10`) para delimitarse en vez de elevación. `shadow-md`/`shadow-lg` aparece en los popovers junto al anillo como refuerzo de separación del fondo al abrir, no como jerarquía de reposo — se combina siempre con el anillo, nunca lo sustituye.
 
 ### Named Rules
-**The Flat-By-Default Rule.** Ninguna superficie usa `box-shadow` para indicar jerarquía o estado de reposo. Los anillos y bordes hacen ese trabajo, y son lo único que sobrevive a la impresión.
+**The Flat-By-Default Rule.** Ninguna superficie usa `box-shadow` para indicar jerarquía o estado de reposo. El anillo hace ese trabajo y es lo único que sobrevive a la impresión (sustituido por `border: 1px solid var(--border)`, porque los navegadores no imprimen sombras).
 
 ## Shapes
 
-Radios de esquina progresivos pero pequeños en la base (`--radius: 0.4rem`), escalados con `calc()` para `sm`/`md`/`lg`/`xl`/`2xl`/`3xl`/`4xl` — nunca radios arbitrarios sueltos. `Card` usa `rounded-xl` (~9px), botones e inputs `rounded-lg` (~6.4px), badges `rounded-4xl` (píldora completa, la única forma redonda del sistema). Sin bordes gruesos: 1px en todo, salvo el anillo de foco.
+Radios de esquina progresivos pero pequeños en la base (`--radius: 0.375rem`), escalados con `calc()` para `sm`/`md`/`lg`/`xl`/`2xl`/`3xl`/`4xl` — nunca radios arbitrarios sueltos. `Card` y popovers usan `rounded-xl`/`rounded-lg`, botones e inputs `rounded-lg`, `Badge` y `ComboboxChip` **rectangulares** (`rounded-sm`) — la píldora completa del mundo anterior desaparece: ninguna forma del sistema es completamente redonda salvo `Avatar` (circular por convención universal de foto de perfil). Bordes de 1px en todo, salvo el anillo de foco (`ring-3`).
 
 ## Components
 
 ### Buttons
-- **Shape:** `rounded-lg` (~6.4px), altura `h-8` por defecto (`h-7` en `sm`, `h-6` en `xs`).
-- **Primary:** fondo `--primary` (azul institucional), texto `--primary-foreground`, hover atenuado (`bg-primary/80`).
-- **Outline / Ghost / Secondary:** fondo transparente o `--secondary`, mismo radio y altura.
-- **Destructive:** fondo `destructive/10`, texto `destructive` — nunca fondo sólido rojo (coherente con "el color raro se reserva").
-- **Estado activo:** `translate-y-px` al pulsar — un feedback táctil sutil, sin sombra.
+- **Shape:** `rounded-lg`, altura `h-8` por defecto (`h-7` en `sm`, `h-6` en `xs`).
+- **Primary:** fondo `--primary` (petróleo saturado), texto `--primary-foreground`, hover atenuado (`bg-primary/90`).
+- **Outline / Ghost / Secondary:** fondo transparente o `--secondary`, mismo radio y altura; `outline` y `ghost` responden en hover/aria-expanded con `border-primary/40` y `bg-muted`.
+- **Destructive:** fondo `destructive/10`, texto `destructive` — nunca fondo sólido rojo.
+- **Texto:** `font-semibold` (antes `font-medium`) — mismo registro que badges y pestaña activa.
+- **Estado activo:** `translate-y-px` al pulsar, sin sombra.
 
 ### Chips / Badges
-- **Style:** píldora completa (`rounded-4xl`), altura fija `h-5`, texto `text-xs`.
-- **State:** color por tono semántico compartido (`lib/status-tone.ts` → `TONE_VARIANT`) — nunca un componente elige su propio color, siempre pasa por el tono.
+- **Style:** rectangular (`rounded-sm`, no píldora), altura fija `h-5`, texto `text-xs font-semibold` (antes `font-medium`).
+- **State:** color por tono semántico compartido (`lib/status-tone.ts`) — nunca un componente elige su propio color.
 
 ### Cards / Containers
 - **Corner Style:** `rounded-xl`.
 - **Background:** `--card`, ligeramente distinto de `--background`.
-- **Shadow Strategy:** ninguna — ver Elevation & Depth. Delimitado por `ring-1 ring-foreground/10`.
-- **Densidad:** `size="sm"` reduce el padding interno (`--card-spacing` de 1rem a 0.625rem) para KPIs y contextos densos como `StatTile`.
+- **Shadow Strategy:** ninguna en reposo — ver Elevation & Depth. Delimitado por `ring-1 ring-foreground/15` (subido desde `/10`).
+- **Densidad:** `size="sm"` reduce el padding interno para KPIs y contextos densos como `StatTile`.
 
 ### Inputs / Fields
 - **Style:** `rounded-lg`, borde `border-input`, fondo transparente (`bg-input/30` en oscuro), altura `h-8`.
-- **Focus:** anillo de 3px (`ring-3 ring-ring/50`) más borde a `--ring`.
+- **Focus:** anillo de 3px (`ring-3 ring-ring/50`) más borde a `--ring` (petróleo).
 - **Error:** borde y anillo a `--destructive`.
+- **Excepción conocida:** `SelectTrigger`/`ComboboxTrigger` muestran el valor elegido en peso por defecto, no `font-semibold` — se comportan como campo de formulario, no como botón; deliberadamente fuera de alcance en este pase.
 
 ### Navigation
-- Sidebar shadcn con tokens propios (`--sidebar*`), fijo en escritorio, `Sheet` en móvil. Ítem activo resaltado por el href más largo que coincide con la ruta (para rutas con prefijo compartido). Marca estática (logo + nombre) pintada sin esperar a datos de sesión.
+- Sidebar shadcn con tokens propios (`--sidebar*`) que en este mundo replican de cerca el fondo/texto del tema activo (claro/oscuro) en vez de un cromo de herramienta fijo — decisión explícita: la personalización vive en los componentes individuales (pestaña activa, `Avatar`, checks de menú), no en regiones enteras del layout con su propio esquema de color; esa alternativa se probó y el usuario la rechazó.
+- Ítem activo en `font-semibold`, resaltado con el acento petróleo saturado.
 
-### Dialogs
-- `DialogContent` por defecto es `sm:max-w-sm` (384px) — suficiente para formularios de ≤4 campos en una sola columna.
-- Con una o más filas `grid grid-cols-2` (5-10 campos), amplía a `className="sm:max-w-lg"`: si no, cada columna se queda en ~160px y los `Select` con texto libre (cuentas, proveedores, categorías) truncan en silencio.
-- Formularios muy densos (≥12 campos, varias filas de dos columnas) usan `className="sm:max-w-2xl"`.
-- Nunca dejes 3 campos dentro de un `grid-cols-2`: el tercero cae solo en la fila siguiente. Usa `grid-cols-3` si son tres.
-- El error de la Server Action (`FormError`) va como primer hijo de `FieldGroup` (o primer hijo del `form` si este ya lleva su propio `flex flex-col gap-*`), nunca justo antes de `DialogFooter`: así se ve sin tener que hacer scroll hasta el final del formulario.
+### Tabs
+- Indicador de pestaña activa: barra `after:bg-primary` (petróleo saturado), no un tono neutro — la única señal de estado activo además del peso `font-semibold`.
 
-### Empty States (`SectionPlaceholder`)
-- `default`: icono, caja con borde punteado, ocupa el espacio disponible — para una sección real sin datos.
-- `compact`: sin icono ni borde, texto apagado en `font-sans` normal (nunca en la tipografía de encabezado) — para "sin resultados" dentro de una tarjeta, pestaña o columna estrecha.
+### Select / Combobox / DropdownMenu
+- Contenido flotante (`SelectContent`, `DropdownMenuContent`, `ComboboxContent`): `rounded-lg`, `ring-1 ring-foreground/15` + `shadow-md`.
+- Checks de item seleccionado (`SelectItem`, `DropdownMenuCheckboxItem`, `DropdownMenuRadioItem`, `ComboboxItem`): `CheckIcon` en `text-primary` (acento saturado), no en color neutro/apagado.
+- Cabeceras de grupo (`SelectLabel`, `DropdownMenuLabel`, `ComboboxLabel`): versalitas pequeñas, `text-xs font-semibold tracking-wide text-muted-foreground uppercase` — mismo patrón que `TableHead`.
+
+### Avatar
+- Circular (`rounded-full`), única forma redonda del sistema. `AvatarFallback` (iniciales) sobre fondo `--accent`; `AvatarBadge` (indicador) sobre fondo `--primary`.
+
+### Alert
+- `border` + `bg-*/10` por variante semántica (`warning`, `success`, `destructive`); el color va en borde e icono, nunca en el texto del cuerpo (los tonos `warning`/`success` no contrastan lo suficiente como color de texto sobre fondo claro). `AlertTitle` en `font-semibold`.
 
 ### Tables
 - Contenedor con scroll horizontal propio; filas con hover (`hover:bg-muted/70`); celdas con prioridad de columna (`data-priority`) que se ocultan en pantallas estrechas pero vuelven siempre en impresión.
-- Valores atómicos (fechas, importes, DNI) usan `nowrap` + `tabular-nums`, opt-in por celda — el resto del texto rompe línea por defecto para caber en móvil.
+- `TableHead` en versalitas pequeñas y tracking ancho (`text-xs font-semibold tracking-wide text-muted-foreground uppercase`) — deliberadamente de menor peso visual que el dato, para que la tabla lea como herramienta y no compita con el contenido.
+- Valores atómicos (fechas, importes, DNI) usan `nowrap` + `tabular-nums`, opt-in por celda.
+
+### Dialogs
+- `DialogContent` por defecto `sm:max-w-sm` (384px); con una o más filas `grid grid-cols-2` (5-10 campos), `sm:max-w-lg`; formularios muy densos (≥12 campos), `sm:max-w-2xl`.
+- El error de la Server Action (`FormError`) va como primer hijo de `FieldGroup`, nunca justo antes de `DialogFooter`.
+
+### Empty States (`SectionPlaceholder`)
+- `default`: icono, caja con borde punteado — para una sección real sin datos.
+- `compact`: sin icono ni borde, texto apagado en `font-sans` normal (nunca `font-heading`) — para "sin resultados" dentro de tarjeta, pestaña o columna estrecha.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** usar el vocabulario de tono semántico (`StatusTone`: neutral/positive/warning/danger/highlight) para cualquier color de estado — nunca un color de badge o icono elegido ad hoc.
-- **Do** delimitar contenedores con `ring-1 ring-foreground/10`, no con `box-shadow`.
-- **Do** usar Barlow Condensed (`font-heading`) solo en títulos y cifras destacadas; Work Sans en todo lo demás.
-- **Do** marcar columnas de tabla de apoyo con `priority` en vez de esconderlas con clases de anchura sueltas.
+- **Do** usar Archivo (`font-sans`/`font-heading`, misma variable) en toda la interfaz — nunca introducir una segunda familia para titulares.
+- **Do** usar `font-semibold` en botones, badges y pestaña activa — nunca `font-medium`.
+- **Do** usar el vocabulario de tono semántico (`StatusTone`) para cualquier color de estado — nunca un color de badge o icono elegido ad hoc.
+- **Do** delimitar contenedores y popovers con `ring-1 ring-foreground/15`, no con `box-shadow` de reposo.
+- **Do** dar a los badges y chips forma rectangular (`rounded-sm`) — nunca píldora.
+- **Do** poner cabeceras de tabla y de menú en versalitas pequeñas y tracking ancho, apagadas en `text-muted-foreground`.
 
 ### Don't:
 - **Don't** introducir sombras (`box-shadow`) para jerarquía o estado de reposo — el sistema es plano por definición.
-- **Don't** usar el ámbar cálido (`gold`/`highlight`) como color decorativo suelto — está reservado al tono semántico "destacado".
-- **Don't** mezclar Inter o Space Grotesk (o cualquier combo de plantilla genérica) con la pareja Barlow Condensed / Work Sans ya establecida.
-- **Don't** dar a los badges cualquier radio que no sea la píldora completa (`rounded-4xl`) — es la única forma completamente redonda del sistema.
+- **Don't** mezclar una segunda familia tipográfica (condensada, monoespaciada de adorno, o cualquier combo Inter/Space Grotesk genérico) con Archivo.
+- **Don't** usar un azul-gris apagado como acento primario — el petróleo saturado (`oklch(0.4 0.15 195)`/`oklch(0.78 0.14 195)`) es la decisión, no un valor de compromiso.
+- **Don't** dar a los badges cualquier radio que no sea rectangular (`rounded-sm`) — la píldora completa (`rounded-4xl`) queda descartada de este mundo.
+- **Don't** añadir metáforas de objeto físico o decoración temática a la interfaz — la personalidad viene solo de tipografía, paleta y forma (restricción explícita del usuario, tras rechazar un primer mundo temático).
+- **Don't** dejar el sidebar con un cromo de color fijo distinto del tema activo — se probó y se rechazó; la personalización vive en el componente, no en la región.

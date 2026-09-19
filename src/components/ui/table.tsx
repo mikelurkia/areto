@@ -100,7 +100,7 @@ function TableHead({
       data-slot="table-head"
       data-priority={priority}
       className={cn(
-        "h-8 px-2 text-left align-middle font-medium text-foreground [&:has([role=checkbox])]:pr-0",
+        "h-7 px-2 text-left align-middle text-xs font-semibold tracking-wide text-muted-foreground uppercase [&:has([role=checkbox])]:pr-0",
         nowrap && "whitespace-nowrap",
         priority && priorityClasses[priority],
         className
@@ -121,7 +121,7 @@ function TableCell({
       data-slot="table-cell"
       data-priority={priority}
       className={cn(
-        "px-2 py-1.5 align-middle [&:has([role=checkbox])]:pr-0",
+        "px-2 py-1 align-middle [&:has([role=checkbox])]:pr-0",
         nowrap && "whitespace-nowrap tabular-nums",
         priority && priorityClasses[priority],
         className

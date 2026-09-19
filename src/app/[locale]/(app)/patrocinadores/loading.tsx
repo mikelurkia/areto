@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       {/* Libro de facturas, muro público, importar, nuevo patrocinador. */}
       <PageHeaderSkeleton actions={4} />
       <div className="flex flex-col gap-3">

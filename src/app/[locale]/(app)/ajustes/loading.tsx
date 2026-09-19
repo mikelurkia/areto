@@ -2,7 +2,7 @@ import { CardSkeleton, PageHeaderSkeleton } from "@/components/skeletons";
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeaderSkeleton />
       <div className="grid gap-4 lg:max-w-2xl">
         {/* Perfil (nombre + correo), contraseña, idioma y zona de peligro. */}

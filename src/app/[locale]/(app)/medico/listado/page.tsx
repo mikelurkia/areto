@@ -407,7 +407,7 @@ export default async function MedicoListadoPage({
   const t = await getTranslations("Medico");
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <div className="flex items-center justify-between print:hidden">
         <BackLink href="/medico" label={t("backToPanel")} />
         <PrintButton label={t("printAction")} />

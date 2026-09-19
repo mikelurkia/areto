@@ -7,7 +7,7 @@ import {
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeaderSkeleton actions={2} />
       {/* Sin envoltorio: en la página real los filtros, el recuento y la tabla
           cuelgan directamente de la columna de arriba, con su `gap-6`. */}

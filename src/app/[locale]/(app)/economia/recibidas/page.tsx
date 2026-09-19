@@ -112,7 +112,7 @@ export default async function RecibidasPage({
   const teamOptions = teamRows.map((tm) => ({ id: tm.id, name: tm.name }));
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         title={t("receivedInvoicesTitle")}
         description={t("receivedInvoicesSubtitle")}

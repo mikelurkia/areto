@@ -281,7 +281,7 @@ export default async function PatrocinadoresPage({
   });
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       {/* La cabecera entera se oculta al imprimir, no solo las acciones. */}
       <PageHeader
         className="print:hidden"

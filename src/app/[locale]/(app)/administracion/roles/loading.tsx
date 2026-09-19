@@ -7,7 +7,7 @@ import {
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeaderSkeleton actions={1} />
       <SectionNavSkeleton widths={["w-16", "w-12"]} />
       {/* La pantalla se mira en dos pestañas: la tabla de roles y la matriz. */}

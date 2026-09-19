@@ -6,7 +6,7 @@ import {
 
 export default function SugerenciasLoading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeaderSkeleton />
       <div className="max-w-xl">
         <CardSkeleton fields lines={2} />

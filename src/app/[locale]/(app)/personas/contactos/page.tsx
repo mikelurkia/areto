@@ -189,7 +189,7 @@ export default async function ContactosPage({
   const t = await getTranslations("Personas");
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <div className="flex items-center justify-between print:hidden">
         <BackLink href="/personas" label={t("contactPrintBack")} />
         <PrintButton label={t("contactPrintAction")} />

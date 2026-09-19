@@ -96,7 +96,7 @@ export default async function EmitidasPage({
   const seasonOptions = allSeasons.map((s) => ({ id: s.id, name: s.name }));
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         title={t("issuedInvoicesTitle")}
         description={t("issuedInvoicesSubtitle")}

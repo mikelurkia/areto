@@ -81,7 +81,7 @@ export default async function TeamRosterSheetPage({
   const ordered = [...players, ...staff];
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <div className="flex items-center justify-between print:hidden">
         <BackLink href={`/equipos/${team.id}`} label={t("backToTeam")} />
         <PrintButton label={t("printAction")} />

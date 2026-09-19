@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <DetailHeaderSkeleton back actions={0} iconActions={2} />
 
       {/* Etiqueta "EQUIPOS DE LA TEMPORADA" y acciones de alta. */}

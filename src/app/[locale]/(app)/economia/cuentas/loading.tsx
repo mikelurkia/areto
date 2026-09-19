@@ -7,7 +7,7 @@ import {
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeaderSkeleton />
       <SectionNavSkeleton widths={["w-20", "w-14", "w-24", "w-24", "w-20", "w-14", "w-18"]} />
       <div className="flex flex-col gap-4">

@@ -84,7 +84,7 @@ export default async function InvoiceRegisterPage({
       `@page` ya no da margen (lo pone la hoja como padding), así que sin esto
       saldría a sangre.
     */
-    <div className="flex flex-1 flex-col gap-6 print:p-[14mm]">
+    <div className="flex flex-1 flex-col gap-4 print:p-[14mm]">
       <PageHeader
         back={{ href: "/patrocinadores", label: t("backToSponsorships") }}
         title={t("invoiceRegisterTitle")}

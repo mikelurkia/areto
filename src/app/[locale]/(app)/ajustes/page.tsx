@@ -39,7 +39,7 @@ export default async function AjustesPage({
   const t = await getTranslations("Settings");
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader title={t("title")} description={t("subtitle")} />
 
       <div className="grid gap-4 lg:max-w-2xl">

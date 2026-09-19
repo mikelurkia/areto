@@ -49,7 +49,7 @@ export default async function SeasonRenewalsPage({
   const filteredTeamName = teamFilter ? filteredRows[0]?.teamName : null;
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         back={{
           href: `/temporadas/${season.id}`,

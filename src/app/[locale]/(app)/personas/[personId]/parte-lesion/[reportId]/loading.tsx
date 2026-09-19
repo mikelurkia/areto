@@ -6,7 +6,7 @@ import { BackLinkSkeleton, CardSkeleton } from "@/components/skeletons";
  */
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <BackLinkSkeleton />
       <div className="grid gap-4 lg:max-w-2xl">
         <CardSkeleton fields lines={4} />

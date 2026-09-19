@@ -244,7 +244,7 @@ export default async function EmitidasLibroPage({
   const t = await getTranslations("Economia");
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <div className="flex items-center justify-between print:hidden">
         <BackLink href="/economia/emitidas" label={t("backToIssuedInvoices")} />
       </div>

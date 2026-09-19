@@ -117,7 +117,7 @@ export default async function PurchaseReceiptDetailPage({
   const paidByIban = canViewBanking ? (receipt.paidByPerson?.iban ?? null) : null;
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         size="compact"
         back={{ href: backHref, label: t("backToTickets") }}

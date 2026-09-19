@@ -129,7 +129,7 @@ export default async function TemporadaDetailPage({
   const ends = season.endsOn ? fmtDate(season.endsOn) : null;
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         back={{ href: "/temporadas", label: t("backToSeasons") }}
         title={season.name}

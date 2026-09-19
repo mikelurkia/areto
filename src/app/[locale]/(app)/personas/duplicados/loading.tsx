@@ -5,7 +5,7 @@ import {
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeaderSkeleton back titleWidth="w-56" />
       <div className="flex flex-col gap-3">
         <CardSkeleton lines={2} />

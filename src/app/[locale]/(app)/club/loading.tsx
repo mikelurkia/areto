@@ -2,7 +2,7 @@ import { CardSkeleton, PageHeaderSkeleton, TabsSkeleton } from "@/components/ske
 
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeaderSkeleton />
       <div className="flex flex-col gap-4 lg:max-w-2xl">
         {/* Datos del club, Firmantes, Inscripciones, Pagos, Médico, Federaciones.

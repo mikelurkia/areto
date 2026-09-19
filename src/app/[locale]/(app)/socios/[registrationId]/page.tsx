@@ -95,7 +95,7 @@ export default async function SocioRegistrationDetailPage({
   const fullName = `${registration.firstName} ${registration.lastName}`;
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4">
       <PageHeader
         back={{ href: "/socios", label: t("backToList") }}
         title={fullName}
