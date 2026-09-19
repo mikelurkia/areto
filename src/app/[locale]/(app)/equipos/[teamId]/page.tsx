@@ -96,10 +96,10 @@ export default async function TeamDetailPage({
   const t = await getTranslations("Equipos");
   const canManage = hasPermission(user, "equipos.manage");
 
-  // Primera tanda, en paralelo: nada de esto depende del resto. Temporadas y
-  // personas se traen completas y se filtran en memoria (pocas filas) para no
-  // encadenar consultas que esperen a `team` o a las membresías.
-  const [team, roster, allSeasons, allPersons] = await Promise.all([
+  // Primera tanda, en paralelo: nada de esto depende del resto. Las
+  // temporadas se traen completas y se filtran en memoria (pocas filas) para
+  // no encadenar consultas que esperen a `team` o a las membresías.
+  const [team, roster, allSeasons] = await Promise.all([
     getTeam(teamId),
     db.query.memberships.findMany({
       where: eq(memberships.teamId, teamId),
@@ -130,10 +130,6 @@ export default async function TeamDetailPage({
           orderBy: (seasons, { desc }) => [desc(seasons.name)],
         })
       : [],
-    db.query.persons.findMany({
-      orderBy: (persons, { asc }) => [asc(persons.lastName), asc(persons.firstName)],
-      columns: { id: true, firstName: true, lastName: true },
-    }),
   ]);
   if (!team) notFound();
 
@@ -167,9 +163,6 @@ export default async function TeamDetailPage({
       columns: { id: true, name: true },
     })
   ).filter((candidate) => candidate.id !== team.id);
-
-  const memberIds = new Set(teamMemberships.map((m) => m.personId));
-  const availablePersons = allPersons.filter((person) => !memberIds.has(person.id));
 
   // `loadSeasonRenewals` va aparte de las firmas de URLs: por debajo dispara
   // sus propias queries (cruza plantilla e inscripciones), y sumarlas al
@@ -357,7 +350,6 @@ export default async function TeamDetailPage({
                   <MembershipDialog
                     mode="create"
                     teamId={team.id}
-                    availablePersons={availablePersons}
                     installmentsMode={team.playerFeePeriod === "installments"}
                   />
                 </div>
@@ -391,7 +383,6 @@ export default async function TeamDetailPage({
                     <MembershipDialog
                       mode="create"
                       teamId={team.id}
-                      availablePersons={availablePersons}
                       installmentsMode={team.playerFeePeriod === "installments"}
                     />
                   </>

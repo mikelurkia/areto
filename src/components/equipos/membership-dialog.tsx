@@ -40,7 +40,6 @@ import { useFrozenWhileOpen } from "@/hooks/use-frozen-while-open";
 const MEMBERSHIP_ROLES = ["player", "coach", "staff"] as const;
 const PLAYER_POSITIONS = ["cierre", "ala", "pivot", "portero"] as const;
 
-type PersonOption = { id: string; firstName: string; lastName: string };
 type TeamOption = { id: string; label: string };
 
 /**
@@ -58,7 +57,7 @@ type Membership = {
 };
 
 type MembershipDialogProps = (
-  | { mode: "create"; teamId: string; availablePersons: PersonOption[] }
+  | { mode: "create"; teamId: string }
   | {
       mode: "create-person";
       personId: string;
@@ -143,7 +142,7 @@ export function MembershipDialog(props: MembershipDialogProps) {
                 <MembershipPersonCombobox
                   key={open ? "open" : "closed"}
                   id="membership-person"
-                  persons={props.availablePersons}
+                  teamId={props.teamId}
                 />
               </Field>
             ) : props.mode === "create-person" ? (

@@ -1,9 +1,9 @@
 import "server-only";
 
-import { and, asc, count, eq, ilike, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, ilike, inArray, isNotNull, notExists, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { persons, seasons, teams } from "@/db/schema";
+import { memberships, persons, seasons, teams } from "@/db/schema";
 import { isPastMember } from "@/lib/membership";
 import { EXPIRY_WINDOW_DAYS } from "@/lib/person-status";
 import { likePattern, phoneDigitsMatch } from "@/lib/sql-text";
@@ -427,6 +427,56 @@ export async function searchGuardianCandidates(
         ),
         sql`not ${isMinorSql}`,
         excludePersonId ? sql`${persons.id} <> ${excludePersonId}::uuid` : undefined,
+      ),
+    )
+    .orderBy(asc(persons.lastName), asc(persons.firstName))
+    .limit(20);
+}
+
+export type MembershipCandidate = {
+  id: string;
+  firstName: string;
+  lastName: string;
+};
+
+const MEMBERSHIP_CANDIDATE_COLUMNS = {
+  id: persons.id,
+  firstName: persons.firstName,
+  lastName: persons.lastName,
+};
+
+/**
+ * Candidatos a alta en un equipo, por búsqueda de nombre. Reemplaza a la
+ * lista completa de personas del club que antes cargaba la ficha de equipo
+ * solo para poblar el combobox de alta (ver `equipos/[teamId]/page.tsx`).
+ *
+ * Excluye a quien ya es miembro del equipo — a diferencia de
+ * `searchGuardianCandidates`, aquí no se descartan menores: un jugador sí
+ * puede serlo.
+ */
+export async function searchMembershipCandidates(
+  query: string,
+  teamId: string,
+): Promise<MembershipCandidate[]> {
+  const term = query.trim();
+  if (term.length < MIN_GUARDIAN_QUERY) return [];
+  const pattern = likePattern(term);
+  return db
+    .select(MEMBERSHIP_CANDIDATE_COLUMNS)
+    .from(persons)
+    .where(
+      and(
+        or(
+          ilike(persons.firstName, pattern),
+          ilike(persons.lastName, pattern),
+          ilike(sql`${persons.firstName} || ' ' || ${persons.lastName}`, pattern),
+        ),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(memberships)
+            .where(and(eq(memberships.teamId, teamId), eq(memberships.personId, persons.id))),
+        ),
       ),
     )
     .orderBy(asc(persons.lastName), asc(persons.firstName))

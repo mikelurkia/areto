@@ -12,6 +12,7 @@ import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
 import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
+import { type MembershipCandidate, searchMembershipCandidates } from "@/lib/person-list";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 
@@ -50,6 +51,15 @@ function readJerseyNumber(formData: FormData) {
 function readInstallmentsCount(formData: FormData) {
   const value = String(formData.get("installmentsCount") ?? "").trim();
   return value === "2" ? 2 : value === "1" ? 1 : null;
+}
+
+/** Búsqueda al escribir del combobox de alta (ver `MembershipPersonCombobox`). */
+export async function findMembershipCandidates(
+  teamId: string,
+  query: string,
+): Promise<MembershipCandidate[]> {
+  await requirePermission("equipos.manage");
+  return searchMembershipCandidates(query, teamId);
 }
 
 export async function addMembership(

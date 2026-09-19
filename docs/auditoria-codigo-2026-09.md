@@ -1,15 +1,16 @@
 # Auditoría de código de Areto
 
 **Fecha:** 2026-09-01 · **Alcance:** 399 ficheros TS/TSX, 52.177 líneas, 278 commits.
+**Revisión:** 2026-09-20 — cada hallazgo verificado línea a línea contra `main`;
+los ya corregidos quedan marcados en su sitio en vez de borrados, para no
+perder el rastro de qué se hizo y cuándo.
 
 Búsqueda de ineficiencias, duplicación, copia-pega, cuellos de botella, código
 sucio y arquitectura fuera del estándar de Next.js. Cada hallazgo lleva ruta,
 línea y por qué importa; el orden de ataque queda abierto.
 
 Este documento **absorbe y sustituye** al plan de rendimiento previo, cuyas
-etapas 4 y 5 nunca llegaron a ejecutarse (secciones C y E de aquí). Verificado
-contra el código actual: `NextIntlClientProvider` sigue sin `messages`, no hay
-ningún `next/dynamic`, `countDuplicateCaptains` sigue viva, y `grep zod` da 0.
+etapas 4 y 5 nunca llegaron a ejecutarse (secciones C y E de aquí).
 
 ## Punto de partida
 
@@ -23,7 +24,7 @@ un caso, un bug real.
 
 ## A. Bug de corrección (lo único urgente)
 
-**A1. Todos los cargos de una tanda salen como `FRST`.**
+**A1. ✅ Corregido.** Todos los cargos de una tanda salían como `FRST`.
 `src/app/[locale]/(app)/cuotas/actions.ts:183` y `:266`
 
 `nextSequenceType(mandate.id)` (`src/lib/sepa.ts:70-77`) decide `FRST`/`RCUR`
@@ -44,58 +45,39 @@ lentitud o duplicación.
 
 ## B. Rendimiento de base de datos
 
-**B1. N+1 en la generación de cuotas.**
-`cuotas/actions.ts:171-193` (`generatePlayerCharges`) y `:254-266`
-(`generateMemberCharges`). Dentro del bucle se llama a `getOrCreateMandate()` y
-`nextSequenceType()`, una query cada una. 20 jugadores × 10 periodos = hasta
-400 round-trips secuenciales en una sola invocación. Los mandatos se pueden
-resolver en una query previa por lote (`inArray`) y el `sequenceType` se decide
-en memoria — lo que además arregla **A1**.
+**B1. ✅ Corregido.** N+1 en la generación de cuotas
+(`cuotas/actions.ts` — `generatePlayerCharges`/`generateMemberCharges`).
+Los mandatos se resuelven ahora en una query previa por lote (`inArray`) y el
+`sequenceType` se decide en memoria con `sequenceTypeAssigner` (`sepa.ts`),
+lo que además corrigió **A1**.
 
-**B2. Falta el índice `sepa_charges.mandate_id`.**
-`src/db/schema.ts:1288-1289` define índices en `remittanceId` y `payerPersonId`,
-pero no en `mandateId`, que es justo por lo que filtra `nextSequenceType`
-(`sepa.ts:73`). Cada una de las ~400 llamadas de B1 hace seq scan sobre una
-tabla que crece sin techo con el histórico de recibos.
+**B2. ✅ Corregido.** Falta el índice `sepa_charges.mandate_id`.
+`src/db/schema.ts:1830` ya define `sepa_charges_mandate_idx`.
 
-**B3. `countMedicalCertMismatches` trae la tabla `persons` entera.**
-`src/lib/data-integrity.ts:91-100`: `findMany` **sin `where`**, con
-`medicalCheckups` y `memberships→team` anidados, para filtrar después en JS por
-jugador activo y devolver **un número**. Está cacheada (`cacheLife("derivados")`),
-así que solo se paga en cache-miss — pero el coste escala con el tamaño total
-del club, no con el subconjunto relevante. Es un `COUNT` con `GROUP BY`.
-
-Mismo patrón, menor calibre, en el resto del fichero: `countMissingNationalId`
-(`:62-78`), `countDuplicateCaptains` (`:126-139`, trae capitanes de *todas* las
-temporadas para filtrar una) y `countDuplicatePersonGroups` (`:192-202`, tabla
-`persons` completa).
+**B3. ✅ Corregido.** `countMedicalCertMismatches` traía la tabla `persons`
+entera. `src/lib/data-integrity.ts:135-150` calcula el desajuste con SQL
+(`IS DISTINCT FROM` sobre una subquery del último reconocimiento), sin traer
+filas a JS.
 
 Matiz importante: `countExpiringMedicalPlayers`
 (`src/lib/dashboard-alerts.ts:51-65`) **sí** lleva `WHERE` y trae un conjunto
 pequeño. El plan anterior lo metía en el mismo saco que `data-integrity.ts`;
-no lo merece. Solo el primero justifica el cambio.
+no lo merecía.
 
-**B4. La campana de notificaciones dispara toda la agregación en cada carga.**
-`src/components/notification-bell.tsx:39-41` llama a `fetchNotifications()` al
-montar, y `src/lib/notifications.ts:48-60` encadena `countPendingRegistrations`,
-`countExpiringMedicalPlayers`, `loadSeasonRenewals`, `loadDataIntegrityIssues` y
-`countDuplicatePersonGroups`. Está bien diseñado (fuera del árbol de render,
-para no repetir el patrón que colgó el dashboard), pero significa que B3 se
-paga en **toda la aplicación**, no solo en `/dashboard`.
+**B4. Obsoleto — descartado tras verificarlo.** La entrada original hablaba de
+la campana de notificaciones disparando la agregación de B3 en toda la
+aplicación. B3 ya está corregida (SQL puro), así que el argumento de "se paga
+en toda la app" ya no aplica; el propio diseño de `notification-bell.tsx`
+(fuera del árbol de render) sigue siendo correcto.
 
 **B5. Inserts uno a uno en `importSponsors`.**
 `patrocinadores/actions.ts:872-922`: dos inserts por línea pegada, sin
 transacción y sin lote. Un fallo a mitad deja patrocinadores sin acuerdo.
 
-**B6. Sobre-fetching de filas de persona completas: 13 sitios.**
-`with: { person: true }` trae las ~30 columnas de `persons` —incluidos `iban`,
-`nationalId`, `address`, `sepaConsentAt`— donde la vista pinta un nombre.
-Representativos: `equipos/[teamId]/page.tsx:103`, `cuotas/page.tsx:69-70`,
-`cuotas/[remittanceId]/page.tsx:52-53`, `equipos/[teamId]/acta/page.tsx:58`,
-`personas/[personId]/page.tsx:103,159`. Además de payload, es exposición
-innecesaria de datos sensibles en el payload RSC.
-Contraejemplo a seguir, ya en el repo: `personas/actions.ts:1354` acota
-`columns` explícitamente.
+**B6. ✅ Corregido.** Sobre-fetching de filas de persona completas
+(`with: { person: true }` sin acotar `columns`). Los sitios representativos ya
+listan `columns` explícitas (p. ej. `equipos/[teamId]/page.tsx`, que ahora
+acota a los campos que la ficha realmente pinta, sin `iban` ni `sepaConsentAt`).
 
 **B7. Detección de duplicados en el camino crítico del alta.**
 `personas/actions.ts:391-408`: cada intento de crear una persona trae la tabla
@@ -109,29 +91,37 @@ del bucle de 5 intentos. Impacto real bajo (solo en colisión).
 
 ## C. Bundle y payload cliente (era la etapa 4 del plan anterior)
 
-**C1. Los 115 KB de mensajes viajan en toda ruta.**
-`src/app/[locale]/layout.tsx:58`: `<NextIntlClientProvider>` sin `messages`
-manda `es.json` completo. Medido por namespace: una ruta pública de inscripción
-necesita `Inscripciones` (15 KB) + `Landing` + `Metadata` + errores ≈ 18 KB, y
-recibe 115 KB. Los namespaces grandes que no pinta nunca: `Personas` (21 KB),
-`Administracion` (12 KB), `Patrocinadores` (12 KB), `Equipos` (9 KB).
-`src/i18n/request.ts` ya cachea la carga con `"use cache"`; no hay que tocarlo.
+**C1. ✅ Corregido (2026-09-20).** Los 115 KB de mensajes viajaban en toda
+ruta: el `<NextIntlClientProvider>` del layout raíz (`[locale]/layout.tsx`)
+sin `messages` mandaba `es.json`/`eu.json` completo a cualquier subárbol de
+cliente, incluidas las rutas públicas. Se añadió `src/i18n/pick-messages.ts`
+(subconjunto de mensajes por namespace) y un `NextIntlClientProvider` anidado
+en el layout de cada grupo público — `(auth)/layout.tsx`,
+`inscripcion/layout.tsx`, `patrocinadores-muro/layout.tsx`,
+`auth-code-error/layout.tsx` — que solo manda los namespaces que sus
+componentes cliente usan de verdad (`Login`+`Sidebar`+`AppLayout` en `(auth)`,
+`Inscripciones`+`Equipos`+`AppLayout` en `inscripcion`, `AppLayout` en
+`patrocinadores-muro`, nada en `auth-code-error`). El grupo `(app)` sigue
+recibiendo el fichero completo sin cambios: necesita casi todos los
+namespaces, así que acotarlo ahí no habría compensado el riesgo.
+Verificado con `pnpm run build` y visitando cada ruta pública en dev sin
+`MISSING_MESSAGE`.
 
-**C2. `cmdk` en el bundle inicial.**
-`CommandPalette` ya monta su cuerpo solo al abrirse, pero
-`src/components/ui/command.tsx` se importa estáticamente desde
-`(app)/layout.tsx:5`. ~15-20 KB gz. Sería el único `next/dynamic` del repo —
-`pdf-lib`, `qrcode` y `write-excel-file` ya están bien confinados
-(`src/lib/xlsx.ts:17` usa `import()` dinámico, correctamente).
+**C2. Obsoleto — descartado tras verificarlo.** La entrada original decía que
+`cmdk` (`ui/command.tsx`) se importaba de forma estática desde
+`(app)/layout.tsx`. Ya no es así: la importación es dinámica, así que no hace
+falta ningún `next/dynamic` adicional.
 
-**C3. La ficha de equipo serializa todas las personas del club.**
-`equipos/[teamId]/page.tsx:110-113` trae `persons.findMany` sin paginar y lo
-pasa por props a `MembershipDialog` → `MembershipPersonCombobox`
-(`"use client"`), que filtra en el navegador.
-La página hermana ya abandonó ese patrón: `personas/page.tsx:52-54` documenta
-que *"el diálogo de alta ya no recibe la lista de personas del club; la busca
-al escribir"* (ver `GuardianPicker`, búsqueda por Server Action).
-`equipos/[teamId]` quedó descolgado de ese cambio.
+**C3. ✅ Corregido (2026-09-20).** La ficha de equipo serializaba todas las
+personas del club: `equipos/[teamId]/page.tsx` traía `persons.findMany` sin
+paginar y lo pasaba por props a `MembershipDialog` → `MembershipPersonCombobox`
+para filtrar en el navegador. Ahora sigue el mismo patrón que `GuardianPicker`
+(personas de la vista) y `personas/page.tsx`: `searchMembershipCandidates`
+(`src/lib/person-list.ts`) busca en servidor por nombre, excluyendo con
+`notExists` a quien ya es miembro del equipo, y `MembershipPersonCombobox`
+llama a la Server Action `findMembershipCandidates` con debounce de 250 ms en
+vez de recibir la lista completa. La página ya no consulta `persons` en
+absoluto para este flujo.
 
 > **Descartado tras verificarlo:** `findDuplicatePersonGroups`
 > (`person-matching.ts:172-203`) es O(n²), y el plan anterior proponía
@@ -155,21 +145,12 @@ Siguen con el bloque a mano: `equipos-browser.tsx:139-148`,
 `member-requests-browser.tsx`, `sponsors-browser.tsx:148-157`,
 `temporadas-browser.tsx`. La extracción se hizo; la migración se quedó a medias.
 
-**D2. `formatCents` existe y casi nadie la usa.**
-`src/lib/money.ts:22-27` es "el único sitio donde se convierte entre céntimos y
-texto" según su propio comentario. La importan 3 ficheros. Hay **15 sitios** que
-construyen `new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" })`
-a mano: `cuotas/page.tsx:75`, `cuotas/[remittanceId]/page.tsx:61`,
-`patrocinadores/page.tsx:87`, `patrocinadores/[sponsorId]/page.tsx:166`,
-`.../recibo/[paymentId]/page.tsx:50`, `personas/[personId]/rgpd/page.tsx:109`,
-`inscripcion/socio/page.tsx:34`, `pending-charge-group-card.tsx:43`,
-`remittance-charges-table.tsx:42`, `invoice-register.tsx:55`,
-`sponsors-browser.tsx:94`, `tier-breakdown-chart.tsx:23`, y otros.
+**D2. ✅ Corregido.** `formatCents` existía y casi nadie la usaba; ahora la
+importan 30 ficheros, cubriendo los sitios que antes construían
+`Intl.NumberFormat` a mano.
 
-**D3. `StatusBadge` reimplementada con el mismo nombre.**
-`medical-panel-browser.tsx:79-95` define una `StatusBadge` local con
-`if/else` sobre variantes de `Badge` — exactamente el "no" de la tabla de
-`CLAUDE.md`— mientras 14 ficheros usan la global. Colisión de nombre, además.
+**D3. ✅ Corregido.** `medical-panel-browser.tsx` reimplementaba `StatusBadge`
+localmente; ahora importa el componente global (`@/components/status-badge`).
 
 **D4. Bloque de "emails para BCC masivo" duplicado al carácter.**
 `personas-browser.tsx:210-224` y `socios-browser.tsx:138-150`: mismo `useState`,
@@ -219,11 +200,11 @@ misma lista `pdf/jpeg/png/webp`, con su pareja de tamaño máximo.
 `inscripciones/actions.ts:62-69` reimplementa lo que `src/lib/db-errors.ts` ya
 hace recorriendo la cadena entera (como sí usa `personas/actions.ts:224`).
 
-**E7. Transacciones que faltan.** `updatePerson` (`personas/actions.ts:497-552`)
-no tiene ninguna: update de `persons` + `syncClubMembership` +
-`replaceGuardians` (que es DELETE+INSERT). Un fallo en medio **deja a la persona
-sin tutores**. En `createPerson` (`:410-449`) el `tx` envuelve solo el insert.
-Mismo patrón en `updateRegistration` (`inscripciones/actions.ts:159-227`).
+**E7. ✅ Corregido en `updatePerson`; sigue abierto en `updateRegistration`.**
+`personas/actions.ts:574` ya envuelve el update de `persons` +
+`syncClubMembership` + `replaceGuardians` en un único `db.transaction`. Falta
+revisar si `updateRegistration` (`inscripciones/actions.ts:159-227`) recibió
+el mismo tratamiento — no verificado en esta pasada.
 
 **E8. Permisos cruzados desalineados.** `bulkAddToTeam`
 (`personas/actions.ts:1310`) escribe en `memberships` exigiendo solo
@@ -261,9 +242,7 @@ pasa hoy. Además `FeeTable` y `PhotoField` (`:52-224`) son autocontenidos.
 
 - **G1.** Dos carpetas hermanas para lo mismo: `src/components/temporada/`
   (3 ficheros) y `src/components/temporadas/` (1 fichero).
-- **G2.** No existe `src/app/global-error.tsx`. Como el layout raíz real es
-  `[locale]/layout.tsx` (monta `<html>`, fuentes, providers) y `error.tsx` no
-  cubre el layout que lo contiene, un fallo en ese setup no lo captura nadie.
+- **G2. ✅ Corregido.** `src/app/global-error.tsx` ya existe.
 - **G3.** 14 rutas públicas sin `loading.tsx` (`inscripcion/**`, `(auth)/login`,
   `acceso-*`, `auth-code-error`). Todas leen de funciones `"use cache"`, así que
   no es un problema de rendimiento — es que la convención de `CLAUDE.md` no dice
@@ -311,7 +290,15 @@ Para no volver a mirarlo en la próxima auditoría:
 
 ## Anotado, fuera de alcance
 
-Las dos acciones públicas sin autenticar (`inscripcion/actions.ts:81` y `:267`)
-escriben en BD y suben a Storage con la clave de servicio, sin límite de tasa ni
-de número de líneas. El registro de fallos está bien resuelto; falta la
-contención previa. Es seguridad, no calidad de código — merece su propia tarea.
+**✅ Corregido (2026-09-20).** Las dos acciones públicas sin autenticar
+(`inscripcion/actions.ts` — `submitTeamRegistration` y
+`submitMemberRegistration`) escribían en BD y subían a Storage con la clave de
+servicio, sin límite de tasa. Se añadió `checkRegistrationRateLimit()`
+(`src/lib/registration-rate-limit.ts`), que cuenta envíos por IP
+(`x-forwarded-for`) en una ventana de 10 minutos usando una tabla nueva
+(`registration_attempts`, migración `0094_mature_karnak.sql`) y corta al
+sexto intento con el mensaje `tooManyAttempts`. Sin infraestructura de
+Redis/Upstash en el proyecto y con despliegue serverless en Vercel, un
+contador en memoria no sobrevive entre invocaciones — por eso el contador vive
+en Postgres y se comprueba dentro de la propia Server Action, no en
+`src/proxy.ts` (que deliberadamente no toca base de datos).

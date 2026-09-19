@@ -9,7 +9,7 @@ import { routing } from "./routing";
  * estático: sin esto, cargarlos es un `await` sin cachear en el layout raíz y
  * con Cache Components bloquea el armazón estático de todas las rutas.
  */
-async function loadMessages(locale: string) {
+export async function loadMessages(locale: string) {
   "use cache";
   cacheLife("max");
   return (await import(`../../messages/${locale}.json`)).default;
