@@ -27,8 +27,8 @@ export default function Loading() {
           <Skeleton key={i} className={`h-4 ${width}`} />
         ))}
         <div className="ml-auto flex gap-2">
-          <Skeleton className="h-5 w-32 rounded-full" />
-          <Skeleton className="h-5 w-28 rounded-full" />
+          <Skeleton className="h-5 w-32 rounded-sm" />
+          <Skeleton className="h-5 w-28 rounded-sm" />
         </div>
       </div>
 
