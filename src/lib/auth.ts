@@ -159,3 +159,18 @@ export async function requirePermission(
   }
   return user;
 }
+
+/**
+ * Exige TODOS los permisos indicados, para operaciones que cruzan dos
+ * dominios (p. ej. `bulkAddToTeam`, que lee la selección de `personas.manage`
+ * pero escribe en el roster que `equipos.manage` protege en el resto de la app).
+ */
+export async function requireAllPermissions(
+  permissions: readonly Permission[],
+): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (!permissions.every((p) => user.permissions.has(p))) {
+    redirect({ href: "/dashboard", locale: await getLocale() });
+  }
+  return user;
+}
