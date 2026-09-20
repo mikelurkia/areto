@@ -138,7 +138,7 @@ export function ProfileHeaderSkeleton({
           <Skeleton className="size-10 shrink-0 rounded-full" />
           <div className="flex flex-col gap-2">
             <Skeleton className="h-7 w-56" />
-            <Skeleton className="h-5 w-32 rounded-full" />
+            <Skeleton className="h-5 w-32 rounded-sm" />
           </div>
         </div>
         <div className="flex gap-2">
@@ -412,7 +412,7 @@ export function CardSkeleton({
           ) : (
             <div key={i} className="flex items-center gap-3">
               <Skeleton className="h-4 flex-1" />
-              <Skeleton className="h-5 w-24 rounded-full" />
+              <Skeleton className="h-5 w-24 rounded-sm" />
             </div>
           )
         )}

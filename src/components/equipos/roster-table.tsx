@@ -33,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type RosterView = "roster" | "medico" | "tallas" | "datos";
 
@@ -146,11 +147,30 @@ export function RosterTable({
     });
   }
 
+  const showStatusRow = focoIds !== null || (bulkSelectable && selectedIds.size > 0);
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div className="flex flex-wrap items-center gap-2">{headerActions}</div>
-        <div className="flex flex-wrap items-center gap-2">
+        <Tabs
+          value={view}
+          onValueChange={(value) => setFilters({ vista: value as RosterView })}
+          aria-label={t("viewLabel")}
+        >
+          <TabsList variant="default">
+            <TabsTrigger value="roster">{t("viewRosterOption")}</TabsTrigger>
+            <TabsTrigger value="medico">{t("viewMedicoOption")}</TabsTrigger>
+            <TabsTrigger value="tallas">{t("viewTallasOption")}</TabsTrigger>
+            {canManage ? (
+              <TabsTrigger value="datos">{t("viewDatosOption")}</TabsTrigger>
+            ) : null}
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {showStatusRow ? (
+        <div className="flex flex-wrap items-center gap-4 print:hidden">
           {focoIds ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>
@@ -173,22 +193,8 @@ export function RosterTable({
               />
             </div>
           ) : null}
-          <Tabs
-            value={view}
-            onValueChange={(value) => setFilters({ vista: value as RosterView })}
-            aria-label={t("viewLabel")}
-          >
-            <TabsList variant="default">
-              <TabsTrigger value="roster">{t("viewRosterOption")}</TabsTrigger>
-              <TabsTrigger value="medico">{t("viewMedicoOption")}</TabsTrigger>
-              <TabsTrigger value="tallas">{t("viewTallasOption")}</TabsTrigger>
-              {canManage ? (
-                <TabsTrigger value="datos">{t("viewDatosOption")}</TabsTrigger>
-              ) : null}
-            </TabsList>
-          </Tabs>
         </div>
-      </div>
+      ) : null}
 
       <Table>
         <TableHeader>
@@ -216,7 +222,12 @@ export function RosterTable({
                 <TableHead priority="secondary">{t("roleLabel")}</TableHead>
                 <TableHead priority="tertiary">{t("colPositions")}</TableHead>
                 <TableHead priority="secondary" className="print:hidden">
-                  {t("federationCardLabel")}
+                  <Tooltip>
+                    <TooltipTrigger render={<span />}>
+                      {t("federationCardLabel")}
+                    </TooltipTrigger>
+                    <TooltipContent>{t("federationCardHint")}</TooltipContent>
+                  </Tooltip>
                 </TableHead>
               </>
             ) : null}

@@ -162,7 +162,7 @@ function AlertButton({
     <button
       type="button"
       onClick={onClick}
-      className="cursor-pointer rounded-4xl focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      className="cursor-pointer rounded-sm focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
     >
       {children}
     </button>
