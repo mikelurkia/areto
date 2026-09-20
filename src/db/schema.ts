@@ -1672,6 +1672,21 @@ export const registrationSubmissionErrors = pgTable("registration_submission_err
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }).enableRLS();
 
+// Rate-limit del formulario público de inscripción: sin esto, las dos Server
+// Actions de `inscripcion/actions.ts` aceptan envíos ilimitados de cualquier
+// IP (escriben en BD y suben ficheros a Storage con la service key). Una fila
+// por intento (aceptado o no); se cuenta cuántas hay por IP en la ventana
+// reciente antes de procesar el envío (ver `src/lib/registration-rate-limit.ts`).
+export const registrationAttempts = pgTable(
+  "registration_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ip: text("ip").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("registration_attempts_ip_created_idx").on(table.ip, table.createdAt)],
+).enableRLS();
+
 // ---------------------------------------------------------------------------
 // Remesas SEPA: domiciliación de cuotas de jugador y de socio. Primera
 // aproximación al apartado económico, deliberadamente sin balances ni
