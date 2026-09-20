@@ -17,6 +17,7 @@ import {
   addSponsorNote,
   deleteSponsorDocument,
   deleteSponsorNote,
+  requestSponsorDocumentUploadUrl,
   updateSponsorDocument,
 } from "@/app/[locale]/(app)/patrocinadores/actions";
 import { hasPermission, requirePermission } from "@/lib/auth";
@@ -774,6 +775,7 @@ export default async function SponsorDetailPage({
                   htmlIdPrefix="sponsor-document"
                   addAction={addSponsorDocument}
                   updateAction={updateSponsorDocument}
+                  requestUploadUrlAction={requestSponsorDocumentUploadUrl}
                 />
               ) : undefined
             }
@@ -830,6 +832,7 @@ export default async function SponsorDetailPage({
                             htmlIdPrefix="sponsor-document"
                             addAction={addSponsorDocument}
                             updateAction={updateSponsorDocument}
+                            requestUploadUrlAction={requestSponsorDocumentUploadUrl}
                             document={{ id: d.id, label: d.label, notes: d.notes }}
                             fileUrl={fileUrl}
                           />

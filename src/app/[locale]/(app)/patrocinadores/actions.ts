@@ -851,6 +851,7 @@ const sponsorDocumentActions = makeDocumentActions({
 export const addSponsorDocument = sponsorDocumentActions.add;
 export const updateSponsorDocument = sponsorDocumentActions.update;
 export const deleteSponsorDocument = sponsorDocumentActions.delete;
+export const requestSponsorDocumentUploadUrl = sponsorDocumentActions.requestUploadUrl;
 
 // ---------------------------------------------------------------------------
 // Contactos adicionales del patrocinador

@@ -314,6 +314,7 @@ const teamDocumentActions = makeDocumentActions({
 export const addTeamDocument = teamDocumentActions.add;
 export const updateTeamDocument = teamDocumentActions.update;
 export const deleteTeamDocument = teamDocumentActions.delete;
+export const requestTeamDocumentUploadUrl = teamDocumentActions.requestUploadUrl;
 
 // ---------------------------------------------------------------------------
 // Bitácora de equipo

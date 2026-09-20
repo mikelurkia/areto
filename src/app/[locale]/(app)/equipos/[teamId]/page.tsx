@@ -11,6 +11,7 @@ import {
   addTeamNote,
   deleteTeamDocument,
   deleteTeamNote,
+  requestTeamDocumentUploadUrl,
   updateTeamDocument,
 } from "@/app/[locale]/(app)/equipos/[teamId]/actions";
 import { hasPermission, requirePermission } from "@/lib/auth";
@@ -446,6 +447,7 @@ export default async function TeamDetailPage({
                 htmlIdPrefix="team-document"
                 addAction={addTeamDocument}
                 updateAction={updateTeamDocument}
+                requestUploadUrlAction={requestTeamDocumentUploadUrl}
               />
             ) : null}
           </div>
@@ -499,6 +501,7 @@ export default async function TeamDetailPage({
                             htmlIdPrefix="team-document"
                             addAction={addTeamDocument}
                             updateAction={updateTeamDocument}
+                            requestUploadUrlAction={requestTeamDocumentUploadUrl}
                             document={{ id: d.id, label: d.label, notes: d.notes }}
                             fileUrl={fileUrl}
                           />
