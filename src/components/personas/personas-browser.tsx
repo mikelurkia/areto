@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { MailIcon, MessageCircleIcon, PhoneIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  FilterIcon,
+  MailIcon,
+  MessageCircleIcon,
+  PhoneIcon,
+} from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -40,6 +46,25 @@ import { PersonDialog } from "@/components/personas/person-dialog";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -150,6 +175,7 @@ export function PersonasBrowser({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkTeam, setBulkTeam] = useState("");
   const [bulkRole, setBulkRole] = useState<"player" | "coach" | "staff">("player");
+  const [addToTeamOpen, setAddToTeamOpen] = useState(false);
   const [isBulkPending, startBulkTransition] = useTransition();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -206,6 +232,11 @@ export function PersonasBrowser({
   }
 
   const filtersActive = hasActiveFilters(filters, FILTER_DEFAULTS);
+  // Cuántos de los filtros agrupados bajo «Más filtros» están puestos, para el
+  // contador del botón: sin él, no habría forma de saber que hay uno activo
+  // sin abrir el menú.
+  const secondaryFiltersCount = [expiry, docs, tag].filter((v) => v !== "all")
+    .length;
 
   const allPageSelected =
     persons.length > 0 && persons.every((p) => selectedIds.has(p.id));
@@ -280,6 +311,7 @@ export function PersonasBrowser({
       setSelectedIds(new Set());
       setBulkTeam("");
       setBulkRole("player");
+      setAddToTeamOpen(false);
     });
   }
 
@@ -408,58 +440,59 @@ export function PersonasBrowser({
             <SelectItem value="orphanPlayer">{t("filterRoleOrphanPlayer")}</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={expiry} onValueChange={handleExpiryChange}>
-          <SelectTrigger aria-label={t("filterExpiryLabel")}>
-            <SelectValue>
-              {(value: string) => {
-                if (value === "medical") return t("filterExpiryMedical");
-                if (value === "qualification") return t("filterExpiryQualification");
-                return t("filterExpiryAll");
-              }}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filterExpiryAll")}</SelectItem>
-            <SelectItem value="medical">{t("filterExpiryMedical")}</SelectItem>
-            <SelectItem value="qualification">{t("filterExpiryQualification")}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={docs} onValueChange={handleDocsChange}>
-          <SelectTrigger aria-label={t("filterDocsLabel")}>
-            <SelectValue>
-              {(value: string) =>
-                value === "pending" ? t("filterDocsPending") : t("filterDocsAll")
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filterDocsAll")}</SelectItem>
-            <SelectItem value="pending">{t("filterDocsPending")}</SelectItem>
-          </SelectContent>
-        </Select>
-        {tagOptions.length > 0 ? (
-          <Select value={tag} onValueChange={handleTagChange}>
-            <SelectTrigger aria-label={t("filterTagLabel")}>
-              <SelectValue>
-                {(value: string) =>
-                  value === "all" ? (
-                    t("filterTagAll")
-                  ) : (
-                    <span className="capitalize">{value}</span>
-                  )
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("filterTagAll")}</SelectItem>
-              {tagOptions.map((option) => (
-                <SelectItem key={option} value={option} className="capitalize">
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : null}
+        {/* Vencimientos, documentación y etiqueta son los tres filtros que
+            menos se tocan: agrupados aquí, la barra deja de competir por
+            ancho con equipo y rol, que sí se usan a diario. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="outline" />}>
+            <FilterIcon data-icon="inline-start" />
+            {t("moreFiltersLabel")}
+            {secondaryFiltersCount > 0 ? (
+              <StatusBadge tone="highlight" label={String(secondaryFiltersCount)} />
+            ) : null}
+            <ChevronDownIcon data-icon="inline-end" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-56">
+            <DropdownMenuLabel>{t("filterExpiryLabel")}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={expiry} onValueChange={handleExpiryChange}>
+              <DropdownMenuRadioItem value="all">
+                {t("filterExpiryAll")}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="medical">
+                {t("filterExpiryMedical")}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="qualification">
+                {t("filterExpiryQualification")}
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{t("filterDocsLabel")}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={docs} onValueChange={handleDocsChange}>
+              <DropdownMenuRadioItem value="all">
+                {t("filterDocsAll")}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="pending">
+                {t("filterDocsPending")}
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            {tagOptions.length > 0 ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>{t("filterTagLabel")}</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={tag} onValueChange={handleTagChange}>
+                  <DropdownMenuRadioItem value="all">
+                    {t("filterTagAll")}
+                  </DropdownMenuRadioItem>
+                  {tagOptions.map((option) => (
+                    <DropdownMenuRadioItem key={option} value={option} className="capitalize">
+                      {option}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </FiltersBar>
 
       {canManage && selectedIds.size > 0 ? (
@@ -479,61 +512,75 @@ export function PersonasBrowser({
             <MailIcon data-icon="inline-start" />
             {t("bulkEmailAction", { count: bulkEmails.length })}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isBulkPending}
-            onClick={() => handleBulkSetMember(true)}
-          >
-            {t("bulkMarkMember")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isBulkPending}
-            onClick={() => handleBulkSetMember(false)}
-          >
-            {t("bulkMarkNonMember")}
-          </Button>
-          <Select value={bulkTeam} onValueChange={(v) => setBulkTeam(v ?? "")}>
-            <SelectTrigger className="w-48" aria-label={t("bulkAddToTeamLabel")}>
-              <SelectValue placeholder={t("bulkSelectTeamPlaceholder")}>
-                {(value: string) =>
-                  teamOptions.find((o) => o.id === value)?.label ??
-                  t("bulkSelectTeamPlaceholder")
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {teamOptions.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={bulkRole}
-            onValueChange={(v) => setBulkRole((v as typeof bulkRole) ?? "player")}
-          >
-            <SelectTrigger className="w-36" aria-label={tEquipos("roleLabel")}>
-              <SelectValue>
-                {(value: string) => tEquipos(`roleOption.${value}`)}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="player">{tEquipos("roleOption.player")}</SelectItem>
-              <SelectItem value="coach">{tEquipos("roleOption.coach")}</SelectItem>
-              <SelectItem value="staff">{tEquipos("roleOption.staff")}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            disabled={isBulkPending || !bulkTeam}
-            onClick={handleBulkAddToTeam}
-          >
-            {t("bulkAddToTeamAction")}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button variant="outline" size="sm" disabled={isBulkPending} />}
+            >
+              {t("markAsLabel")}
+              <ChevronDownIcon data-icon="inline-end" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => handleBulkSetMember(true)}>
+                {t("bulkMarkMember")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleBulkSetMember(false)}>
+                {t("bulkMarkNonMember")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {/* Equipo y rol viven dentro del diálogo: sueltos en la barra
+              ocupaban tres controles para una acción que solo hace falta de
+              vez en cuando. */}
+          <Dialog open={addToTeamOpen} onOpenChange={setAddToTeamOpen}>
+            <DialogTrigger render={<Button variant="outline" size="sm" />}>
+              {t("bulkAddToTeamLabel")}
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("bulkAddToTeamLabel")}</DialogTitle>
+              </DialogHeader>
+              <Select value={bulkTeam} onValueChange={(v) => setBulkTeam(v ?? "")}>
+                <SelectTrigger aria-label={t("bulkAddToTeamLabel")}>
+                  <SelectValue placeholder={t("bulkSelectTeamPlaceholder")}>
+                    {(value: string) =>
+                      teamOptions.find((o) => o.id === value)?.label ??
+                      t("bulkSelectTeamPlaceholder")
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {teamOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={bulkRole}
+                onValueChange={(v) => setBulkRole((v as typeof bulkRole) ?? "player")}
+              >
+                <SelectTrigger aria-label={tEquipos("roleLabel")}>
+                  <SelectValue>
+                    {(value: string) => tEquipos(`roleOption.${value}`)}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="player">{tEquipos("roleOption.player")}</SelectItem>
+                  <SelectItem value="coach">{tEquipos("roleOption.coach")}</SelectItem>
+                  <SelectItem value="staff">{tEquipos("roleOption.staff")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline" />}>
+                  {t("cancelAction")}
+                </DialogClose>
+                <Button disabled={isBulkPending || !bulkTeam} onClick={handleBulkAddToTeam}>
+                  {t("bulkAddToTeamAction")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           {mergeCandidates.length === 2 ? (
             <MergePersonsDialog
               candidates={mergeCandidates}
