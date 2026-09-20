@@ -4,6 +4,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { persons, sepaCharges, sepaMandates } from "@/db/schema";
+import { today } from "@/lib/today";
 
 export type SequenceType = "FRST" | "RCUR";
 
@@ -81,7 +82,7 @@ export async function resolveMandates(
   const missing = payerIds.filter((id) => !mandateIdByPayerId.has(id));
   if (missing.length > 0) {
     const rums = await reserveRums(missing.length);
-    const signedOn = new Date().toISOString().slice(0, 10);
+    const signedOn = today();
     const created = await db
       .insert(sepaMandates)
       .values(
@@ -145,10 +146,9 @@ export function sequenceTypeAssigner(): (mandate: ResolvedMandate) => SequenceTy
  * propia persona. Un mandato revocado nunca se reutiliza.
  */
 export async function revokeMandate(payerPersonId: string): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
   await db
     .update(sepaMandates)
-    .set({ status: "revoked", revokedOn: today })
+    .set({ status: "revoked", revokedOn: today() })
     .where(and(eq(sepaMandates.payerPersonId, payerPersonId), eq(sepaMandates.status, "active")));
   await db.update(persons).set({ sepaConsent: false }).where(eq(persons.id, payerPersonId));
 }

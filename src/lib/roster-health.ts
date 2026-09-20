@@ -1,4 +1,5 @@
 import { calculateAge } from "@/lib/age";
+import { today } from "@/lib/today";
 import {
   categoryRequiresMedicalCheckup,
   type TeamCategoryValue,
@@ -74,7 +75,7 @@ export function computeRosterHealth(
   const requiresMedicalCheckup = categoryRequiresMedicalCheckup(team.category);
   const players = memberships.filter((m) => m.role === "player");
 
-  const today = new Date().toISOString().slice(0, 10);
+  const todayStr = today();
   const soon = new Date();
   soon.setDate(soon.getDate() + EXPIRING_DAYS);
   const soonStr = soon.toISOString().slice(0, 10);
@@ -114,14 +115,14 @@ export function computeRosterHealth(
   // `categoryRequiresMedicalCheckup`), así que su caducidad no genera aviso.
   const medicalExpiredMembers = requiresMedicalCheckup
     ? memberships.filter(
-        (m) => m.person.medicalCertUntil !== null && m.person.medicalCertUntil < today,
+        (m) => m.person.medicalCertUntil !== null && m.person.medicalCertUntil < todayStr,
       )
     : [];
   const medicalExpiringMembers = requiresMedicalCheckup
     ? memberships.filter(
         (m) =>
           m.person.medicalCertUntil !== null &&
-          m.person.medicalCertUntil >= today &&
+          m.person.medicalCertUntil >= todayStr &&
           m.person.medicalCertUntil <= soonStr,
       )
     : [];

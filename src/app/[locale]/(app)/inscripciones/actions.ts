@@ -16,6 +16,7 @@ import {
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { recordAuditEvent } from "@/lib/audit-log";
+import { UNIQUE_VIOLATION, isPostgresError, postgresConstraint } from "@/lib/db-errors";
 import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { isValidIban } from "@/lib/iban";
 import { resizeImageToWebp } from "@/lib/image-resize";
@@ -26,6 +27,7 @@ import { findGuardianIdentityConflict, readGuardians } from "@/lib/registration-
 import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
 import { copyFileBetweenBuckets, downloadFile, removeFile, uploadFile } from "@/lib/supabase/storage";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
+import { today } from "@/lib/today";
 
 export type RegistrationReviewState = {
   error?: string;
@@ -61,15 +63,6 @@ async function regeneratePersonPhotoThumb(personPhotoPath: string): Promise<void
 
 /** Detecta una violación de restricción única de Postgres (código 23505),
  * opcionalmente acotada a una restricción concreta. */
-function isUniqueViolation(err: unknown, constraintName?: string): boolean {
-  const cause = err instanceof Error ? err.cause : undefined;
-  if (!cause || typeof cause !== "object" || (cause as { code?: string }).code !== "23505") {
-    return false;
-  }
-  if (!constraintName) return true;
-  return (cause as { constraint_name?: string }).constraint_name === constraintName;
-}
-
 const PERSON_UPDATE_FIELDS = [
   "firstName",
   "lastName",
@@ -531,7 +524,7 @@ export async function approveRegistration(
         // (índice único por `personId`).
         await tx
           .insert(clubMembers)
-          .values({ personId, status: "active", joinedAt: new Date().toISOString().slice(0, 10) })
+          .values({ personId, status: "active", joinedAt: today() })
           .onConflictDoUpdate({
             target: clubMembers.personId,
             set: { status: "active", cancelledAt: null },
@@ -551,10 +544,11 @@ export async function approveRegistration(
       return personId;
     });
   } catch (err) {
-    if (isUniqueViolation(err, "persons_email_idx")) {
+    const constraint = isPostgresError(err, UNIQUE_VIOLATION) ? postgresConstraint(err) : null;
+    if (constraint === "persons_email_idx") {
       return { error: t("duplicatePersonFoundEmail") };
     }
-    if (isUniqueViolation(err, "persons_national_id_idx")) {
+    if (constraint === "persons_national_id_idx") {
       return { error: t("duplicatePersonFoundNationalId") };
     }
     throw err;
