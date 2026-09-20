@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export type ChargeRow = {
   id: string;
@@ -55,7 +56,12 @@ export function RemittanceChargesTable({
         <TableRow>
           <TableHead>{t("colSubject")}</TableHead>
           <TableHead priority="secondary">{t("colPayer")}</TableHead>
-          <TableHead priority="tertiary">{t("colRum")}</TableHead>
+          <TableHead priority="tertiary">
+            <Tooltip>
+              <TooltipTrigger render={<span />}>{t("colRum")}</TooltipTrigger>
+              <TooltipContent>{t("colRumHint")}</TooltipContent>
+            </Tooltip>
+          </TableHead>
           <TableHead className="text-right">{t("colAmount")}</TableHead>
           <TableHead>{t("colStatus")}</TableHead>
           <TableHead className="text-right">{t("colActions")}</TableHead>

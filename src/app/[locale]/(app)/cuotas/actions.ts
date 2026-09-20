@@ -22,6 +22,7 @@ import { today } from "@/lib/today";
 export type CuotasState = {
   error?: string;
   message?: string;
+  remittanceId?: string;
 };
 
 /** `["2026-09", "2026-10", ...]` entre dos fechas ISO, ambas inclusive. */
@@ -416,7 +417,7 @@ export async function createRemittance(
   });
 
   revalidateRoutes(ROUTE.cuotas, ROUTE.cuotaFicha);
-  return { message: t("remittanceCreated", { messageId }) };
+  return { message: t("remittanceCreated", { messageId }), remittanceId: remittance.id };
 }
 
 /** Cambia el estado de un cargo a `collected` o `returned` (con motivo). */

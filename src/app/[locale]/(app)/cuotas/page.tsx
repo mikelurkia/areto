@@ -4,25 +4,15 @@ import { LandmarkIcon } from "lucide-react";
 import { db } from "@/db";
 import { sepaCharges } from "@/db/schema";
 import { hasPermission, requirePermission } from "@/lib/auth";
-import { Link } from "@/i18n/navigation";
 import { PageHeader, SectionHeading } from "@/components/page-header";
 import { StatTile } from "@/components/stat-tile";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { CreateRemittanceDialog } from "@/components/cuotas/create-remittance-dialog";
-import { DeleteRemittanceDialog } from "@/components/cuotas/delete-remittance-dialog";
-import { DownloadRemittanceXmlButton } from "@/components/cuotas/download-remittance-xml-button";
 import { GenerateMemberChargesButton } from "@/components/cuotas/generate-member-charges-button";
 import { GeneratePlayerChargesDialog } from "@/components/cuotas/generate-player-charges-dialog";
 import { PendingChargeGroupCard } from "@/components/cuotas/pending-charge-group-card";
+import { RemittancesTable } from "@/components/cuotas/remittances-table";
 import { formatCents } from "@/lib/money";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 export async function generateMetadata({
   params,
@@ -93,6 +83,8 @@ export default async function CuotasPage({
     string,
     {
       subject: string;
+      kind: "player" | "member";
+      teamId: string | null;
       periodKey: string;
       amountCents: number;
       rows: { id: string; personName: string; amountCents: number }[];
@@ -100,6 +92,7 @@ export default async function CuotasPage({
   >();
   for (const charge of unassignedCharges) {
     const subject = charge.kind === "player" ? (charge.membership?.team?.name ?? "—") : t("kindMember");
+    const teamId = charge.kind === "player" ? (charge.membership?.teamId ?? null) : null;
     const personName =
       charge.kind === "player"
         ? charge.membership
@@ -111,6 +104,8 @@ export default async function CuotasPage({
     const key = `${charge.kind}:${subject}:${charge.periodKey}`;
     const group = pendingGroups.get(key) ?? {
       subject,
+      kind: charge.kind,
+      teamId,
       periodKey: charge.periodKey,
       amountCents: 0,
       rows: [] as { id: string; personName: string; amountCents: number }[],
@@ -122,6 +117,13 @@ export default async function CuotasPage({
   const pendingGroupRows = [...pendingGroups.values()].sort((a, b) =>
     a.subject === b.subject ? a.periodKey.localeCompare(b.periodKey) : a.subject.localeCompare(b.subject),
   );
+  const periodOptions = pendingGroupRows.map((group) => ({
+    kind: group.kind,
+    teamId: group.teamId,
+    periodKey: group.periodKey,
+    count: group.rows.length,
+    amountCents: group.amountCents,
+  }));
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -133,7 +135,11 @@ export default async function CuotasPage({
             <>
               <GeneratePlayerChargesDialog seasonId={currentSeason.id} teamOptions={teamOptions} />
               <GenerateMemberChargesButton seasonId={currentSeason.id} />
-              <CreateRemittanceDialog seasonId={currentSeason.id} teamOptions={teamOptions} />
+              <CreateRemittanceDialog
+                seasonId={currentSeason.id}
+                teamOptions={teamOptions}
+                periodOptions={periodOptions}
+              />
             </>
           ) : undefined
         }
@@ -184,56 +190,26 @@ export default async function CuotasPage({
           description={t("emptyDescription")}
         >
           {canManage && currentSeason ? (
-            <CreateRemittanceDialog seasonId={currentSeason.id} teamOptions={teamOptions} />
+            <CreateRemittanceDialog
+              seasonId={currentSeason.id}
+              teamOptions={teamOptions}
+              periodOptions={periodOptions}
+            />
           ) : null}
         </SectionPlaceholder>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("colKind")}</TableHead>
-              <TableHead priority="secondary">{t("colMessageId")}</TableHead>
-              <TableHead priority="tertiary">{t("colCollectionDate")}</TableHead>
-              <TableHead className="text-right">{t("colChargeCount")}</TableHead>
-              <TableHead className="text-right">{t("colAmount")}</TableHead>
-              <TableHead className="text-right">{t("colActions")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {remittances.map((remittance) => {
-              const total = remittance.charges.reduce((sum, c) => sum + c.amountCents, 0);
-              const subject =
-                remittance.kind === "player"
-                  ? (remittance.team?.name ?? t("colKind"))
-                  : t("kindMember");
-              return (
-                <TableRow key={remittance.id}>
-                  <TableCell className="font-medium">
-                    <Link href={`/cuotas/${remittance.id}`} className="hover:underline">
-                      {subject}
-                    </Link>
-                  </TableCell>
-                  <TableCell priority="secondary" className="text-muted-foreground">
-                    {remittance.messageId}
-                  </TableCell>
-                  <TableCell priority="tertiary" nowrap>
-                    {remittance.collectionDate}
-                  </TableCell>
-                  <TableCell className="text-right">{remittance.charges.length}</TableCell>
-                  <TableCell nowrap className="text-right font-medium">
-                    {formatCents(total, locale)}
-                  </TableCell>
-                  <TableCell className="flex justify-end gap-2">
-                    <DownloadRemittanceXmlButton remittanceId={remittance.id} />
-                    {canManage ? (
-                      <DeleteRemittanceDialog id={remittance.id} messageId={remittance.messageId} />
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <RemittancesTable
+          remittances={remittances.map((remittance) => ({
+            id: remittance.id,
+            messageId: remittance.messageId,
+            collectionDate: remittance.collectionDate,
+            subject: remittance.kind === "player" ? (remittance.team?.name ?? "—") : t("kindMember"),
+            chargeCount: remittance.charges.length,
+            totalCents: remittance.charges.reduce((sum, c) => sum + c.amountCents, 0),
+          }))}
+          locale={locale}
+          canManage={canManage}
+        />
       )}
     </div>
   );
