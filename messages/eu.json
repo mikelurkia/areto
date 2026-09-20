@@ -1135,6 +1135,7 @@
     "seasonBadge": "{season} denboraldia",
     "formHasErrors": "Egiaztatu gorriz markatutako eremuak.",
     "submissionFailed": "Ezin izan da inskripzioa bidali konexio-arazo baten ondorioz. Saiatu berriro minutu batzuk barru.",
+    "tooManyAttempts": "Gailu honetatik bidalketa gehiegi jaso dira. Saiatu berriro minutu batzuk barru.",
     "submissionNotDelivered": "Izen-ematea ez da bidali: konexioa eten da edo argazkiek gehiegi pisatzen zuten. Bete duzuna hemen duzu oraindik; erantsi hiru argazkiak berriro eta bidali berriro.",
     "searchPlaceholder": "Bilatu izenez, NANez edo emailez...",
     "searchClear": "Ezabatu bilaketa",
@@ -1318,6 +1319,7 @@
     "removeMemberSr": "{name} taldetik kendu",
     "personLabel": "Pertsona",
     "searchPersonPlaceholder": "Bilatu pertsona...",
+    "searchPersonHint": "Idatzi gutxienez bi letra bilatzeko.",
     "noPersonResults": "Emaitzarik ez",
     "roleLabel": "Rola",
     "roleOption": {
