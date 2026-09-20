@@ -16,18 +16,17 @@ import {
 } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { recordAuditEvent } from "@/lib/audit-log";
-import { UNIQUE_VIOLATION, isPostgresError, postgresConstraint } from "@/lib/db-errors";
 import { INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { isValidIban } from "@/lib/iban";
 import { resizeImageToWebp } from "@/lib/image-resize";
 import { isValidNationalId } from "@/lib/national-id";
+import type { Permission } from "@/lib/permissions";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { resolvePayerFields } from "@/lib/payer";
 import { findGuardianIdentityConflict, readGuardians } from "@/lib/registration-guardians";
 import { SEASON_RENEWALS_TAG } from "@/lib/season-renewals";
 import { copyFileBetweenBuckets, downloadFile, removeFile, uploadFile } from "@/lib/supabase/storage";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
-import { today } from "@/lib/today";
 
 export type RegistrationReviewState = {
   error?: string;
@@ -36,6 +35,11 @@ export type RegistrationReviewState = {
 
 const MEMBERSHIP_ROLES = ["player", "coach", "staff"] as const;
 type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
+/** Las solicitudes de socio exigen además `socios.manage`, no solo `inscripciones.manage`. */
+function registrationManagePermission(kind: string): Permission | readonly Permission[] {
+  return kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage";
+}
+
 const REGISTRATION_BUCKET = "registration-documents";
 const PERSON_PHOTO_BUCKET = "person-photos";
 const PERSON_DOCUMENTS_BUCKET = "person-documents";
@@ -63,6 +67,15 @@ async function regeneratePersonPhotoThumb(personPhotoPath: string): Promise<void
 
 /** Detecta una violación de restricción única de Postgres (código 23505),
  * opcionalmente acotada a una restricción concreta. */
+function isUniqueViolation(err: unknown, constraintName?: string): boolean {
+  const cause = err instanceof Error ? err.cause : undefined;
+  if (!cause || typeof cause !== "object" || (cause as { code?: string }).code !== "23505") {
+    return false;
+  }
+  if (!constraintName) return true;
+  return (cause as { constraint_name?: string }).constraint_name === constraintName;
+}
+
 const PERSON_UPDATE_FIELDS = [
   "firstName",
   "lastName",
@@ -250,9 +263,7 @@ export async function updateRegistration(
   const id = String(formData.get("id") ?? "");
   const existing = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });
   if (!existing) return { error: t("notFound") };
-  await requirePermission(
-    existing.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
-  );
+  await requirePermission(registrationManagePermission(existing.kind));
   if (existing.status !== "pending") return { error: t("alreadyReviewed") };
 
   const kind = String(formData.get("kind") ?? "player");
@@ -288,9 +299,7 @@ export async function approveRegistration(
 
   const existing = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });
   if (!existing) return { error: t("notFound") };
-  const reviewer = await requirePermission(
-    existing.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
-  );
+  const reviewer = await requirePermission(registrationManagePermission(existing.kind));
   if (existing.status !== "pending") return { error: t("alreadyReviewed") };
 
   // "Aprobar" comparte formulario con "Guardar cambios": lee siempre lo que
@@ -524,7 +533,7 @@ export async function approveRegistration(
         // (índice único por `personId`).
         await tx
           .insert(clubMembers)
-          .values({ personId, status: "active", joinedAt: today() })
+          .values({ personId, status: "active", joinedAt: new Date().toISOString().slice(0, 10) })
           .onConflictDoUpdate({
             target: clubMembers.personId,
             set: { status: "active", cancelledAt: null },
@@ -544,11 +553,10 @@ export async function approveRegistration(
       return personId;
     });
   } catch (err) {
-    const constraint = isPostgresError(err, UNIQUE_VIOLATION) ? postgresConstraint(err) : null;
-    if (constraint === "persons_email_idx") {
+    if (isUniqueViolation(err, "persons_email_idx")) {
       return { error: t("duplicatePersonFoundEmail") };
     }
-    if (constraint === "persons_national_id_idx") {
+    if (isUniqueViolation(err, "persons_national_id_idx")) {
       return { error: t("duplicatePersonFoundNationalId") };
     }
     throw err;
@@ -624,9 +632,7 @@ export async function rejectRegistration(
   const id = String(formData.get("id") ?? "");
   const registration = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });
   if (!registration) return { error: t("notFound") };
-  const reviewer = await requirePermission(
-    registration.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
-  );
+  const reviewer = await requirePermission(registrationManagePermission(registration.kind));
   const rejectionReason = String(formData.get("rejectionReason") ?? "").trim();
   if (!rejectionReason) return { error: t("rejectionReasonRequired") };
   if (registration.status !== "pending") return { error: t("alreadyReviewed") };
@@ -670,9 +676,7 @@ export async function reopenRegistration(
   const id = String(formData.get("id") ?? "");
   const registration = await db.query.registrations.findFirst({ where: eq(registrations.id, id) });
   if (!registration) return { error: t("notFound") };
-  await requirePermission(
-    registration.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
-  );
+  await requirePermission(registrationManagePermission(registration.kind));
   if (registration.status !== "rejected") return { error: t("onlyRejectedCanReopen") };
 
   await db
@@ -711,9 +715,7 @@ export async function deleteRegistration(
     columns: { kind: true, status: true, photoPath: true, idFrontPath: true, idBackPath: true },
   });
   if (!registration) return { error: t("notFound") };
-  await requirePermission(
-    registration.kind === "member" ? ["inscripciones.manage", "socios.manage"] : "inscripciones.manage",
-  );
+  await requirePermission(registrationManagePermission(registration.kind));
   if (registration.status !== "rejected") return { error: t("onlyRejectedCanDelete") };
 
   await db.delete(registrations).where(eq(registrations.id, id));
