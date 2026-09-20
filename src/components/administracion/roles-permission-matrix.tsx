@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -175,13 +174,23 @@ export function RolesPermissionMatrix({
         ) : null}
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
+      {/*
+        Sin contenedor de scroll propio a propósito: no se usa `Table` (mete
+        `overflow-x-auto`) ni un `overflow-auto` acotado, porque cualquier
+        elemento con un eje distinto de `visible` se convierte en el "nearest
+        scrolling ancestor" de los `sticky top-*`/`left-0` de abajo y los deja
+        sin efecto frente al scroll real de la página. Aquí el único scroll es
+        el de la página: si la matriz no cabe a lo ancho, es la página la que
+        gana una barra horizontal, y a cambio la cabecera y la columna de
+        permisos sí quedan fijas de verdad al bajar.
+      */}
+      <div className="rounded-md border">
+        <table className="w-full caption-bottom text-sm">
           <TableHeader>
-            <TableRow>
+            <TableRow className="sticky top-0 z-30 bg-background">
               <TableHead
                 scope="col"
-                className="sticky left-0 z-20 min-w-56 border-r bg-background"
+                className="sticky left-0 z-40 min-w-56 border-r bg-background"
               >
                 {t("colPermissions")}
               </TableHead>
@@ -191,18 +200,19 @@ export function RolesPermissionMatrix({
                 );
                 const s = groupState(column);
                 return (
-                  <TableHead key={role.id} scope="col" className="min-w-28 text-center">
+                  <TableHead key={role.id} scope="col" className="min-w-28 max-w-40 text-center">
                     <div className="flex flex-col items-center gap-1 py-1">
                       <Tooltip>
                         <TooltipTrigger
                           render={
-                            <span className="font-medium text-foreground">
+                            <span className="block max-w-40 truncate font-medium text-foreground">
                               {role.label}
                             </span>
                           }
                         />
                         <TooltipContent>
-                          {t("roleUserCount", { count: role.userCount })}
+                          {role.label}
+                          {` · ${t("roleUserCount", { count: role.userCount })}`}
                           {role.description ? ` · ${role.description}` : ""}
                         </TooltipContent>
                       </Tooltip>
@@ -315,7 +325,7 @@ export function RolesPermissionMatrix({
               </Fragment>
             ))}
           </TableBody>
-        </Table>
+        </table>
       </div>
 
       {/*

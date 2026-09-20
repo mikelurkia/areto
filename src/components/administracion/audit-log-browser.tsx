@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
+import type { AuditAction, AuditEntityType } from "@/lib/audit-log";
 import { PaginationBar } from "@/components/pagination-bar";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import {
@@ -26,22 +27,19 @@ import { usePagedRows } from "@/hooks/use-paged-rows";
 export type AuditLogRow = {
   id: string;
   createdAt: string;
-  action: "create" | "update" | "delete" | "approve" | "reject" | "view";
-  entityType:
-    | "person_medical_checkup"
-    | "person_injury_report"
-    | "person_banking"
-    | "club_payment_method"
-    | "user"
-    | "user_role"
-    | "role_permissions"
-    | "registration";
+  action: AuditAction;
+  // Texto libre en BD (`audit_log.entity_type`, sin enum): puede traer un
+  // valor de un tipo ya retirado del código, no solo los de `AuditEntityType`.
+  entityType: string;
   entityId: string;
   actorEmail: string | null;
   actorName: string | null;
 };
 
-const ENTITY_TYPES = [
+// Debe cubrir TODO `AuditEntityType` (`@/lib/audit-log`): un tipo que falte
+// aquí no se puede filtrar y, si además falta su traducción, la fila revienta
+// al pintar `auditEntityType.<tipo>`.
+const ENTITY_TYPES: readonly AuditEntityType[] = [
   "person_medical_checkup",
   "person_injury_report",
   "person_banking",
@@ -50,7 +48,20 @@ const ENTITY_TYPES = [
   "user_role",
   "role_permissions",
   "registration",
-] as const;
+  "sepa_mandate",
+  "sepa_charge",
+  "sepa_remittance",
+  "financial_account",
+  "account_movement",
+  "movement_import_batch",
+  "supplier",
+  "received_invoice",
+  "purchase_receipt",
+  "issued_invoice",
+  "sponsor_payment",
+  "movement_link",
+  "season_budget",
+];
 
 const ACTIONS = ["create", "update", "delete", "approve", "reject", "view"] as const;
 
@@ -76,6 +87,13 @@ export function AuditLogBrowser({ rows }: { rows: AuditLogRow[] }) {
     dateStyle: "medium",
     timeStyle: "short",
   });
+
+  // Tipo ya retirado del código pero presente en filas antiguas: se enseña
+  // el valor crudo en vez de romper el render por falta de traducción.
+  const entityTypeLabel = (type: string) =>
+    t.has(`auditEntityType.${type}` as "auditEntityType.user")
+      ? t(`auditEntityType.${type}` as "auditEntityType.user")
+      : type;
 
   return (
     <>
@@ -142,7 +160,7 @@ export function AuditLogBrowser({ rows }: { rows: AuditLogRow[] }) {
                   </TableCell>
                   <TableCell>{t(`auditAction.${row.action}`)}</TableCell>
                   <TableCell priority="tertiary" className="text-muted-foreground">
-                    {t(`auditEntityType.${row.entityType}`)}
+                    {entityTypeLabel(row.entityType)}
                     <span className="ml-1 font-mono text-xs">
                       {row.entityId.slice(0, 8)}
                     </span>
