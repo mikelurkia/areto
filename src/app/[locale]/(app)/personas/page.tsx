@@ -49,6 +49,9 @@ export default async function PersonasPage({
   const canManage = hasPermission(user, "personas.manage");
   const canManageBanking = hasPermission(user, "personas.banking.manage");
   const canViewBanking = hasPermission(user, "personas.banking.view");
+  // El alta masiva en equipo escribe en el roster: exige también `equipos.manage`,
+  // igual que `addMembership` desde la ficha del equipo (ver `bulkAddToTeam`).
+  const canManageTeams = hasPermission(user, "equipos.manage");
 
   // Los filtros viven en la URL y se resuelven en SQL: de la tabla `persons`
   // solo suben las 25 filas de la página. El diálogo de alta ya no recibe la
@@ -111,6 +114,7 @@ export default async function PersonasPage({
           teamOptions={teamOptions}
           tagOptions={tagOptions}
           canManage={canManage}
+          canManageTeams={canManageTeams}
           canManageBanking={canManageBanking}
         />
       )}

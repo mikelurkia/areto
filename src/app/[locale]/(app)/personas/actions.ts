@@ -21,7 +21,7 @@ import {
   persons,
   pitchSurface,
 } from "@/db/schema";
-import { hasPermission, requirePermission } from "@/lib/auth";
+import { hasPermission, requireAllPermissions, requirePermission } from "@/lib/auth";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { nextConsentAt, stampConsent } from "@/lib/consent";
 import { DUPLICATE_PERSONS_TAG, INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
@@ -36,7 +36,6 @@ import { findCandidates } from "@/lib/person-matching";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getClubSettings } from "@/lib/club";
 import { mailtoLink } from "@/lib/contact-links";
-import { today } from "@/lib/today";
 import { DOCUMENT_UPLOAD_TYPES, IMAGE_UPLOAD_TYPES } from "@/lib/upload-constraints";
 import {
   DOCUMENT_TEMPLATES_BUCKET,
@@ -253,6 +252,10 @@ function uniqueViolationMessage(
   if (constraint === "persons_national_id_idx") return t("nationalIdTaken");
   if (constraint === "persons_email_idx") return t("emailTaken");
   return null;
+}
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 /**
@@ -1546,7 +1549,7 @@ export async function bulkAddToTeam(
   teamId: string,
   role: BulkMembershipRole,
 ): Promise<void> {
-  await requirePermission("personas.manage");
+  await requireAllPermissions(["personas.manage", "equipos.manage"]);
   if (personIds.length === 0 || !teamId) return;
   const safeRole = (BULK_MEMBERSHIP_ROLES as readonly string[]).includes(role)
     ? role

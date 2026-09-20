@@ -152,6 +152,7 @@ export function PersonasBrowser({
   teamOptions,
   tagOptions,
   canManage,
+  canManageTeams,
   canManageBanking,
 }: {
   /** Solo las filas de la página actual: el filtrado y el troceado los hace SQL. */
@@ -164,6 +165,8 @@ export function PersonasBrowser({
   teamOptions: TeamOption[];
   tagOptions: string[];
   canManage: boolean;
+  /** El alta masiva en equipo escribe en el roster: exige también `equipos.manage`. */
+  canManageTeams: boolean;
   canManageBanking: boolean;
 }) {
   const t = useTranslations("Personas");
@@ -485,57 +488,60 @@ export function PersonasBrowser({
           </DropdownMenu>
           {/* Equipo y rol viven dentro del diálogo: sueltos en la barra
               ocupaban tres controles para una acción que solo hace falta de
-              vez en cuando. */}
-          <Dialog open={addToTeamOpen} onOpenChange={setAddToTeamOpen}>
-            <DialogTrigger render={<Button variant="outline" size="sm" />}>
-              {t("bulkAddToTeamLabel")}
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t("bulkAddToTeamLabel")}</DialogTitle>
-              </DialogHeader>
-              <Select value={bulkTeam} onValueChange={(v) => setBulkTeam(v ?? "")}>
-                <SelectTrigger aria-label={t("bulkAddToTeamLabel")}>
-                  <SelectValue placeholder={t("bulkSelectTeamPlaceholder")}>
-                    {(value: string) =>
-                      teamOptions.find((o) => o.id === value)?.label ??
-                      t("bulkSelectTeamPlaceholder")
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {teamOptions.map((option) => (
-                    <SelectItem key={option.id} value={option.id}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={bulkRole}
-                onValueChange={(v) => setBulkRole((v as typeof bulkRole) ?? "player")}
-              >
-                <SelectTrigger aria-label={tEquipos("roleLabel")}>
-                  <SelectValue>
-                    {(value: string) => tEquipos(`roleOption.${value}`)}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="player">{tEquipos("roleOption.player")}</SelectItem>
-                  <SelectItem value="coach">{tEquipos("roleOption.coach")}</SelectItem>
-                  <SelectItem value="staff">{tEquipos("roleOption.staff")}</SelectItem>
-                </SelectContent>
-              </Select>
-              <DialogFooter>
-                <DialogClose render={<Button variant="outline" />}>
-                  {t("cancelAction")}
-                </DialogClose>
-                <Button disabled={isBulkPending || !bulkTeam} onClick={handleBulkAddToTeam}>
-                  {t("bulkAddToTeamAction")}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              vez en cuando. Solo si además puede gestionar equipos: la acción
+              escribe en el mismo roster que protege `equipos.manage`. */}
+          {canManageTeams ? (
+            <Dialog open={addToTeamOpen} onOpenChange={setAddToTeamOpen}>
+              <DialogTrigger render={<Button variant="outline" size="sm" />}>
+                {t("bulkAddToTeamLabel")}
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{t("bulkAddToTeamLabel")}</DialogTitle>
+                </DialogHeader>
+                <Select value={bulkTeam} onValueChange={(v) => setBulkTeam(v ?? "")}>
+                  <SelectTrigger aria-label={t("bulkAddToTeamLabel")}>
+                    <SelectValue placeholder={t("bulkSelectTeamPlaceholder")}>
+                      {(value: string) =>
+                        teamOptions.find((o) => o.id === value)?.label ??
+                        t("bulkSelectTeamPlaceholder")
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamOptions.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={bulkRole}
+                  onValueChange={(v) => setBulkRole((v as typeof bulkRole) ?? "player")}
+                >
+                  <SelectTrigger aria-label={tEquipos("roleLabel")}>
+                    <SelectValue>
+                      {(value: string) => tEquipos(`roleOption.${value}`)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="player">{tEquipos("roleOption.player")}</SelectItem>
+                    <SelectItem value="coach">{tEquipos("roleOption.coach")}</SelectItem>
+                    <SelectItem value="staff">{tEquipos("roleOption.staff")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <DialogFooter>
+                  <DialogClose render={<Button variant="outline" />}>
+                    {t("cancelAction")}
+                  </DialogClose>
+                  <Button disabled={isBulkPending || !bulkTeam} onClick={handleBulkAddToTeam}>
+                    {t("bulkAddToTeamAction")}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ) : null}
           {mergeCandidates.length === 2 ? (
             <MergePersonsDialog
               candidates={mergeCandidates}
