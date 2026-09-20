@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { MailIcon } from "lucide-react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -31,7 +31,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useActionToast } from "@/hooks/use-action-toast";
+import { useBulkEmailHref } from "@/hooks/use-bulk-email-href";
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
+import { usePageHref } from "@/hooks/use-page-href";
+import { useRowSelection } from "@/hooks/use-row-selection";
 import { ExportMenu } from "@/components/export-menu";
 
 export type SocioRow = {
@@ -85,10 +88,11 @@ export function SociosBrowser({
   );
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const { selectedIds, setSelectedIds, allPageSelected, toggleSelected, toggleSelectAll } =
+    useRowSelection(socios);
   const [isBulkPending, startBulkTransition] = useTransition();
   const searchParams = useSearchParams();
-  const pathname = usePathname();
+  const hrefForPage = usePageHref();
 
   /** Exporta todas las filas que casan con la búsqueda, no solo la página
    * actual: con la paginación en servidor el navegador ya no tiene el resto. */
@@ -114,42 +118,7 @@ export function SociosBrowser({
     });
   }
 
-  const allPageSelected =
-    socios.length > 0 && socios.every((s) => selectedIds.has(s.id));
-
-  function toggleSelected(id: string, checked: boolean) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-  }
-
-  function toggleSelectAll(checked: boolean) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      socios.forEach((s) => (checked ? next.add(s.id) : next.delete(s.id)));
-      return next;
-    });
-  }
-
-  // Emails de la selección, para el envío masivo con copia oculta (BCC). Se
-  // piden al servidor: la selección se conserva al cambiar de página, así que
-  // puede incluir socios que ya no están en `socios`.
-  const [fetchedEmails, setFetchedEmails] = useState<string[]>([]);
-  useEffect(() => {
-    if (selectedIds.size === 0) return;
-    let cancelled = false;
-    emailsForMemberSelection([...selectedIds]).then((emails) => {
-      if (!cancelled) setFetchedEmails(emails);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedIds]);
-  const bulkEmails = selectedIds.size === 0 ? [] : fetchedEmails;
-  const bulkEmailHref = `mailto:?bcc=${encodeURIComponent(bulkEmails.join(","))}`;
+  const { bulkEmails, bulkEmailHref } = useBulkEmailHref(selectedIds, emailsForMemberSelection);
 
   function handleBulkCancel() {
     const ids = [...selectedIds];
@@ -162,18 +131,6 @@ export function SociosBrowser({
 
   function goToPage(next: number) {
     setFilters({ pagina: String(Math.min(Math.max(1, next), pageCount)) });
-  }
-
-  /**
-   * URL de una página. El clic lo atiende `goToPage` (que reemplaza en el
-   * historial); esto es para que el enlace se pueda abrir en otra pestaña.
-   */
-  function hrefForPage(page: number) {
-    const params = new URLSearchParams(searchParams);
-    if (page === 1) params.delete("pagina");
-    else params.set("pagina", String(page));
-    const query = params.toString();
-    return `${pathname}${query ? `?${query}` : ""}`;
   }
 
   return (
