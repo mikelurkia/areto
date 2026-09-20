@@ -27,6 +27,7 @@ import { readAmountCents } from "@/lib/money";
 import { logoThumbPath } from "@/lib/sponsorship";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
+import { DOCUMENT_UPLOAD_TYPES, IMAGE_UPLOAD_TYPES } from "@/lib/upload-constraints";
 
 export type SponsorState = {
   error?: string;
@@ -35,11 +36,9 @@ export type SponsorState = {
 
 const LOGO_BUCKET = "sponsorship-logos";
 const MAX_LOGO_BYTES = 5 * 1024 * 1024; // 5MB
-const ALLOWED_LOGO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 const CONTRACT_BUCKET = "sponsorship-contracts";
 const MAX_CONTRACT_BYTES = 10 * 1024 * 1024; // 10MB
-const ALLOWED_CONTRACT_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
 // El logo se ve casi siempre como avatar pequeño (listados, muro público,
 // vista previa al editar); solo la ficha del patrocinador enlaza al original
@@ -120,7 +119,7 @@ export async function createSponsor(
   const fields = readSponsorFields(formData);
   const logo = readLogo(formData);
   if (!fields.name) return { error: t("sponsorNameRequired") };
-  if (logo && !ALLOWED_LOGO_TYPES.includes(logo.type)) {
+  if (logo && !IMAGE_UPLOAD_TYPES.includes(logo.type)) {
     return { error: t("logoInvalidType") };
   }
   if (logo && logo.size > MAX_LOGO_BYTES) {
@@ -167,7 +166,7 @@ export async function updateSponsor(
   const fields = readSponsorFields(formData);
   const logo = readLogo(formData);
   if (!fields.name) return { error: t("sponsorNameRequired") };
-  if (logo && !ALLOWED_LOGO_TYPES.includes(logo.type)) {
+  if (logo && !IMAGE_UPLOAD_TYPES.includes(logo.type)) {
     return { error: t("logoInvalidType") };
   }
   if (logo && logo.size > MAX_LOGO_BYTES) {
@@ -335,7 +334,7 @@ export async function addSponsorshipTerm(
   if (fields.startsOn && fields.endsOn && fields.startsOn > fields.endsOn) {
     return { error: t("dateRangeInvalid") };
   }
-  if (contract && !ALLOWED_CONTRACT_TYPES.includes(contract.type)) {
+  if (contract && !DOCUMENT_UPLOAD_TYPES.includes(contract.type)) {
     return { error: t("contractInvalidType") };
   }
   if (contract && contract.size > MAX_CONTRACT_BYTES) {
@@ -386,7 +385,7 @@ export async function updateSponsorshipTerm(
   if (fields.startsOn && fields.endsOn && fields.startsOn > fields.endsOn) {
     return { error: t("dateRangeInvalid") };
   }
-  if (contract && !ALLOWED_CONTRACT_TYPES.includes(contract.type)) {
+  if (contract && !DOCUMENT_UPLOAD_TYPES.includes(contract.type)) {
     return { error: t("contractInvalidType") };
   }
   if (contract && contract.size > MAX_CONTRACT_BYTES) {
