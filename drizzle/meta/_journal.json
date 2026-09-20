@@ -659,6 +659,13 @@
       "when": 1789729600045,
       "tag": "0093_illegal_screwball",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1789854907037,
+      "tag": "0094_mature_karnak",
+      "breakpoints": true
     }
   ]
 }

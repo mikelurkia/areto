@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
+import { findMembershipCandidates } from "@/app/[locale]/(app)/equipos/[teamId]/actions";
 import {
   Combobox,
   ComboboxContent,
@@ -16,26 +17,41 @@ type PersonOption = { id: string; firstName: string; lastName: string };
 
 const labelOf = (p: PersonOption) => `${p.firstName} ${p.lastName}`.trim();
 
+/** Margen entre la última tecla y la consulta al servidor. */
+const SEARCH_DELAY_MS = 250;
+
+/** Longitud mínima, la misma que exige la acción de servidor. */
+const MIN_QUERY = 2;
+
 /**
- * Selector de persona con búsqueda por texto para el alta de membresías: la
- * lista de personas del club es larga y un `Select` obliga a recorrerla entera.
+ * Selector de persona con búsqueda al escribir para el alta de membresías:
+ * antes recibía la lista completa de personas del club por props, que era la
+ * razón por la que la ficha de equipo cargaba la tabla `persons` entera (ver
+ * `equipos/[teamId]/page.tsx`). Mismo patrón que `GuardianPicker`.
  * El valor viaja al server action en un input oculto (`personId`).
  */
-export function MembershipPersonCombobox({
-  id,
-  persons,
-}: {
-  id: string;
-  persons: PersonOption[];
-}) {
+export function MembershipPersonCombobox({ id, teamId }: { id: string; teamId: string }) {
   const t = useTranslations("Equipos");
   const [value, setValue] = useState<PersonOption | null>(null);
   const [inputValue, setInputValue] = useState("");
+  const [results, setResults] = useState<PersonOption[]>([]);
 
-  const items = useMemo(
-    () => [...persons].sort((a, b) => labelOf(a).localeCompare(labelOf(b))),
-    [persons],
-  );
+  const term = inputValue.trim();
+  const enoughToSearch = term.length >= MIN_QUERY;
+  useEffect(() => {
+    if (!enoughToSearch) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const found = await findMembershipCandidates(teamId, term);
+      if (!cancelled) setResults(found);
+    }, SEARCH_DELAY_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [term, enoughToSearch, teamId]);
+
+  const items = enoughToSearch ? results : [];
 
   return (
     <>
@@ -56,7 +72,9 @@ export function MembershipPersonCombobox({
           showClear
         />
         <ComboboxContent>
-          <ComboboxEmpty>{t("noPersonResults")}</ComboboxEmpty>
+          <ComboboxEmpty>
+            {enoughToSearch ? t("noPersonResults") : t("searchPersonHint")}
+          </ComboboxEmpty>
           <ComboboxList>
             {(person: PersonOption) => (
               <ComboboxItem key={person.id} value={person}>

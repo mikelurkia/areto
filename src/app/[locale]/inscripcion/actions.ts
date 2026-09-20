@@ -20,6 +20,7 @@ import {
 import { findGuardianIdentityConflict, readGuardians } from "@/lib/registration-guardians";
 import { resizeImageToWebp } from "@/lib/image-resize";
 import { personPhotoThumbPath } from "@/lib/person-photo";
+import { checkRegistrationRateLimit } from "@/lib/registration-rate-limit";
 import { getRegistrationAvailability } from "@/lib/registration-settings";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { extensionFromMimeType, uploadFileAsAdmin } from "@/lib/supabase/storage";
@@ -83,6 +84,9 @@ export async function submitTeamRegistration(
   formData: FormData,
 ): Promise<RegistrationState> {
   const t = await getTranslations("Inscripciones");
+
+  const { blocked } = await checkRegistrationRateLimit();
+  if (blocked) return { error: t("tooManyAttempts") };
 
   // El mismo lector que usa el cliente para rehacer este eco cuando la
   // petición ni siquiera llega aquí (ver `jugador-form.tsx`).
@@ -281,6 +285,9 @@ export async function submitMemberRegistration(
   formData: FormData,
 ): Promise<RegistrationState> {
   const t = await getTranslations("Inscripciones");
+
+  const { blocked } = await checkRegistrationRateLimit();
+  if (blocked) return { error: t("tooManyAttempts") };
 
   const fields = readCommonFields(formData);
   const sepaConsent = formData.get("sepaConsent") === "on";
