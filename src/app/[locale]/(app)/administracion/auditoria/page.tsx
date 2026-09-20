@@ -42,7 +42,7 @@ export default async function AuditoriaPage({
     id: e.id,
     createdAt: e.createdAt.toISOString(),
     action: e.action,
-    entityType: e.entityType as AuditLogRow["entityType"],
+    entityType: e.entityType,
     entityId: e.entityId,
     actorEmail: e.actor?.email ?? null,
     actorName: e.actor?.fullName ?? null,

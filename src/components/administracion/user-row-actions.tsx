@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   BanIcon,
   CircleCheckIcon,
@@ -43,6 +44,31 @@ import {
 import { useActionToast } from "@/hooks/use-action-toast";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useDialogParam } from "@/hooks/use-dialog-param";
+
+/**
+ * Ítem de menú que envía el `<form>` que lo contiene y se deshabilita
+ * mientras la Server Action está en curso, igual que `SubmitButton`. Hace
+ * falta esta variante porque el ítem no es un `<button>` normal sino un
+ * `DropdownMenuItem` con `render`.
+ */
+function SubmitMenuItem({
+  disabled,
+  children,
+}: {
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <DropdownMenuItem
+      nativeButton
+      render={<button type="submit" className="w-full" />}
+      disabled={disabled || pending}
+    >
+      {children}
+    </DropdownMenuItem>
+  );
+}
 
 /**
  * Menú de acciones de una fila de usuario.
@@ -96,26 +122,18 @@ export function UserRowActions({
           {user.pendingInvitation ? (
             <form action={resendAction}>
               <input type="hidden" name="id" value={user.id} />
-              <DropdownMenuItem
-                nativeButton
-                render={<button type="submit" className="w-full" />}
-                disabled={!adminApiAvailable}
-              >
+              <SubmitMenuItem disabled={!adminApiAvailable}>
                 <MailIcon />
                 {t("resendInvitation")}
-              </DropdownMenuItem>
+              </SubmitMenuItem>
             </form>
           ) : (
             <form action={resetAction}>
               <input type="hidden" name="id" value={user.id} />
-              <DropdownMenuItem
-                nativeButton
-                render={<button type="submit" className="w-full" />}
-                disabled={!adminApiAvailable}
-              >
+              <SubmitMenuItem disabled={!adminApiAvailable}>
                 <KeyRoundIcon />
                 {t("sendPasswordReset")}
-              </DropdownMenuItem>
+              </SubmitMenuItem>
             </form>
           )}
 
