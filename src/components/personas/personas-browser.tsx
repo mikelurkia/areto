@@ -411,8 +411,8 @@ export function PersonasBrowser({
             <ChevronDownIcon data-icon="inline-end" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="min-w-56">
-            <DropdownMenuLabel>{t("filterExpiryLabel")}</DropdownMenuLabel>
             <DropdownMenuRadioGroup value={expiry} onValueChange={handleExpiryChange}>
+              <DropdownMenuLabel>{t("filterExpiryLabel")}</DropdownMenuLabel>
               <DropdownMenuRadioItem value="all">
                 {t("filterExpiryAll")}
               </DropdownMenuRadioItem>
@@ -424,8 +424,8 @@ export function PersonasBrowser({
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>{t("filterDocsLabel")}</DropdownMenuLabel>
             <DropdownMenuRadioGroup value={docs} onValueChange={handleDocsChange}>
+              <DropdownMenuLabel>{t("filterDocsLabel")}</DropdownMenuLabel>
               <DropdownMenuRadioItem value="all">
                 {t("filterDocsAll")}
               </DropdownMenuRadioItem>
@@ -436,8 +436,8 @@ export function PersonasBrowser({
             {tagOptions.length > 0 ? (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel>{t("filterTagLabel")}</DropdownMenuLabel>
                 <DropdownMenuRadioGroup value={tag} onValueChange={handleTagChange}>
+                  <DropdownMenuLabel>{t("filterTagLabel")}</DropdownMenuLabel>
                   <DropdownMenuRadioItem value="all">
                     {t("filterTagAll")}
                   </DropdownMenuRadioItem>
