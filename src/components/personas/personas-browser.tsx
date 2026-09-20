@@ -8,7 +8,7 @@ import {
   MessageCircleIcon,
   PhoneIcon,
 } from "lucide-react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -22,11 +22,14 @@ import {
 } from "@/app/[locale]/(app)/personas/list-actions";
 import type { TeamCategoryValue } from "@/components/equipos/team-categories";
 import { calculateAge, isMinor } from "@/lib/age";
+import { useBulkEmailHref } from "@/hooks/use-bulk-email-href";
 import {
   hasActiveFilters,
   useFilterParams,
   useSearchText,
 } from "@/hooks/use-filter-params";
+import { usePageHref } from "@/hooks/use-page-href";
+import { useRowSelection } from "@/hooks/use-row-selection";
 import { whatsappLink } from "@/lib/contact-links";
 import { ALERT_ICON, ALERT_TONE, personAlerts } from "@/lib/person-status";
 import { TONE_ICON } from "@/lib/status-tone";
@@ -172,13 +175,14 @@ export function PersonasBrowser({
   const [query, setQuery] = useSearchText(filters.q, (value) =>
     setFilters({ q: value }),
   );
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const { selectedIds, setSelectedIds, allPageSelected, toggleSelected, toggleSelectAll } =
+    useRowSelection(persons);
   const [bulkTeam, setBulkTeam] = useState("");
   const [bulkRole, setBulkRole] = useState<"player" | "coach" | "staff">("player");
   const [addToTeamOpen, setAddToTeamOpen] = useState(false);
   const [isBulkPending, startBulkTransition] = useTransition();
   const searchParams = useSearchParams();
-  const pathname = usePathname();
+  const hrefForPage = usePageHref();
 
   // Al abrir la pantalla el gesto habitual es buscar, así que el cursor ya
   // está en el filtro. `preventScroll` evita el salto de página en móvil.
@@ -238,26 +242,7 @@ export function PersonasBrowser({
   const secondaryFiltersCount = [expiry, docs, tag].filter((v) => v !== "all")
     .length;
 
-  const allPageSelected =
-    persons.length > 0 && persons.every((p) => selectedIds.has(p.id));
-
-  // Emails de la selección, para el envío masivo con copia oculta (BCC). Se
-  // piden al servidor: la selección se conserva al cambiar de página, así que
-  // puede incluir personas que ya no están en `persons`.
-  const [fetchedEmails, setFetchedEmails] = useState<string[]>([]);
-  useEffect(() => {
-    if (selectedIds.size === 0) return;
-    let cancelled = false;
-    emailsForSelection([...selectedIds]).then((emails) => {
-      if (!cancelled) setFetchedEmails(emails);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedIds]);
-  // Sin selección la lista se vacía por derivación, no con un `setState` en el
-  // cuerpo del efecto (renders en cascada, y lo prohíbe el lint).
-  const bulkEmails = selectedIds.size === 0 ? [] : fetchedEmails;
+  const { bulkEmails, bulkEmailHref } = useBulkEmailHref(selectedIds, emailsForSelection);
 
   // Las dos fichas a fusionar. La selección sobrevive al cambio de página, así
   // que puede haber una marcada que ya no está entre las filas cargadas: el
@@ -274,24 +259,6 @@ export function PersonasBrowser({
             },
         )
       : [];
-  const bulkEmailHref = `mailto:?bcc=${encodeURIComponent(bulkEmails.join(","))}`;
-
-  function toggleSelected(id: string, checked: boolean) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-  }
-
-  function toggleSelectAll(checked: boolean) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      persons.forEach((p) => (checked ? next.add(p.id) : next.delete(p.id)));
-      return next;
-    });
-  }
 
   function handleBulkSetMember(isMember: boolean) {
     const ids = [...selectedIds];
@@ -344,18 +311,6 @@ export function PersonasBrowser({
 
   function goToPage(next: number) {
     setFilters({ pagina: String(Math.min(Math.max(1, next), pageCount)) });
-  }
-
-  /**
-   * URL de una página. El clic lo atiende `goToPage` (que reemplaza en el
-   * historial); esto es para que el enlace se pueda abrir en otra pestaña.
-   */
-  function hrefForPage(page: number) {
-    const params = new URLSearchParams(searchParams);
-    if (page === 1) params.delete("pagina");
-    else params.set("pagina", String(page));
-    const query = params.toString();
-    return `${pathname}${query ? `?${query}` : ""}`;
   }
 
   return (
