@@ -48,6 +48,18 @@ function readDocumentFields(formData: FormData) {
   };
 }
 
+/**
+ * `add`/`update` reciben la ruta ya subida como texto de formulario: hay que
+ * comprobar que de verdad tiene la forma que genera `requestUploadUrl`
+ * (`<parentId>/<uuid>.<ext>`) antes de guardarla, para que un cliente no
+ * pueda apuntar el registro a un objeto de Storage de otro padre.
+ */
+const DOCUMENT_PATH_RE =
+  /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-zA-Z0-9]+$/;
+
+function isValidDocumentPath(filePath: string, parentId: string): boolean {
+  return filePath.startsWith(`${parentId}/`) && DOCUMENT_PATH_RE.test(filePath);
+}
 
 /**
  * Documento genérico (person_documents/team_documents/sponsor_documents...):
@@ -108,6 +120,7 @@ export function makeDocumentActions(config: {
       parentId = existing.parentId as unknown as string;
     } else {
       parentId = String(formData.get(formKey) ?? "");
+      if (!parentId) return { error: t("documentNotFound") };
     }
 
     const documentId = crypto.randomUUID();
@@ -131,6 +144,7 @@ export function makeDocumentActions(config: {
     const fileName = String(formData.get("fileName") ?? "");
     if (!fields.label) return { error: t("documentLabelRequired") };
     if (!filePath) return { error: t("documentFileRequired") };
+    if (!isValidDocumentPath(filePath, parentId)) return { error: t("documentUploadFailed") };
 
     await db.insert(table).values({
       [parentIdColumn]: parentId,
@@ -159,11 +173,17 @@ export function makeDocumentActions(config: {
     if (!fields.label) return { error: t("documentLabelRequired") };
 
     const existing = await db
-      .select({ filePath: table.filePath })
+      .select({
+        filePath: table.filePath,
+        parentId: table[parentIdColumn as keyof DocumentsTable] as AnyPgColumn,
+      })
       .from(table)
       .where(eq(table.id, id))
       .then((rows) => rows[0]);
     if (!existing) return { error: t("documentNotFound") };
+    if (filePath && !isValidDocumentPath(filePath, existing.parentId as unknown as string)) {
+      return { error: t("documentUploadFailed") };
+    }
 
     await db
       .update(table)
