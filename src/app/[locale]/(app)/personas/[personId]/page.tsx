@@ -382,7 +382,7 @@ export default async function PersonDetailPage({
 
   const memberTeamIds = new Set(person.memberships.map((m) => m.teamId));
   const availableTeamOptions = allTeams
-    .filter((team) => !memberTeamIds.has(team.id))
+    .filter((team) => team.season.isCurrent && !memberTeamIds.has(team.id))
     .map((team) => ({
       id: team.id,
       label: teamSeasonLabel(team, team.season),
