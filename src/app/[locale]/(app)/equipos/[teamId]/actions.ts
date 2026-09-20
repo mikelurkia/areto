@@ -15,6 +15,7 @@ import { makeNoteActions } from "@/lib/entity-notes";
 import { type MembershipCandidate, searchMembershipCandidates } from "@/lib/person-list";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
+import { DOCUMENT_UPLOAD_TYPES } from "@/lib/upload-constraints";
 
 export type MembershipState = {
   error?: string;
@@ -254,12 +255,6 @@ export async function removeMemberships(
 
 const FEDERATION_CARD_BUCKET = "membership-documents";
 const MAX_FEDERATION_CARD_BYTES = 10 * 1024 * 1024; // 10MB
-const ALLOWED_FEDERATION_CARD_TYPES = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-];
 
 /** Sube o quita la ficha federativa de una membresía (persona↔equipo, y por
  * tanto persona↔temporada). Un único archivo por membresía: subir uno nuevo
@@ -275,7 +270,7 @@ export async function updateMembershipFederationCard(
   const fileField = formData.get("file");
   const file = fileField instanceof File && fileField.size > 0 ? fileField : null;
   const shouldRemove = formData.get("removeFile") === "on";
-  if (file && !ALLOWED_FEDERATION_CARD_TYPES.includes(file.type)) {
+  if (file && !DOCUMENT_UPLOAD_TYPES.includes(file.type)) {
     return { error: t("documentFileInvalidType") };
   }
   if (file && file.size > MAX_FEDERATION_CARD_BYTES) {

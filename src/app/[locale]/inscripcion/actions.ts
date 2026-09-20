@@ -24,10 +24,10 @@ import { checkRegistrationRateLimit } from "@/lib/registration-rate-limit";
 import { getRegistrationAvailability } from "@/lib/registration-settings";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { extensionFromMimeType, uploadFileAsAdmin } from "@/lib/supabase/storage";
+import { IMAGE_UPLOAD_TYPES } from "@/lib/upload-constraints";
 
 const PHOTO_BUCKET = "registration-documents";
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
-const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 // Solo para la foto del jugador (no el DNI): miniatura para la comparación en
 // la revisión de la inscripción. El original se conserva tal cual, porque si
@@ -137,7 +137,7 @@ export async function submitTeamRegistration(
     ["idFront", idFront],
     ["idBack", idBack],
   ] as const) {
-    if (file && (!ALLOWED_PHOTO_TYPES.includes(file.type) || file.size > MAX_PHOTO_BYTES)) {
+    if (file && (!IMAGE_UPLOAD_TYPES.includes(file.type) || file.size > MAX_PHOTO_BYTES)) {
       errors[key] = t("photoInvalid");
     }
   }

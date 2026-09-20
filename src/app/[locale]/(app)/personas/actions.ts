@@ -36,6 +36,7 @@ import { findCandidates } from "@/lib/person-matching";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getClubSettings } from "@/lib/club";
 import { mailtoLink } from "@/lib/contact-links";
+import { DOCUMENT_UPLOAD_TYPES, IMAGE_UPLOAD_TYPES } from "@/lib/upload-constraints";
 import {
   DOCUMENT_TEMPLATES_BUCKET,
   INJURY_REPORT_TEMPLATE_PATH,
@@ -86,7 +87,6 @@ export type PersonState = {
 
 const PHOTO_BUCKET = "person-photos";
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
-const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 // La foto se ve casi siempre como avatar pequeño (plantilla, panel de
 // familia, carné, listados); solo la ficha de la persona enlaza al original a
@@ -113,12 +113,6 @@ async function removePersonPhotoObject(path: string) {
 
 const QUALIFICATIONS_BUCKET = "person-qualifications";
 const MAX_QUALIFICATION_FILE_BYTES = 10 * 1024 * 1024; // 10MB
-const ALLOWED_QUALIFICATION_FILE_TYPES = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-];
 
 async function uploadQualificationFile(
   personId: string,
@@ -144,12 +138,6 @@ const SEND_INJURY_REPORT_LINK_EXPIRY_SECONDS = 60 * 60 * 48;
  * destinatario elegido es un tutor/a y no la propia persona. */
 const RECIPIENT_GUARDIAN_PREFIX = "guardian:";
 const MAX_MEDICAL_FILE_BYTES = 10 * 1024 * 1024; // 10MB
-const ALLOWED_MEDICAL_FILE_TYPES = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-];
 
 async function uploadMedicalCheckupFile(
   personId: string,
@@ -388,7 +376,7 @@ export async function createPerson(
   if (canManageBanking && fields.iban && !isValidIban(fields.iban)) {
     return { error: t("ibanInvalid") };
   }
-  if (photo && !ALLOWED_PHOTO_TYPES.includes(photo.type)) {
+  if (photo && !IMAGE_UPLOAD_TYPES.includes(photo.type)) {
     return { error: t("photoInvalidType") };
   }
   if (photo && photo.size > MAX_PHOTO_BYTES) {
@@ -536,7 +524,7 @@ export async function updatePerson(
   if (canManageBanking && fields.iban && !isValidIban(fields.iban)) {
     return { error: t("ibanInvalid") };
   }
-  if (photo && !ALLOWED_PHOTO_TYPES.includes(photo.type)) {
+  if (photo && !IMAGE_UPLOAD_TYPES.includes(photo.type)) {
     return { error: t("photoInvalidType") };
   }
   if (photo && photo.size > MAX_PHOTO_BYTES) {
@@ -656,7 +644,7 @@ export async function updatePersonPhoto(
   const id = String(formData.get("id") ?? "");
   const photo = readPhoto(formData);
   const removePhoto = formData.get("removePhoto") === "on";
-  if (photo && !ALLOWED_PHOTO_TYPES.includes(photo.type)) {
+  if (photo && !IMAGE_UPLOAD_TYPES.includes(photo.type)) {
     return { error: t("photoInvalidType") };
   }
   if (photo && photo.size > MAX_PHOTO_BYTES) {
@@ -683,7 +671,6 @@ export async function updatePersonPhoto(
 
 const ID_SCAN_BUCKET = "person-documents";
 const MAX_ID_SCAN_BYTES = 10 * 1024 * 1024; // 10MB
-const ALLOWED_ID_SCAN_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
 /** Sube o quita el escaneo del DNI/NIE (frontal o trasera) de una persona,
  * sin pasar por una inscripción. Misma ruta de Storage que la copia al
@@ -701,7 +688,7 @@ export async function updatePersonIdScan(
   const fileField = formData.get("file");
   const file = fileField instanceof File && fileField.size > 0 ? fileField : null;
   const shouldRemove = formData.get("removeFile") === "on";
-  if (file && !ALLOWED_ID_SCAN_TYPES.includes(file.type)) {
+  if (file && !DOCUMENT_UPLOAD_TYPES.includes(file.type)) {
     return { error: t("documentFileInvalidType") };
   }
   if (file && file.size > MAX_ID_SCAN_BYTES) {
@@ -810,7 +797,7 @@ export async function addQualification(
   const fields = readQualificationFields(formData);
   const file = readQualificationFile(formData);
   if (!fields.title) return { error: t("qualificationTitleRequired") };
-  if (file && !ALLOWED_QUALIFICATION_FILE_TYPES.includes(file.type)) {
+  if (file && !DOCUMENT_UPLOAD_TYPES.includes(file.type)) {
     return { error: t("qualificationFileInvalidType") };
   }
   if (file && file.size > MAX_QUALIFICATION_FILE_BYTES) {
@@ -852,7 +839,7 @@ export async function updateQualification(
   const fields = readQualificationFields(formData);
   const file = readQualificationFile(formData);
   if (!fields.title) return { error: t("qualificationTitleRequired") };
-  if (file && !ALLOWED_QUALIFICATION_FILE_TYPES.includes(file.type)) {
+  if (file && !DOCUMENT_UPLOAD_TYPES.includes(file.type)) {
     return { error: t("qualificationFileInvalidType") };
   }
   if (file && file.size > MAX_QUALIFICATION_FILE_BYTES) {
@@ -943,7 +930,7 @@ export async function addMedicalCheckup(
   const fields = readMedicalCheckupFields(formData);
   const file = readMedicalFile(formData);
   if (!fields.occurredOn) return { error: t("medicalCheckupOccurredOnRequired") };
-  if (file && !ALLOWED_MEDICAL_FILE_TYPES.includes(file.type)) {
+  if (file && !DOCUMENT_UPLOAD_TYPES.includes(file.type)) {
     return { error: t("medicalCheckupFileInvalidType") };
   }
   if (file && file.size > MAX_MEDICAL_FILE_BYTES) {
@@ -993,7 +980,7 @@ export async function updateMedicalCheckup(
   const fields = readMedicalCheckupFields(formData);
   const file = readMedicalFile(formData);
   if (!fields.occurredOn) return { error: t("medicalCheckupOccurredOnRequired") };
-  if (file && !ALLOWED_MEDICAL_FILE_TYPES.includes(file.type)) {
+  if (file && !DOCUMENT_UPLOAD_TYPES.includes(file.type)) {
     return { error: t("medicalCheckupFileInvalidType") };
   }
   if (file && file.size > MAX_MEDICAL_FILE_BYTES) {
@@ -1316,7 +1303,7 @@ export async function uploadInjuryReportCustomFile(
   const id = String(formData.get("id") ?? "");
   const file = readMedicalFile(formData);
   if (!file) return { error: t("injuryReportFileRequired") };
-  if (!ALLOWED_MEDICAL_FILE_TYPES.includes(file.type)) {
+  if (!DOCUMENT_UPLOAD_TYPES.includes(file.type)) {
     return { error: t("injuryReportFileInvalidType") };
   }
   if (file.size > MAX_MEDICAL_FILE_BYTES) {
@@ -1485,11 +1472,13 @@ export async function assignNextMemberNumber(
     return { message: t("memberNumberAssigned", { number: existing.memberNumber }) };
   }
 
+  const [row] = await db
+    .select({ max: sql<number>`coalesce(max(${clubMembers.memberNumber}), 0)` })
+    .from(clubMembers);
+  const base = (row?.max ?? 0) + 1;
+
   for (let attempt = 0; attempt < 5; attempt++) {
-    const [row] = await db
-      .select({ max: sql<number>`coalesce(max(${clubMembers.memberNumber}), 0)` })
-      .from(clubMembers);
-    const next = (row?.max ?? 0) + 1 + attempt;
+    const next = base + attempt;
     try {
       await db.update(clubMembers).set({ memberNumber: next }).where(eq(clubMembers.id, existing.id));
       revalidateRoutes(ROUTE.personas, ROUTE.personaFicha, ROUTE.socios);

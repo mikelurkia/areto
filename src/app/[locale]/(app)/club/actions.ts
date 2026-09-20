@@ -21,6 +21,7 @@ import { readAmountCents } from "@/lib/money";
 import { REGISTRATION_AVAILABILITY_TAG } from "@/lib/registration-settings";
 import { removeFile, uploadFile } from "@/lib/supabase/storage";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
+import { IMAGE_UPLOAD_TYPES } from "@/lib/upload-constraints";
 
 export type ClubState = {
   error?: string;
@@ -190,7 +191,6 @@ export async function uploadInjuryReportTemplate(
 }
 
 const MAX_BRANDING_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
-const ALLOWED_BRANDING_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /**
  * Sube (o borra) uno de los tres gráficos del club en una ruta fija del
@@ -205,7 +205,7 @@ async function uploadClubBrandingImage(
 ): Promise<{ error?: string; changed: boolean }> {
   const file = formData.get(fieldName);
   if (file instanceof File && file.size > 0) {
-    if (!ALLOWED_BRANDING_IMAGE_TYPES.includes(file.type)) {
+    if (!IMAGE_UPLOAD_TYPES.includes(file.type)) {
       return { error: "invalidType", changed: false };
     }
     if (file.size > MAX_BRANDING_IMAGE_BYTES) {
