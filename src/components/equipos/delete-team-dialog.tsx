@@ -19,6 +19,7 @@ export function DeleteTeamDialog({
       entityKey="Team"
       paramKey="borrar-equipo"
       values={{ name, rosterCount: String(rosterCount) }}
+      confirmValue={rosterCount > 0 ? name : undefined}
       deleteAction={deleteTeam}
     />
   );
