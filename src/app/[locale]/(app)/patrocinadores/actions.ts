@@ -27,6 +27,7 @@ import { readAmountCents } from "@/lib/money";
 import { logoThumbPath } from "@/lib/sponsorship";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
+import { today } from "@/lib/today";
 import { DOCUMENT_UPLOAD_TYPES, IMAGE_UPLOAD_TYPES } from "@/lib/upload-constraints";
 
 export type SponsorState = {
@@ -660,10 +661,9 @@ export async function markSponsorPaymentPaid(
   await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
-  const today = new Date().toISOString().slice(0, 10);
   await db
     .update(sponsorPayments)
-    .set({ status: "paid", paidOn: today })
+    .set({ status: "paid", paidOn: today() })
     .where(eq(sponsorPayments.id, id));
 
   revalidateRoutes(

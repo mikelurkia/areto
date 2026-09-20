@@ -36,6 +36,7 @@ import { findCandidates } from "@/lib/person-matching";
 import { personPhotoThumbPath } from "@/lib/person-photo";
 import { getClubSettings } from "@/lib/club";
 import { mailtoLink } from "@/lib/contact-links";
+import { today } from "@/lib/today";
 import { DOCUMENT_UPLOAD_TYPES, IMAGE_UPLOAD_TYPES } from "@/lib/upload-constraints";
 import {
   DOCUMENT_TEMPLATES_BUCKET,
@@ -252,10 +253,6 @@ function uniqueViolationMessage(
   if (constraint === "persons_national_id_idx") return t("nationalIdTaken");
   if (constraint === "persons_email_idx") return t("emailTaken");
   return null;
-}
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 /**

@@ -17,6 +17,7 @@ import { requirePermission } from "@/lib/auth";
 import { buildPain008, type SepaChargeForXml } from "@/lib/sepa-xml";
 import { resolveMandates, sequenceTypeAssigner } from "@/lib/sepa";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
+import { today } from "@/lib/today";
 
 export type CuotasState = {
   error?: string;
@@ -429,7 +430,7 @@ export async function updateChargeStatus(
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "") as "collected" | "returned";
   const returnReason = String(formData.get("returnReason") ?? "").trim() || null;
-  const today = new Date().toISOString().slice(0, 10);
+  const todayStr = today();
 
   if (status === "returned") {
     // La fila se reutiliza (ver comentario más abajo) y su `remittanceId` se
@@ -442,7 +443,7 @@ export async function updateChargeStatus(
     await db.insert(sepaChargeReturns).values({
       chargeId: id,
       remittanceId: current?.remittanceId ?? null,
-      returnedOn: today,
+      returnedOn: todayStr,
       returnReason,
     });
   }
@@ -451,12 +452,12 @@ export async function updateChargeStatus(
     .update(sepaCharges)
     .set(
       status === "collected"
-        ? { status: "collected", collectedOn: today }
+        ? { status: "collected", collectedOn: todayStr }
         // Un cargo devuelto sigue debiéndose: vuelve a quedar suelto y
         // "pending" para poder entrar en la próxima remesa (el índice único
         // por membresía/temporada/periodo impide crear un cargo nuevo para
         // el mismo periodo, así que se reutiliza la misma fila).
-        : { status: "pending", remittanceId: null, returnedOn: today, returnReason },
+        : { status: "pending", remittanceId: null, returnedOn: todayStr, returnReason },
     )
     .where(eq(sepaCharges.id, id));
 
@@ -481,11 +482,10 @@ export async function markRemittanceCollected(
   const user = await requirePermission("cuotas.manage");
 
   const remittanceId = String(formData.get("remittanceId") ?? "");
-  const today = new Date().toISOString().slice(0, 10);
 
   await db
     .update(sepaCharges)
-    .set({ status: "collected", collectedOn: today })
+    .set({ status: "collected", collectedOn: today() })
     .where(and(eq(sepaCharges.remittanceId, remittanceId), eq(sepaCharges.status, "pending")));
 
   await recordAuditEvent({
