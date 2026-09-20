@@ -21,6 +21,7 @@ import {
   addPersonNote,
   deletePersonDocument,
   deletePersonNote,
+  requestPersonDocumentUploadUrl,
   updatePersonDocument,
 } from "@/app/[locale]/(app)/personas/actions";
 import { hasPermission, requirePermission } from "@/lib/auth";
@@ -1201,6 +1202,7 @@ export default async function PersonDetailPage({
                   htmlIdPrefix="person-document"
                   addAction={addPersonDocument}
                   updateAction={updatePersonDocument}
+                  requestUploadUrlAction={requestPersonDocumentUploadUrl}
                 />
               ) : null
             }
@@ -1239,6 +1241,7 @@ export default async function PersonDetailPage({
                     htmlIdPrefix="person-document"
                     addAction={addPersonDocument}
                     updateAction={updatePersonDocument}
+                    requestUploadUrlAction={requestPersonDocumentUploadUrl}
                     document={{ id: d.id, label: d.label, notes: d.notes }}
                     fileUrl={documentFileUrls.get(d.id) ?? null}
                   />

@@ -18,6 +18,25 @@ export function extensionFromMimeType(type: string): string {
   return "jpg";
 }
 
+/**
+ * URL firmada de subida, para que el navegador suba el archivo directamente a
+ * Storage sin pasar por el cuerpo de una Server Action. Necesario porque
+ * Vercel rechaza cualquier petición a una función con más de 4,5 MB de
+ * cuerpo (413 `FUNCTION_PAYLOAD_TOO_LARGE`), un límite de la plataforma que
+ * `next.config.ts` no puede levantar. Con la sesión del usuario (no la clave
+ * de servicio) para que la política `insert` de RLS del bucket se compruebe
+ * al generar la URL, igual que antes se comprobaba al subir con `uploadFile`.
+ */
+export async function createSignedUploadUrl(
+  bucket: string,
+  path: string,
+): Promise<{ signedUrl: string; token: string } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(path);
+  if (error || !data) return null;
+  return { signedUrl: data.signedUrl, token: data.token };
+}
+
 export async function uploadFile(bucket: string, path: string, file: File): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.storage

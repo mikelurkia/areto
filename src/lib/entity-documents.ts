@@ -8,11 +8,19 @@ import { db } from "@/db";
 import { requirePermission } from "@/lib/auth";
 import type { Permission } from "@/lib/permissions";
 import { revalidateRoutes, type AppRoute } from "@/lib/revalidate";
-import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
+import { createSignedUploadUrl, extensionFromMimeType, removeFile } from "@/lib/supabase/storage";
 
 export type DocumentActionState = {
   error?: string;
   message?: string;
+};
+
+export type DocumentUploadUrlState = {
+  error?: string;
+  bucket?: string;
+  path?: string;
+  signedUrl?: string;
+  token?: string;
 };
 
 const MAX_DOCUMENT_FILE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -40,11 +48,6 @@ function readDocumentFields(formData: FormData) {
   };
 }
 
-function readDocumentFile(formData: FormData): File | null {
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return null;
-  return file;
-}
 
 /**
  * Documento genérico (person_documents/team_documents/sponsor_documents...):
@@ -71,14 +74,48 @@ export function makeDocumentActions(config: {
   const { table, bucket, parentIdColumn, formKey, namespace, permission, routes } =
     config;
 
-  async function uploadDocumentFile(
-    parentId: string,
-    documentId: string,
-    file: File,
-  ): Promise<string> {
-    const path = `${parentId}/${documentId}.${extensionFromMimeType(file.type)}`;
-    await uploadFile(bucket, path, file);
-    return path;
+  /**
+   * El navegador sube el archivo directamente a Storage con esta URL firmada
+   * (bypassa el cuerpo de la Server Action, sujeto al límite de 4,5 MB de
+   * Vercel); `add`/`update` solo reciben la ruta ya subida. Se comprueba el
+   * permiso y el tipo/tamaño aquí, antes de autorizar la subida.
+   */
+  async function requestUploadUrl(
+    _prev: DocumentUploadUrlState,
+    formData: FormData,
+  ): Promise<DocumentUploadUrlState> {
+    const t = await getTranslations(namespace);
+    await requirePermission(permission);
+
+    const fileType = String(formData.get("fileType") ?? "");
+    const fileSize = Number(formData.get("fileSize") ?? 0);
+    if (!ALLOWED_DOCUMENT_FILE_TYPES.includes(fileType)) {
+      return { error: t("documentFileInvalidType") };
+    }
+    if (fileSize > MAX_DOCUMENT_FILE_BYTES) {
+      return { error: t("documentFileTooLarge") };
+    }
+
+    const existingId = String(formData.get("id") ?? "");
+    let parentId: string;
+    if (existingId) {
+      const existing = await db
+        .select({ parentId: table[parentIdColumn as keyof DocumentsTable] as AnyPgColumn })
+        .from(table)
+        .where(eq(table.id, existingId))
+        .then((rows) => rows[0]);
+      if (!existing) return { error: t("documentNotFound") };
+      parentId = existing.parentId as unknown as string;
+    } else {
+      parentId = String(formData.get(formKey) ?? "");
+    }
+
+    const documentId = crypto.randomUUID();
+    const path = `${parentId}/${documentId}.${extensionFromMimeType(fileType)}`;
+    const signed = await createSignedUploadUrl(bucket, path);
+    if (!signed) return { error: t("documentUploadFailed") };
+
+    return { bucket, path, signedUrl: signed.signedUrl, token: signed.token };
   }
 
   async function add(
@@ -90,30 +127,19 @@ export function makeDocumentActions(config: {
 
     const parentId = String(formData.get(formKey) ?? "");
     const fields = readDocumentFields(formData);
-    const file = readDocumentFile(formData);
+    const filePath = String(formData.get("filePath") ?? "");
+    const fileName = String(formData.get("fileName") ?? "");
     if (!fields.label) return { error: t("documentLabelRequired") };
-    if (!file) return { error: t("documentFileRequired") };
-    if (!ALLOWED_DOCUMENT_FILE_TYPES.includes(file.type)) {
-      return { error: t("documentFileInvalidType") };
-    }
-    if (file.size > MAX_DOCUMENT_FILE_BYTES) {
-      return { error: t("documentFileTooLarge") };
-    }
+    if (!filePath) return { error: t("documentFileRequired") };
 
-    const [document] = (await db
-      .insert(table)
-      .values({
-        [parentIdColumn]: parentId,
-        label: fields.label,
-        filePath: "", // se rellena tras subir el archivo
-        fileName: file.name || null,
-        notes: fields.notes || null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any)
-      .returning({ id: table.id })) as { id: string }[];
-
-    const path = await uploadDocumentFile(parentId, document.id, file);
-    await db.update(table).set({ filePath: path }).where(eq(table.id, document.id));
+    await db.insert(table).values({
+      [parentIdColumn]: parentId,
+      label: fields.label,
+      filePath,
+      fileName: fileName || null,
+      notes: fields.notes || null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
     revalidateRoutes(...routes);
     return { message: t("documentAdded") };
@@ -128,17 +154,12 @@ export function makeDocumentActions(config: {
 
     const id = String(formData.get("id") ?? "");
     const fields = readDocumentFields(formData);
-    const file = readDocumentFile(formData);
+    const filePath = String(formData.get("filePath") ?? "");
+    const fileName = String(formData.get("fileName") ?? "");
     if (!fields.label) return { error: t("documentLabelRequired") };
-    if (file && !ALLOWED_DOCUMENT_FILE_TYPES.includes(file.type)) {
-      return { error: t("documentFileInvalidType") };
-    }
-    if (file && file.size > MAX_DOCUMENT_FILE_BYTES) {
-      return { error: t("documentFileTooLarge") };
-    }
 
     const existing = await db
-      .select({ parentId: table[parentIdColumn as keyof DocumentsTable] as AnyPgColumn, filePath: table.filePath })
+      .select({ filePath: table.filePath })
       .from(table)
       .where(eq(table.id, id))
       .then((rows) => rows[0]);
@@ -149,14 +170,12 @@ export function makeDocumentActions(config: {
       .set({
         label: fields.label,
         notes: fields.notes || null,
-        ...(file ? { fileName: file.name || null } : {}),
+        ...(filePath ? { filePath, fileName: fileName || null } : {}),
       })
       .where(eq(table.id, id));
 
-    if (file) {
-      if (existing.filePath) await removeFile(bucket, existing.filePath as string);
-      const path = await uploadDocumentFile(existing.parentId as unknown as string, id, file);
-      await db.update(table).set({ filePath: path }).where(eq(table.id, id));
+    if (filePath && existing.filePath) {
+      await removeFile(bucket, existing.filePath as string);
     }
 
     revalidateRoutes(...routes);
@@ -185,5 +204,5 @@ export function makeDocumentActions(config: {
     return { message: t("documentDeleted") };
   }
 
-  return { add, update, delete: deleteDocument };
+  return { add, update, delete: deleteDocument, requestUploadUrl };
 }

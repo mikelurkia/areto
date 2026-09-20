@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { PaperclipIcon, PencilIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { DocumentActionState } from "@/lib/entity-documents";
+import type { DocumentActionState, DocumentUploadUrlState } from "@/lib/entity-documents";
+import { createClient } from "@/lib/supabase/client";
 import { FormError } from "@/components/form-error";
 import { SubmitButton } from "@/components/submit-button";
 import { Button } from "@/components/ui/button";
@@ -36,10 +37,16 @@ type DocumentAction = (
   formData: FormData,
 ) => Promise<DocumentActionState> | DocumentActionState;
 
+type RequestUploadUrlAction = (
+  prev: DocumentUploadUrlState,
+  formData: FormData,
+) => Promise<DocumentUploadUrlState>;
+
 type DocumentDialogProps = {
   namespace: "Personas" | "Equipos" | "Patrocinadores";
   addAction: DocumentAction;
   updateAction: DocumentAction;
+  requestUploadUrlAction: RequestUploadUrlAction;
   htmlIdPrefix: string;
 } & (
   | { mode: "create"; parentId: string; formKey: string }
@@ -67,8 +74,58 @@ export function DocumentDialog(props: DocumentDialogProps) {
   );
   const fileUrl = useFrozenWhileOpen(open, props.mode === "edit" ? props.fileUrl : null);
 
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | undefined>(undefined);
+  const [uploaded, setUploaded] = useState<{ filePath: string; fileName: string } | null>(null);
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      setUploading(false);
+      setUploadError(undefined);
+      setUploaded(null);
+    }
+  }
+
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    setUploadError(undefined);
+    setUploaded(null);
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const requestData = new FormData();
+      requestData.set("fileType", file.type);
+      requestData.set("fileSize", String(file.size));
+      if (props.mode === "create") {
+        requestData.set(props.formKey, props.parentId);
+      } else {
+        requestData.set("id", props.document.id);
+      }
+      const result = await props.requestUploadUrlAction({}, requestData);
+      if (!result.signedUrl || !result.token || !result.bucket || !result.path) {
+        setUploadError(result.error ?? t("documentUploadFailed"));
+        event.target.value = "";
+        return;
+      }
+      const supabase = createClient();
+      const { error } = await supabase.storage
+        .from(result.bucket)
+        .uploadToSignedUrl(result.path, result.token, file, { contentType: file.type });
+      if (error) {
+        setUploadError(t("documentUploadFailed"));
+        event.target.value = "";
+        return;
+      }
+      setUploaded({ filePath: result.path, fileName: file.name });
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       {props.mode === "create" ? (
         <DialogTrigger render={<Button />}>
           <PlusIcon data-icon="inline-start" />
@@ -94,6 +151,8 @@ export function DocumentDialog(props: DocumentDialogProps) {
           ) : (
             <input type="hidden" name="id" value={document!.id} />
           )}
+          <input type="hidden" name="filePath" value={uploaded?.filePath ?? ""} />
+          <input type="hidden" name="fileName" value={uploaded?.fileName ?? ""} />
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor={`${props.htmlIdPrefix}-label`}>
@@ -124,10 +183,10 @@ export function DocumentDialog(props: DocumentDialogProps) {
               ) : null}
               <Input
                 id={`${props.htmlIdPrefix}-file`}
-                name="file"
                 type="file"
                 accept="application/pdf,image/jpeg,image/png,image/webp,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.doc,.docx"
                 required={props.mode === "create"}
+                onChange={handleFileChange}
               />
               {props.mode === "edit" ? (
                 <p className="text-xs text-muted-foreground">
@@ -147,12 +206,14 @@ export function DocumentDialog(props: DocumentDialogProps) {
               />
             </Field>
           </FieldGroup>
-          <FormError message={state.error} />
+          <FormError message={uploadError ?? state.error} />
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {t("cancel")}
             </DialogClose>
-            <SubmitButton>
+            <SubmitButton
+              disabled={uploading || (props.mode === "create" && !uploaded)}
+            >
               {props.mode === "create" ? t("addDocumentAction") : t("saveChanges")}
             </SubmitButton>
           </DialogFooter>

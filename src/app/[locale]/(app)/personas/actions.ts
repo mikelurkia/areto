@@ -1463,6 +1463,7 @@ const personDocumentActions = makeDocumentActions({
 export const addPersonDocument = personDocumentActions.add;
 export const updatePersonDocument = personDocumentActions.update;
 export const deletePersonDocument = personDocumentActions.delete;
+export const requestPersonDocumentUploadUrl = personDocumentActions.requestUploadUrl;
 
 /**
  * Asigna el siguiente nº de socio correlativo (max+1) a una persona que no lo
