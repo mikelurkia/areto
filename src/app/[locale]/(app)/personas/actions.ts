@@ -389,25 +389,13 @@ export async function createPerson(
   // usuario ya eligió "crear de todas formas" (`linkPersonId === "new"`), no
   // se repite la comprobación.
   if (linkPersonId !== "new") {
+    // Columnas mínimas para la comparación (mismo patrón que `socios/page.tsx`):
+    // el resto de campos solo se trae para los candidatos que de verdad
+    // coinciden, no para el club entero en cada intento de alta.
     const pool = await db.query.persons.findMany({
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        nationalId: true,
-        email: true,
-        birthDate: true,
-        address: true,
-        city: true,
-        postalCode: true,
-        phone: true,
-        iban: true,
-        shirtSize: true,
-        pantsSize: true,
-        shoeSize: true,
-      },
+      columns: { id: true, firstName: true, lastName: true, nationalId: true, email: true },
     });
-    const candidates = findCandidates(
+    const matches = findCandidates(
       {
         firstName: fields.firstName,
         lastName: fields.lastName,
@@ -416,6 +404,32 @@ export async function createPerson(
       },
       pool,
     );
+    const candidates =
+      matches.length > 0
+        ? await db.query.persons
+            .findMany({
+              where: inArray(persons.id, matches.map((m) => m.id)),
+              columns: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                nationalId: true,
+                email: true,
+                birthDate: true,
+                address: true,
+                city: true,
+                postalCode: true,
+                phone: true,
+                iban: true,
+                shirtSize: true,
+                pantsSize: true,
+                shoeSize: true,
+              },
+            })
+            .then((rows) =>
+              rows.map((row) => ({ ...row, matchReason: matches.find((m) => m.id === row.id)!.matchReason })),
+            )
+        : [];
     if (candidates.length > 0) {
       const submittedFields: Record<string, string | null> = {};
       for (const key of PERSON_MATCH_FIELDS) submittedFields[key] = fields[key] || null;
