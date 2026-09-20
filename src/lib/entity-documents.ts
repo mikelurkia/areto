@@ -61,7 +61,6 @@ function isValidDocumentPath(filePath: string, parentId: string): boolean {
   return filePath.startsWith(`${parentId}/`) && DOCUMENT_PATH_RE.test(filePath);
 }
 
-
 /**
  * Documento genérico (person_documents/team_documents/sponsor_documents...):
  * mismas columnas, mismo bucket por entidad y misma lógica en las tres, solo
