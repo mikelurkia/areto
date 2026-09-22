@@ -1,77 +1,37 @@
-import { StatusBadge } from "@/components/status-badge";
 import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
-import {
-  ClipboardListIcon,
-  CreditCardIcon,
-  MailIcon,
-  MessageCircleIcon,
-  PhoneIcon,
-  PlusIcon,
-  TriangleAlertIcon,
-  UserRoundIcon,
-} from "lucide-react";
+import { CreditCardIcon, TriangleAlertIcon, UserRoundIcon } from "lucide-react";
 import { eq, inArray, or } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { personGuardians, personTags, persons, sepaCharges } from "@/db/schema";
-import {
-  addPersonDocument,
-  addPersonNote,
-  deletePersonDocument,
-  deletePersonNote,
-  requestPersonDocumentUploadUrl,
-  updatePersonDocument,
-} from "@/app/[locale]/(app)/personas/actions";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { resolveBackHref } from "@/lib/back-href";
 import { calculateAge, isMinor } from "@/lib/age";
-import { getBankName } from "@/lib/bank";
-import { fileTypeLabel } from "@/lib/file-type";
-import { formatDateTime } from "@/lib/format-date";
 import { personPhotoDownloadName, personPhotoThumbPath } from "@/lib/person-photo";
-import { STATUS_TONE } from "@/lib/registration-status";
 import { getSignedUrl, getSignedUrls } from "@/lib/supabase/storage";
 import { teamSeasonLabel } from "@/lib/team-label";
 import { Link } from "@/i18n/navigation";
-import { MembershipDialog } from "@/components/equipos/membership-dialog";
-import { MembershipTable } from "@/components/equipos/membership-table";
-import { MaskedIbanText } from "@/components/masked-iban";
 import { PageHeader, SectionHeading } from "@/components/page-header";
-import { AssignMemberNumberButton } from "@/components/personas/assign-member-number-button";
 import { PersonActionsMenu } from "@/components/personas/person-actions-menu";
-import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
-import { DeleteInjuryReportDialog } from "@/components/personas/delete-injury-report-dialog";
-import { DeleteMedicalCheckupDialog } from "@/components/personas/delete-medical-checkup-dialog";
-import { DeleteQualificationDialog } from "@/components/personas/delete-qualification-dialog";
-import { DocumentDialog } from "@/components/document-dialog";
-import { EntityFileTable } from "@/components/entity-file-table";
 import { FamilyPanel, type FamilyMember } from "@/components/personas/family-panel";
-import { InfoRow } from "@/components/info-row";
-import { MedicalCheckupDialog } from "@/components/personas/medical-checkup-dialog";
 import { PersonDialog } from "@/components/personas/person-dialog";
 import { PersonCuotasTable } from "@/components/personas/person-cuotas-table";
-import { PersonIdScanDialog } from "@/components/personas/person-id-scan-dialog";
+import { PersonDocumentsTab } from "@/components/personas/person-documents-tab";
+import { PersonGeneralTab } from "@/components/personas/person-general-tab";
+import { PersonMedicalTab } from "@/components/personas/person-medical-tab";
+import { PersonNotesTab } from "@/components/personas/person-notes-tab";
 import { PersonPhotoDialog } from "@/components/personas/person-photo-dialog";
-import { RevokeMandateDialog } from "@/components/personas/revoke-mandate-dialog";
-import { NotesLog } from "@/components/notes-log";
+import { PersonQualificationsTab } from "@/components/personas/person-qualifications-tab";
+import { PersonRegistrationsTab } from "@/components/personas/person-registrations-tab";
+import { PersonTeamsTab } from "@/components/personas/person-teams-tab";
 import { PersonTagsEditor } from "@/components/personas/person-tags-editor";
-import { QualificationDialog } from "@/components/personas/qualification-dialog";
-import { SectionPlaceholder } from "@/components/section-placeholder";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const PHOTO_BUCKET = "person-photos";
@@ -343,7 +303,6 @@ export default async function PersonDetailPage({
   const t = await getTranslations("Personas");
   const tCuotas = await getTranslations("Cuotas");
   const tEquipos = await getTranslations("Equipos");
-  const tInscripciones = await getTranslations("Inscripciones");
 
   // `getPerson` va aparte del resto: es, con diferencia, la consulta más
   // pesada de toda la app (una docena de relaciones, varias anidadas dos
@@ -635,265 +594,40 @@ export default async function PersonDetailPage({
         </TabsList>
 
         <TabsContent value="general" keepMounted className="flex flex-col gap-6">
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div className="flex flex-col gap-3">
-              <SectionHeading title={t("contactSection")} />
-              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <InfoRow label={t("emailLabel")} value={person.email} />
-                <InfoRow label={t("phoneLabel")} value={person.phone} />
-                <InfoRow label={t("addressLabel")} value={person.address} />
-                <InfoRow label={t("postalCodeLabel")} value={person.postalCode} />
-                <InfoRow label={t("cityLabel")} value={person.city} />
-              </dl>
-              {person.email || person.phone ? (
-                <div className="flex flex-wrap gap-2 print:hidden">
-                  {person.email ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      render={<a href={`mailto:${person.email}`} />}
-                      nativeButton={false}
-                    >
-                      <MailIcon data-icon="inline-start" />
-                      {t("emailAction")}
-                    </Button>
-                  ) : null}
-                  {person.phone ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      render={<a href={`tel:${person.phone}`} />}
-                      nativeButton={false}
-                    >
-                      <PhoneIcon data-icon="inline-start" />
-                      {t("callAction")}
-                    </Button>
-                  ) : null}
-                  {person.phone ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      render={
-                        <a
-                          href={`https://wa.me/${person.phone.replace(/\D/g, "")}`}
-                          target="_blank"
-                          rel="noreferrer"
-                        />
-                      }
-                      nativeButton={false}
-                    >
-                      <MessageCircleIcon data-icon="inline-start" />
-                      {t("whatsappAction")}
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <SectionHeading title={t("personalDataSection")} />
-              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <InfoRow
-                  label={t("birthDateLabel")}
-                  value={
-                    person.birthDate ? (
-                      <>
-                        {person.birthDate}
-                        {ageTeamNames ? (
-                          <span className="ml-2 text-xs font-normal text-muted-foreground">
-                            {t("birthDateAgeTeamHint", { teams: ageTeamNames })}
-                          </span>
-                        ) : null}
-                      </>
-                    ) : null
-                  }
-                />
-                <InfoRow label={t("nationalIdLabel")} value={person.nationalId} />
-                <InfoRow label={t("shirtSizeLabel")} value={person.shirtSize} />
-                <InfoRow label={t("pantsSizeLabel")} value={person.pantsSize} />
-                <InfoRow label={t("shoeSizeLabel")} value={person.shoeSize} />
-              </dl>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <SectionHeading title={t("memberSection")} />
-              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <InfoRow
-                  label={t("memberNumberLabel")}
-                  value={
-                    memberNumber ??
-                    (isMember && canManage ? (
-                      <span className="print:hidden">
-                        <AssignMemberNumberButton personId={person.id} />
-                      </span>
-                    ) : null)
-                  }
-                />
-                {canViewBanking ? (
-                  <InfoRow
-                    label={person.payerPerson ? t("paidByLabel") : t("ibanLabel")}
-                    value={
-                      person.payerPerson ? (
-                        <Link
-                          href={`/personas/${person.payerPerson.id}`}
-                          className="text-primary hover:underline"
-                        >
-                          {person.payerPerson.firstName} {person.payerPerson.lastName}
-                        </Link>
-                      ) : person.iban ? (
-                        <MaskedIbanText value={person.iban} />
-                      ) : null
-                    }
-                  />
-                ) : null}
-                {canViewBanking && !person.payerPerson && getBankName(person.iban) ? (
-                  <InfoRow label={t("bankLabel")} value={getBankName(person.iban)} />
-                ) : null}
-                {canViewBanking && mandate ? (
-                  <InfoRow
-                    label={t("mandateLabel")}
-                    value={
-                      mandate.status === "active"
-                        ? t("mandateActiveValue", { rum: mandate.rum })
-                        : t("mandateRevokedValue", { rum: mandate.rum })
-                    }
-                  />
-                ) : null}
-                {canManageBanking && mandate?.status === "active" ? (
-                  <div className="pt-1">
-                    <RevokeMandateDialog payerPersonId={effectivePayerId} />
-                  </div>
-                ) : null}
-              </dl>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <SectionHeading title={t("idDocumentsSection")} />
-              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <InfoRow
-                  label={t("idFrontLabel")}
-                  value={
-                    <div className="flex items-center gap-2">
-                      {idFrontUrl ? (
-                        <a
-                          href={idFrontUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-primary hover:underline"
-                        >
-                          {t("documentViewFile")}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                      {canManage ? (
-                        <span className="print:hidden">
-                          <PersonIdScanDialog
-                            personId={person.id}
-                            side="front"
-                            fileUrl={idFrontUrl}
-                          />
-                        </span>
-                      ) : null}
-                    </div>
-                  }
-                />
-                <InfoRow
-                  label={t("idBackLabel")}
-                  value={
-                    <div className="flex items-center gap-2">
-                      {idBackUrl ? (
-                        <a
-                          href={idBackUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-primary hover:underline"
-                        >
-                          {t("documentViewFile")}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                      {canManage ? (
-                        <span className="print:hidden">
-                          <PersonIdScanDialog
-                            personId={person.id}
-                            side="back"
-                            fileUrl={idBackUrl}
-                          />
-                        </span>
-                      ) : null}
-                    </div>
-                  }
-                />
-              </dl>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <SectionHeading title={t("consentSection")} />
-              <div className="flex flex-wrap gap-1">
-                {person.photoConsent ? (
-                  <Badge
-                    variant="secondary"
-                    title={
-                      photoConsentDate
-                        ? t("consentSinceLabel", { date: photoConsentDate })
-                        : undefined
-                    }
-                  >
-                    {t("photoConsentLabel")}
-                  </Badge>
-                ) : null}
-                {(person.payerPerson ? person.payerPerson.sepaConsent : person.sepaConsent) ? (
-                  <Badge
-                    variant="secondary"
-                    title={
-                      sepaConsentDate ? t("consentSinceLabel", { date: sepaConsentDate }) : undefined
-                    }
-                  >
-                    {t("sepaConsentLabel")}
-                  </Badge>
-                ) : null}
-                {person.termsConsent ? (
-                  <Badge
-                    variant="secondary"
-                    title={
-                      termsConsentDate
-                        ? t("consentSinceLabel", { date: termsConsentDate })
-                        : undefined
-                    }
-                  >
-                    {t("termsConsentLabel")}
-                  </Badge>
-                ) : null}
-                {person.privacyConsent ? (
-                  <Badge
-                    variant="secondary"
-                    title={
-                      privacyConsentDate
-                        ? t("consentSinceLabel", { date: privacyConsentDate })
-                        : undefined
-                    }
-                  >
-                    {t("privacyConsentLabel")}
-                  </Badge>
-                ) : null}
-                {!person.photoConsent &&
-                !(person.payerPerson ? person.payerPerson.sepaConsent : person.sepaConsent) &&
-                !person.termsConsent &&
-                !person.privacyConsent
-                  ? "—"
-                  : null}
-              </div>
-            </div>
-
-            {person.notes ? (
-              <div className="flex flex-col gap-3 sm:col-span-2">
-                <SectionHeading title={t("notesLabel")} />
-                <p className="text-sm whitespace-pre-wrap">{person.notes}</p>
-              </div>
-            ) : null}
-          </div>
+          <PersonGeneralTab
+            personId={person.id}
+            email={person.email}
+            phone={person.phone}
+            address={person.address}
+            postalCode={person.postalCode}
+            city={person.city}
+            birthDate={person.birthDate}
+            ageTeamNames={ageTeamNames}
+            nationalId={person.nationalId}
+            shirtSize={person.shirtSize}
+            pantsSize={person.pantsSize}
+            shoeSize={person.shoeSize}
+            memberNumber={memberNumber}
+            isMember={isMember}
+            canManage={canManage}
+            canViewBanking={canViewBanking}
+            canManageBanking={canManageBanking}
+            payerPerson={person.payerPerson}
+            iban={person.iban}
+            mandate={mandate}
+            effectivePayerId={effectivePayerId}
+            idFrontUrl={idFrontUrl}
+            idBackUrl={idBackUrl}
+            photoConsent={person.photoConsent}
+            photoConsentDate={photoConsentDate}
+            sepaConsent={person.payerPerson ? person.payerPerson.sepaConsent : person.sepaConsent}
+            sepaConsentDate={sepaConsentDate}
+            termsConsent={person.termsConsent}
+            termsConsentDate={termsConsentDate}
+            privacyConsent={person.privacyConsent}
+            privacyConsentDate={privacyConsentDate}
+            notes={person.notes}
+          />
         </TabsContent>
 
         <TabsContent value="familia" keepMounted>
@@ -910,59 +644,14 @@ export default async function PersonDetailPage({
         </TabsContent>
 
         <TabsContent value="equipos" keepMounted className="flex flex-col gap-4">
-          <SectionHeading
-            title={t("teamsSection")}
-            actions={
-              canManage && availableTeamOptions.length > 0 ? (
-                <MembershipDialog
-                  mode="create-person"
-                  personId={person.id}
-                  personName={fullName}
-                  availableTeams={availableTeamOptions}
-                />
-              ) : null
-            }
+          <PersonTeamsTab
+            personId={person.id}
+            personName={fullName}
+            canManage={canManage}
+            availableTeamOptions={availableTeamOptions}
+            seasonGroups={seasonGroups}
+            federationCardUrls={federationCardUrls}
           />
-          {seasonGroups.length === 0 ? (
-            <SectionPlaceholder size="compact" title={t("noTeamsDescription")} />
-          ) : (
-            seasonGroups.map(({ season, items }) => (
-              <div key={season.id} className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold">{season.name}</h3>
-                  {season.isCurrent ? (
-                    <Badge>{tEquipos("currentBadge")}</Badge>
-                  ) : null}
-                </div>
-                <MembershipTable
-                  items={items.map((m) => ({
-                    ...m,
-                    federationCardUrl: federationCardUrls.get(m.id) ?? null,
-                    installmentsMode: m.team.playerFeePeriod === "installments",
-                  }))}
-                  canManage={canManage}
-                  t={tEquipos}
-                  subjectHeader={t("colTeam")}
-                  nameFor={() => fullName}
-                  renderSubject={(m) => (
-                    <span className="flex items-center gap-2">
-                      <Link
-                        href={`/equipos/${m.team.id}?from=${encodeURIComponent(`/personas/${person.id}`)}&fromLabel=${encodeURIComponent(fullName)}`}
-                        className="hover:underline"
-                      >
-                        {m.team.name}
-                      </Link>
-                      {m.isCaptain ? (
-                        <Badge variant="outline" title={tEquipos("captainLabel")}>
-                          {tEquipos("captainShort")}
-                        </Badge>
-                      ) : null}
-                    </span>
-                  )}
-                />
-              </div>
-            ))
-          )}
         </TabsContent>
 
         {canViewCuotas ? (
@@ -981,342 +670,45 @@ export default async function PersonDetailPage({
         ) : null}
 
         <TabsContent value="titulaciones" keepMounted className="flex flex-col gap-4">
-          <SectionHeading
-            title={t("qualificationsSection")}
-            actions={
-              canManage ? (
-                <QualificationDialog mode="create" personId={person.id} />
-              ) : null
-            }
+          <PersonQualificationsTab
+            personId={person.id}
+            canManage={canManage}
+            qualifications={person.qualifications}
+            qualificationFileUrls={qualificationFileUrls}
+            today={today}
           />
-          {person.qualifications.length === 0 ? (
-            <SectionPlaceholder size="compact" title={t("noQualificationsDescription")} />
-          ) : (
-            <EntityFileTable
-              items={person.qualifications}
-              canManage={canManage}
-              actionsLabel={t("colActions")}
-              viewFileLabel={t("qualificationViewFile")}
-              fileUrl={(q) => qualificationFileUrls.get(q.id) ?? null}
-              columns={[
-                { header: t("qualificationTitleLabel"), cell: (q) => q.title, className: "font-medium" },
-                {
-                  header: t("qualificationIssuerLabel"),
-                  cell: (q) => q.issuer ?? "—",
-                  priority: "tertiary",
-                },
-                {
-                  header: t("qualificationExpiresOnLabel"),
-                  priority: "secondary",
-                  cell: (q) => {
-                    if (!q.expiresOn) return "—";
-                    const isExpired = q.expiresOn < today;
-                    return (
-                      <Badge variant={isExpired ? "destructive" : "secondary"}>
-                        {isExpired
-                          ? t("qualificationExpiredBadge", { date: q.expiresOn })
-                          : t("qualificationExpiresBadge", { date: q.expiresOn })}
-                      </Badge>
-                    );
-                  },
-                },
-              ]}
-              renderActions={(q) => (
-                <>
-                  <QualificationDialog
-                    mode="edit"
-                    qualification={{
-                      id: q.id,
-                      title: q.title,
-                      issuer: q.issuer,
-                      issuedOn: q.issuedOn,
-                      expiresOn: q.expiresOn,
-                      notes: q.notes,
-                    }}
-                    fileUrl={qualificationFileUrls.get(q.id) ?? null}
-                  />
-                  <DeleteQualificationDialog id={q.id} title={q.title} />
-                </>
-              )}
-            />
-          )}
         </TabsContent>
 
         {canViewMedical ? (
           <TabsContent value="medico" keepMounted className="flex flex-col gap-6">
-          <div className="flex flex-col gap-4">
-            <SectionHeading
-              title={t("medicalCheckupsSection")}
-              actions={
-                canManageMedical ? (
-                  <MedicalCheckupDialog mode="create" personId={person.id} />
-                ) : null
-              }
+            <PersonMedicalTab
+              personId={person.id}
+              canManageMedical={canManageMedical}
+              membershipsCount={person.memberships.length}
+              medicalCheckups={person.medicalCheckups}
+              medicalCheckupFileUrls={medicalCheckupFileUrls}
+              injuryReports={person.injuryReports}
+              injuryReportFileUrls={injuryReportFileUrls}
+              today={today}
             />
-            {person.medicalCheckups.length === 0 ? (
-              <SectionPlaceholder size="compact" title={t("noMedicalCheckupsDescription")} />
-            ) : (
-              <>
-                {(() => {
-                  const latest = person.medicalCheckups[0];
-                  const isExpired = latest.expiresOn ? latest.expiresOn < today : false;
-                  return latest.expiresOn ? (
-                    <Badge
-                      variant={isExpired ? "destructive" : "secondary"}
-                      className="w-fit"
-                    >
-                      {isExpired
-                        ? t("medicalCheckupExpiredBadge", { date: latest.expiresOn })
-                        : t("medicalCheckupExpiresBadge", { date: latest.expiresOn })}
-                    </Badge>
-                  ) : null;
-                })()}
-                <EntityFileTable
-                  items={person.medicalCheckups}
-                  canManage={canManageMedical}
-                  actionsLabel={t("colActions")}
-                  viewFileLabel={t("medicalCheckupViewFile")}
-                  fileUrl={(m) => medicalCheckupFileUrls.get(m.id) ?? null}
-                  columns={[
-                    {
-                      header: t("medicalCheckupOccurredOnLabel"),
-                      cell: (m) => m.occurredOn,
-                      className: "font-medium",
-                    },
-                    {
-                      header: t("medicalCheckupIssuerLabel"),
-                      cell: (m) => m.issuer ?? "—",
-                      priority: "tertiary",
-                    },
-                    {
-                      header: t("medicalCheckupExpiresOnLabel"),
-                      priority: "secondary",
-                      cell: (m) => {
-                        if (!m.expiresOn) return "—";
-                        const isExpired = m.expiresOn < today;
-                        return (
-                          <Badge variant={isExpired ? "destructive" : "secondary"}>
-                            {isExpired
-                              ? t("medicalCheckupExpiredBadge", { date: m.expiresOn })
-                              : t("medicalCheckupExpiresBadge", { date: m.expiresOn })}
-                          </Badge>
-                        );
-                      },
-                    },
-                  ]}
-                  renderActions={(m) => (
-                    <>
-                      <MedicalCheckupDialog
-                        mode="edit"
-                        checkup={{
-                          id: m.id,
-                          occurredOn: m.occurredOn,
-                          expiresOn: m.expiresOn,
-                          issuer: m.issuer,
-                          notes: m.notes,
-                        }}
-                        fileUrl={medicalCheckupFileUrls.get(m.id) ?? null}
-                      />
-                      <DeleteMedicalCheckupDialog id={m.id} date={m.occurredOn} />
-                    </>
-                  )}
-                />
-              </>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <SectionHeading
-              title={t("injuryReportsSection")}
-              actions={
-                canManageMedical ? (
-                  /* Sin ficha en ningún equipo no hay parte que tramitar: lo
-                     cubre la licencia federativa del jugador con su equipo
-                     (ver la página del parte, que rechaza el alta igual). */
-                  person.memberships.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                      {t("injuryReportNoTeamHint")}
-                    </p>
-                  ) : (
-                    <Button
-                      render={<Link href={`/personas/${person.id}/parte-lesion/nuevo`} />}
-                      nativeButton={false}
-                    >
-                      <PlusIcon data-icon="inline-start" />
-                      {t("addInjuryReportAction")}
-                    </Button>
-                  )
-                ) : null
-              }
-            />
-            {person.injuryReports.length === 0 ? (
-              <SectionPlaceholder size="compact" title={t("noInjuryReportsDescription")} />
-            ) : (
-              <EntityFileTable
-                items={person.injuryReports}
-                canManage={canManageMedical}
-                actionsLabel={t("colActions")}
-                viewFileLabel={t("injuryReportViewFile")}
-                fileUrl={(r) => injuryReportFileUrls.get(r.id) ?? null}
-                columns={[
-                  {
-                    header: t("injuryReportOccurredOnLabel"),
-                    cell: (r) => r.occurredOn,
-                    className: "font-medium",
-                  },
-                ]}
-                renderActions={(r) => (
-                  <>
-                    {canManageMedical ? (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        render={<Link href={`/personas/${person.id}/parte-lesion/${r.id}`} />}
-                        nativeButton={false}
-                      >
-                        <ClipboardListIcon />
-                        <span className="sr-only">
-                          {t("injuryReportFederationSr", { date: r.occurredOn })}
-                        </span>
-                      </Button>
-                    ) : null}
-                    <DeleteInjuryReportDialog id={r.id} date={r.occurredOn} />
-                  </>
-                )}
-              />
-            )}
-          </div>
           </TabsContent>
         ) : null}
 
         <TabsContent value="documentos" keepMounted className="flex flex-col gap-4">
-          <SectionHeading
-            title={t("documentsSection")}
-            actions={
-              canManage ? (
-                <DocumentDialog
-                  mode="create"
-                  parentId={person.id}
-                  formKey="personId"
-                  namespace="Personas"
-                  htmlIdPrefix="person-document"
-                  addAction={addPersonDocument}
-                  updateAction={updatePersonDocument}
-                  requestUploadUrlAction={requestPersonDocumentUploadUrl}
-                />
-              ) : null
-            }
+          <PersonDocumentsTab
+            personId={person.id}
+            canManage={canManage}
+            documents={person.documents}
+            documentFileUrls={documentFileUrls}
           />
-          {person.documents.length === 0 ? (
-            <SectionPlaceholder size="compact" title={t("noDocumentsDescription")} />
-          ) : (
-            <EntityFileTable
-              items={person.documents}
-              canManage={canManage}
-              actionsLabel={t("colActions")}
-              viewFileLabel={t("documentViewFile")}
-              fileUrl={(d) => documentFileUrls.get(d.id) ?? null}
-              columns={[
-                { header: t("documentLabelLabel"), cell: (d) => d.label, className: "font-medium" },
-                {
-                  header: t("documentTypeColumn"),
-                  priority: "secondary",
-                  cell: (d) => {
-                    const typeLabel = fileTypeLabel(d.fileName ?? d.filePath);
-                    return typeLabel ? <Badge variant="outline">{typeLabel}</Badge> : "—";
-                  },
-                },
-                {
-                  header: t("documentNotesColumn"),
-                  cell: (d) => d.notes ?? "—",
-                  className: "text-muted-foreground",
-                  priority: "tertiary",
-                },
-              ]}
-              renderActions={(d) => (
-                <>
-                  <DocumentDialog
-                    mode="edit"
-                    namespace="Personas"
-                    htmlIdPrefix="person-document"
-                    addAction={addPersonDocument}
-                    updateAction={updatePersonDocument}
-                    requestUploadUrlAction={requestPersonDocumentUploadUrl}
-                    document={{ id: d.id, label: d.label, notes: d.notes }}
-                    fileUrl={documentFileUrls.get(d.id) ?? null}
-                  />
-                  <DeleteDocumentDialog
-                    id={d.id}
-                    label={d.label}
-                    namespace="Personas"
-                    deleteAction={deletePersonDocument}
-                  />
-                </>
-              )}
-            />
-          )}
         </TabsContent>
 
         <TabsContent value="inscripciones" keepMounted className="flex flex-col gap-4">
-          <SectionHeading title={t("registrationsSection")} />
-          {person.registrations.length === 0 ? (
-            <SectionPlaceholder size="compact" title={t("noRegistrationsDescription")} />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{tInscripciones("colKind")}</TableHead>
-                  <TableHead>{tInscripciones("colStatus")}</TableHead>
-                  <TableHead>{tInscripciones("colDate")}</TableHead>
-                  <TableHead className="text-right">{t("viewRegistrationAction")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {person.registrations.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell>
-                      <Badge variant="outline">{tInscripciones(`kind.${r.kind}` as "kind.player")}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        tone={STATUS_TONE[r.status]}
-                        label={tInscripciones(`status.${r.status}` as "status.pending")}
-                      />
-                    </TableCell>
-                    <TableCell nowrap className="text-muted-foreground">
-                      {formatDateTime(r.createdAt, locale)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link
-                        href={r.kind === "player" ? `/inscripciones/${r.id}` : `/socios/${r.id}`}
-                        className="text-primary hover:underline"
-                      >
-                        {t("viewRegistrationAction")}
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          <PersonRegistrationsTab locale={locale} registrations={person.registrations} />
         </TabsContent>
 
         <TabsContent value="bitacora" keepMounted className="flex flex-col gap-4">
-          <SectionHeading title={t("notesLogSection")} />
-          <NotesLog
-            parentId={person.id}
-            formKey="personId"
-            namespace="Personas"
-            addAction={addPersonNote}
-            deleteAction={deletePersonNote}
-            canManage={canManage}
-            notes={person.noteEntries.map((n) => ({
-              id: n.id,
-              body: n.body,
-              authorName: n.authorName,
-              createdAt: n.createdAt.toISOString().slice(0, 16).replace("T", " "),
-            }))}
-          />
+          <PersonNotesTab personId={person.id} canManage={canManage} notes={person.noteEntries} />
         </TabsContent>
       </Tabs>
     </div>
