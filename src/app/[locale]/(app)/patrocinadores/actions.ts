@@ -29,6 +29,7 @@ import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/st
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 import { today } from "@/lib/today";
 import { DOCUMENT_UPLOAD_TYPES, IMAGE_UPLOAD_TYPES } from "@/lib/upload-constraints";
+import { isValidUuid } from "@/lib/validation";
 
 export type SponsorState = {
   error?: string;
@@ -624,6 +625,7 @@ export async function deleteSponsorPayment(
   const user = await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
+  if (!isValidUuid(id)) return { error: t("invalidId") };
   const payment = await db.query.sponsorPayments.findFirst({
     where: eq(sponsorPayments.id, id),
     columns: { id: true, issuedInvoiceId: true },
@@ -919,6 +921,7 @@ export async function deleteSponsorContact(
   await requirePermission("patrocinadores.manage");
 
   const id = String(formData.get("id") ?? "");
+  if (!isValidUuid(id)) return { error: t("invalidId") };
   await db.delete(sponsorContacts).where(eq(sponsorContacts.id, id));
 
   revalidateRoutes(
