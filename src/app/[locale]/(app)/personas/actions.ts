@@ -31,6 +31,7 @@ import { makeDocumentActions } from "@/lib/entity-documents";
 import { makeNoteActions } from "@/lib/entity-notes";
 import { isValidIban } from "@/lib/iban";
 import { isValidNationalId } from "@/lib/national-id";
+import { isValidUuid } from "@/lib/validation";
 import { resizeImageToWebp } from "@/lib/image-resize";
 import { findCandidates } from "@/lib/person-matching";
 import { personPhotoThumbPath } from "@/lib/person-photo";
@@ -1606,6 +1607,7 @@ export async function deletePersonTag(
   await requirePermission("personas.manage");
 
   const id = String(formData.get("id") ?? "");
+  if (!isValidUuid(id)) return { error: t("invalidId") };
   await db.delete(personTags).where(eq(personTags.id, id));
 
   revalidateRoutes(ROUTE.personas, ROUTE.personaFicha);
