@@ -133,17 +133,11 @@ absoluto para este flujo.
 
 ## D. Duplicación de UI
 
-**D1. La capa de composición se extrajo pero solo la usa un fichero.**
-Este es el hallazgo de UI más rentable. `FiltersBar`, `SearchInput` y
-`BulkActionsBar` existen precisamente para deduplicar los browsers —sus propios
-comentarios dicen que estaban *"copiados a mano en los ocho browsers"*— y
-**los importa exactamente un fichero cada uno**: `personas-browser.tsx`.
-
-Siguen con el bloque a mano: `equipos-browser.tsx:139-148`,
-`registrations-browser.tsx:108-117`, `medical-panel-browser.tsx:255-264`,
-`socios-browser.tsx:179-192` (y `:194-228` para la barra de acciones masivas),
-`member-requests-browser.tsx`, `sponsors-browser.tsx:148-157`,
-`temporadas-browser.tsx`. La extracción se hizo; la migración se quedó a medias.
+**D1. ✅ Corregido.** `FiltersBar`, `SearchInput` y `BulkActionsBar` ya las usan
+los ocho browsers (commit `b547a21`, 2026-09-01, posterior a esta auditoría),
+incluido `season-renewals-table.tsx` como tercera copia de la barra de acciones
+masivas. Esta sección quedó desactualizada al no marcarse en su momento, a
+diferencia de D2 y D3.
 
 **D2. ✅ Corregido.** `formatCents` existía y casi nadie la usaba; ahora la
 importan 30 ficheros, cubriendo los sitios que antes construían
@@ -206,10 +200,10 @@ hace recorriendo la cadena entera (como sí usa `personas/actions.ts:224`).
 revisar si `updateRegistration` (`inscripciones/actions.ts:159-227`) recibió
 el mismo tratamiento — no verificado en esta pasada.
 
-**E8. Permisos cruzados desalineados.** `bulkAddToTeam`
-(`personas/actions.ts:1310`) escribe en `memberships` exigiendo solo
-`personas.manage`, mientras `addMembership` (`equipos/[teamId]/actions.ts:46`)
-exige `equipos.manage` para la misma escritura.
+**E8. ✅ Corregido** (commit `bfcdaf1`, "Exige también equipos.manage en el alta
+masiva en equipo desde personas (E8)", #144). `bulkAddToTeam` ahora exige
+`requireAllPermissions(["personas.manage", "equipos.manage"])`, alineada con
+`addMembership`.
 
 **E9. Guardas repetidas.** El ternario de permiso por tipo de inscripción
 aparece 5 veces en `inscripciones/actions.ts` (`~170`, `~260`, `~582`, `~628`,
