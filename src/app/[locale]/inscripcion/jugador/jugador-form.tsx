@@ -19,6 +19,7 @@ import { readPlayerFields, type RegistrationState } from "@/lib/registration-for
 import type { SeasonFeeRow } from "@/lib/registration-settings";
 import { Link } from "@/i18n/navigation";
 import { Req } from "@/components/inscripciones/required-asterisk";
+import { TextField } from "@/components/inscripciones/text-field";
 import { SubmitButton } from "@/components/submit-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
@@ -310,36 +311,22 @@ export function JugadorForm({
           {t("playerSection")}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field data-invalid={fieldErrors.firstName ? true : undefined}>
-            <FieldLabel htmlFor="firstName">
-              {t("firstNameLabel")}
-              <Req />
-            </FieldLabel>
-            <Input
-              id="firstName"
-              name="firstName"
-              required
-              defaultValue={submitted?.firstName ?? ""}
-              aria-invalid={fieldErrors.firstName ? true : undefined}
-              aria-describedby={fieldErrors.firstName ? "firstName-error" : undefined}
-            />
-            {fieldErrors.firstName ? <FieldError id="firstName-error">{fieldErrors.firstName}</FieldError> : null}
-          </Field>
-          <Field data-invalid={fieldErrors.lastName ? true : undefined}>
-            <FieldLabel htmlFor="lastName">
-              {t("lastNameLabel")}
-              <Req />
-            </FieldLabel>
-            <Input
-              id="lastName"
-              name="lastName"
-              required
-              defaultValue={submitted?.lastName ?? ""}
-              aria-invalid={fieldErrors.lastName ? true : undefined}
-              aria-describedby={fieldErrors.lastName ? "lastName-error" : undefined}
-            />
-            {fieldErrors.lastName ? <FieldError id="lastName-error">{fieldErrors.lastName}</FieldError> : null}
-          </Field>
+          <TextField
+            id="firstName"
+            name="firstName"
+            label={t("firstNameLabel")}
+            required
+            defaultValue={submitted?.firstName ?? ""}
+            error={fieldErrors.firstName}
+          />
+          <TextField
+            id="lastName"
+            name="lastName"
+            label={t("lastNameLabel")}
+            required
+            defaultValue={submitted?.lastName ?? ""}
+            error={fieldErrors.lastName}
+          />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field data-invalid={fieldErrors.birthDate ? true : undefined}>
@@ -359,100 +346,61 @@ export function JugadorForm({
             />
             {fieldErrors.birthDate ? <FieldError id="birthDate-error">{fieldErrors.birthDate}</FieldError> : null}
           </Field>
-          <Field data-invalid={fieldErrors.nationalId ? true : undefined}>
-            <FieldLabel htmlFor="nationalId">{t("nationalIdLabel")}</FieldLabel>
-            <Input
-              id="nationalId"
-              name="nationalId"
-              placeholder={t("nationalIdPlaceholder")}
-              defaultValue={submitted?.nationalId ?? ""}
-              aria-invalid={fieldErrors.nationalId ? true : undefined}
-              aria-describedby={fieldErrors.nationalId ? "nationalId-error" : undefined}
-            />
-            {fieldErrors.nationalId ? <FieldError id="nationalId-error">{fieldErrors.nationalId}</FieldError> : null}
-          </Field>
+          <TextField
+            id="nationalId"
+            name="nationalId"
+            label={t("nationalIdLabel")}
+            placeholder={t("nationalIdPlaceholder")}
+            defaultValue={submitted?.nationalId ?? ""}
+            error={fieldErrors.nationalId}
+          />
         </div>
         <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
-          <Field data-invalid={fieldErrors.address ? true : undefined}>
-            <FieldLabel htmlFor="address">
-              {t("addressLabel")}
-              <Req />
-            </FieldLabel>
-            <Input
-              id="address"
-              name="address"
-              required
-              defaultValue={submitted?.address ?? ""}
-              aria-invalid={fieldErrors.address ? true : undefined}
-              aria-describedby={fieldErrors.address ? "address-error" : undefined}
-            />
-            {fieldErrors.address ? <FieldError id="address-error">{fieldErrors.address}</FieldError> : null}
-          </Field>
-          <Field data-invalid={fieldErrors.postalCode ? true : undefined}>
-            <FieldLabel htmlFor="postalCode">
-              {t("postalCodeLabel")}
-              <Req />
-            </FieldLabel>
-            <Input
-              id="postalCode"
-              name="postalCode"
-              inputMode="numeric"
-              required
-              defaultValue={submitted?.postalCode ?? ""}
-              aria-invalid={fieldErrors.postalCode ? true : undefined}
-              aria-describedby={fieldErrors.postalCode ? "postalCode-error" : undefined}
-            />
-            {fieldErrors.postalCode ? <FieldError id="postalCode-error">{fieldErrors.postalCode}</FieldError> : null}
-          </Field>
-          <Field data-invalid={fieldErrors.city ? true : undefined}>
-            <FieldLabel htmlFor="city">
-              {t("cityLabel")}
-              <Req />
-            </FieldLabel>
-            <Input
-              id="city"
-              name="city"
-              required
-              defaultValue={submitted?.city ?? ""}
-              aria-invalid={fieldErrors.city ? true : undefined}
-              aria-describedby={fieldErrors.city ? "city-error" : undefined}
-            />
-            {fieldErrors.city ? <FieldError id="city-error">{fieldErrors.city}</FieldError> : null}
-          </Field>
+          <TextField
+            id="address"
+            name="address"
+            label={t("addressLabel")}
+            required
+            defaultValue={submitted?.address ?? ""}
+            error={fieldErrors.address}
+          />
+          <TextField
+            id="postalCode"
+            name="postalCode"
+            label={t("postalCodeLabel")}
+            inputMode="numeric"
+            required
+            defaultValue={submitted?.postalCode ?? ""}
+            error={fieldErrors.postalCode}
+          />
+          <TextField
+            id="city"
+            name="city"
+            label={t("cityLabel")}
+            required
+            defaultValue={submitted?.city ?? ""}
+            error={fieldErrors.city}
+          />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field data-invalid={fieldErrors.phone ? true : undefined}>
-            <FieldLabel htmlFor="phone">
-              {t("phoneLabel")}
-              <Req />
-            </FieldLabel>
-            <Input
-              id="phone"
-              name="phone"
-              type="tel"
-              required
-              defaultValue={submitted?.phone ?? ""}
-              aria-invalid={fieldErrors.phone ? true : undefined}
-              aria-describedby={fieldErrors.phone ? "phone-error" : undefined}
-            />
-            {fieldErrors.phone ? <FieldError id="phone-error">{fieldErrors.phone}</FieldError> : null}
-          </Field>
-          <Field data-invalid={fieldErrors.email ? true : undefined}>
-            <FieldLabel htmlFor="email">
-              {t("emailLabel")}
-              <Req />
-            </FieldLabel>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              required
-              defaultValue={submitted?.email ?? ""}
-              aria-invalid={fieldErrors.email ? true : undefined}
-              aria-describedby={fieldErrors.email ? "email-error" : undefined}
-            />
-            {fieldErrors.email ? <FieldError id="email-error">{fieldErrors.email}</FieldError> : null}
-          </Field>
+          <TextField
+            id="phone"
+            name="phone"
+            label={t("phoneLabel")}
+            type="tel"
+            required
+            defaultValue={submitted?.phone ?? ""}
+            error={fieldErrors.phone}
+          />
+          <TextField
+            id="email"
+            name="email"
+            label={t("emailLabel")}
+            type="email"
+            required
+            defaultValue={submitted?.email ?? ""}
+            error={fieldErrors.email}
+          />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field data-invalid={fieldErrors.shirtSize ? true : undefined}>
@@ -586,35 +534,25 @@ export function JugadorForm({
                   ) : null}
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field data-invalid={nameError ? true : undefined}>
-                    <FieldLabel htmlFor={`guardian-${key}-firstName`}>
-                      {t("firstNameLabel")}
-                      <Req />
-                    </FieldLabel>
-                    <Input
-                      id={`guardian-${key}-firstName`}
-                      name="guardianFirstName"
-                      required={showGuardians}
-                      defaultValue={existing?.firstName ?? ""}
-                      aria-invalid={nameError ? true : undefined}
-                      aria-describedby={nameError ? `guardian-${key}-name-error` : undefined}
-                    />
-                  </Field>
-                  <Field data-invalid={nameError ? true : undefined}>
-                    <FieldLabel htmlFor={`guardian-${key}-lastName`}>
-                      {t("lastNameLabel")}
-                      <Req />
-                    </FieldLabel>
-                    <Input
-                      id={`guardian-${key}-lastName`}
-                      name="guardianLastName"
-                      required={showGuardians}
-                      defaultValue={existing?.lastName ?? ""}
-                      aria-invalid={nameError ? true : undefined}
-                      aria-describedby={nameError ? `guardian-${key}-name-error` : undefined}
-                    />
-                    {nameError ? <FieldError id={`guardian-${key}-name-error`}>{nameError}</FieldError> : null}
-                  </Field>
+                  <TextField
+                    id={`guardian-${key}-firstName`}
+                    name="guardianFirstName"
+                    label={t("firstNameLabel")}
+                    required={showGuardians}
+                    defaultValue={existing?.firstName ?? ""}
+                    error={nameError}
+                    errorId={`guardian-${key}-name-error`}
+                    showError={false}
+                  />
+                  <TextField
+                    id={`guardian-${key}-lastName`}
+                    name="guardianLastName"
+                    label={t("lastNameLabel")}
+                    required={showGuardians}
+                    defaultValue={existing?.lastName ?? ""}
+                    error={nameError}
+                    errorId={`guardian-${key}-name-error`}
+                  />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field data-invalid={birthDateError ? true : undefined}>
@@ -633,98 +571,59 @@ export function JugadorForm({
                     />
                     {birthDateError ? <FieldError id={`guardian-${key}-birthDate-error`}>{birthDateError}</FieldError> : null}
                   </Field>
-                  <Field>
-                    <FieldLabel htmlFor={`guardian-${key}-nationalId`}>
-                      {t("nationalIdLabel")}
-                    </FieldLabel>
-                    <Input
-                      id={`guardian-${key}-nationalId`}
-                      name="guardianNationalId"
-                      defaultValue={existing?.nationalId ?? ""}
-                    />
-                  </Field>
+                  <TextField
+                    id={`guardian-${key}-nationalId`}
+                    name="guardianNationalId"
+                    label={t("nationalIdLabel")}
+                    defaultValue={existing?.nationalId ?? ""}
+                  />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-[2fr_1fr_2fr]">
-                  <Field data-invalid={addressError ? true : undefined}>
-                    <FieldLabel htmlFor={`guardian-${key}-address`}>
-                      {t("addressLabel")}
-                      <Req />
-                    </FieldLabel>
-                    <Input
-                      id={`guardian-${key}-address`}
-                      name="guardianAddress"
-                      required={showGuardians}
-                      defaultValue={existing?.address ?? ""}
-                      aria-invalid={addressError ? true : undefined}
-                      aria-describedby={addressError ? `guardian-${key}-address-error` : undefined}
-                    />
-                    {addressError ? <FieldError id={`guardian-${key}-address-error`}>{addressError}</FieldError> : null}
-                  </Field>
-                  <Field data-invalid={postalCodeError ? true : undefined}>
-                    <FieldLabel htmlFor={`guardian-${key}-postalCode`}>
-                      {t("postalCodeLabel")}
-                      <Req />
-                    </FieldLabel>
-                    <Input
-                      id={`guardian-${key}-postalCode`}
-                      name="guardianPostalCode"
-                      inputMode="numeric"
-                      required={showGuardians}
-                      defaultValue={existing?.postalCode ?? ""}
-                      aria-invalid={postalCodeError ? true : undefined}
-                      aria-describedby={postalCodeError ? `guardian-${key}-postalCode-error` : undefined}
-                    />
-                    {postalCodeError ? <FieldError id={`guardian-${key}-postalCode-error`}>{postalCodeError}</FieldError> : null}
-                  </Field>
-                  <Field data-invalid={cityError ? true : undefined}>
-                    <FieldLabel htmlFor={`guardian-${key}-city`}>
-                      {t("cityLabel")}
-                      <Req />
-                    </FieldLabel>
-                    <Input
-                      id={`guardian-${key}-city`}
-                      name="guardianCity"
-                      required={showGuardians}
-                      defaultValue={existing?.city ?? ""}
-                      aria-invalid={cityError ? true : undefined}
-                      aria-describedby={cityError ? `guardian-${key}-city-error` : undefined}
-                    />
-                    {cityError ? <FieldError id={`guardian-${key}-city-error`}>{cityError}</FieldError> : null}
-                  </Field>
+                  <TextField
+                    id={`guardian-${key}-address`}
+                    name="guardianAddress"
+                    label={t("addressLabel")}
+                    required={showGuardians}
+                    defaultValue={existing?.address ?? ""}
+                    error={addressError}
+                  />
+                  <TextField
+                    id={`guardian-${key}-postalCode`}
+                    name="guardianPostalCode"
+                    label={t("postalCodeLabel")}
+                    inputMode="numeric"
+                    required={showGuardians}
+                    defaultValue={existing?.postalCode ?? ""}
+                    error={postalCodeError}
+                  />
+                  <TextField
+                    id={`guardian-${key}-city`}
+                    name="guardianCity"
+                    label={t("cityLabel")}
+                    required={showGuardians}
+                    defaultValue={existing?.city ?? ""}
+                    error={cityError}
+                  />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field data-invalid={phoneError ? true : undefined}>
-                    <FieldLabel htmlFor={`guardian-${key}-phone`}>
-                      {t("phoneLabel")}
-                      <Req />
-                    </FieldLabel>
-                    <Input
-                      id={`guardian-${key}-phone`}
-                      name="guardianPhone"
-                      type="tel"
-                      required={showGuardians}
-                      defaultValue={existing?.phone ?? ""}
-                      aria-invalid={phoneError ? true : undefined}
-                      aria-describedby={phoneError ? `guardian-${key}-phone-error` : undefined}
-                    />
-                    {phoneError ? <FieldError id={`guardian-${key}-phone-error`}>{phoneError}</FieldError> : null}
-                  </Field>
-                  <Field data-invalid={emailError ? true : undefined}>
-                    <FieldLabel htmlFor={`guardian-${key}-email`}>
-                      {t("emailLabel")}
-                      <Req />
-                    </FieldLabel>
-                    <Input
-                      id={`guardian-${key}-email`}
-                      name="guardianEmail"
-                      type="email"
-                      required={showGuardians}
-                      defaultValue={existing?.email ?? ""}
-                      aria-invalid={emailError ? true : undefined}
-                      aria-describedby={emailError ? `guardian-${key}-email-error` : undefined}
-                    />
-                    {emailError ? <FieldError id={`guardian-${key}-email-error`}>{emailError}</FieldError> : null}
-                  </Field>
+                  <TextField
+                    id={`guardian-${key}-phone`}
+                    name="guardianPhone"
+                    label={t("phoneLabel")}
+                    type="tel"
+                    required={showGuardians}
+                    defaultValue={existing?.phone ?? ""}
+                    error={phoneError}
+                  />
+                  <TextField
+                    id={`guardian-${key}-email`}
+                    name="guardianEmail"
+                    label={t("emailLabel")}
+                    type="email"
+                    required={showGuardians}
+                    defaultValue={existing?.email ?? ""}
+                    error={emailError}
+                  />
                 </div>
               </Card>
             );
