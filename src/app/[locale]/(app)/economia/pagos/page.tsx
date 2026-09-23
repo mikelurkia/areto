@@ -4,33 +4,26 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { purchaseReceipts, receivedInvoices, seasons } from "@/db/schema";
+import {
+  markPurchaseReceiptPaid,
+  markPurchaseReceiptsPaidBulk,
+  unmarkPurchaseReceiptPaid,
+} from "@/app/[locale]/(app)/economia/tickets/actions";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
-import { EmptyValue } from "@/components/empty-value";
-import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
-import { MaskedIbanText } from "@/components/masked-iban";
+import { PagosTable, type PagosRow } from "@/components/economia/pagos-table";
 import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
-import { StatusBadge } from "@/components/status-badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { SeasonSelect } from "@/components/equipos/season-select";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import {
+  canManageLedger,
   ECONOMIA_VIEW_PERMISSIONS,
   LEDGER_PARAM,
-  RECONCILIATION_TONE,
   ledgersForFilter,
   reconciliationState,
   resolveLedgerFilter,
   visibleLedgers,
 } from "@/lib/economia";
-import { formatCents } from "@/lib/money";
 
 export async function generateMetadata({
   params,
@@ -98,20 +91,7 @@ export default async function PagosPage({
       })
     : [];
 
-  type Row = {
-    id: string;
-    kind: "invoice" | "receipt";
-    ledger: (typeof ledgers)[number];
-    beneficiary: string;
-    iban: string | null;
-    totalCents: number;
-    dueDate: string | null;
-    reconciliation: ReturnType<typeof reconciliationState>;
-    markedPaidAt?: Date | null;
-    href: string;
-  };
-
-  const invoiceRows: Row[] = pendingInvoices.map((i) => {
+  const invoiceRows: PagosRow[] = pendingInvoices.map((i) => {
     const linkedCents = i.links.reduce((sum, l) => sum + l.amountCents, 0);
     return {
       id: i.id,
@@ -122,11 +102,16 @@ export default async function PagosPage({
       totalCents: i.totalCents,
       dueDate: i.dueDate,
       reconciliation: reconciliationState(linkedCents, i.totalCents),
+      canManage: false,
       href: `/economia/recibidas/${i.id}`,
     };
   });
 
-  const receiptRows: Row[] = receipts
+  const receiptRows: PagosRow[] = receipts
+    .filter((r) => {
+      const linkedCents = r.links.reduce((sum, l) => sum + l.amountCents, 0);
+      return reconciliationState(linkedCents, r.totalCents) !== "settled" && !r.markedPaidAt;
+    })
     .map((r) => {
       const linkedCents = r.links.reduce((sum, l) => sum + l.amountCents, 0);
       return {
@@ -140,20 +125,16 @@ export default async function PagosPage({
         totalCents: r.totalCents,
         dueDate: null,
         reconciliation: reconciliationState(linkedCents, r.totalCents),
-        markedPaidAt: r.markedPaidAt,
+        canManage: canManageLedger(user, r.ledger),
         href: `/economia/tickets/${r.id}`,
       };
-    })
-    .filter((r) => r.reconciliation !== "settled" && !r.markedPaidAt);
+    });
 
   const rows = [...invoiceRows, ...receiptRows].sort((a, b) =>
     (a.dueDate ?? "").localeCompare(b.dueDate ?? ""),
   );
 
   const showLedgerColumn = filter === "both";
-
-  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
-  const formatDate = (value: string) => dateFmt.format(new Date(`${value}T00:00:00`));
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -177,49 +158,14 @@ export default async function PagosPage({
           description={t("noPendingPaymentsDescription")}
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("pendingPaymentBeneficiaryLabel")}</TableHead>
-              <TableHead priority="secondary">{t("accountIbanLabel")}</TableHead>
-              <TableHead className="text-right">{t("invoiceTotalLabel")}</TableHead>
-              <TableHead priority="secondary">{t("invoiceDueDateLabel")}</TableHead>
-              <TableHead priority="secondary">{t("reconciliationLabel")}</TableHead>
-              {showLedgerColumn ? <TableHead priority="tertiary" /> : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={`${r.kind}-${r.id}`}>
-                <TableCell className="font-medium">
-                  <HoverPrefetchLink href={r.href} className="hover:underline">
-                    {r.beneficiary || <EmptyValue />}
-                  </HoverPrefetchLink>
-                </TableCell>
-                <TableCell priority="secondary">
-                  {r.iban ? <MaskedIbanText value={r.iban} /> : <EmptyValue />}
-                </TableCell>
-                <TableCell nowrap className="text-right font-medium">
-                  {formatCents(r.totalCents, locale)}
-                </TableCell>
-                <TableCell priority="secondary" nowrap>
-                  {r.dueDate ? formatDate(r.dueDate) : <EmptyValue />}
-                </TableCell>
-                <TableCell priority="secondary">
-                  <StatusBadge
-                    tone={RECONCILIATION_TONE[r.reconciliation]}
-                    label={t(`reconciliation_${r.reconciliation}`)}
-                  />
-                </TableCell>
-                {showLedgerColumn ? (
-                  <TableCell priority="tertiary">
-                    <StatusBadge tone="neutral" label={t(`ledger_${r.ledger}`)} />
-                  </TableCell>
-                ) : null}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <PagosTable
+          rows={rows}
+          locale={locale}
+          showLedgerColumn={showLedgerColumn}
+          markAction={markPurchaseReceiptPaid}
+          unmarkAction={unmarkPurchaseReceiptPaid}
+          bulkMarkAction={markPurchaseReceiptsPaidBulk}
+        />
       )}
     </div>
   );
