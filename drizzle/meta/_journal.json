@@ -666,6 +666,13 @@
       "when": 1789854907037,
       "tag": "0094_mature_karnak",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1790184033892,
+      "tag": "0095_nebulous_lily_hollister",
+      "breakpoints": true
     }
   ]
 }

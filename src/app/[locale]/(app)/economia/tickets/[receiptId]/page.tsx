@@ -11,12 +11,18 @@ import {
   removeLinkReceipt,
   unlinkMovement,
 } from "@/app/[locale]/(app)/economia/recibidas/actions";
-import { linkMovementToPurchaseReceipt } from "@/app/[locale]/(app)/economia/tickets/actions";
+import {
+  linkMovementToPurchaseReceipt,
+  markPurchaseReceiptPaid,
+  unmarkPurchaseReceiptPaid,
+} from "@/app/[locale]/(app)/economia/tickets/actions";
+import { MarkPurchaseReceiptPaidButton } from "@/components/economia/mark-purchase-receipt-paid-button";
 import { MovementLinksPanel } from "@/components/economia/movement-links-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyValue } from "@/components/empty-value";
 import { InfoRow } from "@/components/info-row";
 import { PageHeader } from "@/components/page-header";
+import { StatusBadge } from "@/components/status-badge";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { resolveBackHref } from "@/lib/back-href";
 import {
@@ -25,7 +31,10 @@ import {
   ECONOMIA_VIEW_PERMISSIONS,
   invoiceFileBucket,
   paymentReceiptBucket,
+  reconciliationState,
   sortCandidateMovementsByAmountProximity,
+  TICKET_PAYMENT_TONE,
+  ticketPaymentState,
   visibleLedgers,
 } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
@@ -67,6 +76,7 @@ export default async function PurchaseReceiptDetailPage({
       season: { columns: { id: true, name: true } },
       team: { columns: { id: true, name: true } },
       category: { columns: { id: true, name: true } },
+      markedPaidByUser: { columns: { fullName: true, email: true } },
       links: {
         with: { movement: { columns: { concept: true, bookedOn: true } } },
         orderBy: (l, { desc }) => [desc(l.createdAt)],
@@ -80,6 +90,10 @@ export default async function PurchaseReceiptDetailPage({
 
   const linkedCents = receipt.links.reduce((sum, l) => sum + l.amountCents, 0);
   const remainingCents = receipt.totalCents - linkedCents;
+  const paymentState = ticketPaymentState(
+    reconciliationState(linkedCents, receipt.totalCents),
+    receipt.markedPaidAt,
+  );
 
   const [fileUrl, receiptUrls, candidateMovementsRaw] = await Promise.all([
     getSignedUrl(invoiceFileBucket(receipt.ledger), receipt.filePath),
@@ -177,6 +191,36 @@ export default async function PurchaseReceiptDetailPage({
               label={t("invoiceTotalLabel")}
               value={<span className="font-semibold">{formatCents(receipt.totalCents, locale)}</span>}
             />
+            <InfoRow
+              label={t("ticketPaymentStateLabel")}
+              value={
+                <span className="flex items-center gap-2">
+                  <StatusBadge
+                    tone={TICKET_PAYMENT_TONE[paymentState]}
+                    label={t(`ticketPaymentState_${paymentState}`)}
+                  />
+                  {canManage ? (
+                    <MarkPurchaseReceiptPaidButton
+                      id={receipt.id}
+                      paid={Boolean(receipt.markedPaidAt)}
+                      markAction={markPurchaseReceiptPaid}
+                      unmarkAction={unmarkPurchaseReceiptPaid}
+                    />
+                  ) : null}
+                </span>
+              }
+            />
+            {receipt.markedPaidAt ? (
+              <InfoRow
+                label={t("ticketMarkedPaidAtLabel")}
+                value={t("ticketMarkedPaidAtValue", {
+                  date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+                    receipt.markedPaidAt,
+                  ),
+                  user: receipt.markedPaidByUser?.fullName ?? receipt.markedPaidByUser?.email ?? "",
+                })}
+              />
+            ) : null}
             {receipt.notes ? <InfoRow label={t("notesLabel")} value={receipt.notes} /> : null}
             {fileUrl ? (
               <a

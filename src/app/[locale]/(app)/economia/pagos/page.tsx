@@ -77,7 +77,10 @@ export default async function PagosPage({
           eq(receivedInvoices.status, "pending"),
         ),
         orderBy: [desc(receivedInvoices.dueDate)],
-        with: { supplier: { columns: { name: true, iban: true } } },
+        with: {
+          supplier: { columns: { name: true, iban: true } },
+          links: { columns: { amountCents: true } },
+        },
       })
     : [];
 
@@ -104,20 +107,24 @@ export default async function PagosPage({
     totalCents: number;
     dueDate: string | null;
     reconciliation: ReturnType<typeof reconciliationState>;
+    markedPaidAt?: Date | null;
     href: string;
   };
 
-  const invoiceRows: Row[] = pendingInvoices.map((i) => ({
-    id: i.id,
-    kind: "invoice",
-    ledger: i.ledger,
-    beneficiary: i.supplier.name,
-    iban: canViewBanking ? i.supplier.iban : null,
-    totalCents: i.totalCents,
-    dueDate: i.dueDate,
-    reconciliation: "pending",
-    href: `/economia/recibidas/${i.id}`,
-  }));
+  const invoiceRows: Row[] = pendingInvoices.map((i) => {
+    const linkedCents = i.links.reduce((sum, l) => sum + l.amountCents, 0);
+    return {
+      id: i.id,
+      kind: "invoice",
+      ledger: i.ledger,
+      beneficiary: i.supplier.name,
+      iban: canViewBanking ? i.supplier.iban : null,
+      totalCents: i.totalCents,
+      dueDate: i.dueDate,
+      reconciliation: reconciliationState(linkedCents, i.totalCents),
+      href: `/economia/recibidas/${i.id}`,
+    };
+  });
 
   const receiptRows: Row[] = receipts
     .map((r) => {
@@ -133,10 +140,11 @@ export default async function PagosPage({
         totalCents: r.totalCents,
         dueDate: null,
         reconciliation: reconciliationState(linkedCents, r.totalCents),
+        markedPaidAt: r.markedPaidAt,
         href: `/economia/tickets/${r.id}`,
       };
     })
-    .filter((r) => r.reconciliation !== "settled");
+    .filter((r) => r.reconciliation !== "settled" && !r.markedPaidAt);
 
   const rows = [...invoiceRows, ...receiptRows].sort((a, b) =>
     (a.dueDate ?? "").localeCompare(b.dueDate ?? ""),
