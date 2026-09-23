@@ -1342,6 +1342,14 @@ export const purchaseReceipts = pgTable(
     filePath: text("file_path"),
     fileName: text("file_name"),
     notes: text("notes"),
+    /**
+     * Marcado manual de "ya lo he pagado", independiente de la conciliación
+     * bancaria (que tarda hasta un mes en confirmarse por extracto). Evita
+     * que la tesorera pague dos veces el mismo ticket mientras espera al
+     * banco. No confundir con `paidByPersonId` (quién adelantó el dinero).
+     */
+    markedPaidAt: timestamp("marked_paid_at", { withTimezone: true }),
+    markedPaidBy: uuid("marked_paid_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("purchase_receipts_season_idx").on(t.seasonId)],
@@ -2227,6 +2235,10 @@ export const purchaseReceiptsRelations = relations(purchaseReceipts, ({ one, man
   paidByPerson: one(persons, {
     fields: [purchaseReceipts.paidByPersonId],
     references: [persons.id],
+  }),
+  markedPaidByUser: one(users, {
+    fields: [purchaseReceipts.markedPaidBy],
+    references: [users.id],
   }),
   links: many(movementLinks),
 }));

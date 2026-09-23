@@ -176,6 +176,28 @@ export const RECONCILIATION_TONE: Record<ReconciliationState, StatusTone> = {
   settled: "positive",
 };
 
+export type TicketPaymentState = "pending" | "paid_unconfirmed" | "settled";
+
+/**
+ * Estado de pago de un ticket para la tesorera, que añade el marcado manual
+ * (`markedPaidAt`) por delante de la conciliación bancaria: esta última tarda
+ * hasta un mes en confirmarse por extracto, y sin el marcado manual la
+ * tesorera no tiene forma de saber que un ticket ya está pagado.
+ */
+export function ticketPaymentState(
+  reconciliation: ReconciliationState,
+  markedPaidAt: string | Date | null,
+): TicketPaymentState {
+  if (reconciliation === "settled") return "settled";
+  return markedPaidAt ? "paid_unconfirmed" : "pending";
+}
+
+export const TICKET_PAYMENT_TONE: Record<TicketPaymentState, StatusTone> = {
+  pending: "neutral",
+  paid_unconfirmed: "highlight",
+  settled: "positive",
+};
+
 /**
  * Ordena movimientos candidatos a enlazar por cercanía al importe pendiente
  * (más probable primero), y a igualdad de cercanía por fecha más reciente.

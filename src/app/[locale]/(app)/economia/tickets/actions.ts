@@ -169,6 +169,70 @@ export async function updatePurchaseReceipt(
   return { message: t("purchaseReceiptUpdated") };
 }
 
+export async function markPurchaseReceiptPaid(
+  _prev: EconomiaState,
+  formData: FormData,
+): Promise<EconomiaState> {
+  const t = await getTranslations("Economia");
+  const user = await requirePermission(ECONOMIA_VIEW_PERMISSIONS);
+
+  const id = String(formData.get("id") ?? "");
+  const current = await db.query.purchaseReceipts.findFirst({
+    where: eq(purchaseReceipts.id, id),
+    columns: { ledger: true },
+  });
+  if (!current) return { error: t("purchaseReceiptNotFound") };
+  if (!canManageLedger(user, current.ledger)) return { error: t("notAllowed") };
+
+  await db
+    .update(purchaseReceipts)
+    .set({ markedPaidAt: new Date(), markedPaidBy: user.id })
+    .where(eq(purchaseReceipts.id, id));
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "update",
+    entityType: "purchase_receipt",
+    entityId: id,
+    metadata: { ledger: current.ledger, paid: true },
+  });
+
+  revalidateRoutes(ROUTE.economiaTicketFicha, ROUTE.economiaTickets, ROUTE.economiaPagos);
+  return { message: t("purchaseReceiptMarkedPaid") };
+}
+
+export async function unmarkPurchaseReceiptPaid(
+  _prev: EconomiaState,
+  formData: FormData,
+): Promise<EconomiaState> {
+  const t = await getTranslations("Economia");
+  const user = await requirePermission(ECONOMIA_VIEW_PERMISSIONS);
+
+  const id = String(formData.get("id") ?? "");
+  const current = await db.query.purchaseReceipts.findFirst({
+    where: eq(purchaseReceipts.id, id),
+    columns: { ledger: true },
+  });
+  if (!current) return { error: t("purchaseReceiptNotFound") };
+  if (!canManageLedger(user, current.ledger)) return { error: t("notAllowed") };
+
+  await db
+    .update(purchaseReceipts)
+    .set({ markedPaidAt: null, markedPaidBy: null })
+    .where(eq(purchaseReceipts.id, id));
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "update",
+    entityType: "purchase_receipt",
+    entityId: id,
+    metadata: { ledger: current.ledger, paid: false },
+  });
+
+  revalidateRoutes(ROUTE.economiaTicketFicha, ROUTE.economiaTickets, ROUTE.economiaPagos);
+  return { message: t("purchaseReceiptUnmarkedPaid") };
+}
+
 export async function deletePurchaseReceipt(
   _prev: EconomiaState,
   formData: FormData,
