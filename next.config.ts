@@ -13,6 +13,20 @@ const nextConfig: NextConfig = {
    */
   cacheComponents: true,
   /**
+   * `SITE_URL` se lee en runtime (server actions y route handlers de auth),
+   * pero en los Deploy Previews de Netlify la URL del preview solo existe
+   * durante el build: `DEPLOY_PRIME_URL` es una variable de solo lectura que
+   * Netlify NO inyecta en el runtime de las funciones (allí solo llegan `URL`,
+   * `SITE_NAME` y `SITE_ID`, y `URL` apunta al sitio principal, no al preview).
+   * Con `env` el valor queda horneado en el bundle en tiempo de build, que es
+   * lo que hace falta: cada preview es su propio build y su URL es fija.
+   * En local y en Vercel `SITE_URL` ya viene del entorno, así que gana ella y
+   * el comportamiento no cambia.
+   */
+  env: {
+    SITE_URL: process.env.SITE_URL ?? process.env.DEPLOY_PRIME_URL ?? "",
+  },
+  /**
    * Contadores derivados del panel: integridad, duplicados y renovaciones.
    * Su frescura la garantizan los `updateTag` de cada acción que los altera, no
    * el reloj, así que `revalidate` puede ser largo. Con `cacheLife("minutes")`

@@ -1,0 +1,19 @@
+# Configuración de despliegue en Netlify.
+#
+# Netlify instala su Next.js Runtime automáticamente al detectar Next en el
+# repo: no hace falta añadir `@netlify/plugin-nextjs` como dependencia.
+#
+# Las migraciones NO se aplican desde aquí. Siguen corriendo en GitHub Actions
+# (`.github/workflows/migrate-prod.yml`), disparadas por el push a `main`, por
+# la misma razón que con Vercel: con `cacheComponents: true`, `next build`
+# ejecuta consultas reales contra Postgres, así que el esquema nuevo tiene que
+# estar aplicado antes de que termine el build.
+
+[build]
+  command = "pnpm run build"
+  publish = ".next"
+
+[build.environment]
+  # Igual que el CI (`ci.yml`). El campo `packageManager` de package.json hace
+  # que corepack use pnpm en la versión correcta.
+  NODE_VERSION = "22"

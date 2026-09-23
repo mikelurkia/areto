@@ -22,6 +22,29 @@ El proyecto usa **dos proyectos Supabase separados**:
 Nunca apuntes `.env.local` al proyecto de producción. Ver [Puesta en
 marcha](#puesta-en-marcha) para crear `areto-dev`.
 
+### Netlify (en evaluación, en paralelo)
+
+Vercel sigue sirviendo producción. Netlify está conectado al mismo repo para
+evaluar el cambio de hosting: publica su propio Deploy Preview en cada PR
+(contra `areto-dev`, igual que Vercel) y un deploy de producción desde `main`
+que todavía no tiene dominio propio. `netlify.toml` fija el comando de build y
+Node 22; el resto de variables se configuran en el panel, con scope por
+contexto (Production → Supabase de producción; Deploy previews y Branch deploys
+→ `areto-dev`).
+
+Las migraciones y los backups no dependen del hosting: corren en GitHub Actions
+y son las mismas con Vercel o con Netlify.
+
+Dos cosas a tener en cuenta con los previews de Netlify:
+
+- `SITE_URL` en un preview se resuelve en tiempo de build desde
+  `DEPLOY_PRIME_URL` (ver el comentario en `next.config.ts`), porque Netlify no
+  expone esa variable al runtime de las funciones.
+- Para que los enlaces de recuperación de contraseña e invitación funcionen en
+  un preview, la URL tiene que estar en la lista blanca de Supabase
+  (Authentication → URL Configuration → Redirect URLs), con un patrón del tipo
+  `https://deploy-preview-*--<sitio>.netlify.app/**`.
+
 Los PRs a `main` corren CI (`.github/workflows/ci.yml`): lint, typecheck,
 `db:check`, comprobación de que `src/db/schema.ts` no tiene cambios sin
 migración generada, `db:migrate` contra `areto-dev` y `next build`.
