@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
@@ -231,6 +231,44 @@ export async function unmarkPurchaseReceiptPaid(
 
   revalidateRoutes(ROUTE.economiaTicketFicha, ROUTE.economiaTickets, ROUTE.economiaPagos);
   return { message: t("purchaseReceiptUnmarkedPaid") };
+}
+
+export async function markPurchaseReceiptsPaidBulk(
+  _prev: EconomiaState,
+  formData: FormData,
+): Promise<EconomiaState> {
+  const t = await getTranslations("Economia");
+  const user = await requirePermission(ECONOMIA_VIEW_PERMISSIONS);
+
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+  if (ids.length === 0) return { error: t("notAllowed") };
+
+  const current = await db.query.purchaseReceipts.findMany({
+    where: inArray(purchaseReceipts.id, ids),
+    columns: { id: true, ledger: true },
+  });
+  const manageableIds = current.filter((r) => canManageLedger(user, r.ledger)).map((r) => r.id);
+  if (manageableIds.length === 0) return { error: t("notAllowed") };
+
+  await db
+    .update(purchaseReceipts)
+    .set({ markedPaidAt: new Date(), markedPaidBy: user.id })
+    .where(inArray(purchaseReceipts.id, manageableIds));
+
+  await Promise.all(
+    manageableIds.map((id) =>
+      recordAuditEvent({
+        actorUserId: user.id,
+        action: "update",
+        entityType: "purchase_receipt",
+        entityId: id,
+        metadata: { paid: true, bulk: true },
+      }),
+    ),
+  );
+
+  revalidateRoutes(ROUTE.economiaTicketFicha, ROUTE.economiaTickets, ROUTE.economiaPagos);
+  return { message: t("purchaseReceiptsMarkedPaidBulk", { count: manageableIds.length }) };
 }
 
 export async function deletePurchaseReceipt(
