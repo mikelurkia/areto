@@ -36,10 +36,22 @@ import {
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { useLocaleDateFormat } from "@/hooks/use-locale-date-format";
 import { usePagedRows } from "@/hooks/use-paged-rows";
-import { ISSUED_INVOICE_STATUS_TONE, LEDGER_PARAM, type Ledger, type LedgerFilter } from "@/lib/economia";
+import {
+  ISSUED_INVOICE_STATUS_TONE,
+  LEDGER_PARAM,
+  RECONCILIATION_TONE,
+  reconciliationState,
+  type Ledger,
+  type LedgerFilter,
+} from "@/lib/economia";
 import { formatCents } from "@/lib/money";
 
 const FILTER_DEFAULTS = { q: "", estado: "all" };
+
+export type IssuedInvoiceListRow = IssuedInvoiceRow & {
+  /** Suma de los apuntes enlazados, para el estado de conciliación. */
+  linkedCents: number;
+};
 
 export function IssuedInvoicesBrowser({
   invoices,
@@ -50,7 +62,7 @@ export function IssuedInvoicesBrowser({
   manageableLedgers,
   locale,
 }: {
-  invoices: IssuedInvoiceRow[];
+  invoices: IssuedInvoiceListRow[];
   seasons: NamedOption[];
   categories: NamedOption[];
   /** "both" mezcla filas de los dos libros en la tabla, con badge de libro. */
@@ -187,6 +199,7 @@ export function IssuedInvoicesBrowser({
                 <TableHead priority="tertiary">{t("invoiceDueDateLabel")}</TableHead>
                 <TableHead className="text-right">{t("invoiceTotalLabel")}</TableHead>
                 <TableHead priority="secondary">{t("invoiceStatusLabel")}</TableHead>
+                <TableHead priority="secondary">{t("reconciliationColumnLabel")}</TableHead>
                 <LedgerColumnHead show={showLedgerColumn} />
                 {canManageAny ? <TableHead className="w-12" /> : null}
               </TableRow>
@@ -216,6 +229,12 @@ export function IssuedInvoicesBrowser({
                     <StatusBadge
                       tone={ISSUED_INVOICE_STATUS_TONE[i.status]}
                       label={t(`issuedInvoiceStatus_${i.status}`)}
+                    />
+                  </TableCell>
+                  <TableCell priority="secondary">
+                    <StatusBadge
+                      tone={RECONCILIATION_TONE[reconciliationState(i.linkedCents, i.totalCents)]}
+                      label={t(`reconciliation_${reconciliationState(i.linkedCents, i.totalCents)}`)}
                     />
                   </TableCell>
                   <LedgerColumnCell show={showLedgerColumn} ledger={i.ledger} />

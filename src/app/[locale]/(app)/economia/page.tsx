@@ -1,11 +1,18 @@
-import { AlertTriangleIcon, FileClockIcon, LandmarkIcon, RefreshCwIcon } from "lucide-react";
-import { and, asc, eq, isNull, isNotNull, sum } from "drizzle-orm";
+import {
+  AlertTriangleIcon,
+  ArrowLeftRightIcon,
+  FileClockIcon,
+  LandmarkIcon,
+  RefreshCwIcon,
+} from "lucide-react";
+import { and, asc, eq, isNull, isNotNull, lte, notInArray, sum } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import {
   accountMovements,
   financialAccounts,
+  movementLinks,
   receivedInvoices,
   seasonBudgets,
   seasons,
@@ -123,6 +130,31 @@ async function loadLedgerPanel(ledger: Ledger, locale: string, t: Translator) {
       : [];
 
   const todayIso = new Date().toISOString().slice(0, 10);
+  const staleIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  // El trabajo atrasado de la tesorera: apuntes con más de un mes que siguen
+  // sin ningún enlace. En su propio `await` y con `limit`, porque sin la cota
+  // esto es la tabla de movimientos entera dentro del dashboard.
+  const unreconciledMovements = season
+    ? await db.query.accountMovements.findMany({
+        where: and(
+          eq(accountMovements.ledger, ledger),
+          eq(accountMovements.seasonId, season.id),
+          lte(accountMovements.bookedOn, staleIso),
+          // Subconsulta sin correlacionar a propósito: el query builder
+          // relacional alias la tabla exterior, y un `not exists` correlacionado
+          // acaba apuntando al nombre crudo y revienta. `movement_id` es
+          // `not null`, así que el `NOT IN` es seguro.
+          notInArray(
+            accountMovements.id,
+            db.select({ id: movementLinks.movementId }).from(movementLinks),
+          ),
+        ),
+        orderBy: [asc(accountMovements.bookedOn)],
+        columns: { id: true, bookedOn: true, concept: true },
+        limit: 5,
+      })
+    : [];
 
   const cashflowEntries: CashflowEntry[] = [
     ...pendingInvoices.map((row): CashflowEntry => ({
@@ -176,6 +208,19 @@ async function loadLedgerPanel(ledger: Ledger, locale: string, t: Translator) {
         }),
         href: `/cuotas/${row.id}`,
         date: row.collectionDate,
+      }),
+    ),
+    ...unreconciledMovements.map(
+      (row): NeedsAttentionItem => ({
+        id: `movement-${row.id}`,
+        icon: ArrowLeftRightIcon,
+        tone: "warning",
+        label: row.concept,
+        hint: t("needsAttentionUnreconciledHint", {
+          date: dueDateFmt.format(new Date(row.bookedOn)),
+        }),
+        href: "/economia/movimientos",
+        date: row.bookedOn,
       }),
     ),
     ...(budget && budget.status === "draft"

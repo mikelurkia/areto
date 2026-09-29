@@ -28,6 +28,7 @@ import {
   canViewLedger,
   invoiceFileBucket,
   paymentReceiptBucket,
+  sortCandidateMovementsByAmountProximity,
   visibleLedgers,
 } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
@@ -92,15 +93,20 @@ export default async function IssuedInvoiceDetailPage({
         gt(accountMovements.amountCents, 0),
       ),
       columns: { id: true, concept: true, bookedOn: true, amountCents: true },
+      with: { links: { columns: { amountCents: true } } },
     }),
   ]);
 
-  const candidateMovements = [...candidateMovementsRaw].sort((a, b) => {
-    const diffA = Math.abs(Math.abs(a.amountCents) - remainingCents);
-    const diffB = Math.abs(Math.abs(b.amountCents) - remainingCents);
-    if (diffA !== diffB) return diffA - diffB;
-    return b.bookedOn.localeCompare(a.bookedOn);
-  });
+  // Un apunte ya imputado por completo no es candidato a nada: enlazarlo otra
+  // vez solo produciría un descuadre que la Server Action ya rechaza.
+  const candidateMovements = sortCandidateMovementsByAmountProximity(
+    candidateMovementsRaw.filter(
+      (m) =>
+        Math.abs(m.links.reduce((total, l) => total + l.amountCents, 0)) <
+        Math.abs(m.amountCents),
+    ),
+    remainingCents,
+  );
 
   const linkRows = invoice.links.map((l, index) => ({
     id: l.id,

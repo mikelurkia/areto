@@ -37,13 +37,22 @@ import {
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { useLocaleDateFormat } from "@/hooks/use-locale-date-format";
 import { usePagedRows } from "@/hooks/use-paged-rows";
-import { LEDGER_PARAM, RECEIVED_INVOICE_STATUS_TONE, type Ledger, type LedgerFilter } from "@/lib/economia";
+import {
+  LEDGER_PARAM,
+  RECEIVED_INVOICE_STATUS_TONE,
+  RECONCILIATION_TONE,
+  reconciliationState,
+  type Ledger,
+  type LedgerFilter,
+} from "@/lib/economia";
 import { formatCents } from "@/lib/money";
 
 const FILTER_DEFAULTS = { q: "", proveedor: "all", estado: "all" };
 
 export type ReceivedInvoiceListRow = ReceivedInvoiceRow & {
   supplierName: string;
+  /** Suma de los apuntes enlazados, para el estado de conciliación. */
+  linkedCents: number;
 };
 
 export function ReceivedInvoicesBrowser({
@@ -215,6 +224,7 @@ export function ReceivedInvoicesBrowser({
                 <TableHead priority="tertiary">{t("invoiceDueDateLabel")}</TableHead>
                 <TableHead className="text-right">{t("invoiceTotalLabel")}</TableHead>
                 <TableHead priority="secondary">{t("invoiceStatusLabel")}</TableHead>
+                <TableHead priority="secondary">{t("reconciliationColumnLabel")}</TableHead>
                 <LedgerColumnHead show={showLedgerColumn} />
                 {canManageAny ? <TableHead className="w-20" /> : null}
               </TableRow>
@@ -244,6 +254,12 @@ export function ReceivedInvoicesBrowser({
                     <StatusBadge
                       tone={RECEIVED_INVOICE_STATUS_TONE[i.status]}
                       label={t(`invoiceStatus_${i.status}`)}
+                    />
+                  </TableCell>
+                  <TableCell priority="secondary">
+                    <StatusBadge
+                      tone={RECONCILIATION_TONE[reconciliationState(i.linkedCents, i.totalCents)]}
+                      label={t(`reconciliation_${reconciliationState(i.linkedCents, i.totalCents)}`)}
                     />
                   </TableCell>
                   <LedgerColumnCell show={showLedgerColumn} ledger={i.ledger} />

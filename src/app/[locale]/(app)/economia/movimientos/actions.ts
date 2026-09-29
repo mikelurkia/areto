@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
+import { checkLinkAgainstDb } from "@/lib/movement-links";
 import {
   accountMovements,
   financialAccounts,
@@ -243,12 +244,29 @@ export async function linkMovementToRemittance(
   if (file && !ALLOWED_FILE_TYPES.includes(file.type)) return { error: t("invoiceFileInvalidType") };
   if (file && file.size > MAX_FILE_BYTES) return { error: t("invoiceFileTooLarge") };
 
-  const movement = await db.query.accountMovements.findFirst({
-    where: eq(accountMovements.id, movementId),
-    columns: { ledger: true },
-  });
+  const [movement, remittance] = await Promise.all([
+    db.query.accountMovements.findFirst({
+      where: eq(accountMovements.id, movementId),
+      columns: { ledger: true, amountCents: true },
+    }),
+    db.query.sepaRemittances.findFirst({
+      where: eq(sepaRemittances.id, sepaRemittanceId),
+      columns: { totalCents: true },
+    }),
+  ]);
   if (!movement) return { error: t("movementNotFound") };
+  if (!remittance) return { error: t("notAllowed") };
   if (!canManageLedger(user, movement.ledger)) return { error: t("notAllowed") };
+
+  const check = await checkLinkAgainstDb({
+    movementId,
+    kind: "remittance",
+    documentId: sepaRemittanceId,
+    documentTotalCents: remittance.totalCents,
+    movementAmountCents: movement.amountCents,
+    amountCents,
+  });
+  if (check.error) return { error: t(`linkError_${check.error}`) };
 
   let created;
   try {

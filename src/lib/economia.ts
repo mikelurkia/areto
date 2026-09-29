@@ -155,7 +155,7 @@ export function paymentReceiptBucket(value: Ledger): string {
   return value === "internal" ? "payment-receipts-internal" : "payment-receipts";
 }
 
-export type ReconciliationState = "pending" | "partial" | "settled";
+export type ReconciliationState = "pending" | "partial" | "settled" | "over";
 
 /**
  * Estado de conciliación DERIVADO de la suma de enlaces frente al importe del
@@ -167,13 +167,15 @@ export function reconciliationState(linkedCents: number, totalCents: number): Re
   const linked = Math.abs(linkedCents);
   const total = Math.abs(totalCents);
   if (linked <= 0) return "pending";
-  return linked >= total ? "settled" : "partial";
+  if (linked > total) return "over";
+  return linked === total ? "settled" : "partial";
 }
 
 export const RECONCILIATION_TONE: Record<ReconciliationState, StatusTone> = {
   pending: "neutral",
   partial: "warning",
   settled: "positive",
+  over: "danger",
 };
 
 export type TicketPaymentState = "pending" | "paid_unconfirmed" | "settled";
@@ -188,7 +190,9 @@ export function ticketPaymentState(
   reconciliation: ReconciliationState,
   markedPaidAt: string | Date | null,
 ): TicketPaymentState {
-  if (reconciliation === "settled") return "settled";
+  // `over` también cuenta como pagado: si no, un ticket sobre-conciliado
+  // caería al `else` y se mostraría como pendiente.
+  if (reconciliation === "settled" || reconciliation === "over") return "settled";
   return markedPaidAt ? "paid_unconfirmed" : "pending";
 }
 
@@ -199,18 +203,117 @@ export const TICKET_PAYMENT_TONE: Record<TicketPaymentState, StatusTone> = {
 };
 
 /**
- * Ordena movimientos candidatos a enlazar por cercanía al importe pendiente
- * (más probable primero), y a igualdad de cercanía por fecha más reciente.
+ * Qué tipo de documento se está conciliando. Es la clave que decide el signo
+ * esperado del apunte y la columna de `movement_links` que se rellena.
  */
+export type LinkTargetKind =
+  | "received"
+  | "issued"
+  | "receipt"
+  | "remittance"
+  | "sponsorPayment";
+
+/**
+ * Signo que debe tener el apunte para casar con este tipo de documento:
+ * -1 = cargo (sale dinero), 1 = abono (entra). Antes era un `lt`/`gt` suelto
+ * repetido en cada página de detalle.
+ */
+export function expectedMovementSign(kind: LinkTargetKind): -1 | 1 {
+  return kind === "received" || kind === "receipt" ? -1 : 1;
+}
+
+export type LinkCheckError =
+  | "amountZero"
+  | "signMismatch"
+  | "exceedsDocument"
+  | "exceedsMovement";
+
+export type LinkCheck = {
+  /** Lo que le queda al documento por conciliar, en positivo. */
+  documentRemainingCents: number;
+  /** Lo que queda sin imputar del apunte, en positivo. */
+  movementRemainingCents: number;
+  /** `null` = se puede guardar. */
+  error: LinkCheckError | null;
+  /** `true` si este enlace deja el documento exactamente a cero. */
+  settles: boolean;
+};
+
+/**
+ * Comprueba que un enlace apunte↔documento cuadre, antes de insertarlo. Es
+ * puro a propósito: lo usa el aviso en vivo del diálogo (cliente) y el
+ * guardarraíl de las Server Actions (servidor), y las dos capas tienen que
+ * decir exactamente lo mismo. Compara en valor absoluto, igual que
+ * `reconciliationState`. Los pagos parciales son legítimos y no son error.
+ */
+export function checkMovementLink(input: {
+  kind: LinkTargetKind;
+  /** Lo tecleado, en positivo. */
+  amountCents: number;
+  /** Importe del apunte, con signo. */
+  movementAmountCents: number;
+  /** Suma de los enlaces que el apunte ya tiene. */
+  movementLinkedCents: number;
+  documentTotalCents: number;
+  documentLinkedCents: number;
+}): LinkCheck {
+  const amount = Math.abs(input.amountCents);
+  const documentRemainingCents = Math.max(
+    0,
+    Math.abs(input.documentTotalCents) - Math.abs(input.documentLinkedCents),
+  );
+  const movementRemainingCents = Math.max(
+    0,
+    Math.abs(input.movementAmountCents) - Math.abs(input.movementLinkedCents),
+  );
+
+  const error: LinkCheckError | null =
+    amount <= 0
+      ? "amountZero"
+      : Math.sign(input.movementAmountCents) !== expectedMovementSign(input.kind)
+        ? "signMismatch"
+        : amount > documentRemainingCents
+          ? "exceedsDocument"
+          : amount > movementRemainingCents
+            ? "exceedsMovement"
+            : null;
+
+  return {
+    documentRemainingCents,
+    movementRemainingCents,
+    error,
+    settles: error === null && amount === documentRemainingCents,
+  };
+}
+
+/**
+ * Ordena candidatos a enlazar por cercanía al importe pendiente (más probable
+ * primero), y a igualdad de cercanía por fecha más reciente. Sirve tanto para
+ * movimientos como para documentos, por eso los accesores van por parámetro.
+ */
+export function sortByAmountProximity<T>(
+  items: readonly T[],
+  targetCents: number,
+  amountOf: (item: T) => number,
+  dateOf: (item: T) => string,
+): T[] {
+  return [...items].sort((a, b) => {
+    const diffA = Math.abs(Math.abs(amountOf(a)) - Math.abs(targetCents));
+    const diffB = Math.abs(Math.abs(amountOf(b)) - Math.abs(targetCents));
+    if (diffA !== diffB) return diffA - diffB;
+    return dateOf(b).localeCompare(dateOf(a));
+  });
+}
+
 export function sortCandidateMovementsByAmountProximity<
   T extends { bookedOn: string; amountCents: number },
 >(movements: readonly T[], remainingCents: number): T[] {
-  return [...movements].sort((a, b) => {
-    const diffA = Math.abs(Math.abs(a.amountCents) - remainingCents);
-    const diffB = Math.abs(Math.abs(b.amountCents) - remainingCents);
-    if (diffA !== diffB) return diffA - diffB;
-    return b.bookedOn.localeCompare(a.bookedOn);
-  });
+  return sortByAmountProximity(
+    movements,
+    remainingCents,
+    (m) => m.amountCents,
+    (m) => m.bookedOn,
+  );
 }
 
 /** Una categoría en la tabla de presupuesto, con su ejecución al lado. */

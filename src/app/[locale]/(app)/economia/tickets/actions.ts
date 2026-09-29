@@ -4,6 +4,7 @@ import { eq, inArray } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
+import { checkLinkAgainstDb } from "@/lib/movement-links";
 import { accountMovements, movementLinks, purchaseReceipts } from "@/db/schema";
 import { requirePermission } from "@/lib/auth";
 import { recordAuditEvent } from "@/lib/audit-log";
@@ -326,17 +327,27 @@ export async function linkMovementToPurchaseReceipt(
   const [movement, receipt] = await Promise.all([
     db.query.accountMovements.findFirst({
       where: eq(accountMovements.id, movementId),
-      columns: { ledger: true },
+      columns: { ledger: true, amountCents: true },
     }),
     db.query.purchaseReceipts.findFirst({
       where: eq(purchaseReceipts.id, purchaseReceiptId),
-      columns: { ledger: true },
+      columns: { ledger: true, totalCents: true },
     }),
   ]);
   if (!movement) return { error: t("movementNotFound") };
   if (!receipt) return { error: t("purchaseReceiptNotFound") };
   if (movement.ledger !== receipt.ledger) return { error: t("notAllowed") };
   if (!canManageLedger(user, movement.ledger)) return { error: t("notAllowed") };
+
+  const check = await checkLinkAgainstDb({
+    movementId,
+    kind: "receipt",
+    documentId: purchaseReceiptId,
+    documentTotalCents: receipt.totalCents,
+    movementAmountCents: movement.amountCents,
+    amountCents,
+  });
+  if (check.error) return { error: t(`linkError_${check.error}`) };
 
   let created;
   try {

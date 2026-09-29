@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { PaperclipIcon, Trash2Icon, UploadIcon } from "lucide-react";
+import { AlertTriangleIcon, InfoIcon, PaperclipIcon, Trash2Icon, UploadIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/actions";
 import { FormError } from "@/components/form-error";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SubmitButton } from "@/components/submit-button";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -27,8 +28,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useActionResult, useActionToast } from "@/hooks/use-action-toast";
-import { RECONCILIATION_TONE, reconciliationState } from "@/lib/economia";
-import { formatCents } from "@/lib/money";
+import {
+  RECONCILIATION_TONE,
+  checkMovementLink,
+  reconciliationState,
+  type LinkTargetKind,
+} from "@/lib/economia";
+import { formatCents, readAmountCents } from "@/lib/money";
 
 export type MovementLinkRow = {
   id: string;
@@ -41,6 +47,14 @@ export type MovementLinkRow = {
 };
 
 export type CandidateMovement = { id: string; concept: string; bookedOn: string; amountCents: number };
+
+/** El tipo de documento que hay detrás de cada columna de `movement_links`. */
+const KIND_BY_FIELD = {
+  receivedInvoiceId: "received",
+  issuedInvoiceId: "issued",
+  sepaRemittanceId: "remittance",
+  purchaseReceiptId: "receipt",
+} as const satisfies Record<LinkTarget["field"], LinkTargetKind>;
 
 /**
  * Qué documento se está conciliando. El panel es el mismo para recibidas y
@@ -170,7 +184,24 @@ export function MovementLinksPanel({
   const formatDate = (value: string) => dateFmt.format(new Date(`${value}T00:00:00`));
 
   const remainingCents = totalCents - linkedCents;
-  const suggestedAmount = remainingCents > 0 ? String(remainingCents / 100) : "";
+
+  // El mismo cuadre que el diálogo del listado de apuntes, con el mismo
+  // validador: las dos caras de la conciliación tienen que decir lo mismo.
+  const movement = candidates.find((c) => c.id === movementId) ?? null;
+  const [amount, setAmount] = useState(() =>
+    remainingCents > 0 ? String(remainingCents / 100) : "",
+  );
+  const check = checkMovementLink({
+    kind: KIND_BY_FIELD[target.field],
+    amountCents: readAmountCents(amount) ?? 0,
+    movementAmountCents: movement?.amountCents ?? 0,
+    // Los candidatos no traen sus propios enlaces: lo que el apunte ya tenga
+    // imputado lo comprueba la Server Action, que es la que manda.
+    movementLinkedCents: 0,
+    documentTotalCents: totalCents,
+    documentLinkedCents: linkedCents,
+  });
+  const differenceCents = check.documentRemainingCents - Math.abs(readAmountCents(amount) ?? 0);
 
   return (
     <div className="flex flex-col gap-3">
@@ -262,7 +293,8 @@ export function MovementLinksPanel({
                 id="link-amount"
                 name="amount"
                 inputMode="decimal"
-                defaultValue={suggestedAmount}
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
                 required
               />
             </Field>
@@ -270,9 +302,24 @@ export function MovementLinksPanel({
               <FieldLabel htmlFor="link-file">{t("receiptFileLabel")}</FieldLabel>
               <Input id="link-file" name="file" type="file" />
             </Field>
-            <SubmitButton>{t("linkAction")}</SubmitButton>
+            <SubmitButton disabled={!movement || check.error !== null}>
+              {t("linkAction")}
+            </SubmitButton>
           </FieldGroup>
         </form>
+      ) : null}
+      {movement && check.error ? (
+        <Alert variant="destructive">
+          <AlertTriangleIcon />
+          <AlertDescription>{t(`linkError_${check.error}`)}</AlertDescription>
+        </Alert>
+      ) : movement && !check.settles && (readAmountCents(amount) ?? 0) > 0 ? (
+        <Alert variant="warning">
+          <InfoIcon />
+          <AlertDescription>
+            {t("linkAmountPartialLabel", { amount: formatCents(differenceCents, locale) })}
+          </AlertDescription>
+        </Alert>
       ) : null}
       <FormError message={state.error} />
     </div>

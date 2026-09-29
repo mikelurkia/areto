@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
+import { checkLinkAgainstDb } from "@/lib/movement-links";
 import {
   accountMovements,
   movementLinks,
@@ -274,17 +275,27 @@ export async function linkMovementToInvoice(
   const [movement, invoice] = await Promise.all([
     db.query.accountMovements.findFirst({
       where: eq(accountMovements.id, movementId),
-      columns: { ledger: true },
+      columns: { ledger: true, amountCents: true },
     }),
     db.query.receivedInvoices.findFirst({
       where: eq(receivedInvoices.id, receivedInvoiceId),
-      columns: { ledger: true },
+      columns: { ledger: true, totalCents: true },
     }),
   ]);
   if (!movement) return { error: t("movementNotFound") };
   if (!invoice) return { error: t("receivedInvoiceNotFound") };
   if (movement.ledger !== invoice.ledger) return { error: t("notAllowed") };
   if (!canManageLedger(user, movement.ledger)) return { error: t("notAllowed") };
+
+  const check = await checkLinkAgainstDb({
+    movementId,
+    kind: "received",
+    documentId: receivedInvoiceId,
+    documentTotalCents: invoice.totalCents,
+    movementAmountCents: movement.amountCents,
+    amountCents,
+  });
+  if (check.error) return { error: t(`linkError_${check.error}`) };
 
   let created;
   try {
