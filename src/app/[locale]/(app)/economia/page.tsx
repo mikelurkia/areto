@@ -5,7 +5,7 @@ import {
   LandmarkIcon,
   RefreshCwIcon,
 } from "lucide-react";
-import { and, asc, eq, isNull, isNotNull, lte, notExists, sql, sum } from "drizzle-orm";
+import { and, asc, eq, isNull, isNotNull, lte, notInArray, sum } from "drizzle-orm";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
@@ -141,11 +141,13 @@ async function loadLedgerPanel(ledger: Ledger, locale: string, t: Translator) {
           eq(accountMovements.ledger, ledger),
           eq(accountMovements.seasonId, season.id),
           lte(accountMovements.bookedOn, staleIso),
-          notExists(
-            db
-              .select({ one: sql`1` })
-              .from(movementLinks)
-              .where(eq(movementLinks.movementId, accountMovements.id)),
+          // Subconsulta sin correlacionar a propósito: el query builder
+          // relacional alias la tabla exterior, y un `not exists` correlacionado
+          // acaba apuntando al nombre crudo y revienta. `movement_id` es
+          // `not null`, así que el `NOT IN` es seguro.
+          notInArray(
+            accountMovements.id,
+            db.select({ id: movementLinks.movementId }).from(movementLinks),
           ),
         ),
         orderBy: [asc(accountMovements.bookedOn)],
