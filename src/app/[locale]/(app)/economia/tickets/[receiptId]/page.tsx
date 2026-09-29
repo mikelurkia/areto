@@ -107,11 +107,18 @@ export default async function PurchaseReceiptDetailPage({
         lt(accountMovements.amountCents, 0),
       ),
       columns: { id: true, concept: true, bookedOn: true, amountCents: true },
+      with: { links: { columns: { amountCents: true } } },
     }),
   ]);
 
+  // Un apunte ya imputado por completo no es candidato a nada: enlazarlo otra
+  // vez solo produciría un descuadre que la Server Action ya rechaza.
   const candidateMovements = sortCandidateMovementsByAmountProximity(
-    candidateMovementsRaw,
+    candidateMovementsRaw.filter(
+      (m) =>
+        Math.abs(m.links.reduce((total, l) => total + l.amountCents, 0)) <
+        Math.abs(m.amountCents),
+    ),
     remainingCents,
   );
 

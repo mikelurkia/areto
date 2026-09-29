@@ -6,7 +6,10 @@ import { useTranslations } from "next-intl";
 import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/actions";
 import { ExportMenu } from "@/components/export-menu";
 import { FiltersBar } from "@/components/filters-bar";
-import { LinkInvoiceDialog } from "@/components/economia/link-invoice-dialog";
+import {
+  LinkInvoiceDialog,
+  type LinkCandidate,
+} from "@/components/economia/link-invoice-dialog";
 import { LedgerColumnCell, LedgerColumnHead, LedgerTotalsGrid } from "@/components/economia/ledger-totals-grid";
 import {
   DeleteMovementDialog,
@@ -43,11 +46,17 @@ import { RECONCILIATION_TONE, reconciliationState, type Ledger, type LedgerFilte
 import { formatCents } from "@/lib/money";
 
 /** Filtros de la pantalla, con su nombre en la URL y su valor de partida. */
-const FILTER_DEFAULTS = { q: "", cuenta: "all", categoria: "all", signo: "all" };
+const FILTER_DEFAULTS = {
+  q: "",
+  cuenta: "all",
+  categoria: "all",
+  signo: "all",
+  conciliacion: "all",
+};
 
 type AccountOption = NamedOption & { ledger: Ledger };
 
-type InvoiceOption = { id: string; ledger: Ledger; number: string; totalCents: number; label: string };
+type InvoiceOption = LinkCandidate & { ledger: Ledger };
 type LinkAction = (prev: EconomiaState, formData: FormData) => Promise<EconomiaState>;
 
 export function MovementsBrowser({
@@ -89,7 +98,12 @@ export function MovementsBrowser({
 }) {
   const t = useTranslations("Economia");
   const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
-  const { cuenta: account, categoria: category, signo: sign } = filters;
+  const {
+    cuenta: account,
+    categoria: category,
+    signo: sign,
+    conciliacion: reconciliation,
+  } = filters;
   const [query, setQuery] = useSearchText(filters.q, (value) => setFilters({ q: value }));
 
   const filtered = useMemo(() => {
@@ -113,8 +127,13 @@ export function MovementsBrowser({
         sign === "income" ? m.amountCents > 0 : m.amountCents < 0,
       );
     }
+    if (reconciliation !== "all") {
+      result = result.filter(
+        (m) => reconciliationState(m.linkedCents, m.amountCents) === reconciliation,
+      );
+    }
     return result;
-  }, [movements, query, account, category, sign]);
+  }, [movements, query, account, category, sign, reconciliation]);
 
   // Los totales son los de lo filtrado, no los de la temporada entera: si no,
   // filtrar por cuenta dejaría unas cifras que no cuadran con la tabla. En
@@ -239,6 +258,22 @@ export function MovementsBrowser({
             <SelectItem value="expense">{t("filterSignExpense")}</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={reconciliation} onValueChange={(v) => setFilters({ conciliacion: v ?? "all" })}>
+          <SelectTrigger aria-label={t("reconciliationFilterLabel")}>
+            <SelectValue>
+              {(value: string) =>
+                value === "all" ? t("reconciliationFilter_all") : t(`reconciliation_${value}`)
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("reconciliationFilter_all")}</SelectItem>
+            <SelectItem value="pending">{t("reconciliation_pending")}</SelectItem>
+            <SelectItem value="partial">{t("reconciliation_partial")}</SelectItem>
+            <SelectItem value="settled">{t("reconciliation_settled")}</SelectItem>
+            <SelectItem value="over">{t("reconciliation_over")}</SelectItem>
+          </SelectContent>
+        </Select>
       </FiltersBar>
 
       {filtered.length === 0 ? (
@@ -257,7 +292,7 @@ export function MovementsBrowser({
                 <TableHead priority="secondary">{t("movementAccountLabel")}</TableHead>
                 <TableHead priority="tertiary">{t("counterpartyLabel")}</TableHead>
                 <TableHead priority="secondary">{t("categoryLabel")}</TableHead>
-                <TableHead priority="tertiary">{t("invoiceLinkLabel")}</TableHead>
+                <TableHead priority="secondary">{t("invoiceLinkLabel")}</TableHead>
                 <TableHead className="text-right">{t("amountLabel")}</TableHead>
                 <TableHead priority="tertiary" className="text-right">
                   {t("balanceLabel")}
@@ -278,15 +313,15 @@ export function MovementsBrowser({
                   <TableCell priority="secondary">
                     {m.categoryName ?? <EmptyValue />}
                   </TableCell>
-                  <TableCell priority="tertiary" nowrap>
-                    {m.invoiceLinks.length > 0 ? (
-                      <span className="flex items-center gap-2">
-                        <StatusBadge
-                          tone={RECONCILIATION_TONE[reconciliationState(m.linkedCents, m.amountCents)]}
-                          label={t(
-                            `reconciliation_${reconciliationState(m.linkedCents, m.amountCents)}`,
-                          )}
-                        />
+                  <TableCell priority="secondary" nowrap>
+                    <span className="flex items-center gap-2">
+                      <StatusBadge
+                        tone={RECONCILIATION_TONE[reconciliationState(m.linkedCents, m.amountCents)]}
+                        label={t(
+                          `reconciliation_${reconciliationState(m.linkedCents, m.amountCents)}`,
+                        )}
+                      />
+                      {m.invoiceLinks.length > 0 ? (
                         <span className="max-w-32 truncate">
                           {m.invoiceLinks.map((link, index) => (
                             <span key={link.id}>
@@ -306,10 +341,8 @@ export function MovementsBrowser({
                             </span>
                           ))}
                         </span>
-                      </span>
-                    ) : (
-                      <EmptyValue />
-                    )}
+                      ) : null}
+                    </span>
                   </TableCell>
                   <TableCell
                     nowrap
@@ -336,9 +369,15 @@ export function MovementsBrowser({
                           <LinkInvoiceDialog
                             movementId={m.id}
                             amountCents={m.amountCents}
-                            receivedInvoices={receivedInvoices.filter((i) => i.ledger === m.ledger)}
-                            issuedInvoices={issuedInvoices.filter((i) => i.ledger === m.ledger)}
-                            purchaseReceipts={purchaseReceipts.filter((i) => i.ledger === m.ledger)}
+                            linkedCents={m.linkedCents}
+                            bookedOn={m.bookedOn}
+                            concept={m.concept}
+                            counterparty={m.counterparty}
+                            candidates={[
+                              ...receivedInvoices,
+                              ...issuedInvoices,
+                              ...purchaseReceipts,
+                            ].filter((i) => i.ledger === m.ledger)}
                             linkReceivedInvoiceAction={linkReceivedInvoiceAction}
                             linkIssuedInvoiceAction={linkIssuedInvoiceAction}
                             linkPurchaseReceiptAction={linkPurchaseReceiptAction}

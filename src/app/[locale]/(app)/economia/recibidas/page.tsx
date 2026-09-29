@@ -76,7 +76,10 @@ export default async function RecibidasPage({
           eq(receivedInvoices.seasonId, season.id),
         ),
         orderBy: [desc(receivedInvoices.issuedOn), desc(receivedInvoices.createdAt)],
-        with: { supplier: { columns: { name: true } } },
+        with: {
+          supplier: { columns: { name: true } },
+          links: { columns: { amountCents: true } },
+        },
       })
     : [];
 
@@ -93,6 +96,7 @@ export default async function RecibidasPage({
     ledger: i.ledger,
     supplierId: i.supplierId,
     supplierName: i.supplier.name,
+    linkedCents: i.links.reduce((total, l) => total + l.amountCents, 0),
     seasonId: i.seasonId,
     teamId: i.teamId,
     categoryId: i.categoryId,

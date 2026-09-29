@@ -70,6 +70,7 @@ export default async function EmitidasPage({
           eq(issuedInvoices.seasonId, season.id),
         ),
         orderBy: [desc(issuedInvoices.issuedOn), desc(issuedInvoices.number)],
+        with: { links: { columns: { amountCents: true } } },
       })
     : [];
 
@@ -77,6 +78,7 @@ export default async function EmitidasPage({
     id: i.id,
     ledger: i.ledger,
     number: i.number,
+    linkedCents: i.links.reduce((total, l) => total + l.amountCents, 0),
     seasonId: i.seasonId,
     categoryId: i.categoryId,
     customerName: i.customerName,

@@ -15,7 +15,12 @@ import {
 import { MovementLinksPanel } from "@/components/economia/movement-links-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasPermission, requirePermission } from "@/lib/auth";
-import { canManageLedger, paymentReceiptBucket, visibleLedgers } from "@/lib/economia";
+import {
+  canManageLedger,
+  paymentReceiptBucket,
+  sortCandidateMovementsByAmountProximity,
+  visibleLedgers,
+} from "@/lib/economia";
 import { getSignedUrl } from "@/lib/supabase/storage";
 import { PageHeader } from "@/components/page-header";
 import { StatTile } from "@/components/stat-tile";
@@ -106,6 +111,7 @@ export default async function RemittanceDetailPage({
             gt(accountMovements.amountCents, 0),
           ),
           columns: { id: true, concept: true, bookedOn: true, amountCents: true },
+          with: { links: { columns: { amountCents: true } } },
         })
       : [],
     Promise.all(
@@ -113,12 +119,16 @@ export default async function RemittanceDetailPage({
     ),
   ]);
 
-  const candidateMovements = [...candidateMovementsRaw].sort((a, b) => {
-    const diffA = Math.abs(Math.abs(a.amountCents) - remainingCents);
-    const diffB = Math.abs(Math.abs(b.amountCents) - remainingCents);
-    if (diffA !== diffB) return diffA - diffB;
-    return b.bookedOn.localeCompare(a.bookedOn);
-  });
+  // Un apunte ya imputado por completo no es candidato a nada: enlazarlo otra
+  // vez solo produciría un descuadre que la Server Action ya rechaza.
+  const candidateMovements = sortCandidateMovementsByAmountProximity(
+    candidateMovementsRaw.filter(
+      (m) =>
+        Math.abs(m.links.reduce((total, l) => total + l.amountCents, 0)) <
+        Math.abs(m.amountCents),
+    ),
+    remainingCents,
+  );
 
   const chargeRows: ChargeRow[] = remittance.charges.map((charge) => {
     const subjectPerson =

@@ -124,7 +124,10 @@ export default async function MovimientosPage({
             eq(receivedInvoices.seasonId, season.id),
           ),
           columns: { id: true, invoiceNumber: true, totalCents: true, ledger: true },
-          with: { supplier: { columns: { name: true } } },
+          with: {
+            supplier: { columns: { name: true } },
+            links: { columns: { amountCents: true } },
+          },
         }),
         db.query.issuedInvoices.findMany({
           where: and(
@@ -132,6 +135,7 @@ export default async function MovimientosPage({
             eq(issuedInvoices.seasonId, season.id),
           ),
           columns: { id: true, number: true, totalCents: true, ledger: true, customerName: true },
+          with: { links: { columns: { amountCents: true } } },
         }),
         db.query.purchaseReceipts.findMany({
           where: and(
@@ -139,7 +143,10 @@ export default async function MovimientosPage({
             eq(purchaseReceipts.seasonId, season.id),
           ),
           columns: { id: true, description: true, totalCents: true, ledger: true },
-          with: { paidByPerson: { columns: { firstName: true, lastName: true } } },
+          with: {
+            paidByPerson: { columns: { firstName: true, lastName: true } },
+            links: { columns: { amountCents: true } },
+          },
         }),
       ])
     : [[], [], []];
@@ -183,29 +190,48 @@ export default async function MovimientosPage({
     .filter((c) => c.isActive)
     .map((c) => ({ id: c.id, name: c.name }));
   const seasonOptions = allSeasons.map((s) => ({ id: s.id, name: s.name }));
-  const receivedInvoiceOptions = candidateReceivedInvoices.map((i) => ({
-    id: i.id,
-    ledger: i.ledger,
-    number: i.invoiceNumber,
-    totalCents: i.totalCents,
-    label: i.supplier.name,
-  }));
-  const issuedInvoiceOptions = candidateIssuedInvoices.map((i) => ({
-    id: i.id,
-    ledger: i.ledger,
-    number: i.number,
-    totalCents: i.totalCents,
-    label: i.customerName,
-  }));
-  const purchaseReceiptOptions = candidatePurchaseReceipts.map((r) => ({
-    id: r.id,
-    ledger: r.ledger,
-    number: r.description,
-    totalCents: r.totalCents,
-    label: r.paidByPerson
-      ? `${r.paidByPerson.firstName} ${r.paidByPerson.lastName}`.trim()
-      : "",
-  }));
+  // Solo se ofrece lo que todavía tiene algo pendiente: un documento ya
+  // conciliado al 100 % no es candidato a nada, y hasta ahora se ofrecía igual.
+  const sumLinks = (links: { amountCents: number }[]) =>
+    links.reduce((total, l) => total + l.amountCents, 0);
+  const isOpen = (totalCents: number, linkedCents: number) =>
+    Math.abs(linkedCents) < Math.abs(totalCents);
+
+  const receivedInvoiceOptions = candidateReceivedInvoices
+    .map((i) => ({
+      kind: "received" as const,
+      id: i.id,
+      ledger: i.ledger,
+      number: i.invoiceNumber,
+      totalCents: i.totalCents,
+      linkedCents: sumLinks(i.links),
+      label: i.supplier.name,
+    }))
+    .filter((i) => isOpen(i.totalCents, i.linkedCents));
+  const issuedInvoiceOptions = candidateIssuedInvoices
+    .map((i) => ({
+      kind: "issued" as const,
+      id: i.id,
+      ledger: i.ledger,
+      number: i.number,
+      totalCents: i.totalCents,
+      linkedCents: sumLinks(i.links),
+      label: i.customerName,
+    }))
+    .filter((i) => isOpen(i.totalCents, i.linkedCents));
+  const purchaseReceiptOptions = candidatePurchaseReceipts
+    .map((r) => ({
+      kind: "receipt" as const,
+      id: r.id,
+      ledger: r.ledger,
+      number: r.description,
+      totalCents: r.totalCents,
+      linkedCents: sumLinks(r.links),
+      label: r.paidByPerson
+        ? `${r.paidByPerson.firstName} ${r.paidByPerson.lastName}`.trim()
+        : "",
+    }))
+    .filter((r) => isOpen(r.totalCents, r.linkedCents));
 
   return (
     <div className="flex flex-1 flex-col gap-4">
