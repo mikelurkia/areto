@@ -2,19 +2,16 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser, hasPermission } from "@/lib/auth";
 import type { Permission } from "@/lib/permissions";
-import { createClient } from "@/lib/supabase/server";
+import { downloadFile } from "@/lib/supabase/storage";
 
 /**
  * Buckets privados que este proxy sabe servir, y el permiso de lectura que
  * exige cada uno. `sponsorship-logos` no está porque es público y se sirve
  * directo desde Supabase (`getPublicUrl`), sin pasar por aquí.
  *
- * Debe coincidir con las políticas RLS de `storage.objects` en
- * `supabase/setup.sql`: esto es solo un atajo para devolver un 403 claro sin
- * gastar una llamada a Storage. La autorización real la hace RLS más abajo (la
- * descarga va con el cliente de sesión del usuario, no con la clave de
- * servicio), así que aunque este mapa se quede desactualizado, Supabase seguirá
- * rechazando lo que sus políticas no permitan.
+ * Este mapa ES la autorización: la descarga va con la clave de servicio (ver
+ * `src/lib/supabase/storage.ts`), que se salta las políticas RLS de
+ * `storage.objects`. Un bucket nuevo sin entrada aquí devuelve 404.
  */
 const BUCKET_READ_PERMISSION: Record<string, Permission> = {
   "person-photos": "personas.view",
@@ -64,13 +61,15 @@ export async function GET(
   }
 
   const objectPath = path.map(decodeURIComponent).join("/");
-  // Cliente con la sesión del usuario (no la clave de servicio): la lectura
-  // pasa por las mismas políticas RLS de `storage.objects` que protegían el
-  // bucket antes de este proxy, así que la autorización real vive en un solo
-  // sitio (Supabase), no duplicada aquí.
-  const supabase = await createClient();
-  const { data, error } = await supabase.storage.from(bucket).download(objectPath);
-  if (error || !data) {
+  // Sin RLS detrás, un `..` (o `%2E%2E`, ya decodificado) se normalizaría en
+  // la URL hacia Storage y saldría de `bucket`, saltándose el mapa de permisos.
+  if (objectPath.split("/").some((segment) => segment === "" || segment === "." || segment === "..")) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+  let data: Blob;
+  try {
+    data = await downloadFile(bucket, objectPath);
+  } catch {
     return new NextResponse("Not found", { status: 404 });
   }
 

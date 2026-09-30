@@ -19,9 +19,9 @@ import {
   LEDGERS,
   canManageLedger,
   invoiceFileBucket,
-  paymentReceiptBucket,
   type Ledger,
 } from "@/lib/economia";
+import { removeLinkReceiptFileObject, uploadLinkReceiptFile } from "@/lib/movement-link-receipts";
 import { readAmountCents } from "@/lib/money";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
@@ -40,21 +40,6 @@ async function uploadInvoiceFile(ledger: Ledger, invoiceId: string, file: File) 
 
 async function removeInvoiceFileObject(ledger: Ledger, path: string) {
   await removeFile(invoiceFileBucket(ledger), path);
-}
-
-/**
- * Justificante de pago de un enlace (`movementLinks`): compartido por las
- * tres formas de conciliar (factura recibida, emitida y remesa), de ahí que
- * viva aquí junto al `unlinkMovement` genérico ya reutilizado por las tres.
- */
-export async function uploadLinkReceiptFile(ledger: Ledger, linkId: string, file: File) {
-  const path = `${linkId}/receipt.${extensionFromMimeType(file.type)}`;
-  await uploadFile(paymentReceiptBucket(ledger), path, file);
-  return { path, name: file.name };
-}
-
-export async function removeLinkReceiptFileObject(ledger: Ledger, path: string) {
-  await removeFile(paymentReceiptBucket(ledger), path);
 }
 
 function readFile(formData: FormData): File | null {

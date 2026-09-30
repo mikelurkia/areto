@@ -27,7 +27,7 @@ import {
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { DUPLICATE_PERSONS_TAG, INTEGRITY_ISSUES_TAG } from "@/lib/data-integrity";
 import { personPhotoThumbPath } from "@/lib/person-photo";
-import { createClient } from "@/lib/supabase/server";
+import { removeFile } from "@/lib/supabase/storage";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 
 export type MergeState = {
@@ -384,10 +384,10 @@ export async function mergePersons(
   });
 
   if (orphanedPhotoPath) {
-    const supabase = await createClient();
-    await supabase.storage
-      .from(PHOTO_BUCKET)
-      .remove([orphanedPhotoPath, personPhotoThumbPath(orphanedPhotoPath)]);
+    await Promise.all([
+      removeFile(PHOTO_BUCKET, orphanedPhotoPath),
+      removeFile(PHOTO_BUCKET, personPhotoThumbPath(orphanedPhotoPath)),
+    ]);
   }
 
   updateTag(DUPLICATE_PERSONS_TAG);

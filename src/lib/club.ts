@@ -36,10 +36,7 @@ export type ClubBrandingAssets = {
  * URLs del logo del club, su sello y la firma del directivo, o `null` cada
  * una si no se ha subido.
  *
- * Sin `"use cache"`, a diferencia de `getClubSettings`: `fileExists` mira el
- * bucket con el cliente de sesión (`createClient`, que lee `cookies()` para
- * las políticas RLS de Storage), y Cache Components no deja acceder a fuentes
- * dinámicas como cookies dentro de un ámbito cacheado. Mismo patrón sin
+ * Sin `"use cache"`, a diferencia de `getClubSettings`: mismo patrón sin
  * cachear que ya usaba la comprobación de la plantilla del parte de lesión.
  */
 export async function getClubBrandingAssets(): Promise<ClubBrandingAssets> {
