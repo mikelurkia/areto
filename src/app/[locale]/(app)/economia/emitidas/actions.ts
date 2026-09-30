@@ -21,7 +21,7 @@ import { readAmountCents } from "@/lib/money";
 import { ROUTE, revalidateRoutes } from "@/lib/revalidate";
 import { extensionFromMimeType, removeFile, uploadFile } from "@/lib/supabase/storage";
 import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/actions";
-import { uploadLinkReceiptFile } from "@/app/[locale]/(app)/economia/recibidas/actions";
+import { uploadLinkReceiptFile } from "@/lib/movement-link-receipts";
 
 type Translator = Awaited<ReturnType<typeof getTranslations>>;
 

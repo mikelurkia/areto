@@ -1,7 +1,12 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+
+// Todo Storage va con la clave de servicio, que se salta RLS: la autorización
+// la hace quien llama (`requirePermission` en la acción, o el mapa de permisos
+// del proxy `/api/storage`). Así Storage no depende de la sesión de Supabase
+// Auth. Por eso ningún helper de aquí debe exportarse desde un `"use server"`
+// sin comprobar permisos antes.
 
 /** Extensión de archivo a partir de su MIME type, para nombrar objetos en Storage. */
 export function extensionFromMimeType(type: string): string {
@@ -23,35 +28,19 @@ export function extensionFromMimeType(type: string): string {
  * Storage sin pasar por el cuerpo de una Server Action. Necesario porque
  * Vercel rechaza cualquier petición a una función con más de 4,5 MB de
  * cuerpo (413 `FUNCTION_PAYLOAD_TOO_LARGE`), un límite de la plataforma que
- * `next.config.ts` no puede levantar. Con la sesión del usuario (no la clave
- * de servicio) para que la política `insert` de RLS del bucket se compruebe
- * al generar la URL, igual que antes se comprobaba al subir con `uploadFile`.
+ * `next.config.ts` no puede levantar.
  */
 export async function createSignedUploadUrl(
   bucket: string,
   path: string,
 ): Promise<{ signedUrl: string; token: string } | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(path);
   if (error || !data) return null;
   return { signedUrl: data.signedUrl, token: data.token };
 }
 
 export async function uploadFile(bucket: string, path: string, file: File): Promise<void> {
-  const supabase = await createClient();
-  const { error } = await supabase.storage
-    .from(bucket)
-    .upload(path, file, { upsert: true, contentType: file.type });
-  if (error) throw error;
-}
-
-/**
- * Sube un fichero con la clave de servicio (bypassa RLS). Solo para acciones
- * públicas sin sesión (formulario de inscripción): el bucket destino no tiene
- * política de `insert` para `anon`, así que subir con la sesión del visitante
- * fallaría; en su lugar el servidor sube en su nombre.
- */
-export async function uploadFileAsAdmin(bucket: string, path: string, file: File): Promise<void> {
   const supabase = createAdminClient();
   const { error } = await supabase.storage
     .from(bucket)
@@ -71,7 +60,7 @@ export async function copyFileBetweenBuckets(
   toBucket: string,
   toPath: string,
 ): Promise<void> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase.storage.from(fromBucket).download(fromPath);
   if (error) throw error;
   const { error: uploadError } = await supabase.storage
@@ -81,7 +70,7 @@ export async function copyFileBetweenBuckets(
 }
 
 export async function removeFile(bucket: string, path: string): Promise<void> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   await supabase.storage.from(bucket).remove([path]);
 }
 
@@ -94,7 +83,7 @@ export async function removeFile(bucket: string, path: string): Promise<void> {
  * ruta guardada y esta comprobación sería una llamada de más.
  */
 export async function fileExists(bucket: string, path: string): Promise<boolean> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const slash = path.lastIndexOf("/");
   const folder = slash < 0 ? "" : path.slice(0, slash);
   const name = path.slice(slash + 1);
@@ -105,7 +94,7 @@ export async function fileExists(bucket: string, path: string): Promise<boolean>
 
 /** Descarga un objeto de Storage. Para regenerar una miniatura a partir del original ya subido. */
 export async function downloadFile(bucket: string, path: string): Promise<Blob> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase.storage.from(bucket).download(path);
   if (error || !data) throw error ?? new Error(`No se pudo descargar ${bucket}/${path}`);
   return data;

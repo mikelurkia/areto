@@ -25,7 +25,7 @@ import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/action
 import {
   removeLinkReceiptFileObject,
   uploadLinkReceiptFile,
-} from "@/app/[locale]/(app)/economia/recibidas/actions";
+} from "@/lib/movement-link-receipts";
 
 type Translator = Awaited<ReturnType<typeof getTranslations>>;
 
