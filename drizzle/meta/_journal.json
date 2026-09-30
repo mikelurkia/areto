@@ -673,6 +673,20 @@
       "when": 1790184033892,
       "tag": "0095_nebulous_lily_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1790777647334,
+      "tag": "0096_warm_gamma_corps",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1790777655609,
+      "tag": "0097_migra_credenciales_supabase",
+      "breakpoints": true
     }
   ]
 }

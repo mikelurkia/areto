@@ -254,18 +254,15 @@
     "deleteUser": "Eliminar usuario",
     "inviteUser": "Invitar usuario",
     "inviteTitle": "Invitar a alguien a Areto",
-    "inviteDescription": "Recibirá un correo con un enlace para poner su contraseña y entrar.",
+    "inviteDescription": "Se genera un enlace para que ponga su contraseña y entre. Si la aplicación puede enviar correo, también le llega por email.",
     "inviteSubmit": "Enviar invitación",
     "inviteSent": "Invitación enviada a {email}.",
-    "inviteFailed": "No se ha podido enviar la invitación.",
-    "invitationResent": "Invitación reenviada a {email}.",
     "passwordResetSent": "Correo de restablecimiento enviado a {email}.",
     "emailLabel": "Correo electrónico",
     "emailPlaceholder": "nombre@ejemplo.com",
     "fullNameLabel": "Nombre y apellidos",
     "personLabel": "Persona del club",
     "personHint": "Opcional. Enlaza la cuenta con su ficha para poder acotar lo que ve a lo suyo.",
-    "emailRateLimitHint": "El envío de correos está limitado. Si no llega, reenvía la invitación pasado un rato.",
     "personSearchPlaceholder": "Buscar una persona…",
     "personNoResults": "Ninguna persona coincide.",
     "personLinkedTo": "ya es {email}",
@@ -279,8 +276,6 @@
     "deleteUserTitle": "Eliminar la cuenta de {email}",
     "deleteUserDescription": "Se borra la cuenta y su perfil, sin vuelta atrás. La ficha de la persona del club no se toca.",
     "deleteUserButton": "Eliminar usuario",
-    "adminApiNotConfigured": "Falta la clave de servicio de Supabase (SUPABASE_SERVICE_ROLE_KEY).",
-    "adminApiNotConfiguredHint": "Sin la clave de servicio de Supabase no se pueden enviar invitaciones ni eliminar cuentas, y la columna de último acceso queda vacía.",
     "createRole": "Crear rol",
     "createRoleTitle": "Nuevo rol",
     "editRoleTitle": "Editar rol",
@@ -328,7 +323,6 @@
     "userDeleted": "Usuario eliminado.",
     "emailInvalid": "El correo electrónico no es válido.",
     "emailTaken": "Ya existe una cuenta con ese correo.",
-    "emailRateLimited": "Se ha alcanzado el límite de correos por hora. Inténtalo de nuevo más tarde.",
     "roleRequired": "Elige al menos un rol.",
     "roleNotFound": "Ese rol ya no existe.",
     "roleNameRequired": "El nombre del rol es obligatorio.",
@@ -453,8 +447,6 @@
       "administracion_audit_view": "Consultar quién ha hecho qué en los módulos sensibles (médico, bancario, usuarios y roles, inscripciones)."
     },
     "defaultRoleRequired": "Marca antes otro rol como predeterminado: las cuentas nuevas necesitan uno.",
-    "emailSendFailed": "No se ha podido enviar el correo. Lo más probable es que falte configurar un SMTP propio en Supabase: el servidor por defecto solo entrega a direcciones del equipo del proyecto.",
-    "userDeleteFailed": "No se ha podido eliminar la cuenta en Supabase.",
     "selectAllRow": "Marcar «{permission}» para todos los roles",
     "selectAllColumn": "Marcar todos los permisos de {role}",
     "matrixDirtyCount": "{count, plural, one {# cambio sin guardar} other {# cambios sin guardar}}",
@@ -462,7 +454,13 @@
     "rolesLabel": "Roles",
     "rolesSearchPlaceholder": "Buscar un rol…",
     "rolesNoResults": "Ningún rol coincide.",
-    "rolesHint": "Puede tener varios. Sus permisos son la suma de todos."
+    "rolesHint": "Puede tener varios. Sus permisos son la suma de todos.",
+    "inviteLinkReady": "Cuenta creada para {email}. Pásale el enlace para que ponga su contraseña.",
+    "passwordResetLinkReady": "Enlace generado para {email}. Pásaselo para que ponga una contraseña nueva.",
+    "passwordLinkTitle": "Enlace para poner contraseña",
+    "passwordLinkDescription": "Es de un solo uso y caduca: la invitación en una semana, la recuperación en una hora.",
+    "copyLink": "Copiar enlace",
+    "close": "Cerrar"
   },
   "Medico": {
     "title": "Panel médico",
@@ -2402,10 +2400,10 @@
     "welcomeTitle": "Te damos la bienvenida",
     "welcomeSubtitle": "Pon una contraseña para entrar en Areto.",
     "resetTitle": "Nueva contraseña",
-    "resetSubtitle": "Elige una contraseña para volver a entrar."
+    "resetSubtitle": "Elige una contraseña para volver a entrar.",
+    "resetContactAdmin": "Para recuperar la contraseña, pide a la secretaría del club un enlace nuevo."
   },
   "AuthErrors": {
-    "notConfigured": "Supabase aún no está configurado. Añade las variables de entorno (ver .env.example).",
     "invalidCredentials": "Email o contraseña incorrectos.",
     "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
     "signupDisabled": "El alta pública está cerrada. Al club se entra por invitación: habla con la secretaría.",
@@ -2413,7 +2411,9 @@
     "accessRevokedDescription": "Tu cuenta existe, pero ahora mismo no tiene acceso a Areto. Habla con la secretaría del club si crees que es un error.",
     "notInvitedTitle": "Esta cuenta no está invitada",
     "notInvitedDescription": "Solo pueden entrar las cuentas invitadas desde el club. Pide una invitación a la secretaría.",
-    "backToLogin": "Volver al acceso"
+    "backToLogin": "Volver al acceso",
+    "tooManyAttempts": "Demasiados intentos. Espera un minuto y vuelve a probar.",
+    "invalidLink": "El enlace no es válido o ha caducado. Pide uno nuevo."
   },
   "AuthCodeError": {
     "title": "No se pudo completar el acceso",
@@ -2447,7 +2447,7 @@
     "emailLabel": "Email",
     "updateEmail": "Actualizar email",
     "emailRequired": "El email no puede estar vacío.",
-    "emailChangeRequested": "Revisa tu bandeja de entrada (la actual y la nueva) para confirmar el cambio de email.",
+    "emailChangeRequested": "Revisa la bandeja de entrada del correo nuevo para confirmar el cambio.",
     "passwordSection": "Contraseña",
     "newPasswordLabel": "Nueva contraseña",
     "confirmPasswordLabel": "Confirmar contraseña",
@@ -2466,8 +2466,9 @@
     "deleteConfirmButton": "Eliminar mi cuenta definitivamente",
     "deleteConfirmMismatch": "El email no coincide.",
     "deleteLastAdminGuard": "Si eliminas tu cuenta no quedaría nadie que pueda gestionar usuarios. Da antes ese permiso a otra persona.",
-    "deleteNotConfigured": "El borrado de cuenta no está disponible todavía.",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "emailChangeUnavailable": "Para cambiar el correo, la aplicación tiene que poder enviar emails, y ahora mismo no puede. Habla con la secretaría del club.",
+    "emailChangeFailed": "No se ha podido pedir el cambio de correo."
   },
   "Club": {
     "title": "Configuración del club",

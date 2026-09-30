@@ -4,58 +4,44 @@ import { eq, inArray } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { db } from "@/db";
-import { roles, users } from "@/db/schema";
+import { authSessions, roles, users } from "@/db/schema";
 import { countActiveAdminsAfter, rolesEscalate } from "@/lib/admin-guards";
 import { hasPermission, requirePermission, type CurrentUser } from "@/lib/auth";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { UNIQUE_VIOLATION, isPostgresError } from "@/lib/db-errors";
-import { getSiteUrl } from "@/lib/site-url";
+import { sendAuthEmail } from "@/lib/auth-email";
+import { createPasswordLink, type PasswordLinkKind } from "@/lib/auth-links";
 import { getUserRoleIds, sameRoleSet, setUserRoles } from "@/lib/user-roles";
-import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import { revalidateAppShell } from "@/lib/revalidate";
 
 export type UserState = {
   error?: string;
   message?: string;
+  /**
+   * Enlace de invitación o de recuperación recién generado. Se devuelve siempre,
+   * se haya enviado por correo o no, para que quien administra pueda copiarlo.
+   */
+  link?: string;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Baneo efectivamente permanente: 100 años. Supabase no acepta "para siempre". */
-const BAN_FOREVER = "876000h";
-
-/** Destino de los enlaces de invitación y de recuperación de contraseña. */
-function confirmUrl(reason: "invitacion" | "recuperacion") {
-  const next = encodeURIComponent(`/contrasena?motivo=${reason}`);
-  return `${getSiteUrl()}/auth/confirm?next=${next}`;
-}
-
 /**
- * Traduce un error de Supabase Auth a algo que se pueda enseñar.
- *
- * No se puede pintar `error.message` a secas: ante un 500, `supabase-js` pierde
- * el cuerpo de la respuesta y devuelve un `AuthRetryableFetchError` cuyo mensaje
- * es literalmente la cadena "{}". Eso llegó a verse en pantalla. El caso real
- * detrás de ese 500 es casi siempre el SMTP: el servidor de correo por defecto
- * de Supabase solo entrega a direcciones del equipo del proyecto.
- *
- * El error completo se vuelca por consola del servidor, que es donde sirve de
- * algo; a quien usa la aplicación se le da un texto accionable.
+ * Genera el enlace para poner contraseña y lo envía por correo si hay SMTP.
+ * El mensaje dice cuál de las dos cosas ha pasado.
  */
-function authErrorMessage(
-  error: { message?: string; code?: string; status?: number },
-  t: (key: string) => string,
-  fallbackKey: string,
-): string {
-  console.error("[administracion] Supabase Auth:", error);
-
-  if (error.code === "email_exists") return t("emailTaken");
-  if (error.code === "over_email_send_rate_limit") return t("emailRateLimited");
-  if ((error.status ?? 0) >= 500) return t("emailSendFailed");
-
-  const message = error.message?.trim();
-  // "{}" y "" son ruido del cliente, no información para nadie.
-  return message && message !== "{}" ? message : t(fallbackKey);
+async function issuePasswordLink(
+  target: { id: string; email: string },
+  kind: PasswordLinkKind,
+  t: (key: string, values?: { email: string }) => string,
+): Promise<UserState> {
+  const link = await createPasswordLink(target.id, kind);
+  const sent = await sendAuthEmail(kind, target.email, link);
+  const key =
+    kind === "invite"
+      ? sent ? "inviteSent" : "inviteLinkReady"
+      : sent ? "passwordResetSent" : "passwordResetLinkReady";
+  return { message: t(key, { email: target.email }), link };
 }
 
 function readPersonId(formData: FormData): string | null {
@@ -101,8 +87,6 @@ export async function inviteUser(
   const t = await getTranslations("Administracion");
   const current = await requirePermission("usuarios.manage");
 
-  if (!isSupabaseAdminConfigured) return { error: t("adminApiNotConfigured") };
-
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const fullName = String(formData.get("fullName") ?? "").trim();
   const roleIds = await readRoleIds(formData);
@@ -115,8 +99,6 @@ export async function inviteUser(
     return { error: t("cannotAssignAdminRole") };
   }
 
-  // Se comprueba ANTES de invitar: si fallara después, la cuenta de Supabase ya
-  // existiría y el correo ya habría salido, y habría que deshacer las dos cosas.
   if (personId) {
     const taken = await db.query.users.findFirst({
       where: eq(users.personId, personId),
@@ -125,56 +107,35 @@ export async function inviteUser(
     if (taken) return { error: t("personAlreadyLinked") };
   }
 
-  const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: confirmUrl("invitacion"),
-    data: { full_name: fullName || null, invited_by: current.email },
-  });
-
-  if (error || !data?.user) {
-    return {
-      error: error
-        ? authErrorMessage(error, t, "inviteFailed")
-        : t("inviteFailed"),
-    };
-  }
-
-  // El trigger `handle_new_user` ya ha insertado el perfil (corre dentro de la
-  // misma transacción que el alta en `auth.users`), con el rol por defecto y en
-  // estado `pending`. Aquí se le pone el rol elegido y se le abre el acceso.
-  // Es un upsert y no un update para no depender de que el trigger exista.
+  // La cuenta nace activa y sin contraseña: la pone quien recibe el enlace.
+  let userId: string;
   try {
-    await db.transaction(async (tx) => {
-    await tx
-      .insert(users)
-      .values({
-        id: data.user.id,
-        email,
-        fullName: fullName || null,
-        personId,
-        status: "active",
-        invitedAt: new Date(),
-        invitedBy: current.id,
-      })
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
+    userId = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(users)
+        .values({
           email,
           fullName: fullName || null,
           personId,
           status: "active",
           invitedAt: new Date(),
           invitedBy: current.id,
-        },
-      });
+        })
+        .returning({ id: users.id });
 
       // `setUserRoles` escribe la puente y, mientras dure la fase expand,
       // también `users.role_id` con el rol principal.
-      await setUserRoles(tx, data.user.id, roleIds);
+      await setUserRoles(tx, created.id, roleIds);
+      return created.id;
     });
   } catch (dbError) {
+    // Dos únicos posibles: el correo o la persona ya tienen cuenta.
     if (isPostgresError(dbError, UNIQUE_VIOLATION)) {
-      return { error: t("personAlreadyLinked") };
+      const emailTaken = await db.query.users.findFirst({
+        where: eq(users.email, email),
+        columns: { id: true },
+      });
+      return { error: t(emailTaken ? "emailTaken" : "personAlreadyLinked") };
     }
     throw dbError;
   }
@@ -183,11 +144,11 @@ export async function inviteUser(
     actorUserId: current.id,
     action: "create",
     entityType: "user",
-    entityId: data.user.id,
+    entityId: userId,
     metadata: { email, roleIds },
   });
   revalidateAppShell();
-  return { message: t("inviteSent", { email }) };
+  return issuePasswordLink({ id: userId, email }, "invite", t);
 }
 
 // --- Edición -----------------------------------------------------------------
@@ -295,17 +256,9 @@ export async function toggleUserStatus(
     })
     .where(eq(users.id, id));
 
-  // El estado en `public.users` es la barrera efectiva (lo comprueba
-  // `requireUser` en cada petición), pero el JWT que el usuario ya tiene en el
-  // navegador sigue siendo válido hasta que caduque. El baneo en Supabase Auth
-  // impide además que lo renueve.
-  if (isSupabaseAdminConfigured) {
-    const admin = createAdminClient();
-    await admin.auth.admin.updateUserById(id, {
-      ban_duration: activate ? "none" : BAN_FOREVER,
-    });
-    if (!activate) await admin.auth.admin.signOut(id, "global");
-  }
+  // `requireUser` ya le cierra la puerta en la siguiente petición por el
+  // estado; borrar sus sesiones además le saca de inmediato.
+  if (!activate) await db.delete(authSessions).where(eq(authSessions.userId, id));
 
   await recordAuditEvent({
     actorUserId: current.id,
@@ -329,7 +282,6 @@ export async function deleteUser(
 
   const id = String(formData.get("id") ?? "");
   if (id === current.id) return { error: t("cannotDeleteSelf") };
-  if (!isSupabaseAdminConfigured) return { error: t("adminApiNotConfigured") };
 
   const target = await db.query.users.findFirst({ where: eq(users.id, id) });
   if (!target) return { error: t("userNotFound") };
@@ -339,13 +291,8 @@ export async function deleteUser(
   });
   if (remaining === 0) return { error: t("lastAdminGuard") };
 
-  // Igual que `deleteAccount` en los ajustes: primero el perfil, luego la
-  // cuenta de Supabase. No hay cascada automática desde `auth.users`.
+  // Sus sesiones y su contraseña caen en cascada.
   await db.delete(users).where(eq(users.id, id));
-
-  const admin = createAdminClient();
-  const { error } = await admin.auth.admin.deleteUser(id);
-  if (error) return { error: authErrorMessage(error, t, "userDeleteFailed") };
 
   await recordAuditEvent({
     actorUserId: current.id,
@@ -358,60 +305,32 @@ export async function deleteUser(
   return { message: t("userDeleted") };
 }
 
-// --- Correos de soporte ------------------------------------------------------
+// --- Enlaces para poner contraseña ------------------------------------------
 
 export async function resendInvitation(
   _prev: UserState,
   formData: FormData,
 ): Promise<UserState> {
-  const t = await getTranslations("Administracion");
-  await requirePermission("usuarios.manage");
-
-  if (!isSupabaseAdminConfigured) return { error: t("adminApiNotConfigured") };
-
-  const id = String(formData.get("id") ?? "");
-  const target = await db.query.users.findFirst({ where: eq(users.id, id) });
-  if (!target) return { error: t("userNotFound") };
-
-  // Con el cliente de administración, no con el de sesión: el de sesión
-  // guardaría el verificador PKCE en el navegador de quien invita, no en el de
-  // quien recibe el correo, y el enlace no funcionaría.
-  //
-  // Y un enlace mágico, no otra invitación: `inviteUserByEmail` falla con
-  // `email_exists` en cuanto la cuenta existe, que es justo el caso aquí.
-  const admin = createAdminClient();
-  const { error } = await admin.auth.signInWithOtp({
-    email: target.email,
-    options: {
-      shouldCreateUser: false,
-      emailRedirectTo: confirmUrl("invitacion"),
-    },
-  });
-
-  if (error) return { error: authErrorMessage(error, t, "inviteFailed") };
-
-  return { message: t("invitationResent", { email: target.email }) };
+  return reissueLink(formData, "invite");
 }
 
 export async function sendPasswordReset(
   _prev: UserState,
   formData: FormData,
 ): Promise<UserState> {
+  return reissueLink(formData, "recovery");
+}
+
+async function reissueLink(formData: FormData, kind: PasswordLinkKind): Promise<UserState> {
   const t = await getTranslations("Administracion");
   await requirePermission("usuarios.manage");
 
-  if (!isSupabaseAdminConfigured) return { error: t("adminApiNotConfigured") };
-
   const id = String(formData.get("id") ?? "");
-  const target = await db.query.users.findFirst({ where: eq(users.id, id) });
+  const target = await db.query.users.findFirst({
+    where: eq(users.id, id),
+    columns: { id: true, email: true },
+  });
   if (!target) return { error: t("userNotFound") };
 
-  const admin = createAdminClient();
-  const { error } = await admin.auth.resetPasswordForEmail(target.email, {
-    redirectTo: confirmUrl("recuperacion"),
-  });
-
-  if (error) return { error: authErrorMessage(error, t, "inviteFailed") };
-
-  return { message: t("passwordResetSent", { email: target.email }) };
+  return issuePasswordLink(target, kind, t);
 }

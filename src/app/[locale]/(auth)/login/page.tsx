@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
+import { redirect } from "@/i18n/navigation";
+import { getCurrentUser } from "@/lib/auth";
 import { AuthBrand } from "@/components/auth/auth-brand";
 import { LoginForm } from "@/components/auth/login-form";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,6 +32,12 @@ async function LoginFormWithRedirect({
   const { next } = await searchParams;
   // Solo rutas internas: un `next` absoluto sería un open redirect.
   const safeNext = next && next.startsWith("/") ? next : "/dashboard";
+
+  // Con sesión válida no hay nada que hacer aquí. Se comprueba en la página y
+  // no en el proxy porque solo aquí se valida la sesión de verdad.
+  const user = await getCurrentUser();
+  if (user?.status === "active") redirect({ href: safeNext, locale: user.locale });
+
   return <LoginForm next={safeNext} />;
 }
 

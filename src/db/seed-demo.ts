@@ -76,9 +76,8 @@ import { seasonLabel, seasonYearOf } from "../lib/sponsorship";
  *
  * Lo que NO se siembra, y por qué:
  *
- * - `users`: su `id` tiene que ser el de un `auth.users` real; las crea el
- *   trigger `handle_new_user` al registrarse (`supabase/setup.sql`). Una fila
- *   inventada aquí no serviría para entrar.
+ * - `users`: una cuenta sin contraseña no sirve para entrar; se crean por
+ *   invitación desde /administracion/usuarios.
  * - Documentos y fotos (`*_documents`, `photoPath`, `contractPath`): apuntan a
  *   objetos de Supabase Storage. Una ruta a un objeto que no existe solo
  *   produce descargas rotas.

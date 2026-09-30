@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
+import { isSmtpConfigured } from "@/lib/auth-email";
 
 export async function generateMetadata({
   params,
@@ -49,7 +50,7 @@ export default async function AjustesPage({
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
             <ProfileForm fullName={user.fullName} />
-            <EmailForm email={user.email} />
+            <EmailForm email={user.email} canChange={isSmtpConfigured} />
           </CardContent>
         </Card>
 

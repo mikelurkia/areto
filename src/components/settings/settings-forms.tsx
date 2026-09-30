@@ -24,7 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
 const initialState: SettingsState = {};
@@ -54,7 +54,11 @@ export function ProfileForm({ fullName }: { fullName: string | null }) {
   );
 }
 
-export function EmailForm({ email }: { email: string }) {
+/**
+ * `canChange` es falso cuando la aplicación no puede enviar correo: el cambio
+ * se confirma con un enlace a la dirección nueva, y sin él no hay cómo.
+ */
+export function EmailForm({ email, canChange }: { email: string; canChange: boolean }) {
   const t = useTranslations("Settings");
   const [state, action] = useActionState(updateEmail, initialState);
   useActionToast(state);
@@ -70,11 +74,17 @@ export function EmailForm({ email }: { email: string }) {
             name="email"
             type="email"
             defaultValue={email}
+            readOnly={!canChange}
             required
           />
+          {canChange ? null : (
+            <FieldDescription>{t("emailChangeUnavailable")}</FieldDescription>
+          )}
         </Field>
         <FormError message={state.error} />
-        <SubmitButton className="self-start">{t("updateEmail")}</SubmitButton>
+        {canChange ? (
+          <SubmitButton className="self-start">{t("updateEmail")}</SubmitButton>
+        ) : null}
       </FieldGroup>
     </form>
   );

@@ -254,18 +254,15 @@
     "deleteUser": "Ezabatu erabiltzailea",
     "inviteUser": "Gonbidatu erabiltzailea",
     "inviteTitle": "Gonbidatu norbait Aretora",
-    "inviteDescription": "Posta elektroniko bat jasoko du, pasahitza jarri eta sartzeko esteka batekin.",
+    "inviteDescription": "Esteka bat sortzen da pasahitza jarri eta sartzeko. Aplikazioak mezuak bidal ditzakeenean, posta elektronikoz ere jasoko du.",
     "inviteSubmit": "Bidali gonbidapena",
     "inviteSent": "Gonbidapena {email} helbidera bidali da.",
-    "inviteFailed": "Ezin izan da gonbidapena bidali.",
-    "invitationResent": "Gonbidapena berriro bidali da {email} helbidera.",
     "passwordResetSent": "Berrezartzeko mezua {email} helbidera bidali da.",
     "emailLabel": "Helbide elektronikoa",
     "emailPlaceholder": "izena@adibidea.com",
     "fullNameLabel": "Izen-abizenak",
     "personLabel": "Klubeko pertsona",
     "personHint": "Aukerakoa. Kontua bere fitxarekin lotzen du, ikusten duena berearekin mugatu ahal izateko.",
-    "emailRateLimitHint": "Posta-bidalketak mugatuta daude. Iristen ez bada, birbidali gonbidapena geroago.",
     "personSearchPlaceholder": "Bilatu pertsona bat…",
     "personNoResults": "Ez dago bat datorren pertsonarik.",
     "personLinkedTo": "dagoeneko {email} da",
@@ -279,8 +276,6 @@
     "deleteUserTitle": "Ezabatu {email} kontua",
     "deleteUserDescription": "Kontua eta bere profila ezabatzen dira, atzera bueltarik gabe. Klubeko pertsonaren fitxa ez da ukitzen.",
     "deleteUserButton": "Ezabatu erabiltzailea",
-    "adminApiNotConfigured": "Supabaseren zerbitzu-gakoa falta da (SUPABASE_SERVICE_ROLE_KEY).",
-    "adminApiNotConfiguredHint": "Supabaseren zerbitzu-gakorik gabe ezin dira gonbidapenak bidali ez kontuak ezabatu, eta azken sarreraren zutabea hutsik geratzen da.",
     "createRole": "Sortu rola",
     "createRoleTitle": "Rol berria",
     "editRoleTitle": "Editatu rola",
@@ -328,7 +323,6 @@
     "userDeleted": "Erabiltzailea ezabatu da.",
     "emailInvalid": "Helbide elektronikoa ez da baliozkoa.",
     "emailTaken": "Badago kontu bat helbide horrekin.",
-    "emailRateLimited": "Orduko posta-mugara iritsi da. Saiatu berriro geroago.",
     "roleRequired": "Aukeratu gutxienez rol bat.",
     "roleNotFound": "Rol hori jada ez dago.",
     "roleNameRequired": "Rolaren izena beharrezkoa da.",
@@ -453,8 +447,6 @@
       "administracion_audit_view": "Modulu sentikorretan (medikua, bankukoa, erabiltzaileak eta rolak, izen-emateak) nork zer egin duen kontsultatzea."
     },
     "defaultRoleRequired": "Markatu lehenago beste rol bat lehenetsi gisa: kontu berriek bat behar dute.",
-    "emailSendFailed": "Ezin izan da mezua bidali. Litekeena da Supabasen SMTP propio bat konfiguratzea falta izatea: lehenetsitako zerbitzariak proiektuko taldeko helbideetara baino ez du bidaltzen.",
-    "userDeleteFailed": "Ezin izan da kontua Supabasen ezabatu.",
     "selectAllRow": "Markatu «{permission}» rol guztientzat",
     "selectAllColumn": "Markatu {role} rolaren baimen guztiak",
     "matrixDirtyCount": "{count, plural, one {gorde gabeko aldaketa #} other {gorde gabeko # aldaketa}}",
@@ -462,7 +454,13 @@
     "rolesLabel": "Rolak",
     "rolesSearchPlaceholder": "Bilatu rol bat…",
     "rolesNoResults": "Ez dago bat datorren rolik.",
-    "rolesHint": "Bat baino gehiago izan ditzake. Bere baimenak guztien batura dira."
+    "rolesHint": "Bat baino gehiago izan ditzake. Bere baimenak guztien batura dira.",
+    "inviteLinkReady": "{email} helbidearentzako kontua sortu da. Pasatu esteka pasahitza jar dezan.",
+    "passwordResetLinkReady": "{email} helbidearentzako esteka sortu da. Pasatu pasahitz berria jar dezan.",
+    "passwordLinkTitle": "Pasahitza jartzeko esteka",
+    "passwordLinkDescription": "Behin bakarrik erabil daiteke eta iraungi egiten da: gonbidapena astebetean, berreskurapena ordubetean.",
+    "copyLink": "Kopiatu esteka",
+    "close": "Itxi"
   },
   "Medico": {
     "title": "Panel medikoa",
@@ -2402,10 +2400,10 @@
     "welcomeTitle": "Ongi etorri",
     "welcomeSubtitle": "Jarri pasahitz bat Areton sartzeko.",
     "resetTitle": "Pasahitz berria",
-    "resetSubtitle": "Aukeratu pasahitz bat berriro sartzeko."
+    "resetSubtitle": "Aukeratu pasahitz bat berriro sartzeko.",
+    "resetContactAdmin": "Pasahitza berreskuratzeko, eskatu esteka berri bat klubeko idazkaritzari."
   },
   "AuthErrors": {
-    "notConfigured": "Supabase oraindik ez dago konfiguratuta. Gehitu ingurune-aldagaiak (ikusi .env.example).",
     "invalidCredentials": "Emaila edo pasahitza okerra da.",
     "passwordTooShort": "Pasahitzak gutxienez 8 karaktere izan behar ditu.",
     "signupDisabled": "Alta publikoa itxita dago. Klubera gonbidapenez sartzen da: hitz egin idazkaritzarekin.",
@@ -2413,7 +2411,9 @@
     "accessRevokedDescription": "Zure kontua badago, baina orain ez du Aretorako sarbiderik. Hitz egin klubeko idazkaritzarekin akatsa dela uste baduzu.",
     "notInvitedTitle": "Kontu hau ez dago gonbidatuta",
     "notInvitedDescription": "Klubetik gonbidatutako kontuak baino ezin dira sartu. Eskatu gonbidapena idazkaritzan.",
-    "backToLogin": "Itzuli sarrerara"
+    "backToLogin": "Itzuli sarrerara",
+    "tooManyAttempts": "Saiakera gehiegi. Itxaron minutu bat eta saiatu berriro.",
+    "invalidLink": "Esteka ez da baliozkoa edo iraungita dago. Eskatu berri bat."
   },
   "AuthCodeError": {
     "title": "Ezin izan da sarrera osatu",
@@ -2447,7 +2447,7 @@
     "emailLabel": "Emaila",
     "updateEmail": "Emaila eguneratu",
     "emailRequired": "Emaila ezin da hutsik egon.",
-    "emailChangeRequested": "Begiratu zure sarrera-ontzia (oraingoa eta berria) emailaren aldaketa baieztatzeko.",
+    "emailChangeRequested": "Begiratu helbide berriaren sarrera-ontzia aldaketa baieztatzeko.",
     "passwordSection": "Pasahitza",
     "newPasswordLabel": "Pasahitz berria",
     "confirmPasswordLabel": "Berretsi pasahitza",
@@ -2466,8 +2466,9 @@
     "deleteConfirmButton": "Ezabatu nire kontua betiko",
     "deleteConfirmMismatch": "Emaila ez dator bat.",
     "deleteLastAdminGuard": "Zure kontua ezabatuz gero, ez litzateke inor geratuko erabiltzaileak kudeatzeko. Eman lehenago baimen hori beste norbaiti.",
-    "deleteNotConfigured": "Kontua ezabatzea oraindik ez dago erabilgarri.",
-    "cancel": "Utzi"
+    "cancel": "Utzi",
+    "emailChangeUnavailable": "Helbidea aldatzeko, aplikazioak mezuak bidali behar ditu, eta orain ezin du. Hitz egin klubeko idazkaritzarekin.",
+    "emailChangeFailed": "Ezin izan da helbide-aldaketa eskatu."
   },
   "Club": {
     "title": "Klubaren konfigurazioa",
