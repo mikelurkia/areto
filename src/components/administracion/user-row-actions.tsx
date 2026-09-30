@@ -19,6 +19,7 @@ import {
   sendPasswordReset,
   toggleUserStatus,
 } from "@/app/[locale]/(app)/administracion/usuarios/actions";
+import { PasswordLinkDialog } from "@/components/administracion/password-link-dialog";
 import type { RoleOption } from "@/components/administracion/role-dialog";
 import type { PersonOption } from "@/components/administracion/user-person-combobox";
 import { UserDialog, type AdminUserRow } from "@/components/administracion/user-dialog";
@@ -83,13 +84,11 @@ export function UserRowActions({
   roles,
   personOptions,
   isSelf,
-  adminApiAvailable,
 }: {
   user: AdminUserRow;
   roles: RoleOption[];
   personOptions: PersonOption[];
   isSelf: boolean;
-  adminApiAvailable: boolean;
 }) {
   const t = useTranslations("Administracion");
 
@@ -122,7 +121,7 @@ export function UserRowActions({
           {user.pendingInvitation ? (
             <form action={resendAction}>
               <input type="hidden" name="id" value={user.id} />
-              <SubmitMenuItem disabled={!adminApiAvailable}>
+              <SubmitMenuItem>
                 <MailIcon />
                 {t("resendInvitation")}
               </SubmitMenuItem>
@@ -130,7 +129,7 @@ export function UserRowActions({
           ) : (
             <form action={resetAction}>
               <input type="hidden" name="id" value={user.id} />
-              <SubmitMenuItem disabled={!adminApiAvailable}>
+              <SubmitMenuItem>
                 <KeyRoundIcon />
                 {t("sendPasswordReset")}
               </SubmitMenuItem>
@@ -155,7 +154,7 @@ export function UserRowActions({
           <DropdownMenuItem
             variant="destructive"
             onClick={() => openDelete(true)}
-            disabled={isSelf || !adminApiAvailable}
+            disabled={isSelf}
           >
             <Trash2Icon />
             {t("deleteUser")}
@@ -171,6 +170,8 @@ export function UserRowActions({
       />
       <UserStatusDialog user={user} />
       <DeleteUserDialog user={user} />
+      <PasswordLinkDialog state={resendState} />
+      <PasswordLinkDialog state={resetState} />
     </>
   );
 }
@@ -216,7 +217,7 @@ function UserStatusDialog({ user }: { user: AdminUserRow }) {
   );
 }
 
-/** Borrado definitivo de la cuenta (perfil + cuenta de Supabase Auth). */
+/** Borrado definitivo de la cuenta, con sus sesiones y su contraseña. */
 function DeleteUserDialog({ user }: { user: AdminUserRow }) {
   const t = useTranslations("Administracion");
   const [open, setOpen] = useDialogParam(`borrar-usuario:${user.id}`);

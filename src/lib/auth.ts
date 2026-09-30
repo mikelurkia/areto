@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
 import { getLocale } from "next-intl/server";
 
 import { redirect } from "@/i18n/navigation";
@@ -7,8 +8,7 @@ import { routing } from "@/i18n/routing";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { isPermission, type Permission } from "@/lib/permissions";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/better-auth";
 
 export type UserLocale = (typeof users.$inferSelect)["locale"];
 export type UserStatus = (typeof users.$inferSelect)["status"];
@@ -40,8 +40,8 @@ const NO_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>();
  * Usuario autenticado + su perfil (rol, permisos, idioma). Devuelve `null` si no
  * hay sesión.
  *
- * Envuelto en `cache()` de React: la comprobación cuesta una petición HTTP a
- * Supabase Auth más una consulta a `users`, y en cada render la piden el layout,
+ * Envuelto en `cache()` de React: la comprobación cuesta la lectura de la
+ * sesión en Better Auth más una consulta a `users`, y en cada render la piden el layout,
  * la página y a veces `generateMetadata`. Con `cache()` se ejecuta una sola vez
  * por petición y las siguientes llamadas son gratis.
  *
@@ -51,12 +51,8 @@ const NO_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>();
  * cuatro tablas en un viaje, no cuatro viajes.
  */
 export const getCurrentUser = cache(async function getCurrentUser(): Promise<CurrentUser | null> {
-  if (!isSupabaseConfigured) return null;
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
 
   if (!user) return null;
 
@@ -96,7 +92,7 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
 
   return {
     id: user.id,
-    email: user.email ?? profile?.email ?? "",
+    email: user.email,
     fullName: profile?.fullName ?? null,
     personId: profile?.personId ?? null,
     locale: profile?.locale ?? routing.defaultLocale,
@@ -126,10 +122,10 @@ export function hasAnyPermission(
  * Exige sesión Y cuenta activa. Redirige a /login si no hay sesión, y a
  * /acceso-revocado si la cuenta está desactivada o todavía sin activar.
  *
- * Esta comprobación es la barrera REAL contra una cuenta desactivada: el JWT
- * que el navegador ya tiene sigue siendo válido hasta que caduque, y el proxy
- * no consulta la base de datos (no debe abrir una conexión a Postgres en cada
- * petición). No cuesta nada extra: `getCurrentUser` está en `cache()`.
+ * Esta comprobación es la barrera REAL contra una cuenta desactivada: el proxy
+ * solo mira que haya cookie de sesión, sin consultar la base de datos (no debe
+ * abrir una conexión a Postgres en cada petición). No cuesta nada extra:
+ * `getCurrentUser` está en `cache()`.
  */
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();

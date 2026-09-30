@@ -1,10 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/**
- * La página resuelve la sesión en su cuerpo (`requireUser`), que es dato de
- * runtime: con Cache Components eso necesita un límite de suspensión a nivel
- * de ruta, y este fichero es quien lo pone.
- */
 export default function Loading() {
   return (
     <div className="flex flex-1 items-center justify-center p-6">

@@ -5,6 +5,7 @@ import { UserPlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { inviteUser } from "@/app/[locale]/(app)/administracion/usuarios/actions";
+import { PasswordLinkDialog } from "@/components/administracion/password-link-dialog";
 import { RoleMultiCombobox } from "@/components/administracion/role-multi-combobox";
 import type { RoleOption } from "@/components/administracion/role-dialog";
 import {
@@ -35,18 +36,18 @@ import { useActionToast } from "@/hooks/use-action-toast";
 import { useCloseOnActionSuccess } from "@/hooks/use-close-on-action-success";
 import { useDialogParam } from "@/hooks/use-dialog-param";
 
-/** Alta de un usuario: se le manda un correo con un enlace para entrar. */
+/**
+ * Alta de un usuario: se genera un enlace para que ponga su contraseña, que se
+ * enseña para copiarlo y además se le envía por correo si hay SMTP.
+ */
 export function InviteUserDialog({
   roles,
   defaultRoleId,
   personOptions,
-  available,
 }: {
   roles: RoleOption[];
   defaultRoleId: string | null;
   personOptions: PersonOption[];
-  /** Falso si no hay clave de servicio: sin ella no se pueden enviar correos. */
-  available: boolean;
 }) {
   const t = useTranslations("Administracion");
   const [open, setOpen] = useDialogParam("usuario-nuevo");
@@ -56,65 +57,67 @@ export function InviteUserDialog({
   useCloseOnActionSuccess(state, setOpen);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button disabled={!available} />}>
-        <UserPlusIcon data-icon="inline-start" />
-        {t("inviteUser")}
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("inviteTitle")}</DialogTitle>
-          <DialogDescription>{t("inviteDescription")}</DialogDescription>
-        </DialogHeader>
-        <form action={action} className="flex flex-col gap-4">
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="invite-email">{t("emailLabel")}</FieldLabel>
-              <Input
-                id="invite-email"
-                name="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("emailPlaceholder")}
-                required
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="invite-name">{t("fullNameLabel")}</FieldLabel>
-              <Input id="invite-name" name="fullName" />
-            </Field>
-            <Field>
-              <FieldLabel>{t("rolesLabel")}</FieldLabel>
-              <FieldDescription>{t("rolesHint")}</FieldDescription>
-              <RoleMultiCombobox
-                // Igual que en el diálogo de edición: si cambia cuál es el rol
-                // por defecto, la preselección vuelve a sembrarse.
-                key={defaultRoleId ?? ""}
-                roles={roles}
-                selected={defaultRoleId ? [defaultRoleId] : []}
-              />
-            </Field>
-            <Field>
-              <FieldLabel>{t("personLabel")}</FieldLabel>
-              <UserPersonCombobox
-                personOptions={personOptions}
-                defaultPersonId={null}
-                emailHint={email}
-              />
-              <FieldDescription>{t("personHint")}</FieldDescription>
-            </Field>
-          </FieldGroup>
-          <FieldDescription>{t("emailRateLimitHint")}</FieldDescription>
-          <FormError message={state.error} />
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>
-              {t("cancel")}
-            </DialogClose>
-            <SubmitButton>{t("inviteSubmit")}</SubmitButton>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger render={<Button />}>
+          <UserPlusIcon data-icon="inline-start" />
+          {t("inviteUser")}
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("inviteTitle")}</DialogTitle>
+            <DialogDescription>{t("inviteDescription")}</DialogDescription>
+          </DialogHeader>
+          <form action={action} className="flex flex-col gap-4">
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="invite-email">{t("emailLabel")}</FieldLabel>
+                <Input
+                  id="invite-email"
+                  name="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t("emailPlaceholder")}
+                  required
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="invite-name">{t("fullNameLabel")}</FieldLabel>
+                <Input id="invite-name" name="fullName" />
+              </Field>
+              <Field>
+                <FieldLabel>{t("rolesLabel")}</FieldLabel>
+                <FieldDescription>{t("rolesHint")}</FieldDescription>
+                <RoleMultiCombobox
+                  // Igual que en el diálogo de edición: si cambia cuál es el rol
+                  // por defecto, la preselección vuelve a sembrarse.
+                  key={defaultRoleId ?? ""}
+                  roles={roles}
+                  selected={defaultRoleId ? [defaultRoleId] : []}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>{t("personLabel")}</FieldLabel>
+                <UserPersonCombobox
+                  personOptions={personOptions}
+                  defaultPersonId={null}
+                  emailHint={email}
+                />
+                <FieldDescription>{t("personHint")}</FieldDescription>
+              </Field>
+            </FieldGroup>
+            <FormError message={state.error} />
+            <DialogFooter>
+              <DialogClose render={<Button type="button" variant="outline" />}>
+                {t("cancel")}
+              </DialogClose>
+              <SubmitButton>{t("inviteSubmit")}</SubmitButton>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <PasswordLinkDialog state={state} />
+    </>
   );
 }

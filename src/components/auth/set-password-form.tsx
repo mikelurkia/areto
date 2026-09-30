@@ -15,13 +15,17 @@ import { Input } from "@/components/ui/input";
 
 const initialState: AuthState = {};
 
-/** Fija la contraseña tras aceptar una invitación o pedir una recuperación. */
-export function SetPasswordForm() {
+/**
+ * Fija la contraseña tras aceptar una invitación o pedir una recuperación.
+ * `token` es el del enlace, y es lo único que identifica la cuenta.
+ */
+export function SetPasswordForm({ token }: { token: string }) {
   const t = useTranslations("Login");
   const [state, action] = useActionState(setPassword, initialState);
 
   return (
     <form action={action}>
+      <input type="hidden" name="token" value={token} />
       <FieldGroup>
         <Field data-invalid={state.error ? true : undefined}>
           <FieldLabel htmlFor="new-password">{t("newPassword")}</FieldLabel>

@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { requireUser } from "@/lib/auth";
 import { AuthBrand } from "@/components/auth/auth-brand";
 import { SetPasswordForm } from "@/components/auth/set-password-form";
 import { CourtLines } from "@/components/public/court-lines";
@@ -20,27 +19,31 @@ export async function generateMetadata({
 
 /**
  * El titular cambia según de dónde venga el enlace (invitación o
- * recuperación), y eso vive en `searchParams`, que es dato de runtime: va en su
- * propio componente para que el resto de la página se prerenderice.
+ * recuperación), y el formulario necesita su token de un solo uso. Las dos
+ * cosas viven en `searchParams`, que es dato de runtime: van en su propio
+ * componente para que el resto de la página se prerenderice.
  */
-async function PasswordHeading({
+async function PasswordContent({
   searchParams,
 }: {
-  searchParams: Promise<{ motivo?: string }>;
+  searchParams: Promise<{ motivo?: string; token?: string }>;
 }) {
-  const { motivo } = await searchParams;
+  const { motivo, token } = await searchParams;
   const t = await getTranslations("Login");
   const isInvitation = motivo === "invitacion";
 
   return (
-    <div className="flex flex-col gap-1 text-center">
-      <h1 className="text-xl font-semibold">
-        {isInvitation ? t("welcomeTitle") : t("resetTitle")}
-      </h1>
-      <p className="text-sm text-muted-foreground">
-        {isInvitation ? t("welcomeSubtitle") : t("resetSubtitle")}
-      </p>
-    </div>
+    <>
+      <div className="flex flex-col gap-1 text-center">
+        <h1 className="text-xl font-semibold">
+          {isInvitation ? t("welcomeTitle") : t("resetTitle")}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {isInvitation ? t("welcomeSubtitle") : t("resetSubtitle")}
+        </p>
+      </div>
+      <SetPasswordForm token={token ?? ""} />
+    </>
   );
 }
 
@@ -49,14 +52,11 @@ export default async function ContrasenaPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ motivo?: string }>;
+  searchParams: Promise<{ motivo?: string; token?: string }>;
 }) {
   const { locale } = await params;
   // Renderizado estático: fija el idioma sin tener que leer cabeceras.
   setRequestLocale(locale);
-  // Se llega aquí con sesión: `/auth/confirm` la ha abierto al canjear el token
-  // del correo. Sin ella no hay contraseña que cambiar.
-  await requireUser();
 
   return (
     <div className="relative flex flex-1 items-center justify-center overflow-hidden p-6">
@@ -67,16 +67,21 @@ export default async function ContrasenaPage({
 
         <Suspense
           fallback={
-            <div className="flex flex-col items-center gap-2" aria-hidden>
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-64" />
-            </div>
+            <>
+              <div className="flex flex-col items-center gap-2" aria-hidden>
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+              <div className="flex flex-col gap-4" aria-hidden>
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            </>
           }
         >
-          <PasswordHeading searchParams={searchParams} />
+          <PasswordContent searchParams={searchParams} />
         </Suspense>
-
-        <SetPasswordForm />
       </div>
     </div>
   );

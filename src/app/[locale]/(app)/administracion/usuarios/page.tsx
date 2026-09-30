@@ -1,13 +1,10 @@
 import { StatusBadge } from "@/components/status-badge";
-import { TriangleAlertIcon } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { db } from "@/db";
 import { Link } from "@/i18n/navigation";
 import { hasPermission, requirePermission } from "@/lib/auth";
 import { isSystemRoleKey } from "@/lib/permissions";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
-import { listAuthDirectory } from "@/lib/supabase/auth-directory";
 import { AdminSectionNav } from "@/components/administracion/admin-section-nav";
 import { InviteUserDialog } from "@/components/administracion/invite-user-dialog";
 import type { RoleOption } from "@/components/administracion/role-dialog";
@@ -15,7 +12,6 @@ import type { AdminUserRow } from "@/components/administracion/user-dialog";
 import { UserRowActions } from "@/components/administracion/user-row-actions";
 import type { PersonOption } from "@/components/administracion/user-person-combobox";
 import { PageHeader } from "@/components/page-header";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -52,8 +48,7 @@ export default async function UsuariosPage({
   const t = await getTranslations("Administracion");
 
   // Tres lecturas directas de la página: el `Promise.all` es el patrón habitual
-  // del repositorio. La llamada a la Admin API va fuera a propósito — es una
-  // petición HTTP, no una consulta, y no debe sumar concurrencia al pooler.
+  // del repositorio.
   const [userRows, allRoles, allPersons] = await Promise.all([
     db.query.users.findMany({
       with: {
@@ -70,8 +65,6 @@ export default async function UsuariosPage({
       orderBy: (p, { asc }) => [asc(p.lastName), asc(p.firstName)],
     }),
   ]);
-
-  const authDirectory = await listAuthDirectory();
 
   const roleLabel = (role: { key: string; name: string }) =>
     isSystemRoleKey(role.key) ? t(`roles.${role.key}` as "roles.admin") : role.name;
@@ -105,26 +98,20 @@ export default async function UsuariosPage({
   }));
 
   const rows: AdminUserRow[] = userRows
-    .map((u) => {
-      const auth = authDirectory.get(u.id);
-      return {
-        id: u.id,
-        email: u.email,
-        fullName: u.fullName,
-        roleIds: rolesOf(u).map((r) => r.id),
-        roleLabels: rolesOf(u).map(roleLabel),
-        personId: u.personId,
-        personName: u.person
-          ? `${u.person.firstName} ${u.person.lastName}`.trim()
-          : null,
-        status: u.status,
-        // Sin clave de servicio no sabemos si ya entró; en ese caso nos
-        // quedamos con lo que dice nuestra tabla y no inventamos un estado.
-        pendingInvitation:
-          u.invitedAt !== null && auth !== undefined && auth.lastSignInAt === null,
-        lastSignInAt: auth?.lastSignInAt ?? null,
-      };
-    })
+    .map((u) => ({
+      id: u.id,
+      email: u.email,
+      fullName: u.fullName,
+      roleIds: rolesOf(u).map((r) => r.id),
+      roleLabels: rolesOf(u).map(roleLabel),
+      personId: u.personId,
+      personName: u.person
+        ? `${u.person.firstName} ${u.person.lastName}`.trim()
+        : null,
+      status: u.status,
+      pendingInvitation: u.invitedAt !== null && u.lastSignInAt === null,
+      lastSignInAt: u.lastSignInAt?.toISOString() ?? null,
+    }))
     .sort(
       (a, b) =>
         STATUS_ORDER[a.status] - STATUS_ORDER[b.status] ||
@@ -144,7 +131,6 @@ export default async function UsuariosPage({
             roles={roleOptions}
             defaultRoleId={defaultRole?.id ?? null}
             personOptions={personOptions}
-            available={isSupabaseAdminConfigured}
           />
         }
       />
@@ -154,15 +140,6 @@ export default async function UsuariosPage({
         canManageRoles={hasPermission(current, "roles.manage")}
         canViewAudit={hasPermission(current, "administracion.audit.view")}
       />
-
-      {!isSupabaseAdminConfigured ? (
-        <Alert variant="warning">
-          <TriangleAlertIcon />
-          <AlertDescription className="text-foreground">
-            {t("adminApiNotConfiguredHint")}
-          </AlertDescription>
-        </Alert>
-      ) : null}
 
       <Table>
         <TableHeader>
@@ -240,7 +217,6 @@ export default async function UsuariosPage({
                   roles={roleOptions}
                   personOptions={personOptions}
                   isSelf={row.id === current.id}
-                  adminApiAvailable={isSupabaseAdminConfigured}
                 />
               </TableCell>
             </TableRow>

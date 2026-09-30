@@ -1,5 +1,6 @@
 import {
   type AnyPgColumn,
+  bigint,
   boolean,
   check,
   date,
@@ -701,14 +702,17 @@ export const rolePermissions = pgTable(
 ).enableRLS();
 
 /**
- * Perfil de aplicación. Su `id` es EXACTAMENTE el id de `auth.users` de Supabase
- * (no se genera aquí): lo crea un trigger `handle_new_user` al registrarse.
- * Ver `supabase/setup.sql`.
+ * Perfil de aplicación y, a la vez, el modelo de usuario de Better Auth
+ * (`user.modelName = "users"` en `src/lib/better-auth.ts`). Las cuentas nacen
+ * por invitación desde /administracion/usuarios.
+ *
+ * Las cuentas anteriores a Better Auth conservan el id que tenían en
+ * `auth.users` de Supabase.
  */
 export const users = pgTable(
   "users",
   {
-    id: uuid("id").primaryKey(), // = auth.users.id
+    id: uuid("id").primaryKey().defaultRandom(),
     personId: uuid("person_id").references(() => persons.id, {
       onDelete: "set null",
     }),
@@ -730,6 +734,12 @@ export const users = pgTable(
     }),
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Campos que exige Better Auth en su modelo de usuario.
+    emailVerified: boolean("email_verified").notNull().default(false),
+    image: text("image"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Lo rellena el hook `session.create.after` de Better Auth. */
+    lastSignInAt: timestamp("last_sign_in_at", { withTimezone: true }),
   },
   (t) => [
     // Una persona del club, como mucho una cuenta.
@@ -738,6 +748,80 @@ export const users = pgTable(
       .where(sql`${t.personId} is not null`),
   ],
 ).enableRLS();
+
+/*
+ * Tablas de Better Auth (sesiones, credenciales, tokens de un solo uso y
+ * contadores del rate limit). Siguen el esquema que genera su CLI; los nombres
+ * de propiedad son los que espera el adapter de Drizzle, y el modelo al que
+ * corresponde cada una se fija en `src/lib/better-auth.ts`. RLS activada y sin
+ * políticas: solo las lee la aplicación, nunca la API pública de Supabase.
+ */
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("auth_sessions_user_idx").on(t.userId)],
+).enableRLS();
+
+/** Credenciales. La contraseña vive aquí (`provider_id = 'credential'`), no en `users`. */
+export const authAccounts = pgTable(
+  "auth_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+    scope: text("scope"),
+    /** Hash scrypt de Better Auth, o bcrypt heredado de Supabase (`$2…`). */
+    password: text("password"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("auth_accounts_user_idx").on(t.userId),
+    // Una cuenta por proveedor y usuario: hace idempotente la migración de datos.
+    uniqueIndex("auth_accounts_provider_account_idx").on(t.providerId, t.accountId),
+  ],
+).enableRLS();
+
+/** Tokens de un solo uso: enlaces de invitación y de recuperación de contraseña. */
+export const authVerifications = pgTable(
+  "auth_verifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("auth_verifications_identifier_idx").on(t.identifier)],
+).enableRLS();
+
+/** Contadores del rate limit. En base de datos porque en serverless la memoria no se comparte. */
+export const authRateLimits = pgTable("auth_rate_limits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+}).enableRLS();
 
 /**
  * Roles de acceso de cada cuenta. Los permisos efectivos son la UNIÓN de los de

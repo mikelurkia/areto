@@ -1,13 +1,17 @@
 "use server";
 
+import { and, eq, ne } from "drizzle-orm";
+import { headers } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 
+import { db } from "@/db";
+import { users } from "@/db/schema";
 import { redirect as localizedRedirect } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
-import { getCurrentUser } from "@/lib/auth";
-import { getSiteUrl } from "@/lib/site-url";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createClient } from "@/lib/supabase/server";
+import { isSmtpConfigured, sendAuthEmail } from "@/lib/auth-email";
+import { createPasswordLink } from "@/lib/auth-links";
+import { auth } from "@/lib/better-auth";
+import { isLoginRateLimited } from "@/lib/login-rate-limit";
 
 export type AuthState = {
   error?: string;
@@ -25,19 +29,33 @@ export async function login(
   formData: FormData,
 ): Promise<AuthState> {
   const t = await getTranslations("AuthErrors");
-  if (!isSupabaseConfigured) return { error: t("notConfigured") };
 
-  const email = String(formData.get("email") ?? "");
+  const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const next = safeNext(formData.get("next"));
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (await isLoginRateLimited(email)) return { error: t("tooManyAttempts") };
 
-  if (error) return { error: t("invalidCredentials") };
+  let userId: string;
+  try {
+    const result = await auth.api.signInEmail({
+      body: { email, password },
+      headers: await headers(),
+    });
+    userId = result.user.id;
+  } catch {
+    // Contraseña mala, cuenta inexistente o desactivada: el mismo mensaje, para
+    // no revelar cuál de las tres.
+    return { error: t("invalidCredentials") };
+  }
 
-  const current = await getCurrentUser();
-  const locale = current?.locale ?? routing.defaultLocale;
+  // La cookie recién escrita no está en las cabeceras de esta petición, así
+  // que el idioma se lee directamente y no con `getCurrentUser`.
+  const profile = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { locale: true },
+  });
+  const locale = profile?.locale ?? routing.defaultLocale;
   return localizedRedirect({ href: next, locale });
 }
 
@@ -46,9 +64,9 @@ export async function login(
  * /administracion/usuarios.
  *
  * La acción no se borra, se convierte en un cortafuegos. La barrera de verdad
- * está en Supabase ("Allow new users to sign up" apagado, ver
- * `supabase/setup.sql`); esto solo evita que una petición reconstruida a mano
- * llegue a intentarlo, y deja escrito por qué el formulario ya no la ofrece.
+ * es `disableSignUp` en `src/lib/better-auth.ts`; esto solo evita que una
+ * petición reconstruida a mano llegue a intentarlo, y deja escrito por qué el
+ * formulario ya no la ofrece.
  */
 export async function signup(): Promise<AuthState> {
   const t = await getTranslations("AuthErrors");
@@ -58,13 +76,11 @@ export async function signup(): Promise<AuthState> {
 /**
  * "He olvidado mi contraseña", pedido por el propio usuario.
  *
- * Aquí sí va el cliente de sesión: quien rellena el formulario es quien va a
- * abrir el correo. (Cuando lo lanza un administrador desde la pantalla de
- * usuarios se usa el cliente de administración, para no dejar el verificador
- * PKCE en el navegador equivocado.)
+ * Sin SMTP no hay forma de hacerle llegar el enlace, así que se le manda a un
+ * administrador, que puede generarlo desde la pantalla de usuarios.
  *
- * Responde lo mismo exista o no la cuenta: si no, esta pantalla se convertiría
- * en una forma cómoda de averiguar quién tiene cuenta en el club.
+ * Con SMTP responde lo mismo exista o no la cuenta: si no, esta pantalla se
+ * convertiría en una forma cómoda de averiguar quién tiene cuenta en el club.
  */
 export async function requestPasswordReset(
   _prev: AuthState,
@@ -72,26 +88,33 @@ export async function requestPasswordReset(
 ): Promise<AuthState> {
   const t = await getTranslations("Login");
   const tErrors = await getTranslations("AuthErrors");
-  if (!isSupabaseConfigured) return { error: tErrors("notConfigured") };
 
-  const email = String(formData.get("email") ?? "").trim();
+  if (!isSmtpConfigured) return { error: t("resetContactAdmin") };
+
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!email) return { error: t("emailRequired") };
 
-  const origin = getSiteUrl();
-  const next = encodeURIComponent("/contrasena?motivo=recuperacion");
-  const supabase = await createClient();
-  await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/confirm?next=${next}`,
+  // Comparte el límite del login: sin él, esto serviría para bombardear un buzón.
+  if (await isLoginRateLimited(email)) return { error: tErrors("tooManyAttempts") };
+
+  const target = await db.query.users.findFirst({
+    where: and(eq(users.email, email), ne(users.status, "disabled")),
+    columns: { id: true, email: true },
   });
+  if (target) {
+    await sendAuthEmail(
+      "recovery",
+      target.email,
+      await createPasswordLink(target.id, "recovery"),
+    );
+  }
 
   return { message: t("resetEmailSent") };
 }
 
 /**
- * Fija la contraseña tras aceptar una invitación o pedir una recuperación.
- *
- * Llega aquí con sesión ya iniciada: `/auth/confirm` la ha abierto al canjear
- * el token del correo.
+ * Fija la contraseña tras aceptar una invitación o pedir una recuperación, con
+ * el token de un solo uso del enlace, y abre la sesión.
  */
 export async function setPassword(
   _prev: AuthState,
@@ -99,21 +122,49 @@ export async function setPassword(
 ): Promise<AuthState> {
   const t = await getTranslations("Login");
   const tErrors = await getTranslations("AuthErrors");
-  if (!isSupabaseConfigured) return { error: tErrors("notConfigured") };
 
+  const token = String(formData.get("token") ?? "");
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
   if (password.length < 8) return { error: tErrors("passwordTooShort") };
   if (password !== confirmPassword) return { error: t("passwordMismatch") };
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: error.message };
+  // El token dice de quién es la cuenta; hace falta su correo para abrirle la
+  // sesión después, porque `resetPassword` solo cambia la contraseña.
+  const ctx = await auth.$context;
+  const verification = token
+    ? await ctx.internalAdapter.findVerificationValue(`reset-password:${token}`)
+    : null;
+  const target =
+    verification && verification.expiresAt > new Date()
+      ? await db.query.users.findFirst({
+          where: eq(users.id, verification.value),
+          columns: { id: true, email: true, locale: true },
+        })
+      : undefined;
+  if (!target) return { error: tErrors("invalidLink") };
 
-  const current = await getCurrentUser();
-  const locale = current?.locale ?? routing.defaultLocale;
-  return localizedRedirect({ href: "/dashboard", locale });
+  try {
+    await auth.api.resetPassword({ body: { token, newPassword: password } });
+  } catch {
+    return { error: tErrors("invalidLink") };
+  }
+
+  // Quien llega con el enlace demuestra que el correo es suyo.
+  await db.update(users).set({ emailVerified: true }).where(eq(users.id, target.id));
+
+  try {
+    await auth.api.signInEmail({
+      body: { email: target.email, password },
+      headers: await headers(),
+    });
+  } catch {
+    // Una cuenta desactivada puede fijar contraseña, pero no entra.
+    return localizedRedirect({ href: "/acceso-revocado", locale: target.locale });
+  }
+
+  return localizedRedirect({ href: "/dashboard", locale: target.locale });
 }
 
 /**
@@ -130,7 +181,6 @@ export async function setPassword(
  * necesariamente a punto de volver a entrar.
  */
 export async function logout(): Promise<{ redirectTo: string }> {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  await auth.api.signOut({ headers: await headers() });
   return { redirectTo: `/${await getLocale()}` };
 }
