@@ -17,10 +17,12 @@ import {
   ECONOMIA_VIEW_PERMISSIONS,
   LEDGER_PARAM,
   canManageLedger,
+  invoiceFileBucket,
   ledgersForFilter,
   resolveLedgerFilter,
   visibleLedgers,
 } from "@/lib/economia";
+import { getSignedUrl } from "@/lib/supabase/storage";
 
 export async function generateMetadata({
   params,
@@ -91,7 +93,13 @@ export default async function RecibidasPage({
       })
     : [];
 
-  const rows = invoiceRows.map((i) => ({
+  // `getSignedUrl` solo compone la ruta del proxy `/api/storage` (no llama a
+  // Storage), así que hacerlo por fila en la lista no cuesta red.
+  const fileUrls = await Promise.all(
+    invoiceRows.map((i) => getSignedUrl(invoiceFileBucket(i.ledger), i.filePath)),
+  );
+
+  const rows = invoiceRows.map((i, index) => ({
     id: i.id,
     ledger: i.ledger,
     supplierId: i.supplierId,
@@ -110,6 +118,8 @@ export default async function RecibidasPage({
     status: i.status,
     description: i.description,
     notes: i.notes,
+    fileName: i.fileName,
+    fileUrl: fileUrls[index],
   }));
 
   const seasonOptions = allSeasons.map((s) => ({ id: s.id, name: s.name }));

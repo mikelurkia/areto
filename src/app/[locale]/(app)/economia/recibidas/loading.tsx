@@ -20,6 +20,7 @@ export default function Loading() {
           "w-24",
           { width: "w-24", priority: "secondary" },
           "w-20",
+          "w-8",
         ]}
         rows={8}
       />
