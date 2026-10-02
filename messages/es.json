@@ -2254,7 +2254,6 @@
     "markedPaidBulk": "{count} pagos marcados como pagados.",
     "receivedInvoiceMarkedPaid": "Factura marcada como pagada.",
     "receivedInvoiceUnmarkedPaid": "Factura desmarcada como pagada.",
-    "purchaseReceiptsMarkedPaidBulk": "{count} tickets marcados como pagados.",
     "bulkMarkPaidAction": "Marcar como pagados",
     "bulkSelectAllSr": "Seleccionar todos los tickets de esta página",
     "bulkSelectRowSr": "Seleccionar a {name}",
