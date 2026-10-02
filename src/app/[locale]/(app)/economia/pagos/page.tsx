@@ -13,6 +13,9 @@ import {
   unmarkReceivedInvoicePaid,
 } from "@/app/[locale]/(app)/economia/recibidas/actions";
 import { markPendingPaidBulk } from "@/app/[locale]/(app)/economia/pagos/actions";
+  markPurchaseReceiptsPaidBulk,
+  unmarkPurchaseReceiptPaid,
+} from "@/app/[locale]/(app)/economia/tickets/actions";
 import { EconomiaSectionNav } from "@/components/economia/economia-section-nav";
 import { PagosTable, type PagosRow } from "@/components/economia/pagos-table";
 import { PageHeader } from "@/components/page-header";
@@ -106,7 +109,7 @@ export default async function PagosPage({
       totalCents: i.totalCents,
       dueDate: i.dueDate,
       reconciliation: reconciliationState(linkedCents, i.totalCents),
-      canManage: canManageLedger(user, i.ledger),
+      canManage: false,
       href: `/economia/recibidas/${i.id}`,
     };
   });
@@ -166,11 +169,9 @@ export default async function PagosPage({
           rows={rows}
           locale={locale}
           showLedgerColumn={showLedgerColumn}
-          markActions={{
-            receipt: { mark: markPurchaseReceiptPaid, unmark: unmarkPurchaseReceiptPaid },
-            invoice: { mark: markReceivedInvoicePaid, unmark: unmarkReceivedInvoicePaid },
-          }}
-          bulkMarkAction={markPendingPaidBulk}
+          markAction={markPurchaseReceiptPaid}
+          unmarkAction={unmarkPurchaseReceiptPaid}
+          bulkMarkAction={markPurchaseReceiptsPaidBulk}
         />
       )}
     </div>

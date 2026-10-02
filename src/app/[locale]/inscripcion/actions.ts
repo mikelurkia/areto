@@ -23,7 +23,7 @@ import { personPhotoThumbPath } from "@/lib/person-photo";
 import { checkRegistrationRateLimit } from "@/lib/registration-rate-limit";
 import { getRegistrationAvailability } from "@/lib/registration-settings";
 import { isSupabaseAdminConfigured } from "@/lib/supabase/admin";
-import { extensionFromMimeType, uploadFileAsAdmin } from "@/lib/supabase/storage";
+import { extensionFromMimeType, uploadFile } from "@/lib/supabase/storage";
 import { IMAGE_UPLOAD_TYPES } from "@/lib/upload-constraints";
 
 const PHOTO_BUCKET = "registration-documents";
@@ -49,10 +49,10 @@ async function uploadRegistrationPhoto(
   // El DNI (id-front/id-back) se sube tal cual: es un documento que debe
   // seguir siendo legible, no una foto ilustrativa.
   const path = `${registrationId}/${slot}.${extensionFromMimeType(file.type)}`;
-  await uploadFileAsAdmin(PHOTO_BUCKET, path, file);
+  await uploadFile(PHOTO_BUCKET, path, file);
   if (slot === "photo") {
     const thumb = await resizeImageToWebp(file, PHOTO_THUMB_MAX_DIMENSION);
-    await uploadFileAsAdmin(PHOTO_BUCKET, personPhotoThumbPath(path), thumb);
+    await uploadFile(PHOTO_BUCKET, personPhotoThumbPath(path), thumb);
   }
   return path;
 }

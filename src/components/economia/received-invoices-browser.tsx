@@ -54,9 +54,6 @@ export type ReceivedInvoiceListRow = ReceivedInvoiceRow & {
   supplierName: string;
   /** Suma de los apuntes enlazados, para el estado de conciliación. */
   linkedCents: number;
-  fileName: string | null;
-  /** Ruta del adjunto en el proxy de storage, null si la factura no lo tiene. */
-  fileUrl: string | null;
 };
 
 export function ReceivedInvoicesBrowser({

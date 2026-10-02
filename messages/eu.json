@@ -2254,6 +2254,7 @@
     "markedPaidBulk": "{count} ordainketa ordainduta gisa markatuta.",
     "receivedInvoiceMarkedPaid": "Faktura ordainduta gisa markatuta.",
     "receivedInvoiceUnmarkedPaid": "Fakturaren ordainduta marka kenduta.",
+    "purchaseReceiptsMarkedPaidBulk": "{count} tiket ordainduta gisa markatuta.",
     "bulkMarkPaidAction": "Ordainduta gisa markatu",
     "bulkSelectAllSr": "Hautatu orrialde honetako tiket guztiak",
     "bulkSelectRowSr": "Hautatu {name}",
