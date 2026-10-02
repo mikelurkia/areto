@@ -12,11 +12,13 @@ export default function Loading() {
       <TableSkeleton
         columns={[
           "w-40",
+          "w-40",
           { width: "w-32", priority: "secondary" },
           "w-24",
           { width: "w-24", priority: "secondary" },
           { width: "w-24", priority: "secondary" },
           { width: "w-20", priority: "tertiary" },
+          "w-8",
         ]}
         rows={6}
       />

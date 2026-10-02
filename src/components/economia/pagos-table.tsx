@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/actions";
 import { BulkActionsBar } from "@/components/bulk-actions-bar";
 import { EmptyValue } from "@/components/empty-value";
+import { FileDownloadLink } from "@/components/economia/file-download-link";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { MarkPaidButton } from "@/components/economia/mark-paid-button";
 import { MaskedIbanText } from "@/components/masked-iban";
@@ -32,7 +33,11 @@ export type PagosRow = {
   kind: "invoice" | "receipt";
   ledger: Ledger;
   beneficiary: string;
+  concept: string;
   iban: string | null;
+  fileName: string | null;
+  /** Ruta del adjunto en el proxy de storage, null si no lo tiene. */
+  fileUrl: string | null;
   totalCents: number;
   dueDate: string | null;
   reconciliation: ReturnType<typeof reconciliationState>;
@@ -104,11 +109,13 @@ export function PagosTable({
               </TableHead>
             ) : null}
             <TableHead>{t("pendingPaymentBeneficiaryLabel")}</TableHead>
+            <TableHead>{t("conceptLabel")}</TableHead>
             <TableHead priority="secondary">{t("accountIbanLabel")}</TableHead>
             <TableHead className="text-right">{t("invoiceTotalLabel")}</TableHead>
             <TableHead priority="secondary">{t("invoiceDueDateLabel")}</TableHead>
             <TableHead priority="secondary">{t("reconciliationLabel")}</TableHead>
             {showLedgerColumn ? <TableHead priority="tertiary" /> : null}
+            <TableHead className="w-10" />
             <TableHead className="text-right" />
           </TableRow>
         </TableHeader>
@@ -133,6 +140,7 @@ export function PagosTable({
                     {r.beneficiary || <EmptyValue />}
                   </HoverPrefetchLink>
                 </TableCell>
+                <TableCell>{r.concept || <EmptyValue />}</TableCell>
                 <TableCell priority="secondary">
                   {r.iban ? <MaskedIbanText value={r.iban} /> : <EmptyValue />}
                 </TableCell>
@@ -153,6 +161,9 @@ export function PagosTable({
                     <StatusBadge tone="neutral" label={t(`ledger_${r.ledger}`)} />
                   </TableCell>
                 ) : null}
+                <TableCell>
+                  {r.fileUrl ? <FileDownloadLink url={r.fileUrl} fileName={r.fileName} /> : null}
+                </TableCell>
                 <TableCell className="text-right">
                   {selectable ? (
                     <MarkPaidButton
