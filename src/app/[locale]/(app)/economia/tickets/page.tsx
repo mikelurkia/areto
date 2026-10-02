@@ -13,11 +13,14 @@ import {
   ECONOMIA_VIEW_PERMISSIONS,
   LEDGER_PARAM,
   canManageLedger,
+  invoiceFileBucket,
   ledgersForFilter,
   reconciliationState,
   resolveLedgerFilter,
+  ticketPaymentState,
   visibleLedgers,
 } from "@/lib/economia";
+import { getSignedUrl } from "@/lib/supabase/storage";
 import { requirePermission } from "@/lib/auth";
 import { ReceiptTextIcon } from "lucide-react";
 
@@ -90,25 +93,37 @@ export default async function TicketsPage({
       })
     : [];
 
-  const rows = receiptRows.map((r) => ({
-    id: r.id,
-    ledger: r.ledger,
-    seasonId: r.seasonId,
-    teamId: r.teamId,
-    categoryId: r.categoryId,
-    paidByPersonId: r.paidByPersonId,
-    paidByName: r.paidByPerson
-      ? `${r.paidByPerson.firstName} ${r.paidByPerson.lastName}`.trim()
-      : "",
-    purchasedOn: r.purchasedOn,
-    description: r.description,
-    totalCents: r.totalCents,
-    notes: r.notes,
-    reconciliation: reconciliationState(
+  // `getSignedUrl` solo compone la ruta del proxy `/api/storage` (no llama a
+  // Storage), así que hacerlo por fila en la lista no cuesta red.
+  const fileUrls = await Promise.all(
+    receiptRows.map((r) => getSignedUrl(invoiceFileBucket(r.ledger), r.filePath)),
+  );
+
+  const rows = receiptRows.map((r, index) => {
+    const reconciliation = reconciliationState(
       r.links.reduce((sum, l) => sum + l.amountCents, 0),
       r.totalCents,
-    ),
-  }));
+    );
+    return {
+      id: r.id,
+      ledger: r.ledger,
+      seasonId: r.seasonId,
+      teamId: r.teamId,
+      categoryId: r.categoryId,
+      paidByPersonId: r.paidByPersonId,
+      paidByName: r.paidByPerson
+        ? `${r.paidByPerson.firstName} ${r.paidByPerson.lastName}`.trim()
+        : "",
+      purchasedOn: r.purchasedOn,
+      description: r.description,
+      totalCents: r.totalCents,
+      notes: r.notes,
+      reconciliation,
+      paymentState: ticketPaymentState(reconciliation, r.markedPaidAt),
+      fileName: r.fileName,
+      fileUrl: fileUrls[index],
+    };
+  });
 
   const seasonOptions = allSeasons.map((s) => ({ id: s.id, name: s.name }));
   const teamOptions = teamRows.map((tm) => ({ id: tm.id, name: tm.name }));

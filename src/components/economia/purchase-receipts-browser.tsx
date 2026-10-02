@@ -12,6 +12,7 @@ import {
 import type { PersonOption } from "@/components/economia/purchase-receipt-person-combobox";
 import { LedgerColumnCell, LedgerColumnHead, LedgerTotalsGrid } from "@/components/economia/ledger-totals-grid";
 import { EmptyValue } from "@/components/empty-value";
+import { FileDownloadLink } from "@/components/economia/file-download-link";
 import { FiltersBar } from "@/components/filters-bar";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { PaginationBar } from "@/components/pagination-bar";
@@ -37,15 +38,19 @@ import {
 import { useFilterParams, useSearchText } from "@/hooks/use-filter-params";
 import { useLocaleDateFormat } from "@/hooks/use-locale-date-format";
 import { usePagedRows } from "@/hooks/use-paged-rows";
-import type { Ledger, LedgerFilter, ReconciliationState } from "@/lib/economia";
-import { RECONCILIATION_TONE } from "@/lib/economia";
+import type { Ledger, LedgerFilter, ReconciliationState, TicketPaymentState } from "@/lib/economia";
+import { RECONCILIATION_TONE, TICKET_PAYMENT_TONE } from "@/lib/economia";
 import { formatCents } from "@/lib/money";
 
-const FILTER_DEFAULTS = { q: "", equipo: "all", categoria: "all" };
+const FILTER_DEFAULTS = { q: "", equipo: "all", categoria: "all", estado: "all" };
 
 export type PurchaseReceiptListRow = PurchaseReceiptRow & {
   paidByName: string;
   reconciliation: ReconciliationState;
+  paymentState: TicketPaymentState;
+  fileName: string | null;
+  /** Ruta del adjunto en el proxy de storage, null si el ticket no lo tiene. */
+  fileUrl: string | null;
 };
 
 export function PurchaseReceiptsBrowser({
@@ -70,7 +75,7 @@ export function PurchaseReceiptsBrowser({
 }) {
   const t = useTranslations("Economia");
   const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
-  const { equipo: team, categoria: category } = filters;
+  const { equipo: team, categoria: category, estado: paymentState } = filters;
   const [query, setQuery] = useSearchText(filters.q, (value) => setFilters({ q: value }));
 
   const filtered = useMemo(() => {
@@ -93,8 +98,11 @@ export function PurchaseReceiptsBrowser({
         category === "none" ? r.categoryId === null : r.categoryId === category,
       );
     }
+    if (paymentState !== "all") {
+      result = result.filter((r) => r.paymentState === paymentState);
+    }
     return result;
-  }, [receipts, query, team, category]);
+  }, [receipts, query, team, category, paymentState]);
 
   // Totales agrupados por libro — nunca sumados entre libros, misma regla que
   // en `movements-browser.tsx`.
@@ -168,6 +176,23 @@ export function PurchaseReceiptsBrowser({
             ))}
           </SelectContent>
         </Select>
+        <Select value={paymentState} onValueChange={(v) => setFilters({ estado: v ?? "all" })}>
+          <SelectTrigger aria-label={t("ticketPaymentStateLabel")}>
+            <SelectValue>
+              {(value: string) =>
+                value === "all" ? t("filterStatusAll") : t(`ticketPaymentState_${value}`)
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filterStatusAll")}</SelectItem>
+            <SelectItem value="pending">{t("ticketPaymentState_pending")}</SelectItem>
+            <SelectItem value="paid_unconfirmed">
+              {t("ticketPaymentState_paid_unconfirmed")}
+            </SelectItem>
+            <SelectItem value="settled">{t("ticketPaymentState_settled")}</SelectItem>
+          </SelectContent>
+        </Select>
       </FiltersBar>
 
       {filtered.length === 0 ? (
@@ -185,8 +210,10 @@ export function PurchaseReceiptsBrowser({
                 <TableHead>{t("ticketPaidByLabel")}</TableHead>
                 <TableHead priority="secondary">{t("ticketPurchasedOnLabel")}</TableHead>
                 <TableHead className="text-right">{t("invoiceTotalLabel")}</TableHead>
+                <TableHead priority="secondary">{t("ticketPaymentStateLabel")}</TableHead>
                 <TableHead priority="secondary">{t("reconciliationLabel")}</TableHead>
                 <LedgerColumnHead show={showLedgerColumn} />
+                <TableHead className="w-10" />
                 {canManageAny ? <TableHead className="w-20" /> : null}
               </TableRow>
             </TableHeader>
@@ -210,11 +237,20 @@ export function PurchaseReceiptsBrowser({
                   </TableCell>
                   <TableCell priority="secondary">
                     <StatusBadge
+                      tone={TICKET_PAYMENT_TONE[r.paymentState]}
+                      label={t(`ticketPaymentState_${r.paymentState}`)}
+                    />
+                  </TableCell>
+                  <TableCell priority="secondary">
+                    <StatusBadge
                       tone={RECONCILIATION_TONE[r.reconciliation]}
                       label={t(`reconciliation_${r.reconciliation}`)}
                     />
                   </TableCell>
                   <LedgerColumnCell show={showLedgerColumn} ledger={r.ledger} />
+                  <TableCell>
+                    {r.fileUrl ? <FileDownloadLink url={r.fileUrl} fileName={r.fileName} /> : null}
+                  </TableCell>
                   {canManageAny ? (
                     <TableCell>
                       {manageableLedgers.includes(r.ledger) ? (
@@ -222,8 +258,8 @@ export function PurchaseReceiptsBrowser({
                           <PurchaseReceiptDialog
                             mode="edit"
                             receipt={r}
-                            fileName={null}
-                            fileUrl={null}
+                            fileName={r.fileName}
+                            fileUrl={r.fileUrl}
                             ledger={r.ledger}
                             manageableLedgers={manageableLedgers}
                             seasons={seasons}

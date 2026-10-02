@@ -206,6 +206,54 @@ export async function updateReceivedInvoice(
   return { message: t("receivedInvoiceUpdated") };
 }
 
+/**
+ * Marcado manual de "ya está pagada", el equivalente del `markedPaidAt` de los
+ * tickets. Aquí no hace falta columna nueva: `status` ya distingue `pending`
+ * de `paid`, y es lo que miran la tabla de pagos pendientes y el dashboard.
+ */
+async function setReceivedInvoicePaid(formData: FormData, paid: boolean): Promise<EconomiaState> {
+  const t = await getTranslations("Economia");
+  const user = await requirePermission(ECONOMIA_VIEW_PERMISSIONS);
+
+  const id = String(formData.get("id") ?? "");
+  const current = await db.query.receivedInvoices.findFirst({
+    where: eq(receivedInvoices.id, id),
+    columns: { ledger: true },
+  });
+  if (!current) return { error: t("receivedInvoiceNotFound") };
+  if (!canManageLedger(user, current.ledger)) return { error: t("notAllowed") };
+
+  await db
+    .update(receivedInvoices)
+    .set({ status: paid ? "paid" : "pending" })
+    .where(eq(receivedInvoices.id, id));
+
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "update",
+    entityType: "received_invoice",
+    entityId: id,
+    metadata: { ledger: current.ledger, paid },
+  });
+
+  revalidateRoutes(ROUTE.economiaRecibidaFicha, ROUTE.economiaRecibidas, ROUTE.economiaPagos);
+  return { message: t(paid ? "receivedInvoiceMarkedPaid" : "receivedInvoiceUnmarkedPaid") };
+}
+
+export async function markReceivedInvoicePaid(
+  _prev: EconomiaState,
+  formData: FormData,
+): Promise<EconomiaState> {
+  return setReceivedInvoicePaid(formData, true);
+}
+
+export async function unmarkReceivedInvoicePaid(
+  _prev: EconomiaState,
+  formData: FormData,
+): Promise<EconomiaState> {
+  return setReceivedInvoicePaid(formData, false);
+}
+
 export async function deleteReceivedInvoice(
   _prev: EconomiaState,
   formData: FormData,

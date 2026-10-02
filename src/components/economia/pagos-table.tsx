@@ -7,7 +7,7 @@ import type { EconomiaState } from "@/app/[locale]/(app)/economia/cuentas/action
 import { BulkActionsBar } from "@/components/bulk-actions-bar";
 import { EmptyValue } from "@/components/empty-value";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
-import { MarkPurchaseReceiptPaidButton } from "@/components/economia/mark-purchase-receipt-paid-button";
+import { MarkPaidButton } from "@/components/economia/mark-paid-button";
 import { MaskedIbanText } from "@/components/masked-iban";
 import { StatusBadge } from "@/components/status-badge";
 import { SubmitButton } from "@/components/submit-button";
@@ -44,19 +44,18 @@ export function PagosTable({
   rows,
   locale,
   showLedgerColumn,
-  markAction,
-  unmarkAction,
+  markActions,
   bulkMarkAction,
 }: {
   rows: PagosRow[];
   locale: string;
   showLedgerColumn: boolean;
-  markAction: MarkAction;
-  unmarkAction: MarkAction;
+  /** Marcar y desmarcar según el tipo de fila: tickets y facturas no se marcan igual. */
+  markActions: Record<PagosRow["kind"], { mark: MarkAction; unmark: MarkAction }>;
   bulkMarkAction: MarkAction;
 }) {
   const t = useTranslations("Economia");
-  const selectableRows = rows.filter((r) => r.kind === "receipt" && r.canManage);
+  const selectableRows = rows.filter((r) => r.canManage);
   const { selectedIds, setSelectedIds, allPageSelected, toggleSelected, toggleSelectAll } =
     useRowSelection(selectableRows);
   const [bulkState, bulkFormAction] = useActionState(bulkMarkAction, {});
@@ -77,9 +76,16 @@ export function PagosTable({
           onClear={() => setSelectedIds(new Set())}
         >
           <form action={bulkFormAction}>
-            {[...selectedIds].map((id) => (
-              <input key={id} type="hidden" name="ids" value={id} />
-            ))}
+            {rows
+              .filter((r) => selectedIds.has(r.id))
+              .map((r) => (
+                <input
+                  key={r.id}
+                  type="hidden"
+                  name={r.kind === "invoice" ? "invoiceIds" : "ids"}
+                  value={r.id}
+                />
+              ))}
             <SubmitButton size="sm">{t("bulkMarkPaidAction")}</SubmitButton>
           </form>
         </BulkActionsBar>
@@ -108,7 +114,7 @@ export function PagosTable({
         </TableHeader>
         <TableBody>
           {rows.map((r) => {
-            const selectable = r.kind === "receipt" && r.canManage;
+            const selectable = r.canManage;
             return (
               <TableRow key={`${r.kind}-${r.id}`}>
                 {selectableRows.length > 0 ? (
@@ -149,11 +155,11 @@ export function PagosTable({
                 ) : null}
                 <TableCell className="text-right">
                   {selectable ? (
-                    <MarkPurchaseReceiptPaidButton
+                    <MarkPaidButton
                       id={r.id}
                       paid={false}
-                      markAction={markAction}
-                      unmarkAction={unmarkAction}
+                      markAction={markActions[r.kind].mark}
+                      unmarkAction={markActions[r.kind].unmark}
                     />
                   ) : null}
                 </TableCell>

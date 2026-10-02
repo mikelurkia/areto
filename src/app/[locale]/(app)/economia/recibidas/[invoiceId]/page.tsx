@@ -9,9 +9,12 @@ import { DeleteReceivedInvoiceDialog, ReceivedInvoiceDialog } from "@/components
 import {
   attachLinkReceipt,
   linkMovementToInvoice,
+  markReceivedInvoicePaid,
   removeLinkReceipt,
   unlinkMovement,
+  unmarkReceivedInvoicePaid,
 } from "@/app/[locale]/(app)/economia/recibidas/actions";
+import { MarkPaidButton } from "@/components/economia/mark-paid-button";
 import { MovementLinksPanel } from "@/components/economia/movement-links-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyValue } from "@/components/empty-value";
@@ -176,10 +179,20 @@ export default async function ReceivedInvoiceDetailPage({
             <InfoRow
               label={t("invoiceStatusLabel")}
               value={
-                <StatusBadge
-                  tone={RECEIVED_INVOICE_STATUS_TONE[invoice.status]}
-                  label={t(`invoiceStatus_${invoice.status}`)}
-                />
+                <span className="flex items-center gap-2">
+                  <StatusBadge
+                    tone={RECEIVED_INVOICE_STATUS_TONE[invoice.status]}
+                    label={t(`invoiceStatus_${invoice.status}`)}
+                  />
+                  {canManage ? (
+                    <MarkPaidButton
+                      id={invoice.id}
+                      paid={invoice.status === "paid"}
+                      markAction={markReceivedInvoicePaid}
+                      unmarkAction={unmarkReceivedInvoicePaid}
+                    />
+                  ) : null}
+                </span>
               }
             />
             {invoice.description ? (

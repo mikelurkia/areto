@@ -10,15 +10,17 @@ export default function Loading() {
     <div className="flex flex-1 flex-col gap-4">
       <PageHeaderSkeleton actions={2} />
       <SectionNavSkeleton widths={["w-20", "w-14", "w-24", "w-24", "w-20", "w-14", "w-18"]} />
-      <FiltersBarSkeleton selects={2} />
+      <FiltersBarSkeleton selects={3} />
       <TableSkeleton
         columns={[
           "w-40",
           "w-32",
           { width: "w-24", priority: "secondary" },
           "w-20",
+          { width: "w-24", priority: "secondary" },
           { width: "w-28", priority: "secondary" },
           { width: "w-16", priority: "tertiary" },
+          "w-8",
           "w-16",
         ]}
         rows={8}

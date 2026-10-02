@@ -9,7 +9,7 @@ import { useActionToast } from "@/hooks/use-action-toast";
 
 type MarkAction = (prev: EconomiaState, formData: FormData) => Promise<EconomiaState>;
 
-export function MarkPurchaseReceiptPaidButton({
+export function MarkPaidButton({
   id,
   paid,
   markAction,
@@ -28,7 +28,7 @@ export function MarkPurchaseReceiptPaidButton({
     <form action={action}>
       <input type="hidden" name="id" value={id} />
       <SubmitButton variant={paid ? "outline" : "default"} size="sm">
-        {paid ? t("ticketUnmarkPaidButton") : t("ticketMarkPaidButton")}
+        {paid ? t("unmarkPaidButton") : t("markPaidButton")}
       </SubmitButton>
     </form>
   );

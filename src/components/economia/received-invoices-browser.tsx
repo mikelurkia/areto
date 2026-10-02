@@ -12,6 +12,7 @@ import {
 import { LedgerColumnCell, LedgerColumnHead, LedgerTotalsGrid } from "@/components/economia/ledger-totals-grid";
 import { EmptyValue } from "@/components/empty-value";
 import { ExportMenu } from "@/components/export-menu";
+import { FileDownloadLink } from "@/components/economia/file-download-link";
 import { FiltersBar } from "@/components/filters-bar";
 import { HoverPrefetchLink } from "@/components/hover-prefetch-link";
 import { PaginationBar } from "@/components/pagination-bar";
@@ -53,6 +54,9 @@ export type ReceivedInvoiceListRow = ReceivedInvoiceRow & {
   supplierName: string;
   /** Suma de los apuntes enlazados, para el estado de conciliación. */
   linkedCents: number;
+  fileName: string | null;
+  /** Ruta del adjunto en el proxy de storage, null si la factura no lo tiene. */
+  fileUrl: string | null;
 };
 
 export function ReceivedInvoicesBrowser({
@@ -226,6 +230,7 @@ export function ReceivedInvoicesBrowser({
                 <TableHead priority="secondary">{t("invoiceStatusLabel")}</TableHead>
                 <TableHead priority="secondary">{t("reconciliationColumnLabel")}</TableHead>
                 <LedgerColumnHead show={showLedgerColumn} />
+                <TableHead className="w-10" />
                 {canManageAny ? <TableHead className="w-20" /> : null}
               </TableRow>
             </TableHeader>
@@ -263,6 +268,9 @@ export function ReceivedInvoicesBrowser({
                     />
                   </TableCell>
                   <LedgerColumnCell show={showLedgerColumn} ledger={i.ledger} />
+                  <TableCell>
+                    {i.fileUrl ? <FileDownloadLink url={i.fileUrl} fileName={i.fileName} /> : null}
+                  </TableCell>
                   {canManageAny ? (
                     <TableCell>
                       {manageableLedgers.includes(i.ledger) ? (
@@ -270,8 +278,8 @@ export function ReceivedInvoicesBrowser({
                           <ReceivedInvoiceDialog
                             mode="edit"
                             invoice={i}
-                            fileName={null}
-                            fileUrl={null}
+                            fileName={i.fileName}
+                            fileUrl={i.fileUrl}
                             ledger={i.ledger}
                             manageableLedgers={manageableLedgers}
                             suppliers={suppliers}

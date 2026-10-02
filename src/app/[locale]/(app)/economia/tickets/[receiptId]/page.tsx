@@ -16,7 +16,7 @@ import {
   markPurchaseReceiptPaid,
   unmarkPurchaseReceiptPaid,
 } from "@/app/[locale]/(app)/economia/tickets/actions";
-import { MarkPurchaseReceiptPaidButton } from "@/components/economia/mark-purchase-receipt-paid-button";
+import { MarkPaidButton } from "@/components/economia/mark-paid-button";
 import { MovementLinksPanel } from "@/components/economia/movement-links-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyValue } from "@/components/empty-value";
@@ -207,7 +207,7 @@ export default async function PurchaseReceiptDetailPage({
                     label={t(`ticketPaymentState_${paymentState}`)}
                   />
                   {canManage ? (
-                    <MarkPurchaseReceiptPaidButton
+                    <MarkPaidButton
                       id={receipt.id}
                       paid={Boolean(receipt.markedPaidAt)}
                       markAction={markPurchaseReceiptPaid}
