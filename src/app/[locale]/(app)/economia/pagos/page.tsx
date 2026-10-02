@@ -19,6 +19,7 @@ import { PageHeader } from "@/components/page-header";
 import { SectionPlaceholder } from "@/components/section-placeholder";
 import { SeasonSelect } from "@/components/equipos/season-select";
 import { hasPermission, requirePermission } from "@/lib/auth";
+import { getSignedUrl } from "@/lib/supabase/storage";
 import {
   canManageLedger,
   ECONOMIA_VIEW_PERMISSIONS,
@@ -27,6 +28,7 @@ import {
   reconciliationState,
   resolveLedgerFilter,
   visibleLedgers,
+  invoiceFileBucket,
 } from "@/lib/economia";
 
 export async function generateMetadata({
@@ -95,14 +97,26 @@ export default async function PagosPage({
       })
     : [];
 
-  const invoiceRows: PagosRow[] = pendingInvoices.map((i) => {
+  // `getSignedUrl` solo compone la ruta del proxy `/api/storage` (no llama a
+  // Storage), así que hacerlo por fila en la lista no cuesta red.
+  const invoiceFileUrls = await Promise.all(
+    pendingInvoices.map((i) => getSignedUrl(invoiceFileBucket(i.ledger), i.filePath)),
+  );
+  const receiptFileUrls = await Promise.all(
+    receipts.map((r) => getSignedUrl(invoiceFileBucket(r.ledger), r.filePath)),
+  );
+
+  const invoiceRows: PagosRow[] = pendingInvoices.map((i, index) => {
     const linkedCents = i.links.reduce((sum, l) => sum + l.amountCents, 0);
     return {
       id: i.id,
       kind: "invoice",
       ledger: i.ledger,
       beneficiary: i.supplier.name,
+      concept: i.description || i.invoiceNumber,
       iban: canViewBanking ? i.supplier.iban : null,
+      fileName: i.fileName,
+      fileUrl: invoiceFileUrls[index],
       totalCents: i.totalCents,
       dueDate: i.dueDate,
       reconciliation: reconciliationState(linkedCents, i.totalCents),
@@ -112,11 +126,7 @@ export default async function PagosPage({
   });
 
   const receiptRows: PagosRow[] = receipts
-    .filter((r) => {
-      const linkedCents = r.links.reduce((sum, l) => sum + l.amountCents, 0);
-      return reconciliationState(linkedCents, r.totalCents) !== "settled" && !r.markedPaidAt;
-    })
-    .map((r) => {
+    .map((r, index) => {
       const linkedCents = r.links.reduce((sum, l) => sum + l.amountCents, 0);
       return {
         id: r.id,
@@ -125,14 +135,19 @@ export default async function PagosPage({
         beneficiary: r.paidByPerson
           ? `${r.paidByPerson.firstName} ${r.paidByPerson.lastName}`.trim()
           : "",
+        concept: r.description,
         iban: canViewBanking ? (r.paidByPerson?.iban ?? null) : null,
+        fileName: r.fileName,
+        fileUrl: receiptFileUrls[index],
         totalCents: r.totalCents,
         dueDate: null,
         reconciliation: reconciliationState(linkedCents, r.totalCents),
         canManage: canManageLedger(user, r.ledger),
         href: `/economia/tickets/${r.id}`,
+        markedPaidAt: r.markedPaidAt,
       };
-    });
+    })
+    .filter((r) => r.reconciliation !== "settled" && !r.markedPaidAt);
 
   const rows = [...invoiceRows, ...receiptRows].sort((a, b) =>
     (a.dueDate ?? "").localeCompare(b.dueDate ?? ""),
